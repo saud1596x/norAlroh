@@ -12,8 +12,11 @@ INFO_HASH_BEFORE="$(shasum -a 256 "$PROJECT_ROOT/ios/Athar/Info.plist" | cut -d 
 xcodegen generate --spec "$PROJECT_ROOT/ios/project.yml" --project "$PROJECT_ROOT/ios"
 INFO_HASH_AFTER="$(shasum -a 256 "$PROJECT_ROOT/ios/Athar/Info.plist" | cut -d ' ' -f 1)"
 [[ "$INFO_HASH_BEFORE" == "$INFO_HASH_AFTER" ]] || { echo 'Project generation modified Info.plist; restore the intended app metadata before continuing.' >&2; exit 2; }
-SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); candidates=[x["udid"] for k,v in d["devices"].items() if "SimRuntime.iOS" in k for x in v if x.get("isAvailable") and x["name"].startswith("iPhone")]; print(candidates[0] if candidates else "")')"
-[[ -n "$SIMULATOR_ID" ]] || { echo 'نزّل محاكي iPhone من إعدادات Xcode.' >&2; exit 2; }
+SIMULATOR_FAMILY="${NOOR_SIMULATOR_FAMILY:-iPhone}"
+[[ "$SIMULATOR_FAMILY" == iPhone || "$SIMULATOR_FAMILY" == iPad ]] || { echo "NOOR_SIMULATOR_FAMILY must be iPhone or iPad." >&2; exit 2; }
+export NOOR_SIMULATOR_FAMILY="$SIMULATOR_FAMILY"
+SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 -c 'import json,sys,os; d=json.load(sys.stdin); candidates=[x["udid"] for k,v in d["devices"].items() if "SimRuntime.iOS" in k for x in v if x.get("isAvailable") and x["name"].startswith(os.environ["NOOR_SIMULATOR_FAMILY"])]; print(candidates[0] if candidates else "")')"
+[[ -n "$SIMULATOR_ID" ]] || { echo "نزّل محاكي $SIMULATOR_FAMILY من إعدادات Xcode." >&2; exit 2; }
 TEST_CONFIGURATION="${NOOR_TEST_CONFIGURATION:-Debug}"
 [[ "$TEST_CONFIGURATION" == Debug || "$TEST_CONFIGURATION" == Release ]] || { echo 'NOOR_TEST_CONFIGURATION must be Debug or Release.' >&2; exit 2; }
 [[ ! -e "$PROJECT_ROOT/release/native-unit.xcresult" && ! -e "$PROJECT_ROOT/release/native-ui.xcresult" ]] || { echo 'احتفظ بنتائج التشغيل السابق ثم انقلها قبل إعادة الاختبار.' >&2; exit 2; }
