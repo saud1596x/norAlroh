@@ -81,3 +81,34 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
+  ios-ipad-quality:
+    name: Noor Alruh iPad Release checks and screenshots
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      xcode: latest
+    scripts:
+      - name: Check Apple toolchain and install generator
+        script: |
+          python3 scripts/check-upload-toolchain.py
+          brew install xcodegen
+      - name: Install verified QCF V2 page fonts
+        script: |
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+      - name: Verify all local content
+        script: |
+          python3 scripts/prepare-publishing.py --check
+          python3 scripts/check-source.py --swiftc "$(xcrun --find swiftc)"
+          python3 scripts/audit-content.py
+          python3 scripts/verify-quran-text.py
+      - name: Build Release and run native tests with video
+        script: |
+          NOOR_SIMULATOR_FAMILY=iPad NOOR_RECORD_VIDEO=1 NOOR_TEST_CONFIGURATION=Release bash scripts/test-ios.sh
+    artifacts:
+      - release/*.xcresult
+      - release/native-build-report.json
+      - release/native-navigation.mp4
+      - release/native-screens.zip
+      - release/native-screens/capture-report.json
+      - release/content-audit.json
