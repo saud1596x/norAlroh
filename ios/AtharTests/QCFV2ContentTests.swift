@@ -15,6 +15,19 @@ final class QCFV2ContentTests: XCTestCase {
         XCTAssertEqual(snapshot.records.filter { $0.char_type_name == "end" }.count, 6236)
         XCTAssertEqual(snapshot.words(on: 1).first?.text, "ﱁ")
         XCTAssertEqual(snapshot.words(on: 1).first?.line_number, 9)
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let layout = try QCFV2PageLayout.database(snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(layout.pages.count, 604)
+        XCTAssertEqual(layout.pages.first?.words.first?.line, 2)
+        XCTAssertEqual(layout.pages.last?.font, "QCF2604")
+        XCTAssertEqual(layout.pages.flatMap { $0.words.filter { $0.kind == "end" } }.count, 6236)
+        let headings = layout.pages.flatMap { page in
+            page.layout.values.compactMap { $0.type == "header" ? $0.chapter : nil }
+        }.sorted()
+        XCTAssertEqual(headings, Array(1...114))
+        XCTAssertEqual(layout.pages[75].layout["15"]?.chapter, 4)
+        XCTAssertEqual(layout.pages[76].layout["1"]?.type, "bismillah")
+        XCTAssertEqual(layout.pages[76].words.first?.line, 2)
         let persisted = await cache.cached()
         XCTAssertEqual(persisted?.snapshot, entry.snapshot)
 
