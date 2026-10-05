@@ -82,19 +82,24 @@ struct RootView: View {
     @State private var selectedTab = 0
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack { NoorTodayView().settingsToolbar { settings = true } }
+            NavigationStack { NoorTodayView() }
+                .settingsToolbar { settings = true }
                 .tabItem { Label("اليوم", systemImage: "house") }
                 .tag(0)
-            NavigationStack { QuranView().settingsToolbar { settings = true } }
+            NavigationStack { QuranView() }
+                .settingsToolbar { settings = true }
                 .tabItem { Label("المصحف", systemImage: "book") }
                 .tag(1)
-            NavigationStack { PrayerView().settingsToolbar { settings = true } }
+            NavigationStack { PrayerView() }
+                .settingsToolbar { settings = true }
                 .tabItem { Label("الصلاة", systemImage: "sun.horizon") }
                 .tag(2)
-            NavigationStack { AdhkarView().settingsToolbar { settings = true } }
+            NavigationStack { AdhkarView() }
+                .settingsToolbar { settings = true }
                 .tabItem { Label("الأذكار", systemImage: "sun.max") }
                 .tag(3)
-            NavigationStack { MemorizationView().settingsToolbar { settings = true } }
+            NavigationStack { MemorizationView() }
+                .settingsToolbar { settings = true }
                 .tabItem { Label("الحفظ", systemImage: "sparkles") }
                 .tag(4)
         }
