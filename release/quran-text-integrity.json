@@ -1,0 +1,20 @@
+{
+  "status": "EXACT_SOURCE_COPY_VERIFIED",
+  "source": "https://tanzil.net/pub/download/index.php?quranType=uthmani&outType=xml&marks=true&sajdah=true&rub=true&agree=true",
+  "edition": "Tanzil Uthmani 1.1, Hafs; pause/sajdah/rub signs; default standard tanween",
+  "checks": {
+    "sourceXMLPinnedHash": true,
+    "all114Chapters": true,
+    "all6236VersesExactlyOnceInSourceOrder": true,
+    "everyAyaIdenticalByUnicodeCodepoint": true,
+    "all112SeparateBasmalasVerbatim": true,
+    "ikhlasAndNasEveryCharacterVerified": true,
+    "noInjectedHTMLOrReplacementCharacters": true
+  },
+  "comparedVerses": 6236,
+  "mismatches": [],
+  "comparisonNormalization": "NONE; exact Unicode codepoint equality",
+  "nativeRendering": "NOT_TESTED",
+  "religiousAndPrintedPageReview": "PENDING",
+  "scope": "Verbatim source-copy integrity. This does not certify font shaping, QCF glyph semantics or specialist approval."
+}

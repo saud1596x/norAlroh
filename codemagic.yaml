@@ -1,0 +1,78 @@
+workflows:
+  ios-quality:
+    name: Noor Alruh native build and quality checks
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      xcode: latest
+    scripts:
+      - name: Check Apple toolchain and install generator
+        script: |
+          python3 scripts/check-upload-toolchain.py
+          brew install xcodegen
+      - name: Verify all local content
+        script: |
+          python3 scripts/prepare-publishing.py --check
+          python3 scripts/check-source.py --swiftc "$(xcrun --find swiftc)"
+          python3 scripts/audit-content.py
+          python3 scripts/verify-quran-text.py
+      - name: Build Release and run native tests with video
+        script: |
+          NOOR_RECORD_VIDEO=1 bash scripts/test-ios.sh
+    artifacts:
+      - release/*.xcresult
+      - release/native-build-report.json
+      - release/native-navigation.mp4
+      - release/native-screens.zip
+      - release/native-screens/capture-report.json
+      - release/content-audit.json
+  ios-testflight:
+    name: Noor Alruh signed iOS / TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    integrations:
+      app_store_connect: noor-alruh-publisher
+    environment:
+      groups:
+        - noor_release
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.athar.ios
+    scripts:
+      - name: Verify Xcode and SDK
+        script: |
+          python3 scripts/check-upload-toolchain.py
+      - name: Install generator and licensed release fonts
+        script: |
+          brew install xcodegen
+          python3 scripts/install-release-fonts.py
+      - name: Audit local content
+        script: |
+          python3 scripts/prepare-publishing.py --check
+          python3 scripts/check-source.py --swiftc "$(xcrun --find swiftc)"
+          python3 scripts/audit-content.py
+          python3 scripts/verify-quran-text.py
+      - name: Build and test actual iOS app
+        script: |
+          NOOR_RECORD_VIDEO=1 NOOR_TEST_CONFIGURATION=Release bash scripts/test-ios.sh
+      - name: Validate internal TestFlight preconditions
+        script: |
+          python3 scripts/release-preflight.py --target testflight
+      - name: Create signed archive
+        script: |
+          xcode-project use-profiles
+          xcode-project build-ipa --project ios/Athar.xcodeproj --scheme Athar --config Release --archive-flags="CURRENT_PROJECT_VERSION=$((BUILD_NUMBER + 1))"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - release/*.xcresult
+      - release/native-build-report.json
+      - release/preflight-report.json
+      - release/native-navigation.mp4
+      - release/native-screens.zip
+      - release/native-screens/capture-report.json
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false

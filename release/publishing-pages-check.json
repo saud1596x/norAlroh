@@ -1,0 +1,134 @@
+{
+  "status": "PASS",
+  "testedAt": "2026-10-05T11:28:52.469Z",
+  "scope": "Local static support/privacy/terms HTML in Chromium; not a publicly deployed website or native iOS test.",
+  "layouts": 9,
+  "results": [
+    {
+      "page": "privacy",
+      "width": 320,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "terms",
+      "width": 320,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "support",
+      "width": 320,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "privacy",
+      "width": 430,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "terms",
+      "width": 430,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "support",
+      "width": 430,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "privacy",
+      "width": 1024,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "terms",
+      "width": 1024,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    },
+    {
+      "page": "support",
+      "width": 1024,
+      "checks": {
+        "rightToLeft": true,
+        "languageArabic": true,
+        "noHorizontalOverflow": true,
+        "allSectionsPresent": true,
+        "publisherPresent": true,
+        "supportEmailCorrect": true,
+        "noTrackingScriptsFormsOrFrames": true,
+        "privacyLinkAccessible": true
+      }
+    }
+  ]
+}

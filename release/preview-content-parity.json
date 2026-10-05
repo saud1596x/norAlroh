@@ -1,0 +1,16 @@
+{
+  "scope": "Native/browser data parity only; not native UI execution",
+  "quranVerses": 6236,
+  "adhkarGroups": 132,
+  "adhkarEntries": 267,
+  "saudiCities": 93,
+  "countries": [
+    "SA"
+  ],
+  "sourceHashes": {
+    "quran.json": "e98f78e5a070bc51dab6f4b91acbfa4cd03498b0af79af6ee8d608b090b130a4",
+    "adhkar.json": "873bfe4c8e1afc035402196ea87c1378c9373a230101076358fbdc21b05d4db0",
+    "saudi-cities.json": "dbb3ee109e5c6b3450dcc39a246b32b91bd331a038a24c1be5e42f8e42065c90",
+    "mushaf.json": "2c6e4e676ce46d4864adadd79d99c9e549fe313fefad4217eac5d91437701b83"
+  }
+}

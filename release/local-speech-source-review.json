@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-10-05T11:29:44.623086+00:00",
+  "sdk": {
+    "repository": "https://github.com/argmaxinc/argmax-oss-swift",
+    "exactVersion": "1.1.0",
+    "upstreamTreeSHA": "1e2a163736dfa5a198e637ae44c114e1c6d5cc2d",
+    "publicAPISourceReviewed": true
+  },
+  "model": {
+    "repository": "argmaxinc/whisperkit-coreml",
+    "observedRevision": "0f63a7800b00dd0226abd051b906c246e1907482",
+    "variant": "openai_whisper-large-v3-v20240930_626MB",
+    "listedFiles": [
+      "openai_whisper-large-v3-v20240930_626MB/AudioEncoder.mlmodelc/analytics/coremldata.bin",
+      "openai_whisper-large-v3-v20240930_626MB/AudioEncoder.mlmodelc/coremldata.bin",
+      "openai_whisper-large-v3-v20240930_626MB/AudioEncoder.mlmodelc/metadata.json",
+      "openai_whisper-large-v3-v20240930_626MB/AudioEncoder.mlmodelc/model.mil",
+      "openai_whisper-large-v3-v20240930_626MB/AudioEncoder.mlmodelc/weights/weight.bin",
+      "openai_whisper-large-v3-v20240930_626MB/MelSpectrogram.mlmodelc/analytics/coremldata.bin",
+      "openai_whisper-large-v3-v20240930_626MB/MelSpectrogram.mlmodelc/coremldata.bin",
+      "openai_whisper-large-v3-v20240930_626MB/MelSpectrogram.mlmodelc/metadata.json",
+      "openai_whisper-large-v3-v20240930_626MB/MelSpectrogram.mlmodelc/model.mil",
+      "openai_whisper-large-v3-v20240930_626MB/MelSpectrogram.mlmodelc/weights/weight.bin",
+      "openai_whisper-large-v3-v20240930_626MB/TextDecoder.mlmodelc/analytics/coremldata.bin",
+      "openai_whisper-large-v3-v20240930_626MB/TextDecoder.mlmodelc/coremldata.bin",
+      "openai_whisper-large-v3-v20240930_626MB/TextDecoder.mlmodelc/metadata.json",
+      "openai_whisper-large-v3-v20240930_626MB/TextDecoder.mlmodelc/model.mil",
+      "openai_whisper-large-v3-v20240930_626MB/TextDecoder.mlmodelc/weights/weight.bin",
+      "openai_whisper-large-v3-v20240930_626MB/config.json",
+      "openai_whisper-large-v3-v20240930_626MB/generation_config.json"
+    ],
+    "weightsDownloaded": false,
+    "runtimeRevisionPinned": false,
+    "runtimeTest": "NOT_RUN",
+    "specializedForQuran": false
+  },
+  "licenses": {
+    "WHISPERKIT-LICENSE.txt": "b8673adf319f1d6905c5c38cf69513f8857930fb3445566fa9839c6948bb85c4",
+    "WHISPER-MODEL-LICENSE.txt": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+    "WHISPERKIT-THIRD-PARTY.txt": "8af554e910833382a04c73b2d9eaef669e031335c867de14b5cf631bd2239913"
+  },
+  "privacySourceInspection": {
+    "sourceFilesScanned": 60,
+    "scope": "WhisperKit and ArgmaxCore upstream Swift source; not binary/archive scan",
+    "requiredReasonAPISearch": "FileManager.attributesOfItem(atPath:) in vendored downloader reads incomplete local download size; declare FileTimestamp C617.1 for own-container metadata API access. No uptime, disk-capacity or UserDefaults calls found in new SDK source by inspected patterns.",
+    "sourcePrivacyManifest": "NONE_FOUND; inspect final Archive and Apple SDK requirements",
+    "applicationManifestAddedReason": "NSPrivacyAccessedAPICategoryFileTimestamp / C617.1; own app-container downloads only"
+  },
+  "nativeAccuracy": "NOT_MEASURED",
+  "nativePerformance": "NOT_MEASURED"
+}

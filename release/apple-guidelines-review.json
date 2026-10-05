@@ -1,0 +1,30 @@
+{
+  "reviewedAt": "2026-10-05T10:40:40.038751+00:00",
+  "sources": [
+    {
+      "url": "https://developer.apple.com/app-store/review/guidelines/",
+      "sha256": "ac60765ecf736baeb2c7951367a4b8c0c785cb8fc17a4886b06423dadf2d217d",
+      "bytes": 237909
+    },
+    {
+      "url": "https://developer.apple.com/news/upcoming-requirements/",
+      "sha256": "2a57317c343adec65616b495e11ca27fa797e1f6f68afe9a0aea0e6741829f34",
+      "bytes": 137007
+    },
+    {
+      "url": "https://developer.apple.com/support/offering-account-deletion-in-your-app/",
+      "sha256": "cf0b584d627e0b96c204870eb4fd6e66c28a5d2186396d76ae515732dde8fb1d",
+      "bytes": 112885
+    },
+    {
+      "url": "https://developer.apple.com/app-store/app-privacy-details/",
+      "sha256": "c4414e161499c4dff39f1e7189369fd1508f4ebc38a291bb0bb383442a3f2be5",
+      "bytes": 132305
+    }
+  ],
+  "accountMode": "local-only; user account/migration choice pending",
+  "supportEmail": "noralrohsupport@gmail.com",
+  "appleApproval": "NOT_REQUESTED",
+  "nativeReleaseVerification": "PENDING",
+  "publicSupportAndPrivacyHosting": "NOT_DEPLOYED"
+}

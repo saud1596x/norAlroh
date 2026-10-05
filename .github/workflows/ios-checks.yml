@@ -1,0 +1,46 @@
+name: Native iOS checks
+on:
+  workflow_dispatch:
+  push:
+    paths: ['ios/**', 'scripts/**', 'content-sources/**', 'release/config.json', 'release/legal-content.json', 'support-site/**', '.github/workflows/ios-checks.yml']
+  pull_request:
+    paths: ['ios/**', 'scripts/**', 'content-sources/**', 'release/config.json', 'release/legal-content.json', 'support-site/**', '.github/workflows/ios-checks.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose installed Xcode 26 or newer
+        run: |
+          python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Verify bundled content
+        run: |
+          python3 scripts/prepare-publishing.py --check
+          python3 scripts/audit-content.py
+          python3 scripts/verify-quran-text.py
+      - name: Compile and run iOS unit and navigation tests
+        env:
+          NOOR_RECORD_VIDEO: '1'
+        run: bash scripts/test-ios.sh
+      - name: Save native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noor-native-evidence
+          path: |
+            release/native-unit.xcresult
+            release/native-ui.xcresult
+            release/native-build-report.json
+            release/native-navigation.mp4
+            release/native-screens.zip
+            release/native-screens/capture-report.json
+            release/content-audit.json
+          retention-days: 14

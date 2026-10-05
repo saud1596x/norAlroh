@@ -1,0 +1,30 @@
+{
+  "status": "DRAFT_REQUIRES_NATIVE_RELEASE_AND_PUBLISHER_REVIEW",
+  "name": "نور الروح",
+  "subtitle": "القرآن والحفظ والذكر والصلاة",
+  "primaryLanguage": "ar-SA",
+  "keywords": "قرآن,مصحف,أذكار,صلاة,حفظ,تسميع,السعودية,مراجعة",
+  "version": "1.0",
+  "supportEmail": "noralrohsupport@gmail.com",
+  "supportURL": null,
+  "privacyPolicyURL": null,
+  "copyright": "2026 سعود الكثيري",
+  "reviewSignInRequired": false,
+  "reviewContactPhone": null,
+  "ageRatingQuestionnaire": "COMPLETE_CURRENT_APP_STORE_CONNECT_QUESTIONNAIRE",
+  "appPrivacyAnswers": "DRAFT_LOCAL_ONLY; verify actual Release and support disclosure criteria",
+  "contentRights": "Third-party resources; see bundled notices and pending QCF permission",
+  "priceAndTerritories": "PUBLISHER_CHOICE_REQUIRED",
+  "EUTraderStatus": "PUBLISHER_DECLARATION_IF_APPLICABLE",
+  "screenshotSource": "Actual final native iOS build only; not browser/mockup images",
+  "featuresNotImplemented": [
+    "Tajweed/tashkil correction or Quran-specialized validated automatic scoring",
+    "Cloud account/sync",
+    "Reciter audio library",
+    "AI tafsir"
+  ],
+  "featuresRequiringNativeValidation": [
+    "Optional local WhisperKit transcription, verse tracking and potential word differences"
+  ],
+  "reviewNotes": "No sign-in. Optional model download requires explicit confirmation; multilingual large-v3 model about 626 MB plus runtime files. Voice inference stays on device; manual assessment remains separate. Verify final native Release performance and microphone behavior before submission."
+}

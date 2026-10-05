@@ -1,0 +1,8 @@
+{
+  "url": "https://tanzil.net/pub/download/index.php?quranType=uthmani&outType=xml&marks=true&sajdah=true&rub=true&agree=true",
+  "retrievedAt": "2026-10-04T23:41:29.549075+00:00",
+  "sha256": "33f4113df84c1bab0ee2eb69616139fda619bdd56fc163a72532daaf0431bf57",
+  "edition": "Tanzil Uthmani 1.1, Hafs; pause/sajdah/rub signs; default standard tanween",
+  "license": "CC BY 3.0 plus no text alteration; see original XML copyright block",
+  "usage": "Native and preview corpus. Aya text copied verbatim; separate XML bismillah never prepended to numbered aya."
+}

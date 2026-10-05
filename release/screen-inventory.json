@@ -1,0 +1,147 @@
+{
+  "scope": "Reachable native screens and significant states; not a claim of capture or testing",
+  "screens": [
+    {
+      "id": "01-home",
+      "title": "الرئيسية"
+    },
+    {
+      "id": "02-surahs",
+      "title": "فهرس السور"
+    },
+    {
+      "id": "03-mushaf",
+      "title": "صفحة المصحف"
+    },
+    {
+      "id": "04-page-navigation",
+      "title": "الصفحات والأجزاء"
+    },
+    {
+      "id": "05-flexible-reader",
+      "title": "القراءة المرنة"
+    },
+    {
+      "id": "06-prayers",
+      "title": "مواقيت الصلاة"
+    },
+    {
+      "id": "07-saudi-cities",
+      "title": "مدن المملكة"
+    },
+    {
+      "id": "08-notifications",
+      "title": "تنبيهات الصلاة"
+    },
+    {
+      "id": "09-adhkar",
+      "title": "فهرس الأذكار"
+    },
+    {
+      "id": "10-dhikr-chapter",
+      "title": "باب أذكار النوم"
+    },
+    {
+      "id": "11-dhikr-session",
+      "title": "جلسة الذكر والعداد"
+    },
+    {
+      "id": "12-hifz",
+      "title": "مساحة الحفظ"
+    },
+    {
+      "id": "13-hifz-plan",
+      "title": "خطة الحفظ"
+    },
+    {
+      "id": "14-hifz-test",
+      "title": "اختبار الاسترجاع"
+    },
+    {
+      "id": "15-hifz-paused",
+      "title": "استراحة الاختبار"
+    },
+    {
+      "id": "16-hifz-revealed",
+      "title": "كشف نص الآية"
+    },
+    {
+      "id": "17-recitation-controls",
+      "title": "تسجيل التسميع"
+    },
+    {
+      "id": "18-hifz-result",
+      "title": "نتيجة المراجعة"
+    },
+    {
+      "id": "19-hifz-history",
+      "title": "سجل المراجعات"
+    },
+    {
+      "id": "20-similarities",
+      "title": "التشابه اللفظي"
+    },
+    {
+      "id": "21-settings",
+      "title": "الإعدادات"
+    },
+    {
+      "id": "22-library",
+      "title": "العلامات والتأملات"
+    },
+    {
+      "id": "23-privacy",
+      "title": "الخصوصية"
+    },
+    {
+      "id": "24-sources",
+      "title": "مصادر المحتوى"
+    },
+    {
+      "id": "25-reflection",
+      "title": "وقفة مع آية وتأمل شخصي"
+    },
+    {
+      "id": "26-tanzil-license",
+      "title": "ترخيص نص Tanzil"
+    },
+    {
+      "id": "27-qcf-license",
+      "title": "ترخيص بيانات المصحف والخطوط"
+    },
+    {
+      "id": "28-amiri-license",
+      "title": "ترخيص خط أميري"
+    },
+    {
+      "id": "29-adhan-license",
+      "title": "ترخيص مكتبة حساب الصلاة"
+    },
+    {
+      "id": "30-terms",
+      "title": "شروط الاستخدام"
+    },
+    {
+      "id": "31-support",
+      "title": "الدعم والمساعدة"
+    },
+    {
+      "id": "32-speech-model-setup",
+      "title": "تجهيز النموذج للمتابعة الصوتية"
+    },
+    {
+      "id": "33-whisperkit-license",
+      "title": "ترخيص WhisperKit"
+    },
+    {
+      "id": "34-whisper-model-license",
+      "title": "ترخيص نموذج Whisper"
+    },
+    {
+      "id": "35-whisper-components",
+      "title": "تراخيص المكونات التابعة للتعرف الصوتي"
+    }
+  ],
+  "captureStatus": "NOT_CAPTURED",
+  "microphoneTest": "Requires actual iPhone voice input; simulator tour does not fabricate recordings"
+}

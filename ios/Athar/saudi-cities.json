@@ -1,0 +1,932 @@
+[
+  {
+    "id": "riyadh",
+    "name": "الرياض",
+    "region": "الرياض",
+    "latitude": 24.68773,
+    "longitude": 46.72185,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108410
+  },
+  {
+    "id": "makkah",
+    "name": "مكة المكرمة",
+    "region": "مكة المكرمة",
+    "latitude": 21.42664,
+    "longitude": 39.82563,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 104515
+  },
+  {
+    "id": "madinah",
+    "name": "المدينة المنورة",
+    "region": "المدينة المنورة",
+    "latitude": 24.46861,
+    "longitude": 39.61417,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109223
+  },
+  {
+    "id": "sa-110690",
+    "name": "أبها",
+    "region": "عسير",
+    "latitude": 18.21639,
+    "longitude": 42.50528,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110690
+  },
+  {
+    "id": "sa-110619",
+    "name": "أبو عريش",
+    "region": "جازان",
+    "latitude": 16.96887,
+    "longitude": 42.83251,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110619
+  },
+  {
+    "id": "sa-101035",
+    "name": "أم الساهك",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.65361,
+    "longitude": 49.91639,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101035
+  },
+  {
+    "id": "sa-100926",
+    "name": "أملج",
+    "region": "تبوك",
+    "latitude": 25.02126,
+    "longitude": 37.2685,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 100926
+  },
+  {
+    "id": "sa-109953",
+    "name": "الباحة",
+    "region": "الباحة",
+    "latitude": 20.01288,
+    "longitude": 41.46767,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109953
+  },
+  {
+    "id": "sa-397833",
+    "name": "البدائع",
+    "region": "القصيم",
+    "latitude": 25.98546,
+    "longitude": 43.73659,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 397833
+  },
+  {
+    "id": "sa-109878",
+    "name": "البكيرية",
+    "region": "القصيم",
+    "latitude": 26.13915,
+    "longitude": 43.65782,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109878
+  },
+  {
+    "id": "sa-109435",
+    "name": "الجبيل",
+    "region": "المنطقة الشرقية",
+    "latitude": 27.0174,
+    "longitude": 49.62251,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109435
+  },
+  {
+    "id": "sa-109417",
+    "name": "الجموم",
+    "region": "مكة المكرمة",
+    "latitude": 21.61951,
+    "longitude": 39.69659,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109417
+  },
+  {
+    "id": "sa-109323",
+    "name": "الخبر",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.27944,
+    "longitude": 50.20833,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109323
+  },
+  {
+    "id": "sa-109391",
+    "name": "الخبراء",
+    "region": "القصيم",
+    "latitude": 26.07179,
+    "longitude": 43.62497,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109391
+  },
+  {
+    "id": "sa-109353",
+    "name": "الخرج",
+    "region": "الرياض",
+    "latitude": 24.15541,
+    "longitude": 47.33457,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109353
+  },
+  {
+    "id": "sa-109306",
+    "name": "الخرمة",
+    "region": "مكة المكرمة",
+    "latitude": 21.91149,
+    "longitude": 42.03092,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109306
+  },
+  {
+    "id": "sa-109380",
+    "name": "الخفجي",
+    "region": "المنطقة الشرقية",
+    "latitude": 28.43905,
+    "longitude": 48.49132,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109380
+  },
+  {
+    "id": "sa-110312",
+    "name": "الدرعية",
+    "region": "الرياض",
+    "latitude": 24.75187,
+    "longitude": 46.53874,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110312
+  },
+  {
+    "id": "sa-110314",
+    "name": "الدلم",
+    "region": "الرياض",
+    "latitude": 23.99104,
+    "longitude": 47.16181,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110314
+  },
+  {
+    "id": "sa-110336",
+    "name": "الدمام",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.43442,
+    "longitude": 50.10326,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110336
+  },
+  {
+    "id": "sa-110325",
+    "name": "الدوادمي",
+    "region": "الرياض",
+    "latitude": 24.50772,
+    "longitude": 44.39237,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110325
+  },
+  {
+    "id": "sa-108435",
+    "name": "الرس",
+    "region": "القصيم",
+    "latitude": 25.86944,
+    "longitude": 43.4973,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108435
+  },
+  {
+    "id": "sa-107781",
+    "name": "الزلفي",
+    "region": "الرياض",
+    "latitude": 26.29945,
+    "longitude": 44.81542,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107781
+  },
+  {
+    "id": "sa-108048",
+    "name": "السليل",
+    "region": "الرياض",
+    "latitude": 20.46067,
+    "longitude": 45.57792,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108048
+  },
+  {
+    "id": "sa-410096",
+    "name": "الشفا",
+    "region": "مكة المكرمة",
+    "latitude": 21.07268,
+    "longitude": 40.31842,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 410096
+  },
+  {
+    "id": "sa-107968",
+    "name": "الطائف",
+    "region": "مكة المكرمة",
+    "latitude": 21.27028,
+    "longitude": 40.41583,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107968
+  },
+  {
+    "id": "sa-107797",
+    "name": "الظهران",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.28864,
+    "longitude": 50.11396,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107797
+  },
+  {
+    "id": "sa-110060",
+    "name": "العقيق",
+    "region": "الباحة",
+    "latitude": 20.27358,
+    "longitude": 41.66434,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110060
+  },
+  {
+    "id": "sa-108841",
+    "name": "العلا",
+    "region": "المدينة المنورة",
+    "latitude": 26.60853,
+    "longitude": 37.92316,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108841
+  },
+  {
+    "id": "sa-109998",
+    "name": "العوامية",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.59144,
+    "longitude": 49.97951,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109998
+  },
+  {
+    "id": "sa-108648",
+    "name": "القريات",
+    "region": "الجوف",
+    "latitude": 31.33176,
+    "longitude": 37.34282,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108648
+  },
+  {
+    "id": "sa-108927",
+    "name": "القطيف",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.56542,
+    "longitude": 50.0089,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108927
+  },
+  {
+    "id": "sa-108918",
+    "name": "القيصومة",
+    "region": "المنطقة الشرقية",
+    "latitude": 28.31117,
+    "longitude": 46.12729,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108918
+  },
+  {
+    "id": "sa-109253",
+    "name": "الليث",
+    "region": "مكة المكرمة",
+    "latitude": 20.14804,
+    "longitude": 40.27224,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109253
+  },
+  {
+    "id": "sa-109101",
+    "name": "المبرز",
+    "region": "المنطقة الشرقية",
+    "latitude": 25.40768,
+    "longitude": 49.59028,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109101
+  },
+  {
+    "id": "sa-399518",
+    "name": "المجاردة",
+    "region": "عسير",
+    "latitude": 19.132,
+    "longitude": 41.924,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 399518
+  },
+  {
+    "id": "sa-109131",
+    "name": "المذنب",
+    "region": "القصيم",
+    "latitude": 25.86012,
+    "longitude": 44.22228,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109131
+  },
+  {
+    "id": "sa-12513572",
+    "name": "المشعلية",
+    "region": "نجران",
+    "latitude": 17.75558,
+    "longitude": 44.468,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 12513572
+  },
+  {
+    "id": "sa-108617",
+    "name": "النماص",
+    "region": "عسير",
+    "latitude": 19.14547,
+    "longitude": 42.12009,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108617
+  },
+  {
+    "id": "sa-109571",
+    "name": "الهفوف",
+    "region": "المنطقة الشرقية",
+    "latitude": 25.36467,
+    "longitude": 49.58764,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109571
+  },
+  {
+    "id": "sa-109615",
+    "name": "الهياثم",
+    "region": "الرياض",
+    "latitude": 24.16555,
+    "longitude": 47.23764,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 109615
+  },
+  {
+    "id": "sa-108773",
+    "name": "الوجه",
+    "region": "تبوك",
+    "latitude": 26.23094,
+    "longitude": 36.46492,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108773
+  },
+  {
+    "id": "sa-12495725",
+    "name": "بارق",
+    "region": "عسير",
+    "latitude": 18.92966,
+    "longitude": 41.92953,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 12495725
+  },
+  {
+    "id": "sa-107744",
+    "name": "بدر",
+    "region": "المدينة المنورة",
+    "latitude": 23.78292,
+    "longitude": 38.79047,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107744
+  },
+  {
+    "id": "sa-107304",
+    "name": "بريدة",
+    "region": "القصيم",
+    "latitude": 26.32599,
+    "longitude": 43.97497,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107304
+  },
+  {
+    "id": "sa-107588",
+    "name": "بقعاء",
+    "region": "حائل",
+    "latitude": 27.90647,
+    "longitude": 42.38898,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107588
+  },
+  {
+    "id": "sa-107312",
+    "name": "بقيق",
+    "region": "المنطقة الشرقية",
+    "latitude": 25.93402,
+    "longitude": 49.6688,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107312
+  },
+  {
+    "id": "sa-107692",
+    "name": "بلجرشي",
+    "region": "الباحة",
+    "latitude": 19.85944,
+    "longitude": 41.55722,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107692
+  },
+  {
+    "id": "sa-103369",
+    "name": "بيشة",
+    "region": "عسير",
+    "latitude": 20.00054,
+    "longitude": 42.6052,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 103369
+  },
+  {
+    "id": "sa-101554",
+    "name": "تاروت",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.5733,
+    "longitude": 50.04028,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101554
+  },
+  {
+    "id": "sa-101628",
+    "name": "تبوك",
+    "region": "تبوك",
+    "latitude": 28.3998,
+    "longitude": 36.57151,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101628
+  },
+  {
+    "id": "sa-101322",
+    "name": "تربة",
+    "region": "مكة المكرمة",
+    "latitude": 21.21406,
+    "longitude": 41.6331,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101322
+  },
+  {
+    "id": "sa-101516",
+    "name": "تيماء",
+    "region": "تبوك",
+    "latitude": 27.62233,
+    "longitude": 38.53882,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101516
+  },
+  {
+    "id": "sa-409682",
+    "name": "ثول",
+    "region": "مكة المكرمة",
+    "latitude": 22.28272,
+    "longitude": 39.11245,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 409682
+  },
+  {
+    "id": "sa-105299",
+    "name": "جازان",
+    "region": "جازان",
+    "latitude": 16.88917,
+    "longitude": 42.55111,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 105299
+  },
+  {
+    "id": "sa-105343",
+    "name": "جدة",
+    "region": "مكة المكرمة",
+    "latitude": 21.49012,
+    "longitude": 39.18624,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 105343
+  },
+  {
+    "id": "sa-106281",
+    "name": "حائل",
+    "region": "حائل",
+    "latitude": 27.52188,
+    "longitude": 41.69073,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 106281
+  },
+  {
+    "id": "sa-12513575",
+    "name": "حبونا",
+    "region": "نجران",
+    "latitude": 17.84722,
+    "longitude": 44.02081,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 12513575
+  },
+  {
+    "id": "sa-106297",
+    "name": "حفر الباطن",
+    "region": "المنطقة الشرقية",
+    "latitude": 28.43279,
+    "longitude": 45.97077,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 106297
+  },
+  {
+    "id": "sa-106102",
+    "name": "حقل",
+    "region": "تبوك",
+    "latitude": 29.28627,
+    "longitude": 34.94687,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 106102
+  },
+  {
+    "id": "sa-13631408",
+    "name": "حوطة بني تميم",
+    "region": "الرياض",
+    "latitude": 23.49598,
+    "longitude": 46.87801,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 13631408
+  },
+  {
+    "id": "sa-104923",
+    "name": "خليص",
+    "region": "مكة المكرمة",
+    "latitude": 22.15553,
+    "longitude": 39.32015,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 104923
+  },
+  {
+    "id": "sa-105072",
+    "name": "خميس مشيط",
+    "region": "عسير",
+    "latitude": 18.3,
+    "longitude": 42.73333,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 105072
+  },
+  {
+    "id": "sa-102891",
+    "name": "رأس تنورة",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.70742,
+    "longitude": 50.06735,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102891
+  },
+  {
+    "id": "sa-103035",
+    "name": "رابغ",
+    "region": "مكة المكرمة",
+    "latitude": 22.79856,
+    "longitude": 39.03493,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 103035
+  },
+  {
+    "id": "sa-102744",
+    "name": "رماح",
+    "region": "الرياض",
+    "latitude": 25.56395,
+    "longitude": 47.16408,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102744
+  },
+  {
+    "id": "sa-12546009",
+    "name": "رنية",
+    "region": "مكة المكرمة",
+    "latitude": 21.2504,
+    "longitude": 42.84751,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 12546009
+  },
+  {
+    "id": "sa-11835536",
+    "name": "رياض الخبراء",
+    "region": "القصيم",
+    "latitude": 26.06672,
+    "longitude": 43.55344,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 11835536
+  },
+  {
+    "id": "sa-108121",
+    "name": "ساجر",
+    "region": "الرياض",
+    "latitude": 25.18251,
+    "longitude": 44.59964,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108121
+  },
+  {
+    "id": "sa-11670045",
+    "name": "سبت العلايا",
+    "region": "عسير",
+    "latitude": 19.5773,
+    "longitude": 41.96357,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 11670045
+  },
+  {
+    "id": "sa-12500245",
+    "name": "سراة عبيدة",
+    "region": "عسير",
+    "latitude": 18.089,
+    "longitude": 43.132,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 12500245
+  },
+  {
+    "id": "sa-102527",
+    "name": "سكاكا",
+    "region": "الجوف",
+    "latitude": 29.96974,
+    "longitude": 40.20641,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102527
+  },
+  {
+    "id": "sa-102318",
+    "name": "سيهات",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.48345,
+    "longitude": 50.04849,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102318
+  },
+  {
+    "id": "sa-102170",
+    "name": "شقراء",
+    "region": "الرياض",
+    "latitude": 25.24019,
+    "longitude": 45.25104,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102170
+  },
+  {
+    "id": "sa-102451",
+    "name": "صامطة",
+    "region": "جازان",
+    "latitude": 16.59601,
+    "longitude": 42.94435,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102451
+  },
+  {
+    "id": "sa-102651",
+    "name": "صبيا",
+    "region": "جازان",
+    "latitude": 17.1495,
+    "longitude": 42.62537,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102651
+  },
+  {
+    "id": "sa-102585",
+    "name": "صفوى",
+    "region": "المنطقة الشرقية",
+    "latitude": 26.6497,
+    "longitude": 49.95522,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 102585
+  },
+  {
+    "id": "sa-106909",
+    "name": "ضبا",
+    "region": "تبوك",
+    "latitude": 27.35134,
+    "longitude": 35.69014,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 106909
+  },
+  {
+    "id": "sa-107117",
+    "name": "ضمد",
+    "region": "جازان",
+    "latitude": 17.10426,
+    "longitude": 42.78155,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 107117
+  },
+  {
+    "id": "sa-101631",
+    "name": "طبرجل",
+    "region": "الجوف",
+    "latitude": 30.49987,
+    "longitude": 38.21603,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101631
+  },
+  {
+    "id": "sa-101312",
+    "name": "طريف",
+    "region": "الحدود الشمالية",
+    "latitude": 31.67252,
+    "longitude": 38.66374,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101312
+  },
+  {
+    "id": "sa-108512",
+    "name": "عرعر",
+    "region": "الحدود الشمالية",
+    "latitude": 30.97531,
+    "longitude": 41.03808,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108512
+  },
+  {
+    "id": "sa-110250",
+    "name": "عفيف",
+    "region": "الرياض",
+    "latitude": 23.9065,
+    "longitude": 42.91724,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 110250
+  },
+  {
+    "id": "sa-101732",
+    "name": "عنيزة",
+    "region": "القصيم",
+    "latitude": 26.1,
+    "longitude": 44.0,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 101732
+  },
+  {
+    "id": "sa-108782",
+    "name": "عيون الجواء",
+    "region": "القصيم",
+    "latitude": 26.49829,
+    "longitude": 43.6312,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 108782
+  },
+  {
+    "id": "sa-106744",
+    "name": "فرسان",
+    "region": "جازان",
+    "latitude": 16.70222,
+    "longitude": 42.11833,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 106744
+  },
+  {
+    "id": "sa-106667",
+    "name": "فيفاء",
+    "region": "جازان",
+    "latitude": 17.2806,
+    "longitude": 43.13735,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 106667
+  },
+  {
+    "id": "sa-103220",
+    "name": "قبة",
+    "region": "القصيم",
+    "latitude": 27.40285,
+    "longitude": 44.3277,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 103220
+  },
+  {
+    "id": "sa-104716",
+    "name": "ليلى",
+    "region": "الرياض",
+    "latitude": 22.29206,
+    "longitude": 46.72376,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 104716
+  },
+  {
+    "id": "sa-11524299",
+    "name": "مدينة الملك عبدالله الاقتصادية",
+    "region": "مكة المكرمة",
+    "latitude": 22.44633,
+    "longitude": 39.12455,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 11524299
+  },
+  {
+    "id": "sa-104578",
+    "name": "مهد الذهب",
+    "region": "المدينة المنورة",
+    "latitude": 23.49966,
+    "longitude": 40.88408,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 104578
+  },
+  {
+    "id": "sa-103630",
+    "name": "نجران",
+    "region": "نجران",
+    "latitude": 17.49326,
+    "longitude": 44.12766,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 103630
+  },
+  {
+    "id": "sa-100425",
+    "name": "ينبع",
+    "region": "المدينة المنورة",
+    "latitude": 24.08954,
+    "longitude": 38.0618,
+    "timeZone": "Asia/Riyadh",
+    "countryCode": "SA",
+    "sourceID": 100425
+  }
+]

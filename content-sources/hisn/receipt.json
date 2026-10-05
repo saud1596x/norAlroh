@@ -1,0 +1,933 @@
+{
+  "indexURL": "https://www.hisnmuslim.com/api/ar/husn_ar.json",
+  "downloadedAt": "2026-10-04",
+  "chapters": 132,
+  "entries": 267,
+  "sources": [
+    {
+      "chapter": 27,
+      "title": "أذكار الصباح والمساء",
+      "entries": 24,
+      "url": "https://www.hisnmuslim.com/api/ar/27.json",
+      "sha256": "64cd10f23a2e98c8bf17aac1efa2ccbd268bece799b91dbf1e3b91ffeec8dbc1"
+    },
+    {
+      "chapter": 28,
+      "title": "أذكار النوم",
+      "entries": 13,
+      "url": "https://www.hisnmuslim.com/api/ar/28.json",
+      "sha256": "c6be847bfa7804e6b2b10b7e01e3d6d13d0fcb2b3bee43778e10058ba8b7ae48"
+    },
+    {
+      "chapter": 1,
+      "title": "أذكار الاستيقاظ من النوم",
+      "entries": 4,
+      "url": "https://www.hisnmuslim.com/api/ar/1.json",
+      "sha256": "2058602720faa60454501a74a217b62c5e10d4ccdae26343a5a2c8b6e2e78d13"
+    },
+    {
+      "chapter": 6,
+      "title": "دعاء دخول الخلاء",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/6.json",
+      "sha256": "a7163e9cdc906a2b55c4204ea74771b2c0347008a1a19bec17a7f17de9805f54"
+    },
+    {
+      "chapter": 7,
+      "title": "دعاء الخروج من الخلاء",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/7.json",
+      "sha256": "cdb995d311a416945e3df1a055b5ff614565191bd5e322a0eb8684cf05b31eb2"
+    },
+    {
+      "chapter": 8,
+      "title": "الذكر قبل الوضوء",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/8.json",
+      "sha256": "691d1ff47d100f4fe41a3485338961c19adb02bb1d4def4e1f4d9fbadffb181e"
+    },
+    {
+      "chapter": 9,
+      "title": "الذكر بعد الفراغ من الوضوء",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/9.json",
+      "sha256": "f3ab95dc4b54f32faf3892e3304aa6f7a6c08eab0b4f9ab0051ae7208d7f5e74"
+    },
+    {
+      "chapter": 10,
+      "title": "الذكر عند الخروج من المنزل",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/10.json",
+      "sha256": "74baeed1928f4dc6690c845e7f49d9b781957fb0f8653e50eb401a0045176a81"
+    },
+    {
+      "chapter": 11,
+      "title": "الذكر عند دخول المنزل",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/11.json",
+      "sha256": "5a836af2659484d4d9c20a7bb128ec90cc3646c9157c30c4235025f945ab5519"
+    },
+    {
+      "chapter": 12,
+      "title": "دعاء الذهاب إلى المسجد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/12.json",
+      "sha256": "89df2760c5652739741a1dd77287c1ad346c869cd9f748ce526b12bbacc00e92"
+    },
+    {
+      "chapter": 13,
+      "title": "دعاء دخول المسجد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/13.json",
+      "sha256": "a7daa5d33a9af4e6cbf42b8cf8e215ceed256021c195bf0835751b97bdc6b3fe"
+    },
+    {
+      "chapter": 14,
+      "title": "دعاء الخروج من المسجد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/14.json",
+      "sha256": "c002efa8b84b9f942f54947e06000ae425482c8db61630821b7dc34b904dd6d3"
+    },
+    {
+      "chapter": 15,
+      "title": "أذكار الآذان",
+      "entries": 5,
+      "url": "https://www.hisnmuslim.com/api/ar/15.json",
+      "sha256": "88f9c70af7147b5d9b14c81596b187d69024e0596fbaf8db02d268cc297a7408"
+    },
+    {
+      "chapter": 2,
+      "title": "دعاء ُلبْس الثوب",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/2.json",
+      "sha256": "db46eabc055bf3b6c588648be8fdcb9b1111701b9ba473c8dc111b5854ae964c"
+    },
+    {
+      "chapter": 3,
+      "title": "دعاء ُلبْس الثوب الجديد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/3.json",
+      "sha256": "2017f73bb4ac59e860061b9756db76ad5d34e154db897af0d5cbf55cce861e8d"
+    },
+    {
+      "chapter": 4,
+      "title": "الدعاء لمن لبس ثوبا جديدا",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/4.json",
+      "sha256": "43294020ace46d26ff60aa96ea5d2168eb0b2a61dc9759669f76e565f1a9ee0a"
+    },
+    {
+      "chapter": 5,
+      "title": "ما يقول إذا وضع ثوبه",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/5.json",
+      "sha256": "be99aae8d4ff97c888503c23b46f5135ab7afd2ed60a59624c144af55f0701e7"
+    },
+    {
+      "chapter": 16,
+      "title": "دعاء الاستفتاح",
+      "entries": 6,
+      "url": "https://www.hisnmuslim.com/api/ar/16.json",
+      "sha256": "c2251b49dba4ed1b84d4f0681baf7e5b75fff1c71f0cbf16c3ad0709ba616915"
+    },
+    {
+      "chapter": 17,
+      "title": "دعاء الركوع",
+      "entries": 5,
+      "url": "https://www.hisnmuslim.com/api/ar/17.json",
+      "sha256": "68c4df67e0cbac3e49c761c7aea040b193897445b2da9f39b543e2e237abed47"
+    },
+    {
+      "chapter": 18,
+      "title": "دعاء الرفع من الركوع",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/18.json",
+      "sha256": "20db3b72ef0588d07f0c0c980524eb768d39b3a9ebb79da92ffbdbff9c088328"
+    },
+    {
+      "chapter": 19,
+      "title": "دعاء السجود",
+      "entries": 7,
+      "url": "https://www.hisnmuslim.com/api/ar/19.json",
+      "sha256": "bdef135ef79a0c2e7c12ecf2f20b7b8eff9e286e67c29623dcc9553858365837"
+    },
+    {
+      "chapter": 20,
+      "title": "دعاء الجلسة بين السجدتين",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/20.json",
+      "sha256": "bd6abeea3e9790e6877a2e253df66090af499c8c7f8fa87d11566d07d1f78386"
+    },
+    {
+      "chapter": 21,
+      "title": "دعاء سجود التلاوة",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/21.json",
+      "sha256": "3fc4c430bb4482f8c6cfb193d52c35259c55b4202d2463365320c2e83cf73399"
+    },
+    {
+      "chapter": 22,
+      "title": "التشهد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/22.json",
+      "sha256": "7393552e2cf8d0d902f098d085cdb44de8b60de12c172bd842c2e020fd1f5a44"
+    },
+    {
+      "chapter": 23,
+      "title": "الصلاة على النبي بعد التشهد",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/23.json",
+      "sha256": "e7e17f685fb4c714c0a391e6d665b2d7ca857ceba66116a9a54209bf43d00058"
+    },
+    {
+      "chapter": 24,
+      "title": "الدعاء بعد التشهد الأخير قبل السلام",
+      "entries": 11,
+      "url": "https://www.hisnmuslim.com/api/ar/24.json",
+      "sha256": "810468a05826637fdd81678352790a0b752796bcb009e4c62c6c8e04828a5816"
+    },
+    {
+      "chapter": 25,
+      "title": "الأذكار بعد السلام من الصلاة",
+      "entries": 8,
+      "url": "https://www.hisnmuslim.com/api/ar/25.json",
+      "sha256": "4fba964763cb094a26c4adf811a12e1172e31034edc27429f6b8d75ccf004809"
+    },
+    {
+      "chapter": 26,
+      "title": "دعاء صلاة الاستخارة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/26.json",
+      "sha256": "5bebae926f8cb03b86ea0c3f079983143237a7d1d93202ec333e74dd85f1dfc3"
+    },
+    {
+      "chapter": 29,
+      "title": "الدعاء إذا تقلب ليلا",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/29.json",
+      "sha256": "1de10e8df8b91821e69d2deb81c7fc019071f4e05070fcf1b4ba610ac140c03b"
+    },
+    {
+      "chapter": 30,
+      "title": "دعاء الفزع في النوم و من بُلِيَ بالوحشة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/30.json",
+      "sha256": "f72eea6cd0a9891615a93fd6e04a0126514e39e7260680ba437aa507f4c05c40"
+    },
+    {
+      "chapter": 31,
+      "title": "ما يفعل من رأى الرؤيا أو الحلم",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/31.json",
+      "sha256": "ef82a688f17480cc698f6d633e36cba3da79d75e766c3d53aee93e779e7267d3"
+    },
+    {
+      "chapter": 32,
+      "title": "دعاء قنوت الوتر",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/32.json",
+      "sha256": "135e8f77f67df9d582393829d1dfa83006ba489216de8c678dec98ced9218151"
+    },
+    {
+      "chapter": 33,
+      "title": "الذكر عقب السلام من الوتر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/33.json",
+      "sha256": "b900dd6455951dddcdab52e225daf3cd423c5e04f68792a3b45cbed1a24360ae"
+    },
+    {
+      "chapter": 34,
+      "title": "دعاء الهم والحزن",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/34.json",
+      "sha256": "83f9399daf5266283fe378b128dd14040f8d2dd191678b659504dfc330e21d1c"
+    },
+    {
+      "chapter": 35,
+      "title": "دعاء الكرب",
+      "entries": 4,
+      "url": "https://www.hisnmuslim.com/api/ar/35.json",
+      "sha256": "9b2b21e75648b381723f99b2d7069238bbdea2ba4f40aa8c2df790e16df2ef32"
+    },
+    {
+      "chapter": 36,
+      "title": "دعاء لقاء العدو و ذي السلطان",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/36.json",
+      "sha256": "d716875a6ad062cc2a632ea71da6bc3d99f22d111ee088b9e60df6d8658d2bfd"
+    },
+    {
+      "chapter": 37,
+      "title": "دعاء من خاف ظلم السلطان",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/37.json",
+      "sha256": "1cb549ad88f3021697ff2da598364afe043f55454eb21342045f19c409288152"
+    },
+    {
+      "chapter": 38,
+      "title": "الدعاء على العدو",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/38.json",
+      "sha256": "9c318ed4088497c3c343c395cc76442802bf882a4f7e7e3ea9df7e00da600ee7"
+    },
+    {
+      "chapter": 39,
+      "title": "ما يقول من خاف قوما",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/39.json",
+      "sha256": "241522544d784cbb1a6bc4038e112e7f31d2174069d5624d2db42404a69312a3"
+    },
+    {
+      "chapter": 40,
+      "title": "دعاء من أصابه وسوسة في الإيمان",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/40.json",
+      "sha256": "524f2d2b5b519822b7ee23110f1dd02f97069db3a5f86525d4fe70385d355a3c"
+    },
+    {
+      "chapter": 41,
+      "title": "دعاء قضاء الدين",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/41.json",
+      "sha256": "2a48d80095ed4f825edb5d20be9c54c9f76d560ab94795c76871ea6e36a2a188"
+    },
+    {
+      "chapter": 42,
+      "title": "دعاء الوسوسة في الصلاة و القراءة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/42.json",
+      "sha256": "a7a7b7b65ebcbc543592d0434f59600ab97875cc4f3855b0b7f728f479e2dedc"
+    },
+    {
+      "chapter": 43,
+      "title": "دعاء من استصعب عليه أمر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/43.json",
+      "sha256": "237f80afa90b76d96548476053b02ff272d4b17b427f63fc3c26425ec219eb07"
+    },
+    {
+      "chapter": 44,
+      "title": "ما يقول ويفعل من أذنب ذنبا",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/44.json",
+      "sha256": "2fccdc246d60a0e8759f42944816edddadbc2d70168b91d731d9004840c833d8"
+    },
+    {
+      "chapter": 45,
+      "title": "دعاء طرد الشيطان و وساوسه",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/45.json",
+      "sha256": "4d2e041b653500c0bd16067d55284794b25d71240193154c74a9ff47b683630d"
+    },
+    {
+      "chapter": 46,
+      "title": "الدعاء حينما يقع ما لا يرضاه أو ُ غلب على أمره",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/46.json",
+      "sha256": "3f68d4d0e1506a8520a7b103839e3cfef3fcc9a3c095d7d1b8a583218f2728ed"
+    },
+    {
+      "chapter": 47,
+      "title": "ﺗﻬنئة المولود له وجوابه",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/47.json",
+      "sha256": "dd4ca4a93dfbb6f6b6d5766b4742649950f532107cfdf777bed87eaee78dade3"
+    },
+    {
+      "chapter": 48,
+      "title": "ما يعوذ به الأولاد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/48.json",
+      "sha256": "3a4241c1bd6c8601cccc071727a5617c726d8bd8686fe8ff3636f5e50983bbc7"
+    },
+    {
+      "chapter": 49,
+      "title": "الدعاء للمريض في عيادته",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/49.json",
+      "sha256": "04f3d438c71f8e93a1e2c9fbbad719be72273a589660ff597ac4a8bc937345e8"
+    },
+    {
+      "chapter": 50,
+      "title": "فضل عيادة المريض",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/50.json",
+      "sha256": "d960f1327d90b255c70a94e65acd6f3b1cc11d72bd06349f2f5ec2c2f5d7ff19"
+    },
+    {
+      "chapter": 51,
+      "title": "دعاء المريض الذي يئس من حياته",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/51.json",
+      "sha256": "c9c15e22e8e39c647aede43eba019751f1e3fd7952d4dca3eb0eb02aa7a56579"
+    },
+    {
+      "chapter": 52,
+      "title": "تلقين المحتضر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/52.json",
+      "sha256": "d5ce02eaf8c6fb8c89c7a945a140023188d492dd04ff0d69420c2d703e7bb412"
+    },
+    {
+      "chapter": 53,
+      "title": "دعاء من أصيب بمصيبة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/53.json",
+      "sha256": "acc66aaf4cba7e9922af60ae6a690d0c7a41141e22f36619f9e8e2508811d26e"
+    },
+    {
+      "chapter": 54,
+      "title": "الدعاء عند إغماض الميت",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/54.json",
+      "sha256": "09ee7971f608e3527ed3a823a9caba1be6de5db9c1e11fad7c2d9fd1fea8bbcb"
+    },
+    {
+      "chapter": 55,
+      "title": "الدعاء للميت في الصلاة عليه",
+      "entries": 4,
+      "url": "https://www.hisnmuslim.com/api/ar/55.json",
+      "sha256": "7f280d460b33ea46f92d74d3fd2966b535bd13b979158b39206b6a6c6752b967"
+    },
+    {
+      "chapter": 56,
+      "title": "الدعاء للفرط في الصلاة عليه",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/56.json",
+      "sha256": "21b4297bdb17f2bfdfe189cc5211326656c84f11c60949cda2cf4d83fedc2798"
+    },
+    {
+      "chapter": 57,
+      "title": "دعاء التعزية",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/57.json",
+      "sha256": "9e3abea9a35f3b83cd9c8f917fb757e7478bcb58bc4375ff85356d704713bb99"
+    },
+    {
+      "chapter": 58,
+      "title": "الدعاء عند إدخال الميت القبر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/58.json",
+      "sha256": "3bfc32ed78f8a35c522b16a46f6d5c73bf9cad00f701d1235a6c999f646aa051"
+    },
+    {
+      "chapter": 59,
+      "title": "الدعاء بعد دفن الميت",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/59.json",
+      "sha256": "706e5a0f85f45faded3d23ca9a263cd34580ee1fd9375bb04b29e0a364bc0b47"
+    },
+    {
+      "chapter": 60,
+      "title": "دعاء زيارة القبور",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/60.json",
+      "sha256": "e5b48067f8f46c4d4c863adfcf4a264f18c33617467a48dc9968cf247992937c"
+    },
+    {
+      "chapter": 61,
+      "title": "دعاء الريح",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/61.json",
+      "sha256": "b4f77ea10952319edec87bafe48db1ca14b6192cd0d2bc6ad5401eabd5e9c836"
+    },
+    {
+      "chapter": 62,
+      "title": "دعاء الرعد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/62.json",
+      "sha256": "ad8f435764804b344be9daf535e21962868e2cea351b1e45512b035cd019c163"
+    },
+    {
+      "chapter": 63,
+      "title": "من أدعية الاستسقاء",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/63.json",
+      "sha256": "35f86c4c0d3306dae455d4724fec3496c4a2c3437dd39d59f5eeee090a95947e"
+    },
+    {
+      "chapter": 64,
+      "title": "الدعاء إذا نزل المطر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/64.json",
+      "sha256": "e15e4663da9ba2696c16b9b92f423977f0bb454dd22dbdd82e8f0add0896f6ee"
+    },
+    {
+      "chapter": 65,
+      "title": "الذكر بعد نزول المطر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/65.json",
+      "sha256": "3444334a79612a56e5227498942afe443f97ad2b6d802c6fa3ba6b9c5608a96a"
+    },
+    {
+      "chapter": 66,
+      "title": "من أدعية الاستصحاء",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/66.json",
+      "sha256": "608b9b8e9e3fc0dca117282127f6ba0a0acf3914d93e6a5699fb081f2cb31c66"
+    },
+    {
+      "chapter": 67,
+      "title": "دعاء رؤية الهلال",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/67.json",
+      "sha256": "ab1e2d2506380975943c4f65b0f6382bafd9a8478d42413d8248edbf0ad24cf3"
+    },
+    {
+      "chapter": 68,
+      "title": "الدعاء عند إفطار الصائم",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/68.json",
+      "sha256": "92fcc24b7761fbb5f365b4a7b9f091ec231d2e59ce8a2ec0cb50b4365b703715"
+    },
+    {
+      "chapter": 69,
+      "title": "الدعاء قبل الطعام",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/69.json",
+      "sha256": "46f5701257728fe271095372fd9bee0639715da0cd84a00901e9b1d88a04a90f"
+    },
+    {
+      "chapter": 70,
+      "title": "الدعاء عند الفراغ من الطعام",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/70.json",
+      "sha256": "b684778d9766dccc040a26fb140a24b126482a4fa41eedcc945bc6b789fabc75"
+    },
+    {
+      "chapter": 71,
+      "title": "دعاء الضيف لصاحب الطعام",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/71.json",
+      "sha256": "9d5e4ed3c274331b96b76d7e26e26b7f4c54c2e4274c8f60c97490cace21c2b4"
+    },
+    {
+      "chapter": 72,
+      "title": "التعريض بالدعاء لطلب الطعام أو الشراب",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/72.json",
+      "sha256": "fef1d8620aac1612538b458d22dace9692ab2b67875bbfcdfd7f7355e755d29b"
+    },
+    {
+      "chapter": 73,
+      "title": "الدعاء إذا أفطر عند أهل بيت",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/73.json",
+      "sha256": "148b5d91dc0bd72e56ed8753d2336b7adad9d8481dffde7fe0026af235eed257"
+    },
+    {
+      "chapter": 74,
+      "title": "دعاء الصائم إذا حضر الطعام ولم يفطر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/74.json",
+      "sha256": "8f440f5cba6a1442725c8cfacdbe85320a59a124a5283a6d35188158ada1c639"
+    },
+    {
+      "chapter": 75,
+      "title": "ما يقول الصائم إذا سابه أحد",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/75.json",
+      "sha256": "a82bc15cc075a965930e964d2aa50d20207ecd3da3a0e8f68c5fa1b34a336a48"
+    },
+    {
+      "chapter": 76,
+      "title": "الدعاء عند رؤية باكورة الثمر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/76.json",
+      "sha256": "d8277e76269ac32d76a548fd963894116bbe37c87f2c149de61c8354454a2d66"
+    },
+    {
+      "chapter": 77,
+      "title": "دعاء العطاس",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/77.json",
+      "sha256": "45fd1b5ae4851354a0b78a2a48cb57469e7a2766e56c7884354f7003b5fc6a2d"
+    },
+    {
+      "chapter": 78,
+      "title": "ما يقال للكافر إذا عطس فحمد الله",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/78.json",
+      "sha256": "ffb0c4ffe274ee343ee63ab4fdcf4a1d7b0e06d41c231dbba8dd9f428397fb18"
+    },
+    {
+      "chapter": 79,
+      "title": "الدعاء للمتزوج",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/79.json",
+      "sha256": "c48f75cbb8dc96dc8a8a6338259cf63514379ae26c0168a328c2ec0358e9a865"
+    },
+    {
+      "chapter": 80,
+      "title": "دعاء المتزوج و شراء الدابة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/80.json",
+      "sha256": "ded64f600da816b12392687c445b93f777e11fd711aaeb67d51f588ab57f8229"
+    },
+    {
+      "chapter": 81,
+      "title": "الدعاء قبل إتيان الزوجة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/81.json",
+      "sha256": "4aba6843d7ae7ad4a78a0c89aad04aacb6c2fb6c88defd40c7b280ead8b046c5"
+    },
+    {
+      "chapter": 82,
+      "title": "دعاء الغضب",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/82.json",
+      "sha256": "29fb971e82987acb379eb0a84903ebb9fc6aad4b3ee8a4b92acbe3068aba6a8c"
+    },
+    {
+      "chapter": 83,
+      "title": "دعاء من رأى مبتلى",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/83.json",
+      "sha256": "e4cdf78e45888d14fb7fa6f3a4e9c7abc77b3040a485f8bb74114f0bbfbfaf23"
+    },
+    {
+      "chapter": 84,
+      "title": "ما يقال في اﻟﻤﺠلس",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/84.json",
+      "sha256": "b06a11ed40995fe51fe9db941fae2895087284ff925b5be94cade28b2ef18543"
+    },
+    {
+      "chapter": 85,
+      "title": "كفارة اﻟﻤﺠلس",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/85.json",
+      "sha256": "cdf38ccdce983b5fc1cc3665df35d59db437eabe67a8ddce184580a764edda76"
+    },
+    {
+      "chapter": 86,
+      "title": "الدعاء لمن قال غفر الله لك",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/87.json",
+      "sha256": "eeac72034b02b62c3198bbd6670a1b73929ea76dfcaf3a3671285c49fbb4a720"
+    },
+    {
+      "chapter": 87,
+      "title": "الدعاء لمن صنع إليك معروفا",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/87.json",
+      "sha256": "eeac72034b02b62c3198bbd6670a1b73929ea76dfcaf3a3671285c49fbb4a720"
+    },
+    {
+      "chapter": 88,
+      "title": "ما يعصم الله به من الدجال",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/88.json",
+      "sha256": "c3f556ba72d279a6a0fe852080a0ee1b955c36df37920ab94eea3d5ff5a54d06"
+    },
+    {
+      "chapter": 89,
+      "title": "الدعاء لمن قال إني أحبك في الله",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/89.json",
+      "sha256": "b15dea9c3e16782e352f29979b8d9e35f74833e04eec7cac05010c1f69939f38"
+    },
+    {
+      "chapter": 90,
+      "title": "الدعاء لمن عرض عليك ماله",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/90.json",
+      "sha256": "ad0233c348c67f19465532a74570615f05084b95ceb4c0977e062339ba5f844f"
+    },
+    {
+      "chapter": 91,
+      "title": "الدعاء لمن أقرض عند القضاء",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/91.json",
+      "sha256": "c6f0ed8f4994776a7d25d14e920b679a2ef6516813242016b3dfc67632bd2556"
+    },
+    {
+      "chapter": 92,
+      "title": "دعاء الخوف من الشرك",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/92.json",
+      "sha256": "11d52f6b732a666f41ba34dbe54a503425cfb454c2b038daa5ccd9d87ad25749"
+    },
+    {
+      "chapter": 93,
+      "title": "الدعاء لمن قال بارك الله فيك",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/93.json",
+      "sha256": "421be1feb8e379cc6c46aeee772e62d36b9b82767fa4359c26d365982766a0c7"
+    },
+    {
+      "chapter": 94,
+      "title": "دعاء كراهية الطيرة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/94.json",
+      "sha256": "f039a1e3e89bf9b14f140872c04e1d1befbfc3467307322f1e4cf90311c2cbab"
+    },
+    {
+      "chapter": 95,
+      "title": "دعاء الركوب",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/95.json",
+      "sha256": "4add0e725e841baa6f317fafbcc8d217e584b82c3143ef9d58a5f4cf6aaa3baa"
+    },
+    {
+      "chapter": 96,
+      "title": "دعاء السفر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/96.json",
+      "sha256": "53db51850fb7edf6e0c6f5b375c0385ed47a30660597c833b9c4418893da5876"
+    },
+    {
+      "chapter": 97,
+      "title": "دعاء دخول القرية أو البلدة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/97.json",
+      "sha256": "de3c6911c6b11349b78091b3913efb7b88244eeab9efd7f3786383c520b933be"
+    },
+    {
+      "chapter": 98,
+      "title": "دعاء دخول السوق",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/98.json",
+      "sha256": "76faa0fe346243e1cf5f0cfbadf90c8b4ced9e3f0ab0c821d91818c19aeda152"
+    },
+    {
+      "chapter": 99,
+      "title": "الدعاء إذا تعس المركوب",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/99.json",
+      "sha256": "67675638bc7ef6f992a00084ae3221eed1fa6d1599284d6de15089bba595cb9a"
+    },
+    {
+      "chapter": 100,
+      "title": "دعاء المسافر للمقيم",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/100.json",
+      "sha256": "46156c4cd0a8a61ca8de752473f1ceea9324a3a531486e99b1ef9b1180c8ab38"
+    },
+    {
+      "chapter": 101,
+      "title": "دعاء المقيم للمسافر",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/101.json",
+      "sha256": "4c130504857c7c429bda211eac0aeed729321595488972364fde136b04547a16"
+    },
+    {
+      "chapter": 102,
+      "title": "التكبير و التسبيح في سير السفر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/102.json",
+      "sha256": "c2ba70c64b20897d86e6c7ef2c204126bbe9893b090ca5105a639cc7b2bec2a6"
+    },
+    {
+      "chapter": 103,
+      "title": "دعاء المسافر إذا أسحر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/103.json",
+      "sha256": "0f4af35fdff569adb231ae63c421090847627e277f1c6a59989b3672a77578e9"
+    },
+    {
+      "chapter": 104,
+      "title": "الدعاء إذا نزل مترلا في سفر أو غيره",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/104.json",
+      "sha256": "c014a14446efaeab6b7034b0676f8cb60266fc6aaee76e216ac452da0c8b3908"
+    },
+    {
+      "chapter": 105,
+      "title": "ذكر الرجوع من السفر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/105.json",
+      "sha256": "17eb28908682f2ba2146a75368b68e5b92b2c7a05e1431f8fb3330b059817b9d"
+    },
+    {
+      "chapter": 106,
+      "title": "ما يقول من أتاه أمر يسره أو يكرهه",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/106.json",
+      "sha256": "1604a3b05f4aff526ff0e87b0c2c54e35d96754a029326c8db1f0e3a87831955"
+    },
+    {
+      "chapter": 107,
+      "title": "فضل الصلاة على النبي صلى الله عليه و سلم",
+      "entries": 5,
+      "url": "https://www.hisnmuslim.com/api/ar/107.json",
+      "sha256": "8e3e056ba0570f99cbb8c9d8d181cd97e2fbb2c4209676b19ee40d321cd762ac"
+    },
+    {
+      "chapter": 108,
+      "title": "إفشاء السلام",
+      "entries": 3,
+      "url": "https://www.hisnmuslim.com/api/ar/108.json",
+      "sha256": "fa642902f671b7b1087717e6f14cf3baca9207b236f84cc53594089187f0bb70"
+    },
+    {
+      "chapter": 109,
+      "title": "كيف يرد السلام على الكافر إذا سلم",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/109.json",
+      "sha256": "645f2d26d9aa83982436638fca903dfdbc74e58bb702f1ee4c5f98cbcf78dfae"
+    },
+    {
+      "chapter": 110,
+      "title": "الدُّعاءُ عِنْدَ سَمَاعِ صِياحِ الدِّيكِ ونَهِيقِ الْحِمَارِ",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/110.json",
+      "sha256": "39f0c68bc42dc0c67711431e9ba171ac26091bcd4dbcbffc720d8d7819436c3d"
+    },
+    {
+      "chapter": 111,
+      "title": "دعاء نباح الكلاب بالليل",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/111.json",
+      "sha256": "f6c3c25cb4a8a38bea865dcdef3788a0b6b34d5139ae8dce738ca2b31d99ccea"
+    },
+    {
+      "chapter": 112,
+      "title": "الدعاء لمن سببته",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/112.json",
+      "sha256": "9d20f4bbb3cfb699511b8bb77e4d37fd151e4733d05b8b69618047f797806f77"
+    },
+    {
+      "chapter": 113,
+      "title": "ما يقول المسلم إذا مدح المسلم",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/113.json",
+      "sha256": "6a46e0454816be7cb74999773f2edeb750bcc6847d1d95bce59c61fbc169d176"
+    },
+    {
+      "chapter": 114,
+      "title": "ما يقول المسلم إذا زكي",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/114.json",
+      "sha256": "c1de35cfd80df3684e758e74125f191a6aabc62fe03a4efe6ff3c4591d02ef0a"
+    },
+    {
+      "chapter": 115,
+      "title": "كيف يلبي المحرم في الحج أو العمرة ؟",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/115.json",
+      "sha256": "3f3e02570b4bad2d8b777211e578f7350598015de0ada7e00f4b5182829c75db"
+    },
+    {
+      "chapter": 116,
+      "title": "التكبير إذا أتى الركن الأسود",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/116.json",
+      "sha256": "39dc0d97fafd72261de4151f0c543fe1bace766e939a6c5af81fe4de03325205"
+    },
+    {
+      "chapter": 117,
+      "title": "الدعاء بين الركن اليماني والحجر الأسود",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/117.json",
+      "sha256": "f046e57ad403e3e2e33ad289486650f7913bd6a24b40365d5f1781f596bf7a95"
+    },
+    {
+      "chapter": 118,
+      "title": "دعاء الوقوف على الصفا والمروة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/118.json",
+      "sha256": "82c3f3a45dbd1f941fb7f1fde3d6452354b82233e7b1fbeb6be424d21c0311ec"
+    },
+    {
+      "chapter": 119,
+      "title": "الدعاء يوم عرفة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/119.json",
+      "sha256": "3c0622d11a216acf5c4739318f481521920e5bcd4b594eab02ba69188e75c767"
+    },
+    {
+      "chapter": 120,
+      "title": "الذكر عند المشعر الحرام",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/120.json",
+      "sha256": "4050369505c2960474100ef4b227c399a3532d83f96cf1e7dee948a3386509fe"
+    },
+    {
+      "chapter": 121,
+      "title": "التكبير عند رمي الجمار مع كل حصاة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/121.json",
+      "sha256": "fc9b5826a76f5dfcbd0d12a519c92017c34b96a4dae460f16643e368f3838b85"
+    },
+    {
+      "chapter": 122,
+      "title": "دعاء التعجب والأمر السار",
+      "entries": 2,
+      "url": "https://www.hisnmuslim.com/api/ar/122.json",
+      "sha256": "f8b0773646355b5f5718383a6526351079f86c069e7c8c9ff65fedc18f8d2ac0"
+    },
+    {
+      "chapter": 123,
+      "title": "ما يفعل من أتاه أمر يسره",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/123.json",
+      "sha256": "96022d03a211fc00e344dd7a252af91cd8537e0615b5924ae40a47d69480737c"
+    },
+    {
+      "chapter": 124,
+      "title": "ما يقول من أحس وجعا في جسده",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/124.json",
+      "sha256": "cf6ef0e5c43e548fa4523fa5ca5920fb40203b3ec68185e504fde697cd2f01d5"
+    },
+    {
+      "chapter": 125,
+      "title": "دعاء من خشي أن يصيب شيئا بعينه",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/125.json",
+      "sha256": "2b7faf7350e7c172c77c4c3ad7669483d43cd6270cc65054db2f34f42ac20490"
+    },
+    {
+      "chapter": 126,
+      "title": "ما يقال عند الفزع",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/126.json",
+      "sha256": "b3f99aeb9a69340415657dcb37c27bdeeaf152bf9b5bcb6a77a803fc8d3b14b3"
+    },
+    {
+      "chapter": 127,
+      "title": "ما يقول عند الذبح أو النحر",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/127.json",
+      "sha256": "835ddb9816fd983646c3b33543daeb4c603bd0ffa253e16e7bef1060ce2c4eb1"
+    },
+    {
+      "chapter": 128,
+      "title": "ما يقول لرد كيد مردة الشياطين",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/128.json",
+      "sha256": "6399bb0888e652b96a1d1ccde325bb24333aaf8a0be35b5a3e3c40b1fdb8f93f"
+    },
+    {
+      "chapter": 129,
+      "title": "الاستغفار و التوبة",
+      "entries": 6,
+      "url": "https://www.hisnmuslim.com/api/ar/129.json",
+      "sha256": "de9bdfcbb2c19bc637c65354867ff8ebeadfa0fda1bb0edd8c0f401942b3220f"
+    },
+    {
+      "chapter": 130,
+      "title": "فضل التسبيح و التحميد، و التهليل، و التكبير",
+      "entries": 12,
+      "url": "https://www.hisnmuslim.com/api/ar/130.json",
+      "sha256": "b4bdd945e3463a52962d59989bddd1f71aa430ff0659a5bc4fb6138be74194bc"
+    },
+    {
+      "chapter": 131,
+      "title": "كيف كان النبي يسبح؟",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/131.json",
+      "sha256": "f518861ce8f7b9f4f710aba9fee89591264598f88abdc5897a7acc1f92f0e0b1"
+    },
+    {
+      "chapter": 132,
+      "title": "من أنواع الخير والآداب الجامعة",
+      "entries": 1,
+      "url": "https://www.hisnmuslim.com/api/ar/132.json",
+      "sha256": "bbfcd3d14316c73c0dd74d8099a1627ef9eb6c63418ed46292a507a16ec1fee0"
+    }
+  ],
+  "review": "Mechanical comparison to downloaded source only; scholarly review pending."
+}

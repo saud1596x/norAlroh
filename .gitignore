@@ -1,0 +1,17 @@
+.DS_Store
+__pycache__/
+*.pyc
+ios/*.xcodeproj/
+ios/Athar/Fonts/
+DerivedData/
+build/
+release/*.zip
+release/*.xcresult/
+release/native-navigation.mp4
+release/native-screens/
+release/native-build-report.json
+*.p8
+*.p12
+*.mobileprovision
+.env
+.env.*

@@ -1,0 +1,53 @@
+{
+  "scope": "Static asset integrity, source parity and completeness; not iOS execution or religious certification",
+  "checks": {
+    "sha256:quran.json": true,
+    "sha256:quran-basmalas.json": true,
+    "sha256:mushaf.json": true,
+    "sha256:mushaf-headers.json": true,
+    "sha256:adhkar.json": true,
+    "sha256:saudi-cities.json": true,
+    "sha256:AmiriQuran.ttf": true,
+    "canonicalChapterAndVerseSequence": true,
+    "604PagesInOrder": true,
+    "all6236VerseEndsInCanonicalOrder": true,
+    "allWordKeysCanonical": true,
+    "allWordsInCanonicalOrder": true,
+    "114AuthenticHeaderMappings": true,
+    "sourceLineBreaksAndPUACodes": true,
+    "headerChapterSequence": true,
+    "112SeparateBasmalas": true,
+    "tawbahHasNoSeparateBasmala": true,
+    "allChapterStartPages": true,
+    "all30JuzStarts": true,
+    "all132HisnChaptersAnd267Entries": true,
+    "everyDhikrTextAndRepeatMatchesDownloadedSource": true,
+    "93SaudiCitiesAcross13Regions": true,
+    "onlySaudiCitiesAndTimezone": true,
+    "qiblaAndCompassRemoved": true,
+    "everyHeaderGlyphExists": true,
+    "everyBasmalaGlyphExists": true,
+    "all47FontFilesMatchPinnedSHA256": true,
+    "headerFontMatchesPinnedSHA256": true,
+    "everyRenderedWordAndStopGlyphExists": true
+  },
+  "issues": [],
+  "fontAudit": {
+    "checked": true,
+    "fonts": 48,
+    "restoredStopMarks": 4303,
+    "unmapped": [],
+    "differentHashes": []
+  },
+  "coverage": {
+    "pages": 604,
+    "surahs": 114,
+    "verses": 6236,
+    "hisnChapters": 132,
+    "adhkarTexts": 267,
+    "saudiCities": 93
+  },
+  "nativeCompilation": "NOT_RUN",
+  "religiousReview": "PENDING",
+  "status": "PASS"
+}

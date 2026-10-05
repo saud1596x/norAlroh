@@ -1,0 +1,17 @@
+{
+  "status": "GENERATED_CONTENT_CURRENT",
+  "publicWebsite": "NOT_DEPLOYED_BY_THIS_SCRIPT",
+  "accountMode": "local-only",
+  "supportEmailConfigured": true,
+  "draftWithoutSupportEmail": false,
+  "publicPrivacyURLConfigured": false,
+  "publicSupportURLConfigured": false,
+  "files": {
+    "ios/Athar/app-legal.json": "1242cdf238e6e5626578209e8e2a3539f49759a89872ab9b4bb7bb839ac8e47d",
+    "support-site/privacy.html": "fe56fccbfcb4058ff0cb8a37fd4b40413355278be5c94b059e40a3516a7787d6",
+    "support-site/terms.html": "ed2f2d56959dcfabcb7d744569c7ebe3f06dfb1af0f491dd24f2ac92b637f0b8",
+    "support-site/support.html": "0d1e08181227de09aa9efab1c6f222a409059c0ece90ebadaa9b31261ac537ca",
+    "support-site/index.html": "0d1e08181227de09aa9efab1c6f222a409059c0ece90ebadaa9b31261ac537ca",
+    "support-site/.nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

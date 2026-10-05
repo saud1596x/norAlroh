@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-10-05T05:36:34.969096+00:00",
+  "source": "https://github.com/MohamadHajjRabee/quran-qcf4/blob/main/LICENSE.md",
+  "sourceSHA256": "6679ea5a8c73b4767f38c177e3c4493780c3eb6458cd3b29f58c8a9d3ab93827",
+  "jsonData": "MIT; copyright/license bundled with app",
+  "qcfFontDistribution": "EXPLICIT_RIGHTSHOLDER_PERMISSION_REQUIRED",
+  "fontRightsConfirmed": false,
+  "thmanyahEmbedding": "Packaged app use described, but font access/extraction restrictions and native resources still need resolution. No modified/converted font installed.",
+  "amiri": "SIL OFL; original font/license included",
+  "adhanSwift": "MIT; full copyright/license now included inside app",
+  "whisperKit": "Argmax OSS v1.1.0 MIT; upstream NOTICES includes modified Hugging Face swift-transformers Apache-2.0; full notices bundled",
+  "whisperModel": "OpenAI Whisper MIT; Argmax Core ML repository card declares MIT; selected multilingual variant; weight download not run or integrity-pinned",
+  "speechValidation": "NOT_RUN; general ASR, no Quran accuracy certification"
+}
