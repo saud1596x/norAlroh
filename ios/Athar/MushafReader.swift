@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import CoreText
+import CryptoKit
 
 struct MushafWord: Codable { let code: String; let line: Int; let key: String; let kind: String }
 struct MushafLayout: Codable { let type: String; let chapter: Int?; let code: String?; let font: String? }
@@ -52,7 +53,7 @@ struct MushafDatabase: Codable {
     }
 }
 
-// Release builds use licensed bundled resources only. Network font previews are DEBUG-only.
+// QCF V2 page fonts are bundled in every build and verified against the pinned manifest.
 @MainActor final class MushafFonts: ObservableObject {
     @Published private(set) var names: [String: String] = [:]
     @Published var error: String?
@@ -69,43 +70,31 @@ struct MushafDatabase: Codable {
         }
     }
     private static func register(_ family: String) async throws -> String {
-            let resource = family == "MushafHeader" ? "QCF_SurahHeader_COLOR-Regular" : family + "_W"
-            let fontData: Data
-            if let url = Bundle.main.url(forResource: resource, withExtension: "ttf") {
-                fontData = try Data(contentsOf: url)
-            } else {
-                #if DEBUG
-                let address = family == "MushafHeader"
-                    ? "https://static-cdn.tarteel.ai/qul/fonts/surah-names/surah-header/QCF_SurahHeader_COLOR-Regular.ttf"
-                    : "https://raw.githubusercontent.com/MohamadHajjRabee/quran-qcf4/main/fonts/\(resource).ttf"
-                guard let url = URL(string: address) else { throw CocoaError(.fileReadUnknown) }
-                let config = URLSessionConfiguration.ephemeral
-                config.timeoutIntervalForRequest = 40
-                let previewSession = URLSession(configuration: config)
-                defer { previewSession.finishTasksAndInvalidate() }
-                let (bytes, response) = try await previewSession.data(from: url)
-                guard let http = response as? HTTPURLResponse, http.statusCode == 200, bytes.count < 8_000_000 else {
-                    throw CocoaError(.fileReadCorruptFile)
-                }
-                fontData = bytes
-                #else
-                throw CocoaError(.fileNoSuchFile)
-                #endif
-            }
-            guard QuranResources.verified(fontData, resource: resource + ".ttf"),
-                  let provider = CGDataProvider(data: fontData as CFData), let font = CGFont(provider),
-                  let postScriptName = font.postScriptName else { throw CocoaError(.fileReadCorruptFile) }
-            var registrationError: Unmanaged<CFError>?
-            CTFontManagerRegisterGraphicsFont(font, &registrationError)
-            // An already-registered PostScript name is safe to reuse.
-            guard UIFont(name: postScriptName as String, size: 24) != nil else { throw CocoaError(.fileReadCorruptFile) }
-            return postScriptName as String
+        guard family.hasPrefix("QCF2"), let page = Int(family.dropFirst(4)), (1...604).contains(page),
+              let manifestURL = Bundle.main.url(forResource: "qcf-v2-manifest", withExtension: "json"),
+              let manifest = try JSONSerialization.jsonObject(with: Data(contentsOf: manifestURL)) as? [String: Any],
+              let entries = manifest["fonts"] as? [[String: Any]], entries.count == 604,
+              let entry = entries.first(where: { $0["page"] as? Int == page }),
+              entry["postScriptName"] as? String == family,
+              let digest = entry["sha256"] as? String else { throw CocoaError(.fileReadCorruptFile) }
+        let resource = "p\(page)"
+        let fontData: Data
+        if let url = Bundle.main.url(forResource: resource, withExtension: "ttf") {
+            fontData = try Data(contentsOf: url)
+        } else { throw CocoaError(.fileNoSuchFile) }
+        guard fontData.count == entry["bytes"] as? Int,
+              SHA256.hash(data: fontData).map({ String(format: "%02x", $0) }).joined() == digest,
+              let provider = CGDataProvider(data: fontData as CFData), let font = CGFont(provider),
+              let postScriptName = font.postScriptName, postScriptName as String == family else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        CTFontManagerRegisterGraphicsFont(font, nil)
+        guard UIFont(name: family, size: 24) != nil else { throw CocoaError(.fileReadCorruptFile) }
+        return family
     }
-    func load(page: MushafPage) async {
-        error = nil
-        for key in Set([page.font, "QCF4_Hafs_01", "MushafHeader"]) { await load(key) }
-    }
-    func ready(page: MushafPage) -> Bool { [page.font, "QCF4_Hafs_01", "MushafHeader"].allSatisfy { names[$0] != nil } }
+    func load(page: MushafPage) async { error = nil; await load(page.font) }
+    func ready(page: MushafPage) -> Bool { names[page.font] != nil }
+
 }
 
 struct MushafReader: View {
@@ -122,7 +111,8 @@ struct MushafReader: View {
     @State private var picker = false
     @State private var input = "1"
     @State private var renderingFailed = false
-    private var database: MushafDatabase? { .shared }
+    @State private var database: MushafDatabase?
+    @State private var contentError: String?
     private var page: MushafPage? { database?.pages.first { $0.page == number } }
     private var reduce: Bool { systemReduced || store.data.lowMotion }
     init(chapter: Int, ayah: Int = 1, page: Int? = nil) { startingChapter = chapter; startingAyah = ayah; startingPage = page }
@@ -176,7 +166,10 @@ struct MushafReader: View {
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
                         .disabled(number == 1).accessibilityLabel("الصفحة السابقة")
                 }.padding(.horizontal, 12).background(Theme.panel)
-            } else { ContentUnavailableView("تعذّر فتح المصحف", systemImage: "book.closed") }
+            } else if let contentError {
+                ContentUnavailableView("تعذّر تنزيل المصحف", systemImage: "wifi.exclamationmark", description: Text(contentError))
+                Button("إعادة المحاولة") { Task { await loadContent() } }.padding()
+            } else { ProgressView("تنزيل المصحف لأول مرة…").frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background(Theme.panel)
         .navigationTitle(pageTitle).navigationBarTitleDisplayMode(.inline)
@@ -192,12 +185,14 @@ struct MushafReader: View {
         }
         .toolbar(.hidden, for: .tabBar)
         .task {
+            await loadContent()
             if let db = database {
                 number = startingPage.flatMap { (1...604).contains($0) ? $0 : nil } ?? db.pages.first { $0.words.contains { $0.key == "\(startingChapter):\(startingAyah)" } }?.page
                     ?? db.chapterPages[String(startingChapter)] ?? 1
                 lastPage = number
                 let key = "\(startingChapter):\(startingAyah)"
                 if startingPage == nil, page?.words.contains(where: { $0.key == key }) == true { focused = key }
+                if let page { await fonts.load(page: page) }
             }
         }
         .onChange(of: number) { _, value in lastPage = value }
@@ -232,9 +227,26 @@ struct MushafReader: View {
             }
         }
     }
+    private func loadContent() async {
+        contentError = nil
+        do {
+            guard let corpus = QuranResources.corpus else { throw QCFV2Snapshot.Invalid.verse }
+            let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let cache = QCFV2ContentCache(file: directory.appendingPathComponent("qcf-v2-cache.json"),
+                                        endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+            let entry: QCFV2ContentCache.Entry
+            do { entry = try await cache.refresh() }
+            catch { guard let offline = await cache.cached() else { throw error }; entry = offline }
+            database = try await Task.detached {
+                let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot)
+                return try QCFV2PageLayout.database(snapshot: snapshot, corpus: corpus)
+            }.value
+            if let page { await fonts.load(page: page) }
+        } catch { contentError = "اتصل بالإنترنت لإتمام التنزيل الأول. بعده تُحفظ نسخة موثوقة للقراءة دون اتصال، ولا يُستبدل محتواها عند فشل التحديث." }
+    }
     private var pageTitle: String {
         let key = focused.flatMap { key in page?.words.contains(where: { $0.key == key }) == true ? key : nil } ?? page?.words.first?.key
-        guard let key, let pair = verse(key), store.quran.indices.contains(pair.0 - 1) else { return "المصحف" }
+        guard let key, let pair = verse(key), store.quran.indices.contains(pair.0 - 1) else { return store.quran.first(where: { $0.number == startingChapter })?.name ?? "المصحف" }
         return store.quran[pair.0 - 1].name
     }
     private func verse(_ key: String) -> (Int, Int)? {
@@ -259,8 +271,8 @@ private struct MushafLineRepresentable: UIViewRepresentable {
         view.words = page.words.filter { $0.line == line }
         view.layout = page.layout[String(line)]
         view.bodyName = names[page.font] ?? ""
-        view.headerName = names["MushafHeader"] ?? ""
-        view.basmalaName = names["QCF4_Hafs_01"] ?? ""
+        view.headerName = QuranTypography.postScriptName
+        view.basmalaName = QuranTypography.postScriptName
         view.headers = headers; view.quran = quran; view.centered = page.page <= 2
         view.onSelect = onSelect; view.onFailure = onFailure; view.selected = selected; view.setNeedsDisplay()
     }
@@ -287,8 +299,8 @@ private final class MushafLineCanvas: UIView {
         drawnLine = nil; verseRects = []; accessibilityElements = nil
         var text = ""; var fontName = bodyName; var size: CGFloat = bounds.width * 0.115
         var justify = !centered; wordRanges = []
-        if let layout, layout.type == "header", let chapter = layout.chapter, headers.indices.contains(chapter - 1), let scalar = UnicodeScalar(headers[chapter - 1]) {
-            text = String(scalar); fontName = headerName; size = 105; justify = false
+        if let layout, layout.type == "header", let chapter = layout.chapter, quran.indices.contains(chapter - 1) {
+            text = quran[chapter - 1].name; fontName = headerName; size = bounds.width * 0.07; justify = false
             isAccessibilityElement = true
             accessibilityLabel = quran.indices.contains(chapter - 1) ? quran[chapter - 1].name : "عنوان السورة"
         } else if let layout, layout.type == "bismillah" {
