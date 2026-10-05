@@ -184,17 +184,7 @@ struct MushafReader: View {
             }
         }
         .toolbar(.hidden, for: .tabBar)
-        .task {
-            await loadContent()
-            if let db = database {
-                number = startingPage.flatMap { (1...604).contains($0) ? $0 : nil } ?? db.pages.first { $0.words.contains { $0.key == "\(startingChapter):\(startingAyah)" } }?.page
-                    ?? db.chapterPages[String(startingChapter)] ?? 1
-                lastPage = number
-                let key = "\(startingChapter):\(startingAyah)"
-                if startingPage == nil, page?.words.contains(where: { $0.key == key }) == true { focused = key }
-                if let page { await fonts.load(page: page) }
-            }
-        }
+        .task { await loadContent() }
         .onChange(of: number) { _, value in lastPage = value }
         .task(id: number) { if let page { await fonts.load(page: page) } }
         .sheet(isPresented: $picker) {
@@ -237,10 +227,19 @@ struct MushafReader: View {
             let entry: QCFV2ContentCache.Entry
             do { entry = try await cache.refresh() }
             catch { guard let offline = await cache.cached() else { throw error }; entry = offline }
+            let firstLoad = database == nil
             database = try await Task.detached {
                 let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot)
                 return try QCFV2PageLayout.database(snapshot: snapshot, corpus: corpus)
             }.value
+            if firstLoad, let db = database {
+                let key = "\(startingChapter):\(startingAyah)"
+                number = startingPage.flatMap { (1...604).contains($0) ? $0 : nil }
+                    ?? db.pages.first { $0.words.contains { $0.key == key } }?.page
+                    ?? db.chapterPages[String(startingChapter)] ?? 1
+                lastPage = number
+                if startingPage == nil, page?.words.contains(where: { $0.key == key }) == true { focused = key }
+            }
             if let page { await fonts.load(page: page) }
         } catch { contentError = "اتصل بالإنترنت لإتمام التنزيل الأول. بعده تُحفظ نسخة موثوقة للقراءة دون اتصال، ولا يُستبدل محتواها عند فشل التحديث." }
     }
