@@ -115,7 +115,16 @@ actor QCFV2ContentCache {
             let entry = Entry(downloadedAt: now, snapshot: bytes)
             let manager = FileManager.default
             try manager.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(entry).write(to: file, options: .atomic)
+            let stored = try JSONEncoder().encode(entry)
+            #if os(iOS)
+            try stored.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            #else
+            try stored.write(to: file, options: .atomic)
+            #endif
+            var protectedFile = file
+            var resources = URLResourceValues()
+            resources.isExcludedFromBackup = true
+            try protectedFile.setResourceValues(resources)
             return entry
         }
         pending = task
