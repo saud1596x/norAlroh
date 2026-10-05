@@ -15,8 +15,18 @@ INFO_HASH_AFTER="$(shasum -a 256 "$PROJECT_ROOT/ios/Athar/Info.plist" | cut -d '
 SIMULATOR_FAMILY="${NOOR_SIMULATOR_FAMILY:-iPhone}"
 [[ "$SIMULATOR_FAMILY" == iPhone || "$SIMULATOR_FAMILY" == iPad ]] || { echo "NOOR_SIMULATOR_FAMILY must be iPhone or iPad." >&2; exit 2; }
 export NOOR_SIMULATOR_FAMILY="$SIMULATOR_FAMILY"
-SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 -c 'import json,sys,os; d=json.load(sys.stdin); candidates=[x["udid"] for k,v in d["devices"].items() if "SimRuntime.iOS" in k for x in v if x.get("isAvailable") and x["name"].startswith(os.environ["NOOR_SIMULATOR_FAMILY"])]; print(candidates[0] if candidates else "")')"
-[[ -n "$SIMULATOR_ID" ]] || { echo "نزّل محاكي $SIMULATOR_FAMILY من إعدادات Xcode." >&2; exit 2; }
+# Capture on the large display classes required by App Store Connect.
+SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 -c '
+import json,sys,os
+family=os.environ["NOOR_SIMULATOR_FAMILY"]
+devices=[x for runtime,items in json.load(sys.stdin)["devices"].items() if "SimRuntime.iOS" in runtime for x in items if x.get("isAvailable")]
+if family == "iPhone":
+    candidates=[x for x in devices if x["name"].startswith("iPhone") and "Pro Max" in x["name"]]
+else:
+    candidates=[x for x in devices if x["name"].startswith("iPad") and ("13-inch" in x["name"] or "12.9-inch" in x["name"])]
+print(candidates[0]["udid"] if candidates else "")
+')"
+[[ -n "$SIMULATOR_ID" ]] || { echo "Install an iPhone Pro Max or 13-inch iPad simulator for App Store screenshot capture ($SIMULATOR_FAMILY)." >&2; exit 2; }
 TEST_CONFIGURATION="${NOOR_TEST_CONFIGURATION:-Debug}"
 [[ "$TEST_CONFIGURATION" == Debug || "$TEST_CONFIGURATION" == Release ]] || { echo 'NOOR_TEST_CONFIGURATION must be Debug or Release.' >&2; exit 2; }
 [[ ! -e "$PROJECT_ROOT/release/native-unit.xcresult" && ! -e "$PROJECT_ROOT/release/native-ui.xcresult" ]] || { echo 'احتفظ بنتائج التشغيل السابق ثم انقلها قبل إعادة الاختبار.' >&2; exit 2; }
