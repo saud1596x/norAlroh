@@ -52,3 +52,32 @@ The WOFF2/TTF font version was prepared by **Ahmad ElGharib**
 These font files are provided solely for Quranic rendering purposes.
 Redistribution, modification, or commercial use of the font files without
 explicit permission from the original rights holders is not permitted.
+
+## Noor Alruh QCF V2 distribution record — 2026-10-05
+
+The current reader uses QCF V2 page fonts from Quran Foundation's documented
+CDN, not the QCF4 or decorative surah-header fonts discussed above.
+
+Source: https://verses.quran.foundation/fonts/quran/hafs/v2/ttf/
+Terms: https://api-docs.quran.foundation/legal/developer-terms/
+Reviewed terms date: 2026-10-04; review date: 2026-10-05.
+
+Under section 3.1, font bundling is conditional on an active Developer Console
+account and accessible Quran Foundation attribution. Fonts may be distributed
+only integrated into the application, never as a separate download or dataset.
+This record is not a sublicense or independent permission from KFGQPC.
+
+The pinned 604-file inventory and SHA-256 hashes are in
+release/qcf-v2-manifest.json. CI retrieves those exact fonts for the app bundle.
+No font archive is distributed in this repository.
+
+Quran glyph data comes from Content Sync at runtime, with complete validation,
+atomic offline storage and refresh attempts after seven days. It is not bundled
+at build time. Text is not modified. Derived page headings preserve verse order.
+
+Quran Foundation is credited in the application's sources screen. Original
+Quran calligraphy: Uthman Taha / King Fahd Quran Complex. Flexible text and surah
+headings use the separately licensed Amiri font.
+
+The publisher must keep the account active and comply with current terms.
+Specialist religious review and physical-device validation remain separate.
