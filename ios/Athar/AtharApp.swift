@@ -82,24 +82,19 @@ struct RootView: View {
     @State private var selectedTab = 0
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack { NoorTodayView() }
-                .settingsToolbar { settings = true }
+            NavigationStack { NoorTodayView().settingsAccess { settings = true } }
                 .tabItem { Label("اليوم", systemImage: "house") }
                 .tag(0)
-            NavigationStack { QuranView() }
-                .settingsToolbar { settings = true }
+            NavigationStack { QuranView().settingsAccess { settings = true } }
                 .tabItem { Label("المصحف", systemImage: "book") }
                 .tag(1)
-            NavigationStack { PrayerView() }
-                .settingsToolbar { settings = true }
+            NavigationStack { PrayerView().settingsAccess { settings = true } }
                 .tabItem { Label("الصلاة", systemImage: "sun.horizon") }
                 .tag(2)
-            NavigationStack { AdhkarView() }
-                .settingsToolbar { settings = true }
+            NavigationStack { AdhkarView().settingsAccess { settings = true } }
                 .tabItem { Label("الأذكار", systemImage: "sun.max") }
                 .tag(3)
-            NavigationStack { MemorizationView() }
-                .settingsToolbar { settings = true }
+            NavigationStack { MemorizationView().settingsAccess { settings = true } }
                 .tabItem { Label("الحفظ", systemImage: "sparkles") }
                 .tag(4)
         }
@@ -114,13 +109,20 @@ struct RootView: View {
 }
 
 extension View {
-    func settingsToolbar(action: @escaping () -> Void) -> some View {
-        toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+    func settingsAccess(action: @escaping () -> Void) -> some View {
+        // Keep account-free settings reachable on each tab root after a child
+        // navigation screen is popped, independently of toolbar restoration.
+        safeAreaInset(edge: .top, spacing: 0) {
+            HStack {
+                Spacer()
                 Button(action: action) {
-                    Image(systemName: "gearshape").frame(minWidth: 44, minHeight: 44)
-                }.accessibilityLabel("الإعدادات والخصوصية").accessibilityIdentifier("app.settings")
+                    Label("الإعدادات والخصوصية", systemImage: "gearshape")
+                        .font(.subheadline).frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("app.settings")
             }
+            .padding(.horizontal, 20)
+            .background(Theme.background)
         }
     }
 }
