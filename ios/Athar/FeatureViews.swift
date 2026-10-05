@@ -256,8 +256,8 @@ struct SourcesView: View {
                     .accessibilityIdentifier("sources.tanzil")
             }
             Section("صفحات المصحف") {
-                Text("٦٠٤ صفحات من مصحف المدينة، رواية حفص عن عاصم، بتخطيط QCF4. القراءة المرنة بخط أميري مرخص تحت OFL.")
-                Link("مصدر التخطيط والرموز", destination: URL(string: "https://github.com/MohamadHajjRabee/quran-qcf4")!)
+                Text("٦٠٤ صفحات برواية حفص، بخطوط QCF V2 من Quran Foundation. تُنزّل بيانات المصحف كاملة عند أول فتح، وتُحفظ للقراءة دون اتصال، مع محاولة تحديث كل سبعة أيام. عناوين السور والقراءة المرنة بخط أميري المرخص تحت OFL.")
+                Link("مصدر التخطيط والرموز", destination: URL(string: "https://api-docs.quran.foundation/")!)
                 NavigationLink("ترخيص بيانات التخطيط والخطوط") { BundledLicenseView(title: "تراخيص المصحف", resource: "QCF-DATA-AND-FONTS-LICENSE", extension: "md") }
                     .accessibilityIdentifier("sources.qcf")
                 NavigationLink("ترخيص خط أميري") { BundledLicenseView(title: "ترخيص أميري", resource: "Amiri-OFL", extension: "txt") }
