@@ -43,7 +43,9 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "09-adhkar")
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("النوم")
-        tap(app.staticTexts["أذكار النوم"].firstMatch, in: app)
+        let sleepChapter = app.staticTexts["أذكار النوم"].firstMatch
+        XCTAssertTrue(sleepChapter.waitForExistence(timeout: 10), "Sleep adhkar search result must appear before scrolling.")
+        tap(sleepChapter, in: app)
         capture(app, "10-dhikr-chapter")
         tap(app.buttons["ابدأ جلسة الذكر"], in: app)
         capture(app, "11-dhikr-session")
