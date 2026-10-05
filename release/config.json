@@ -21,7 +21,7 @@
   "repositoryAccess": "CONNECTED_IN_GITHUB_AND_CODEMAGIC",
   "memorizationAudioMode": "Local recording plus optional on-device WhisperKit live word comparison",
   "cloudConnectionEvidence": "CODEMAGIC_LIVE_NATIVE_BUILDS",
-  "nativeBuildRun": false,
+  "nativeBuildRun": true,
   "userAccountMode": "local-only",
   "termsURL": "https://noor-alruh-support.onrender.com/terms.html",
   "speechRecognitionValidationDocument": null
