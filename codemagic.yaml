@@ -10,6 +10,10 @@ workflows:
         script: |
           python3 scripts/check-upload-toolchain.py
           brew install xcodegen
+      - name: Install verified QCF V2 page fonts
+        script: |
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Verify all local content
         script: |
           python3 scripts/prepare-publishing.py --check
@@ -46,7 +50,8 @@ workflows:
       - name: Install generator and licensed release fonts
         script: |
           brew install xcodegen
-          python3 scripts/install-release-fonts.py
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Audit local content
         script: |
           python3 scripts/prepare-publishing.py --check
