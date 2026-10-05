@@ -20,10 +20,17 @@ enum MushafTypesetter {
         var pointSize = size
         for _ in 0..<5 {
             guard let font = UIFont(name: fontName, size: pointSize) else { return nil }
-            let string = NSAttributedString(string: text, attributes: [.font: font,
+            let string = NSMutableAttributedString(string: text, attributes: [.font: font,
                 .foregroundColor: UIColor.label, .writingDirection: [direction]])
+            // QCF V2 maps ayah glyphs but has no space glyph. Explicitly style
+            // only U+0020 with licensed Amiri; never allow Quran glyph fallback.
+            if fontName.hasPrefix("QCF2"), let spacing = UIFont(name: QuranTypography.postScriptName, size: pointSize) {
+                for (index, unit) in text.utf16.enumerated() where unit == 0x20 {
+                    string.addAttribute(.font, value: spacing, range: NSRange(location: index, length: 1))
+                }
+            }
             var line = CTLineCreateWithAttributedString(string as CFAttributedString)
-            guard usesExpectedFont(line, postScriptName: font.fontName) else { return nil }
+            guard usesExpectedFont(line, postScriptName: font.fontName, text: text) else { return nil }
             var ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
             let advance = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
             guard ink.width > 0, ink.height > 0, ink.width.isFinite, ink.height.isFinite else { return nil }
@@ -32,7 +39,7 @@ enum MushafTypesetter {
             let target = justificationWidth(advance: advance, available: available.width - 2)
             if justify, target > advance + 0.5, let justified = CTLineCreateJustifiedLine(line, 1, Double(target)) {
                 line = justified
-                guard usesExpectedFont(line, postScriptName: font.fontName) else { return nil }
+                guard usesExpectedFont(line, postScriptName: font.fontName, text: text) else { return nil }
                 ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
             }
             let finalScale = min(1, available.width / ink.width, available.height / ink.height)
@@ -45,12 +52,18 @@ enum MushafTypesetter {
     }
 
     // PUA symbols drawn with a fallback font can silently become the wrong Quran glyph.
-    static func usesExpectedFont(_ line: CTLine, postScriptName: String) -> Bool {
+    static func usesExpectedFont(_ line: CTLine, postScriptName: String, text: String? = nil) -> Bool {
         for run in CTLineGetGlyphRuns(line) as! [CTRun] {
             let attributes = CTRunGetAttributes(run) as NSDictionary
             guard let value = attributes[kCTFontAttributeName] else { return false }
             let font = value as! CTFont
-            guard CTFontCopyPostScriptName(font) as String == postScriptName else { return false }
+            if CTFontCopyPostScriptName(font) as String != postScriptName {
+                let range = CTRunGetStringRange(run)
+                guard postScriptName.hasPrefix("QCF2"), CTFontCopyPostScriptName(font) as String == QuranTypography.postScriptName,
+                      let text, range.location >= 0, range.length > 0,
+                      range.location + range.length <= text.utf16.count,
+                      (text as NSString).substring(with: NSRange(location: range.location, length: range.length)).unicodeScalars.allSatisfy({ $0.value == 0x20 }) else { return false }
+            }
             let count = CTRunGetGlyphCount(run)
             var glyphs = [CGGlyph](repeating: 0, count: count)
             CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
