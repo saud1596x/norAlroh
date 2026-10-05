@@ -43,12 +43,15 @@ if metadataPath.is_file():
 check('storeMetadataLimits',bool(metadata.get('name'))and len(metadata['name'])<=30 and isinstance(metadata.get('subtitle'),str)and len(metadata['subtitle'])<=30 and isinstance(metadata.get('keywords'),str)and len(metadata['keywords'])<=100,'راجع أطوال الاسم والعنوان الفرعي والكلمات المفتاحية في مسودة App Store.')
 check('metadataMatchesLocalAccountAndPublisher',metadata.get('name')==config.get('displayName')and metadata.get('reviewSignInRequired')is False and metadata.get('supportEmail')==config.get('supportEmail'),'مسودة المتجر لا تطابق اسم التطبيق وبريد الدعم ووضع تسجيل الدخول المحلي.')
 rights=config.get('fontDistributionRightsDocument');check('fontDistributionRightsDocument',isinstance(rights,str)and(ROOT/rights).is_file(),'توثيق حقوق توزيع الخطوط وتضمينها لم يكتمل.')
-required={n:digest for n,digest in hashes.items()if n.startswith('QCF')and n.endswith('.ttf')};missing=[];different=[]
+fontManifest=json.loads((ROOT/'release/qcf-v2-manifest.json').read_text())
+required={font['file']:font['sha256'] for font in fontManifest['fonts']}
+check('qcfV2FontInventory',fontManifest.get('mushafID')==1 and len(required)==604 and [font['page']for font in fontManifest['fonts']]==list(range(1,605)),'فهرس خطوط QCF V2 لا يغطي الصفحات الـ604.')
+missing=[];different=[]
 for name,digest in required.items():
  path=ROOT/'ios/Athar/Fonts'/name
  if not path.is_file():missing.append(name)
  elif hashlib.sha256(path.read_bytes()).hexdigest()!=digest:different.append(name)
-check('licensedBundledMushafFonts',not missing and not different,'موارد خطوط المصحف الـ48 غير مكتملة أو لا تطابق النسخة المدققة.')
+check('licensedBundledMushafFonts',not missing and not different,'موارد خطوط QCF V2 للصفحات الـ604 غير مكتملة أو لا تطابق النسخة المدققة.')
 nativePath=ROOT/'release/native-build-report.json';native={}
 if nativePath.is_file():
  try:native=json.loads(nativePath.read_text())
