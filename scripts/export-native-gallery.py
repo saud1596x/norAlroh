@@ -70,7 +70,7 @@ def main():
 main{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px}
 figure{margin:0;background:#fff7e9;border-radius:20px;padding:16px}img{width:100%;height:auto;border-radius:12px}
 figcaption{margin-top:12px;font-weight:600}</style><h1>نور الروح</h1>
-<p>لقطات من التطبيق الأصلي على محاكي iPhone. حالات الاختبار تظهر كما التُقطت، ويلزم فحص جهاز فعلي.</p>'''
+<p>لقطات من التطبيق الأصلي على محاكي Apple. حالات الاختبار تظهر كما التُقطت، ويلزم فحص جهاز فعلي.</p>'''
     page += '<p>اللقطات الناقصة: ' + html.escape('، '.join(missing) or 'لا يوجد') + '</p><main>' + cards + '</main></html>'
     (OUTPUT / 'index.html').write_text(page)
     with zipfile.ZipFile(ROOT / 'release/native-screens.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
