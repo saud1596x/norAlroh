@@ -19,7 +19,7 @@ import CoreText
 /// Quran strings are never shaped with the UI font, clipped to a fixed line count, or animated as characters.
 struct QuranVerseText: View {
     let text: String
-    @ScaledMetric(relativeTo: .title) private var size: CGFloat
+@ScaledMetric(relativeTo: .title) private var size: CGFloat = 28
     init(_ text: String, size: CGFloat = 28) {
         self.text = text
         _size = ScaledMetric(wrappedValue: size, relativeTo: .title)
