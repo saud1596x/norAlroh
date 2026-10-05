@@ -2,8 +2,8 @@
   "displayName": "نور الروح",
   "publisherName": "سعود الكثيري",
   "supportEmail": "noralrohsupport@gmail.com",
-  "privacyURL": null,
-  "supportURL": null,
+  "privacyURL": "https://noor-alruh-support.onrender.com/privacy.html",
+  "supportURL": "https://noor-alruh-support.onrender.com/support.html",
   "appleTeamID": "4SY7K26FCX",
   "bundleIdentifier": "com.saud1596x.nooralruh",
   "minimumUploadXcodeMajor": 26,
@@ -23,6 +23,6 @@
   "cloudConnectionEvidence": "CODEMAGIC_LIVE_NATIVE_BUILDS",
   "nativeBuildRun": false,
   "userAccountMode": "local-only",
-  "termsURL": null,
+  "termsURL": "https://noor-alruh-support.onrender.com/terms.html",
   "speechRecognitionValidationDocument": null
 }
