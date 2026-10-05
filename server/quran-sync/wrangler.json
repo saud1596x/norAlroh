@@ -1,0 +1,9 @@
+{
+  "name": "noor-quran-sync",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-05",
+  "workers_dev": true,
+  "secrets": {"required": ["QF_CLIENT_ID", "QF_CLIENT_SECRET"]},
+  "observability": {"enabled": false},
+  "ratelimits": [{"name": "SYNC_RATE_LIMITER", "namespace_id": "6819365625", "simple": {"limit": 120, "period": 60}}]
+}
