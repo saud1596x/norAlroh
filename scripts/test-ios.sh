@@ -18,7 +18,7 @@ TEST_CONFIGURATION="${NOOR_TEST_CONFIGURATION:-Debug}"
 [[ "$TEST_CONFIGURATION" == Debug || "$TEST_CONFIGURATION" == Release ]] || { echo 'NOOR_TEST_CONFIGURATION must be Debug or Release.' >&2; exit 2; }
 [[ ! -e "$PROJECT_ROOT/release/native-unit.xcresult" && ! -e "$PROJECT_ROOT/release/native-ui.xcresult" ]] || { echo 'احتفظ بنتائج التشغيل السابق ثم انقلها قبل إعادة الاختبار.' >&2; exit 2; }
 xcodebuild build -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
-xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharTests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-unit.xcresult" CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharTests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-unit.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
 CAPTURE_PID=''
 finish_capture() {
   if [[ -n "$CAPTURE_PID" ]]; then kill -INT "$CAPTURE_PID" 2>/dev/null || true; wait "$CAPTURE_PID" || true; CAPTURE_PID=''; fi
@@ -30,7 +30,7 @@ if [[ "${NOOR_RECORD_VIDEO:-0}" == 1 ]]; then
   CAPTURE_PID=$!
 fi
 UI_EXIT=0
-xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharUITests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-ui.xcresult" CODE_SIGNING_ALLOWED=NO || UI_EXIT=$?
+xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharUITests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-ui.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES || UI_EXIT=$?
 finish_capture
 GALLERY_EXIT=0
 python3 "$PROJECT_ROOT/scripts/export-native-gallery.py" || GALLERY_EXIT=$?
