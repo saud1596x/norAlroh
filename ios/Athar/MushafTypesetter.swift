@@ -36,11 +36,17 @@ enum MushafTypesetter {
             guard ink.width > 0, ink.height > 0, ink.width.isFinite, ink.height.isFinite else { return nil }
             let scale = min(1, available.width / max(advance, ink.width), available.height / ink.height)
             if scale < 0.999 { pointSize *= scale * 0.995; continue }
-            let target = justificationWidth(advance: advance, available: available.width - 2)
+            let overhang = max(0, ink.maxX - advance) + max(0, -ink.minX)
+            let target = justificationWidth(advance: advance, available: max(0, available.width - overhang - 2))
             if justify, target > advance + 0.5, let justified = CTLineCreateJustifiedLine(line, 1, Double(target)) {
-                line = justified
-                guard usesExpectedFont(line, postScriptName: font.fontName, text: text) else { return nil }
-                ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+                let justifiedInk = CTLineGetBoundsWithOptions(justified, .useGlyphPathBounds)
+                // Zero-advance Quran marks can extend beyond the justified advance.
+                // Keep the already fitted line when expansion would clip its ink.
+                if usesExpectedFont(justified, postScriptName: font.fontName, text: text),
+                   justifiedInk.width <= available.width, justifiedInk.height <= available.height {
+                    line = justified
+                    ink = justifiedInk
+                }
             }
             let finalScale = min(1, available.width / ink.width, available.height / ink.height)
             if finalScale < 0.999 { pointSize *= finalScale * 0.995; continue }
