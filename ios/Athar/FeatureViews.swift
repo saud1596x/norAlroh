@@ -41,6 +41,7 @@ struct QuranView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("القرآن الكريم")
+        .toolbar(.visible, for: .tabBar)
         .searchable(text: $search, prompt: "ابحث عن سورة")
     }
 }
