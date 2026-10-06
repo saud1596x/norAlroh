@@ -105,7 +105,7 @@ enum MushafArtworkGeometry {
 /// Only approved, hash-pinned packages can replace the production reader.
 /// An absent package is different from a malformed installed package.
 @MainActor final class MushafArtworkLibrary {
-    enum Availability { case absent, ready(MushafArtworkLibrary), rejected }
+    enum Availability { case checking, absent, ready(MushafArtworkLibrary), rejected }
     struct Artwork {
         let metadata: MushafArtworkManifest.Page
         let document: CGPDFDocument
