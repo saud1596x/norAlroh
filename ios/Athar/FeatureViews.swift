@@ -208,6 +208,7 @@ struct SettingsView: View {
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
+                NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
                 NavigationLink("التراخيص") { SourcesView() }.accessibilityIdentifier("settings.sources")
             }
             Section("عن نور الروح") {

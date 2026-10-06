@@ -12,6 +12,8 @@ struct AtharApp: App {
     @StateObject private var friday = FridayStore()
     @StateObject private var fridayAlarms = FridayAlarms()
     @StateObject private var account = NoorAccountStore()
+    @StateObject private var widgetRouter = NoorWidgetRouter()
+    @AppStorage("noor.mushaf.lastPage") private var widgetPage = 1
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
 
@@ -27,10 +29,19 @@ struct AtharApp: App {
                 .environmentObject(friday)
                 .environmentObject(fridayAlarms)
                 .environmentObject(account)
+                .environmentObject(widgetRouter)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "ar_SA"))
                 .preferredColorScheme(nil)
-                .onOpenURL { account.handle($0) }
+                .onOpenURL { if !widgetRouter.open($0) { account.handle($0) } }
+                .onReceive(store.$data) { data in NoorWidgetBridge.publish(data: data, memorization: memorization, page: widgetPage) }
+                .onReceive(memorization.$progress.dropFirst()) { _ in
+                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage) }
+                }
+                .onReceive(memorization.$plan.dropFirst()) { _ in
+                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage) }
+                }
+                .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page) }
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
                 .task { dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
@@ -88,6 +99,8 @@ struct RootView: View {
     @EnvironmentObject var store: AtharStore
     @State private var settings = false
     @State private var selectedTab = 0
+    @EnvironmentObject private var widgetRouter: NoorWidgetRouter
+    @State private var widgetDestination: NoorWidgetRouter.Destination?
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack { NoorTodayView().settingsAccess { settings = true } }
@@ -105,6 +118,28 @@ struct RootView: View {
             NavigationStack { MemorizationView().settingsAccess { settings = true } }
                 .tabItem { Label("الحفظ", systemImage: "sparkles") }
                 .tag(4)
+        }
+        .onChange(of: widgetRouter.destination?.id, initial: true) { _, _ in
+            guard let destination = widgetRouter.destination else { return }
+            settings = false
+            switch destination.host {
+            case "prayers": selectedTab = 2
+            case "dhikr": selectedTab = 3
+            case "reading": selectedTab = 1; widgetDestination = destination
+            case "review": selectedTab = 4; widgetDestination = destination
+            default: selectedTab = 4
+            }
+            widgetRouter.destination = nil
+        }
+        .fullScreenCover(item: $widgetDestination) { destination in
+            if destination.host == "reading" {
+                InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: destination.page)
+            } else {
+                NavigationStack {
+                    MemorizationTestView()
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { widgetDestination = nil } } }
+                }
+            }
         }
         .sensoryFeedback(.selection, trigger: selectedTab)
         .sheet(isPresented: $settings) { NavigationStack { SettingsView() } }

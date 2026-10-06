@@ -88,6 +88,15 @@ struct MemorizationArchive: Codable {
     private let defaults: UserDefaults
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        // Preserve exact pre-upgrade bytes before any archive rewrite. Never
+        // rotate this snapshot implicitly; explicit erasure removes it too.
+        if defaults.object(forKey: "noor.memorization.preRetentionFix") == nil {
+            var original: [String: Data] = [:]
+            for key in ["history", "archive", "plan", "session"] {
+                if let bytes = defaults.data(forKey: "noor.memorization." + key) { original[key] = bytes }
+            }
+            defaults.set(original, forKey: "noor.memorization.preRetentionFix")
+        }
         if let data = defaults.data(forKey: "noor.memorization.plan"), let value = try? JSONDecoder().decode(MemorizationPlan.self, from: data),
             (1...114).contains(value.chapter), value.from > 0, value.to >= value.from,
             let corpus = QuranResources.corpus, value.to <= corpus[value.chapter - 1].ayahs.count,
@@ -95,14 +104,14 @@ struct MemorizationArchive: Codable {
         if let data = defaults.data(forKey: "noor.memorization.history") {
             if let value = try? JSONDecoder().decode([MemorizationResult].self, from: data),
                let corpus = QuranResources.corpus, value.allSatisfy({ Self.valid($0, corpus: corpus) }),
-               Set(value.map(\.id)).count == value.count { history = Array(value.prefix(100)) }
+               Set(value.map(\.id)).count == value.count { history = value }
             else { unreadableHistory = data; error = "تعذّر قراءة سجل الحفظ السابق. صدّر بياناتك لإنقاذ نسخة أو احذفها من الإعدادات قبل تسجيل نتائج جديدة." }
         }
         if let data = defaults.data(forKey: "noor.memorization.archive") {
             if let value = try? JSONDecoder().decode(MemorizationArchive.self, from: data), value.version == 1,
                let corpus = QuranResources.corpus, value.progress.valid(corpus: corpus),
                value.history.allSatisfy({ Self.valid($0, corpus: corpus) }), Set(value.history.map(\.id)).count == value.history.count {
-                history = Array(value.history.prefix(100)); progress = value.progress; unreadableHistory = nil; error = nil
+                history = value.history; progress = value.progress; unreadableHistory = nil; error = nil
                 if let restoredPlan = value.plan, Self.validPlan(restoredPlan, corpus: corpus) { plan = restoredPlan }
             } else {
                 unreadableHistory = data; error = "تعذّر فتح سجل الإتقان. بياناتك محفوظة؛ صدّرها قبل بدء جلسات جديدة."
@@ -172,12 +181,11 @@ struct MemorizationArchive: Codable {
               corpus[chapter - 1].ayahs[ayah - 1].text.split(whereSeparator: \.isWhitespace).contains(Substring(expected)) else { return false }
         var next = progress
         next.confirmedMistakes.insert(.init(chapter: chapter, ayah: ayah, expected: expected, heard: heard), at: 0)
-        next.confirmedMistakes = Array(next.confirmedMistakes.prefix(500))
         let key = "\(chapter):\(ayah)"
         var state = next.verses[key] ?? VerseReviewState()
         state.needsHelp = true; state.stage = 0; state.nextReview = Calendar.current.startOfDay(for: Date()); next.verses[key] = state
         do {
-            let data = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: next))
+            let data = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: next, plan: plan))
             defaults.set(data, forKey: "noor.memorization.archive"); progress = next; return true
         } catch { self.error = "تعذّر حفظ موضع المراجعة."; return false }
     }
@@ -221,8 +229,7 @@ struct MemorizationArchive: Codable {
     @discardableResult func restore(_ backup: MemorizationCloudBackup) -> Bool {
         guard unreadableHistory == nil, backup.version == 1, backup.archive.version == 1,
               let corpus = QuranResources.corpus, Self.validPlan(backup.plan, corpus: corpus),
-              backup.archive.history.count <= 100, backup.archive.progress.verses.count <= 6236,
-              backup.archive.progress.confirmedMistakes.count <= 500,
+              backup.archive.progress.verses.count <= 6236,
               backup.archive.progress.valid(corpus: corpus),
               backup.archive.history.allSatisfy({ Self.valid($0, corpus: corpus) }),
               Set(backup.archive.history.map(\.id)).count == backup.archive.history.count else {
@@ -243,10 +250,10 @@ struct MemorizationArchive: Codable {
         guard unreadableHistory == nil else { error = "لم تُحفظ النتيجة كي لا يُستبدل سجل سابق تعذّر فتحه. صدّر بياناتك من الإعدادات."; return false }
         let result = MemorizationResult(chapter: chapter, answers: answers)
         guard let corpus = QuranResources.corpus, Self.valid(result, corpus: corpus) else { error = "راجع آيات نتيجة المراجعة."; return false }
-        let next = Array(([result] + history).prefix(100))
+        let next = [result] + history
         var nextProgress = progress; nextProgress.record(result)
         do {
-            let data = try JSONEncoder().encode(MemorizationArchive(version: 1, history: next, progress: nextProgress))
+            let data = try JSONEncoder().encode(MemorizationArchive(version: 1, history: next, progress: nextProgress, plan: plan))
             defaults.set(data, forKey: "noor.memorization.archive")
             history = next; progress = nextProgress; clearSession()
             NoorFocusController.shared.sync(progress: progress); return true
@@ -257,6 +264,7 @@ struct MemorizationArchive: Codable {
         NoorFocusController.shared.disable()
         defaults.removeObject(forKey: "noor.memorization.history"); defaults.removeObject(forKey: "noor.memorization.plan")
         defaults.removeObject(forKey: "noor.memorization.archive")
+        defaults.removeObject(forKey: "noor.memorization.preRetentionFix")
         clearSession(); history = []; progress = MemorizationProgress(); plan = MemorizationPlan(); unreadableHistory = nil; error = nil
     }
 }

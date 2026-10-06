@@ -81,18 +81,48 @@ struct RecitationComparison {
     }
 }
 
-/// Callback order is preserved, and inference receives an immutable bounded snapshot.
+/// Serial capture storage with absolute offsets. Only the unprocessed audio
+/// plus a short overlap is decoded; eviction is surfaced as a gap, never hidden.
 final class RecitationAudioBuffer: @unchecked Sendable {
+    struct Window {
+        let samples: [Float]
+        let start: Int
+        let end: Int
+        let lostSamples: Int
+    }
     private let lock = NSLock()
     private var samples: [Float] = []
     private var accepting = true
+    private var base = 0
+    private var consumed = 0
     private let limit = 30 * 16000
     func append(_ values: [Float]) {
         lock.lock(); defer { lock.unlock() }
         guard accepting else { return }
-        samples.append(contentsOf: values)
-        if samples.count > limit { samples.removeFirst(samples.count - limit) }
+        // Avoid a transient allocation proportional to an oversized callback.
+        let tail = values.suffix(limit)
+        let discarded = max(0, samples.count + values.count - limit)
+        if values.count >= limit { samples = Array(tail) }
+        else {
+            if discarded > 0 { samples.removeFirst(discarded) }
+            samples.append(contentsOf: tail)
+        }
+        base += discarded
+    }
+    func nextWindow(minimumNewSamples: Int = 2 * 16000, maximumSamples: Int = 12 * 16000, overlapSamples: Int = 2 * 16000) -> Window? {
+        lock.lock(); defer { lock.unlock() }
+        let availableEnd = base + samples.count
+        let freshStart = max(base, consumed)
+        guard maximumSamples > overlapSamples, minimumNewSamples > 0,
+              availableEnd - freshStart >= minimumNewSamples else { return nil }
+        let start = max(base, consumed - max(0, overlapSamples))
+        let end = min(availableEnd, start + maximumSamples)
+        return Window(samples: Array(samples[(start - base)..<(end - base)]), start: start, end: end, lostSamples: max(0, base - consumed))
+    }
+    func consume(through end: Int) {
+        lock.lock(); defer { lock.unlock() }
+        consumed = max(consumed, min(end, base + samples.count))
     }
     func snapshot() -> [Float] { lock.lock(); defer { lock.unlock() }; return samples }
-    func erase() { lock.lock(); defer { lock.unlock() }; accepting = false; samples.removeAll(keepingCapacity: false) }
+    func erase() { lock.lock(); defer { lock.unlock() }; accepting = false; samples.removeAll(keepingCapacity: false); base = 0; consumed = 0 }
 }

@@ -80,7 +80,16 @@ import WhisperKit
         recorder.stop(); buffer.erase(); buffer = RecitationAudioBuffer(); transcript = ""; comparison = nil; anchor = 0
         do {
             let capture = buffer
-            try pipeline.audioProcessor.startRecordingLive(inputDeviceID: nil) { samples in capture.append(samples) }
+            guard let processor = pipeline.audioProcessor as? AudioProcessor else { throw CocoaError(.featureUnsupported) }
+            try processor.startRecordingLive(inputDeviceID: nil) { [weak processor] samples in
+                capture.append(samples)
+                // WhisperKit 1.1.0 invokes this on its capture processing queue.
+                // Bound its duplicate storage on that same queue, not during a decode.
+                processor?.purgeAudioSamples(keepingLast: 2 * 16000)
+                if let processor, processor.audioEnergy.count > 20 {
+                    processor.audioEnergy.removeFirst(processor.audioEnergy.count - 20)
+                }
+            }
             listening = true; status = "استمع لتسميعك وأقارن الكلمات محليًا…"
             let generation = revision, began = Date()
             durationTask = Task { [weak self] in
@@ -96,15 +105,23 @@ import WhisperKit
                     while !Task.isCancelled && generation == revision && listening {
                         try await Task.sleep(nanoseconds: 2_500_000_000)
                         if Date().timeIntervalSince(began) >= 300 { stop(); status = "توقفت الجلسة بعد خمس دقائق."; return }
-                        let samples = buffer.snapshot()
-                        guard samples.count >= 16000 * 2 else { continue }
-                        let tail = samples.suffix(16000 * 2)
-                        let energy = tail.reduce(0.0) { $0 + Double($1 * $1) } / Double(tail.count)
-                        guard energy > 0.00001 else { status = "بانتظار صوت واضح…"; continue }
+                        guard let window = buffer.nextWindow() else { continue }
+                        if window.lostSamples > 0 {
+                            stop(clear: true)
+                            message = "لم يستطع الجهاز متابعة الصوت بالسرعة المطلوبة. أعد المقطع بعد إيقاف التطبيقات الثقيلة."
+                            return
+                        }
+                        let samples = window.samples
+                        let energy = samples.reduce(0.0) { $0 + Double($1 * $1) } / Double(samples.count)
+                        guard energy > 0.00001 else {
+                            buffer.consume(through: window.end)
+                            status = "بانتظار صوت واضح…"; continue
+                        }
                         let options = DecodingOptions(verbose: false, task: .transcribe, language: "ar", temperature: 0,
                             temperatureFallbackCount: 0, usePrefillPrompt: true, skipSpecialTokens: true, withoutTimestamps: false, wordTimestamps: true)
                         let results = try await pipeline.transcribe(audioArray: samples, decodeOptions: options)
                         guard generation == revision, listening, !Task.isCancelled else { return }
+                        buffer.consume(through: window.end)
                         let segments = results.flatMap(\.segments)
                         guard !segments.isEmpty, segments.allSatisfy({ $0.avgLogprob >= -1 && $0.noSpeechProb < 0.6 }) else {
                             status = "التعرّف غير مؤكّد. أعد المقطع بصوت واضح."; comparison = nil; continue
@@ -113,7 +130,7 @@ import WhisperKit
                         let next = RecitationComparison.align(expected: expected, heard: transcript, anchor: anchor)
                         comparison = next
                         if next.reliableAlignment {
-                            anchor = max(anchor, next.endIndex)
+                            anchor = next.endIndex
                             status = next.possibleDifferences.isEmpty ? "تطابقت كلمات المقطع المسموع." : "ظهرت فروق محتملة؛ راجع المسموع مع النص."
                         } else { status = "لم أتمكن من مطابقة المقطع بثقة. أعده من بداية الآية." }
                     }
@@ -127,7 +144,9 @@ import WhisperKit
     }
     func stop(clear: Bool = false) {
         let wasListening = listening
-        let samples = wasListening && !clear ? buffer.snapshot() : []
+        let samples = wasListening && !clear
+            ? (buffer.nextWindow(minimumNewSamples: 16000, maximumSamples: 30 * 16000)?.samples ?? []) : []
+        let finalAnchor = anchor
         let expected = activeWords
         revision += 1; inferenceTask?.cancel()
         let pending = inferenceTask, generation = revision, model = pipeline
@@ -154,7 +173,7 @@ import WhisperKit
                     status = "لم تتضح نهاية المقطع. أعد الآية بهدوء."; return
                 }
                 transcript = results.map(\.text).joined(separator: " ")
-                let result = RecitationComparison.align(expected: expected, heard: transcript, anchor: 0)
+                let result = RecitationComparison.align(expected: expected, heard: transcript, anchor: finalAnchor)
                 comparison = result
                 if result.reliableAlignment { anchor = result.endIndex }
                 status = result.reliableAlignment ? "انتهى التسميع؛ راجع النتيجة واحفظ تقييم الآية." : "راجع المقطع بنفسك أو أعد تسميع الآية."
