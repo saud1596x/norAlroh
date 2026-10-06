@@ -8,10 +8,12 @@ struct NoorWardContract: Codable, Equatable {
     var valid: Bool { (1...114).contains(chapter) && from > 0 && to >= from && target > 0 && target <= min(50, to - from + 1) }
     func completed(in keys: Set<String>) -> Bool {
         guard valid else { return false }
-        return keys.filter { key in
+        let ayahs = keys.compactMap { key -> Int? in
             let parts = key.split(separator: ":").compactMap { Int($0) }
-            return parts.count == 2 && parts[0] == chapter && (from...to).contains(parts[1])
-        }.count >= target
+            guard parts.count == 2 && parts[0] == chapter && (from...to).contains(parts[1]) else { return nil }
+            return parts[1]
+        }
+        return Set(ayahs).count >= target
     }
     static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
