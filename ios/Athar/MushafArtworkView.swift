@@ -86,6 +86,11 @@ final class MushafArtworkCanvas: UIView {
         guard let artwork, let fit, fit.scale > 0, let context = UIGraphicsGetCurrentContext() else { return }
         context.saveGState()
         context.translateBy(x: fit.origin.x, y: fit.origin.y); context.scaleBy(x: fit.scale, y: fit.scale)
+        // The publisher PDF leaves its outer paper unpainted. Supply white
+        // paper, like the source PDF viewer, rather than the app theme or the
+        // opaque bitmap renderer's black default. Never tint the original ink.
+        context.setFillColor(UIColor.white.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: artwork.metadata.width, height: artwork.metadata.height))
         // Keep the original paper, ink, ornaments and raster placement intact.
         context.saveGState()
         context.translateBy(x: 0, y: artwork.metadata.height); context.scaleBy(x: 1, y: -1)
