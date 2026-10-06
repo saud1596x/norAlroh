@@ -18,7 +18,7 @@ struct MushafArtworkReader: View {
     @State private var selected: String?
     @State private var selectionPresented = false
     @State private var picker = false
-    @State private var input = "1"
+    @State private var input = ""
 
     var body: some View {
         GeometryReader { geometry in
@@ -48,7 +48,7 @@ struct MushafArtworkReader: View {
                                 .accessibilityIdentifier("reader.flexible")
                         }
                         Spacer()
-                        Button { input = String(number); picker = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
+                        Button { input = ""; picker = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
                             .accessibilityLabel("الانتقال إلى صفحة")
                     }
                     Spacer()
@@ -56,7 +56,7 @@ struct MushafArtworkReader: View {
                         Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
                             .disabled(number == 604).accessibilityLabel("الصفحة التالية")
                         Spacer()
-                        Button("\(number) / 604") { input = String(number); picker = true }.frame(minHeight: 44).accessibilityIdentifier("reader.jump")
+                        Button("\(number) / 604") { input = ""; picker = true }.frame(minHeight: 44).accessibilityIdentifier("reader.jump")
                         Spacer()
                         Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
                             .disabled(number == 1).accessibilityLabel("الصفحة السابقة")
