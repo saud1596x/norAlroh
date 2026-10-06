@@ -9,8 +9,8 @@ final class NoorLaunchTests: XCTestCase {
             shot.lifetime = .keepAlways; add(shot); skip.tap()
         }
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
-        app.tabBars.buttons["الصلاة"].tap()
-        app.tabBars.buttons["اليوم"].tap()
+        selectNoorTab("الصلاة", in: app)
+        selectNoorTab("اليوم", in: app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["launch.skip"].exists)
     }

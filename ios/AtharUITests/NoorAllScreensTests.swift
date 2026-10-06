@@ -14,7 +14,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "25-reflection")
         back(app)
 
-        app.tabBars.buttons["المصحف"].tap()
+        selectNoorTab("المصحف", in: app)
         capture(app, "02-surahs")
         tap(app.buttons["surah.1"], in: app)
         let renderedPage = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
@@ -30,7 +30,7 @@ final class NoorAllScreensTests: XCTestCase {
         app.buttons["ayah.1.1"].tap() // A real bookmark, inspected in the library below.
         back(app); back(app)
 
-        app.tabBars.buttons["الصلاة"].tap()
+        selectNoorTab("الصلاة", in: app)
         capture(app, "06-prayers")
         tap(app.buttons["prayer.city"], in: app)
         capture(app, "07-saudi-cities")
@@ -39,7 +39,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "08-notifications")
         back(app)
 
-        app.tabBars.buttons["الأذكار"].tap()
+        selectNoorTab("الأذكار", in: app)
         capture(app, "09-adhkar")
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("النوم")
@@ -51,7 +51,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "11-dhikr-session")
         tap(app.buttons["زيادة عداد الذكر"], in: app)
 
-        app.tabBars.buttons["الحفظ"].tap()
+        selectNoorTab("الحفظ", in: app)
         capture(app, "12-hifz")
         tap(app.buttons["hifz.speech"], in: app)
         XCTAssertTrue(app.buttons["speech.prepare"].waitForExistence(timeout: 5))
@@ -81,6 +81,9 @@ final class NoorAllScreensTests: XCTestCase {
         tap(app.buttons["hifz.resultHistory"], in: app)
         capture(app, "19-hifz-history")
         back(app); back(app)
+        tap(app.buttons["hifz.insights"], in: app)
+        capture(app, "36-mastery-map")
+        back(app)
         tap(app.buttons["hifz.similarities"], in: app)
         capture(app, "20-similarities")
         back(app)
@@ -127,6 +130,7 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 5)); button.tap()
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name; shot.lifetime = .keepAlways; add(shot)
     }
