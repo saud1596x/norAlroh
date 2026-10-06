@@ -22,7 +22,7 @@ jobs:
       - name: Test production artwork geometry and activation gate
         run: |
           NOOR_ARTWORK_SIMULATOR="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for r,a in d["devices"].items() if "SimRuntime.iOS" in r for x in a if x.get("isAvailable") and x["name"].startswith("iPhone") and "Pro Max" in x["name"]))')"
-          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_ARTWORK_SIMULATOR" -only-testing:AtharTests/MushafArtworkTests -parallel-testing-enabled NO -resultBundlePath release/mushaf-artwork-geometry.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_ARTWORK_SIMULATOR" -only-testing:AtharTests/MushafArtworkTests -only-testing:AtharUITests/NoorOriginalMushafUITests -parallel-testing-enabled NO -resultBundlePath release/mushaf-artwork-geometry.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
       - name: Export actual native original page captures
         if: always()
         run: xcrun xcresulttool export attachments --path release/mushaf-artwork-geometry.xcresult --output-path release/king-fahd-native-captures
