@@ -283,7 +283,7 @@ struct SourcesView: View {
                 Link("رخصة البيانات", destination: URL(string: "https://creativecommons.org/licenses/by/4.0/")!)
             }
             Section("حساب مواقيت الصلاة") {
-                Text("Adhan Swift 1.5.0 · Batoul Apps · ترخيص MIT. الحساب يستخدم المدينة والطريقة ومذهب العصر المختارين، مع فاصل عشاء رمضان بحسب تقويم أم القرى.")
+                Text("Adhan Swift 1.5.0 · Batoul Apps · ترخيص MIT. الحساب يستخدم المدينة وإعدادات المواقيت المحفوظة، مع فاصل عشاء رمضان بحسب تقويم أم القرى.")
                 Link("مكتبة Adhan", destination: URL(string: "https://github.com/batoulapps/adhan-swift")!)
                 NavigationLink("ترخيص مكتبة حساب الصلاة") { BundledLicenseView(title: "ترخيص Adhan", resource: "ADHAN-SWIFT-LICENSE", extension: "txt") }
                     .accessibilityIdentifier("sources.adhan")

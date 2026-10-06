@@ -71,7 +71,6 @@ struct PrayerView: View {
                         Text("أم القرى · رمضان تلقائيًا").tag("UmmAlQura")
                         Text("أم القرى · عشاء ١٢٠ دقيقة").tag("UmmAlQuraRamadan")
                     }.pickerStyle(.menu)
-                    Toggle("العصر وفق المذهب الحنفي", isOn: Binding(get: { store.data.hanafi }, set: { v in store.update { $0.hanafi = v } }))
                     Text("المواقيت محسوبة لمركز المدينة بتوقيت المملكة. أم القرى: العشاء بعد المغرب بـ٩٠ دقيقة، و١٢٠ دقيقة في رمضان بحسب تقويم أم القرى على الجهاز. قارنها بالتقويم الرسمي والمسجد المحلي.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
