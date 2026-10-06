@@ -15,7 +15,7 @@ import UIKit
         let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
         let fonts = MushafFonts()
         // Start with the acceptance reference and still validate every page.
-        for number in [604] + Array(1...603) {
+        for number in [560,603,604] + Array(1...602).filter({ $0 != 560 }) {
             await fonts.load(String(format: "QCF2%03d", number))
             XCTAssertNil(fonts.error, "Page \(number)")
             let page = OriginalPageData.page(number, snapshot: snapshot, rows: metadata, keys: keys)
@@ -27,8 +27,15 @@ import UIKit
             for region in canvas.regions {
                 XCTAssertEqual(canvas.verse(at: CGPoint(x: region.rect.midX, y: region.rect.midY)), region.verse, "Wrong hit page \(number) record \(region.word)")
             }
-            if [1,2,3,64,151,572,598,604].contains(number) {
-                let image = UIGraphicsImageRenderer(size: canvas.bounds.size).image { context in
+            XCTAssertTrue(canvas.headerClearances.allSatisfy { $0 >= 3 }, "Heading clearance page \(number)")
+            for row in canvas.rowGeometry {
+                XCTAssertGreaterThanOrEqual(row.ink.minX, 0)
+                XCTAssertLessThanOrEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width)
+            }
+            // Capture every page with the exact native renderer, not a web mockup.
+            do {
+                let format = UIGraphicsImageRendererFormat(); format.scale = 1
+                let image = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
                     UIColor.systemBackground.setFill(); context.fill(canvas.bounds)
                     canvas.drawInk()
                 }
