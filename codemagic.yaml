@@ -52,6 +52,7 @@ workflows:
       - name: Install generator and licensed release fonts
         script: |
           brew install xcodegen
+          cd ios && xcodegen generate && cd ..
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Audit local content
