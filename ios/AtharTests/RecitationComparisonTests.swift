@@ -30,6 +30,37 @@ final class RecitationComparisonTests: XCTestCase {
         buffer.erase(); buffer.append([1, 2, 3])
         XCTAssertTrue(buffer.snapshot().isEmpty)
     }
+    func testIncrementalWindowsReuseOnlyShortOverlapAndDoNotReplayWithoutNewAudio() throws {
+        let buffer = RecitationAudioBuffer()
+        buffer.append((0..<80000).map(Float.init))
+        let first = try XCTUnwrap(buffer.nextWindow())
+        XCTAssertEqual(first.start, 0); XCTAssertEqual(first.end, 80000)
+        buffer.consume(through: first.end)
+        XCTAssertNil(buffer.nextWindow())
+        buffer.append((80000..<128000).map(Float.init))
+        let next = try XCTUnwrap(buffer.nextWindow())
+        XCTAssertEqual(next.start, 48000)
+        XCTAssertEqual(next.end, 128000)
+        XCTAssertEqual(next.samples.first, 48000)
+        XCTAssertEqual(next.samples.last, 127999)
+        buffer.consume(through: next.end)
+        XCTAssertNil(buffer.nextWindow(minimumNewSamples: 16000))
+    }
+    func testSlowDecoderReportsEvictionInsteadOfSilentlySkippingAudio() throws {
+        let buffer = RecitationAudioBuffer()
+        buffer.append(Array(repeating: 0.1, count: 40 * 16000))
+        let window = try XCTUnwrap(buffer.nextWindow())
+        XCTAssertEqual(window.lostSamples, 10 * 16000)
+        XCTAssertLessThanOrEqual(window.samples.count, 12 * 16000)
+    }
+    func testRepeatedVerseCanMoveFollowPositionBackwards() throws {
+        let chapter = try XCTUnwrap(QuranResources.corpus?[111])
+        let words = RecitationComparison.words(chapter: chapter, from: 1, to: 4)
+        let repeated = RecitationComparison.align(expected: words, heard: "قل هو الله أحد", anchor: 10)
+        XCTAssertTrue(repeated.reliableAlignment)
+        XCTAssertEqual(repeated.endIndex, 4)
+        XCTAssertTrue(repeated.possibleDifferences.isEmpty)
+    }
     func testUthmaniComparisonAnnotationsDoNotAlterDisplayedText() throws {
         XCTAssertEqual(RecitationComparison.normalize("مَالَهُۥ"), "ماله")
         XCTAssertEqual(RecitationComparison.normalize("بِهِۦ"), "به")

@@ -35,6 +35,43 @@ final class LocalDataRecoveryTests: XCTestCase {
         XCTAssertFalse(store.finish(chapter: 1, answers: [answer, answer]))
         XCTAssertFalse(store.finish(chapter: 1, answers: [.init(ayah: 1, assessment: "unsupported", revealed: false, hints: 0)]))
     }
+    @MainActor func testUpgradeAndNewResultPreserveAllHistoryAndOriginalBytes() throws {
+        let suite = "NoorRetention." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let answer = MemorizationAnswer(ayah: 1, assessment: "remembered", revealed: false, hints: 0)
+        let history = (0..<125).map { index in
+            MemorizationResult(date: Date(timeIntervalSince1970: Double(index + 1) * 86400), chapter: 1, answers: [answer])
+        }
+        let original = try JSONEncoder().encode(history)
+        defaults.set(original, forKey: "noor.memorization.history")
+        let store = MemorizationStore(defaults: defaults)
+        XCTAssertEqual(store.history.map(\.id), history.map(\.id))
+        XCTAssertTrue(store.finish(chapter: 1, answers: [answer]))
+        let reopened = MemorizationStore(defaults: defaults)
+        XCTAssertEqual(reopened.history.count, 126)
+        XCTAssertEqual(Array(reopened.history.dropFirst()).map(\.id), history.map(\.id))
+        let preserved = defaults.dictionary(forKey: "noor.memorization.preRetentionFix")
+        XCTAssertEqual(preserved?["history"] as? Data, original)
+        reopened.erase()
+        XCTAssertNil(defaults.object(forKey: "noor.memorization.preRetentionFix"))
+        XCTAssertTrue(MemorizationStore(defaults: defaults).history.isEmpty)
+    }
+    @MainActor func testArchiveDoesNotDropNotesOrPlanAfterNewResult() throws {
+        let suite = "NoorArchiveRetention." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let word = try XCTUnwrap(corpus[0].ayahs[0].text.split(whereSeparator: \.isWhitespace).first)
+        var progress = MemorizationProgress()
+        progress.confirmedMistakes = (0..<501).map { _ in .init(chapter: 1, ayah: 1, expected: String(word), heard: nil) }
+        let plan = MemorizationPlan(chapter: 1, from: 1, to: 7, daily: 5)
+        defaults.set(try JSONEncoder().encode(MemorizationArchive(version: 1, history: [], progress: progress, plan: plan)), forKey: "noor.memorization.archive")
+        let store = MemorizationStore(defaults: defaults)
+        XCTAssertTrue(store.confirmMistake(chapter: 1, ayah: 1, expected: String(word), heard: nil))
+        XCTAssertEqual(MemorizationStore(defaults: defaults).progress.confirmedMistakes.count, 502)
+        XCTAssertEqual(MemorizationStore(defaults: defaults).plan.daily, 5)
+    }
     func testArabicPersianAndAsciiPageNumbers() {
         XCTAssertEqual(ArabicSearch.integer("٦٠٤"), 604)
         XCTAssertEqual(ArabicSearch.integer("۱۲۳"), 123)
