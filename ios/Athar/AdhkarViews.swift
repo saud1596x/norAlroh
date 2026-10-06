@@ -228,11 +228,10 @@ struct DhikrSessionView: View {
                     DhikrReadingText(content: reading)
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
-                if reading.usesCanonicalQuran {
-                    Text("الآيات من النص القرآني المدقّق · Tanzil. ترتيب الذكر وتعليماته من حصن المسلم.").font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("تفاصيل الذكر") {
+                    Text(verbatim: entry.text).font(.body).lineSpacing(5).textSelection(.enabled)
+                    Link(entry.reference, destination: entry.sourceURL).font(.caption).tint(Theme.gold)
                 }
-                DisclosureGroup("النص الأصلي كما ورد في المصدر") { Text(verbatim: entry.text).font(.body).lineSpacing(5).textSelection(.enabled) }
-                Link(entry.reference, destination: entry.sourceURL).font(.caption).tint(Theme.gold)
                 Button { change(count + 1) } label: {
                     ZStack {
                         Circle().fill(Theme.gold)
