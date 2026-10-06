@@ -61,13 +61,16 @@ struct OriginalPageData {
 /// One immutable coordinate space. Lines are shaped whole, without justification,
 /// artificial kashida, per-line fitting, or font substitution.
 @MainActor final class OriginalMushafCanvas: UIView {
-    static let pageSize = CGSize(width: 540, height: 940)
-    struct Hit { let word: Int; let verse: String; let rect: CGRect }
+    static let pageSize = CGSize(width: 560, height: 940)
+    struct Hit { let word: Int; let verse: String; let rect: CGRect; let paths: [CGPath] }
     private(set) var regions: [Hit] = []
     private(set) var renderedSuccessfully = false
     private(set) var failureReason: String?
     private var lines: [(CTLine, CGPoint)] = []
     private var decorationPaths: [CGPath] = []
+    struct RowGeometry { let line: Int; let kind: String; var ink: CGRect }
+    private(set) var rowGeometry: [RowGeometry] = []
+    private(set) var headerClearances: [CGFloat] = []
     var onVerse: ((String?) -> Void)?
     var onFailure: (() -> Void)?
     var reduceMotion = false
@@ -87,12 +90,11 @@ struct OriginalPageData {
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
-        lines = []; regions = []; decorationPaths = []; renderedSuccessfully = false; failureReason = nil
+        lines = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
         guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: 32),
               let companion = UIFont(name: OriginalMushafCompanion.name, size: 32) else { fail("Missing page or companion font"); return }
-        // Original companion's 81-unit space is converted to the page font's
-        // 2500-unit grid. This bridges authored units; it does not stretch letters.
-        let space = companion.withSize(32 * 2048 / 2500)
+        // FB50 is the page font's authored separator. Keep the entire body
+        // line in one font/run rather than bridging a space from another font.
         let rowHeight: CGFloat = 61
         let top: CGFloat = page.number <= 2 ? 214 : 7
         for row in page.rows {
@@ -104,7 +106,7 @@ struct OriginalPageData {
             } else if row.type == "basmallah" { text = OriginalMushafCompanion.basmala }
             else {
                 for word in page.words.filter({ $0.line == row.line }) {
-                    if !text.isEmpty { text += " " }
+                    if !text.isEmpty { text += "\u{FB50}" }
                     let offset = (text as NSString).length
                     text += word.code
                     ranges.append((NSRange(location: offset, length: (word.code as NSString).length), word))
@@ -114,11 +116,6 @@ struct OriginalPageData {
             let font = header ? companion : body
             let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
             let attributed = NSMutableAttributedString(string: text, attributes: [.font: font, .foregroundColor: UIColor.label, .writingDirection: [direction]])
-            if !header {
-                for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
-                    attributed.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
-                }
-            }
             let line = CTLineCreateWithAttributedString(attributed as CFAttributedString)
             let ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
             // Original stop and vowel marks may exceed one baseline interval.
@@ -131,35 +128,22 @@ struct OriginalPageData {
             let baseline = row.type == "surah_name"
                 ? rowTop + 30.5 + ink.midY
                 : rowTop + 48
-            if row.type == "surah_name" {
-                let originalFont = CTFontCreateWithName(OriginalMushafCompanion.name as CFString, 32, nil)
-                var scalar: UniChar = 0xFC20; var glyph: CGGlyph = 0
-                guard CTFontGetGlyphsForCharacters(originalFont, &scalar, &glyph, 1), glyph != 0,
-                      let framePath = CTFontCreatePathForGlyph(originalFont, glyph, nil) else { fail("Missing original FC20 vector ornament"); return }
-                let frameBox = framePath.boundingBoxOfPath
-                let scale = min(532 / frameBox.width, 57 / frameBox.height)
-                var transform = CGAffineTransform(a: scale, b: 0, c: 0, d: -scale,
-                    tx: 270 - frameBox.midX * scale,
-                    ty: top + CGFloat(row.line - 1) * rowHeight + 30.5 + frameBox.midY * scale)
-                guard let placed = framePath.copy(using: &transform) else { fail("Unable to position original ornament"); return }
-                decorationPaths.append(placed)
-            }
-            let origin = CGPoint(x: row.centered ? 270 - ink.midX : 535 - ink.maxX, y: baseline)
+            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - 15 - ink.maxX, y: baseline)
             let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
             guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
                   pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
                 fail("Authored row \(row.line) exceeds page canvas: \(pageInk)"); return
             }
             lines.append((line, origin))
+            rowGeometry.append(.init(line: row.line, kind: row.type, ink: pageInk))
             var wordRects: [Int: CGRect] = [:]
+            var wordPaths: [Int: [CGPath]] = [:]
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
                 let attributes = CTRunGetAttributes(run) as NSDictionary
                 guard let runFontValue = attributes[kCTFontAttributeName] else { fail("Missing Core Text run font"); return }
                 let runFont = runFontValue as! CTFont
                 let family = CTFontCopyPostScriptName(runFont) as String
-                let stringRange = CTRunGetStringRange(run)
-                let substring = (text as NSString).substring(with: NSRange(location: stringRange.location, length: stringRange.length))
-                guard family == font.fontName || (!header && family == companion.fontName && substring.allSatisfy({ $0 == " " })) else { fail("Unexpected font \(family), row \(row.line)"); return }
+                guard family == font.fontName else { fail("Unexpected font \(family), row \(row.line)"); return }
                 let count = CTRunGetGlyphCount(run)
                 var glyphs = [CGGlyph](repeating: 0, count: count)
                 var positions = [CGPoint](repeating: .zero, count: count)
@@ -176,13 +160,17 @@ struct OriginalPageData {
                                       y: baseline - positions[i].y - box.maxY,
                                       width: box.width, height: box.height)
                     wordRects[entry.1.id] = wordRects[entry.1.id].map { $0.union(rect) } ?? rect
+                    var transform = CGAffineTransform(a: 1, b: 0, c: 0, d: -1,
+                        tx: origin.x + positions[i].x, ty: baseline - positions[i].y)
+                    if let placed = path.copy(using: &transform) { wordPaths[entry.1.id, default: []].append(placed) }
                 }
             }
             for (_, word) in ranges {
-                guard let rect = wordRects[word.id], rect.minX >= 0, rect.maxX <= 540, rect.minY >= 0, rect.maxY <= Self.pageSize.height else { fail("Missing or clipped ink for word \(word.id), row \(row.line): \(String(describing: wordRects[word.id]))"); return }
-                regions.append(Hit(word: word.id, verse: word.verse, rect: rect))
+                guard let rect = wordRects[word.id], rect.minX >= 0, rect.maxX <= Self.pageSize.width, rect.minY >= 0, rect.maxY <= Self.pageSize.height else { fail("Missing or clipped ink for word \(word.id), row \(row.line): \(String(describing: wordRects[word.id]))"); return }
+                regions.append(Hit(word: word.id, verse: word.verse, rect: rect, paths: wordPaths[word.id] ?? []))
             }
         }
+        guard arrangeHeadingGroups(top: top) else { return }
         // Authored FC20 ornament paths remain independent of title text.
         // Matching the target edition and distribution rights are review gates.
         renderedSuccessfully = true
@@ -200,6 +188,50 @@ struct OriginalPageData {
         }
         updateHighlight(); ink.setNeedsDisplay()
     }
+    /// A title and its separate basmala share the space between actual body ink.
+    /// Body baselines, line breaks and glyph advances are never moved or resized.
+    /// The same rule covers every header, including page-edge/opening groups.
+    private func arrangeHeadingGroups(top: CGFloat) -> Bool {
+        let font = CTFontCreateWithName(OriginalMushafCompanion.name as CFString, 32, nil)
+        var scalar: UniChar = 0xFC20; var glyph: CGGlyph = 0
+        guard CTFontGetGlyphsForCharacters(font, &scalar, &glyph, 1), glyph != 0,
+              let frame = CTFontCreatePathForGlyph(font, glyph, nil) else {
+            fail("Missing original FC20 vector ornament"); return false
+        }
+        let box = frame.boundingBoxOfPath
+        let scale = min(532 / box.width, 57 / box.height)
+        let frameHeight = box.height * scale
+        var index = 0
+        while index < rowGeometry.count {
+            if rowGeometry[index].kind == "ayah" { index += 1; continue }
+            let start = index
+            while index < rowGeometry.count && rowGeometry[index].kind != "ayah" { index += 1 }
+            let lower = start == 0 ? top : rowGeometry[start - 1].ink.maxY
+            let upper = index == rowGeometry.count ? Self.pageSize.height - 7 : rowGeometry[index].ink.minY
+            let heights = (start..<index).map { rowGeometry[$0].kind == "surah_name" ? frameHeight : rowGeometry[$0].ink.height }
+            let gap = (upper - lower - heights.reduce(0, +)) / CGFloat(heights.count + 1)
+            guard gap >= 3 else { fail("Insufficient heading clearance at row \(rowGeometry[start].line): \(gap)"); return false }
+            headerClearances.append(gap)
+            var cursor = lower + gap
+            for (offset, rowIndex) in (start..<index).enumerated() {
+                let center = cursor + heights[offset] / 2
+                let delta = center - rowGeometry[rowIndex].ink.midY
+                lines[rowIndex].1.y += delta
+                rowGeometry[rowIndex].ink = rowGeometry[rowIndex].ink.offsetBy(dx: 0, dy: delta)
+                if rowGeometry[rowIndex].kind == "surah_name" {
+                    guard rowGeometry[rowIndex].ink.height < frameHeight - 6 else {
+                        fail("Title does not fit original ornament"); return false
+                    }
+                    var transform = CGAffineTransform(a: scale, b: 0, c: 0, d: -scale,
+                        tx: Self.pageSize.width / 2 - box.midX * scale, ty: center + box.midY * scale)
+                    guard let placed = frame.copy(using: &transform) else { fail("Invalid ornament path"); return false }
+                    decorationPaths.append(placed)
+                }
+                cursor += heights[offset] + gap
+            }
+        }
+        return true
+    }
     private func orderedKeys(_ page: OriginalPageData) -> [String] {
         var seen = Set<String>(); return page.words.compactMap { seen.insert($0.verse).inserted ? $0.verse : nil }
     }
@@ -209,7 +241,15 @@ struct OriginalPageData {
         ink.contentScaleFactor = UIScreen.main.scale * max(1, scale)
         ink.setNeedsDisplay()
     }
-    func verse(at point: CGPoint) -> String? { regions.first { $0.rect.contains(point) }?.verse }
+    func verse(at point: CGPoint) -> String? {
+        let candidates = regions.filter { $0.rect.contains(point) }
+        let keys = Set(candidates.map(\.verse))
+        if keys.count == 1 { return keys.first }
+        // Bounding boxes can overlap due to extended vowel marks. Resolve using
+        // the drawn outlines, never the first/nearest neighbouring verse.
+        let actual = Set(candidates.filter { $0.paths.contains { $0.contains(point) } }.map(\.verse))
+        return actual.count == 1 ? actual.first : nil
+    }
     private func updateHighlight() {
         let path = UIBezierPath()
         for region in regions where region.verse == selected { path.append(UIBezierPath(roundedRect: region.rect.insetBy(dx: -0.8, dy: -0.8), cornerRadius: 2)) }
@@ -260,7 +300,7 @@ struct OriginalPageData {
     override func layoutSubviews() {
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let fit = min(bounds.width / 540, bounds.height / OriginalMushafCanvas.pageSize.height)
+        let fit = min(bounds.width / OriginalMushafCanvas.pageSize.width, bounds.height / OriginalMushafCanvas.pageSize.height)
         if abs(fitted - fit) > 0.001 {
             fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4; zoomScale = fit
         }

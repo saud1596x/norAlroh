@@ -47,6 +47,12 @@ struct NoorAmbientOrnament: View {
 }
 
 enum ArabicSearch {
+    static func digits(_ value: Int) -> String {
+        let numerals = Array("٠١٢٣٤٥٦٧٨٩")
+        return String(String(value).map { character in
+            character.wholeNumberValue.map { numerals[$0] } ?? character
+        })
+    }
     static func integer(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 9 else { return nil }

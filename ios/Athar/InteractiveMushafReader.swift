@@ -121,7 +121,7 @@ struct InteractiveMushafReader: View {
                 } else if let message = error ?? fonts.error {
                     VStack(spacing: 18) { Text(message); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if renderingFailed {
-                    ContentUnavailableView("تعذّر رسم الصفحة بالأصول المحددة", systemImage: "textformat", description: Text("لم يُستخدم خط بديل أو صورة صفحة. يلزم مراجعة تخطيط هذه الصفحة قبل اعتمادها."))
+                    ContentUnavailableView("تعذّر فتح الصفحة", systemImage: "book.closed", description: Text("حاول الانتقال إلى صفحة أخرى ثم العودة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة."))
                 } else { ProgressView("تنزيل بيانات المصحف والتحقق من الخط…").frame(maxWidth: .infinity, maxHeight: .infinity) }
             }
             VStack {
@@ -137,7 +137,7 @@ struct InteractiveMushafReader: View {
                 HStack {
                     Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية")
                     Spacer()
-                    Button("\(number) / 604") { input = ""; picker = true }.accessibilityIdentifier("reader.jump")
+                    Button("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤") { input = ""; picker = true }.accessibilityIdentifier("reader.jump")
                     Spacer()
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة")
                 }
