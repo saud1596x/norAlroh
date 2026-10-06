@@ -41,6 +41,19 @@ final class QCFV2ContentTests: XCTestCase {
         let retained = await offline.cached()
         XCTAssertEqual(retained?.snapshot, entry.snapshot, "Offline refresh must preserve the last valid copy")
 
+        // A different edition can retain the same generic V2 family and glyph
+        // range. Reject it before replacing the correctly paired offline copy.
+        var changedEdition = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.snapshot) as? [String: Any])
+        changedEdition["resource_content_id"] = 383
+        let changedEditionBytes = try JSONSerialization.data(withJSONObject: changedEdition)
+        let mismatchedEditionCache = QCFV2ContentCache(file: file, endpoint: endpoint, fetch: { _ in changedEditionBytes })
+        do {
+            _ = try await mismatchedEditionCache.refresh(force: true)
+            XCTFail("Generic V2 name must not allow a different Content Sync edition")
+        } catch { }
+        let preservedEdition = await mismatchedEditionCache.cached()
+        XCTAssertEqual(preservedEdition?.snapshot, entry.snapshot)
+
         var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.snapshot) as? [String: Any])
         var records = try XCTUnwrap(envelope["records"] as? [[String: Any]])
         let end = try XCTUnwrap(records.firstIndex { $0["char_type_name"] as? String == "end" })
