@@ -1,0 +1,230 @@
+{
+  "status": "BEFORE_ONLY_MATCH_NOT_APPROVED",
+  "nativeCaptureMethod": "Existing production UIKit canvas captured by iOS XCTest; not a full application-screen after capture",
+  "nativeCaptureCommit": "c395914b36a712ace699746cf8189eb8f13604e2",
+  "referenceImagesActuallyOpened": [
+    1,
+    2,
+    3,
+    151,
+    604
+  ],
+  "comparedPages": [
+    604,
+    1,
+    2,
+    3,
+    151
+  ],
+  "newRendererAfterPages": [],
+  "componentFindings": {
+    "604": [
+      "Missing original frames and calligraphic basmalas",
+      "Short last lines are justified/right-aligned instead of compact/centered",
+      "Body rows are vertically compressed; verse marker positions differ"
+    ],
+    "1": [
+      "Original blank upper page margin and framed title are absent",
+      "Seven Quran lines are placed at different baselines and scale; short final line is too wide"
+    ],
+    "2": [
+      "Original blank upper margin and framed title are absent",
+      "Basmala is substituted and compact final line is widened"
+    ],
+    "3": [
+      "No surah header on this reference page; body-only layout still differs",
+      "Several word boundaries/line endings and vertical baselines diverge"
+    ],
+    "151": [
+      "Original surah frame and basmala are missing",
+      "Body baselines and line endings diverge; original final line is lower"
+    ]
+  },
+  "comparisons": [
+    {
+      "page": 604,
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "sha256": "0ca9f61bb4b778a6111e211266076a2c73f45e8ba53c22371aa81dba334f34d1",
+        "crop": [
+          18,
+          268,
+          1268,
+          2577
+        ],
+        "uniformScale": 0.52,
+        "resultSize": [
+          650,
+          1201
+        ],
+        "filename": "IMG_0835.png"
+      },
+      "render": {
+        "sha256": "07a6eaad19f190ccf2ce15a7c85c0766d3cdb3853dd6a3ccf43c024f22ef1cfa",
+        "crop": [
+          0,
+          0,
+          1248,
+          2097
+        ],
+        "uniformScale": 0.5208333333333334,
+        "resultSize": [
+          650,
+          1092
+        ],
+        "filename": "page-604-phone-light.png"
+      },
+      "edgeTolerancePixels": 2,
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score."
+    },
+    {
+      "page": 1,
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "sha256": "c5d76e27f3b777f02a87d172657384ba405458de915016a0ea3f377a5741489f",
+        "crop": [
+          18,
+          268,
+          1268,
+          2577
+        ],
+        "uniformScale": 0.52,
+        "resultSize": [
+          650,
+          1201
+        ],
+        "filename": "IMG_0836.png"
+      },
+      "render": {
+        "sha256": "02be05efdd390c9f76e1c01e1dd00aaefb2e353a54c79ba40147aa61ccf7d4c1",
+        "crop": [
+          0,
+          0,
+          1248,
+          1448
+        ],
+        "uniformScale": 0.5208333333333334,
+        "resultSize": [
+          650,
+          754
+        ],
+        "filename": "page-001-phone-light.png"
+      },
+      "edgeTolerancePixels": 2,
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score."
+    },
+    {
+      "page": 2,
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "sha256": "04381d0d5c46d6c53d889ccf7d5bd5f70677d03001230696b8dc091106a8560d",
+        "crop": [
+          18,
+          268,
+          1268,
+          2577
+        ],
+        "uniformScale": 0.52,
+        "resultSize": [
+          650,
+          1201
+        ],
+        "filename": "IMG_0837.png"
+      },
+      "render": {
+        "sha256": "658ff9a173158d81cc5434789e21a394ddc4d1de1b864b4b9248ccb7f36489cb",
+        "crop": [
+          0,
+          0,
+          1248,
+          1448
+        ],
+        "uniformScale": 0.5208333333333334,
+        "resultSize": [
+          650,
+          754
+        ],
+        "filename": "page-002-phone-light.png"
+      },
+      "edgeTolerancePixels": 2,
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score."
+    },
+    {
+      "page": 3,
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "sha256": "275912c0320273ac05a4e9da14c5aa4af3f927a86aab0ace4aa966b2777cf79a",
+        "crop": [
+          18,
+          268,
+          1268,
+          2577
+        ],
+        "uniformScale": 0.52,
+        "resultSize": [
+          650,
+          1201
+        ],
+        "filename": "IMG_0838.png"
+      },
+      "render": {
+        "sha256": "0e8ea63ec800bdb2efad8219efc07f6b0b13d39b3b6b0cf7a32d049ca763a317",
+        "crop": [
+          0,
+          0,
+          1248,
+          2097
+        ],
+        "uniformScale": 0.5208333333333334,
+        "resultSize": [
+          650,
+          1092
+        ],
+        "filename": "page-003-phone-light.png"
+      },
+      "edgeTolerancePixels": 2,
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score."
+    },
+    {
+      "page": 151,
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "sha256": "8084a12c4e567c0bafa8c948e56338623a0e1eaa93fcce52578e1c3992319efd",
+        "crop": [
+          18,
+          268,
+          1268,
+          2577
+        ],
+        "uniformScale": 0.52,
+        "resultSize": [
+          650,
+          1201
+        ],
+        "filename": "IMG_0839.png"
+      },
+      "render": {
+        "sha256": "a55aa471604ea77aea4d27385309099a13650e2ac946a778523dfd6b9bfbbb78",
+        "crop": [
+          0,
+          0,
+          1248,
+          2097
+        ],
+        "uniformScale": 0.5208333333333334,
+        "resultSize": [
+          650,
+          1092
+        ],
+        "filename": "page-151-phone-light.png"
+      },
+      "edgeTolerancePixels": 2,
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score."
+    }
+  ]
+}

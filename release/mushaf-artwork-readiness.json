@@ -1,7 +1,13 @@
 {
   "status": "BLOCKED_MATCHING_ASSETS_NOT_AVAILABLE",
   "releaseApproved": false,
-  "referenceImagesActuallyOpened": [1, 2, 3, 151, 604],
+  "referenceImagesActuallyOpened": [
+    1,
+    2,
+    3,
+    151,
+    604
+  ],
   "referencePagesVisuallyCompared": [],
   "legacyNativeCanvasesAvailable": 604,
   "all604DataValidated": false,
@@ -51,5 +57,26 @@
     "Actual native after captures, overlays and component-by-component human review"
   ],
   "religiousAccuracyApproval": "NOT_CERTIFIED",
-  "geometryTestFixture": "NON-QURAN shapes only; cannot be counted as an after screenshot"
+  "geometryTestFixture": "NON-QURAN shapes only; cannot be counted as an after screenshot",
+  "legacyReferencePagesCompared": [
+    604,
+    1,
+    2,
+    3,
+    151
+  ],
+  "beforeComparisonRecord": "release/mushaf-before-comparison.json",
+  "nativeGeometryCheck": {
+    "sourceCommit": "853143fccafd266ad63578bed876279841728f3d",
+    "run": 37499128438,
+    "tests": 6,
+    "failures": 0,
+    "scope": "NON-QURAN geometry and activation gate; no reference approval"
+  },
+  "fullAccountsFridayScreenTimeBuild": {
+    "sourceCommit": "853143fccafd266ad63578bed876279841728f3d",
+    "run": 37498689320,
+    "job": "focus-build",
+    "status": "PASSED"
+  }
 }

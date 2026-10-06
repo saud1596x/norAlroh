@@ -3,7 +3,8 @@
 ## Current outcome
 
 The attached references were actually opened: pages **1, 2, 3, 151 and 604**.
-Page 604 was compared to the existing production iOS canvas. None of the
+Pages 604, 1, 2, 3 and 151 were compared to existing production UIKit canvas captures.
+These XCTest images are not full-screen after captures from the new reader. None of the
 retrieved packages is accepted as a visually matching replacement. The new
 renderer is implemented but **not activated**. No native Quran "after" image
 exists yet. A geometry fixture containing ordinary rectangles is not Quran
@@ -67,6 +68,9 @@ must already exist in the source page. Neither screenshots nor OCR may create
 them. PDF media/crop boxes have origin (0,0), equal dimensions, no rotation,
 one page and transparent paper. Paths are tinted with the existing ink color;
 the background remains `Theme.panel`. Original paths are never stretched.
+Monochrome artwork must preserve lighter ornamental strokes as coverage/alpha;
+opaque gray strokes must not be flattened into the same opacity as black ink.
+This requirement is part of package review, not a claim about any retrieved PDF.
 
 The loader checks 604 ordered pages, all 6236 canonical verse keys in order
 (including cross-page continuations), polygon bounds, page hashes and PDF
@@ -101,3 +105,19 @@ layout, so showing/hiding them does not reflow or rescale the page.
    evidence. Only then activate and pass `check-mushaf-publication.py`.
 
 No approval status may be generated automatically from hashes or screenshots.
+
+## Checks performed
+
+Six native geometry/activation tests passed on iPhone 16 Pro Max (iOS 18.5),
+workflow 37499128438, source commit
+`853143fccafd266ad63578bed876279841728f3d`. The drawing fixture contains only
+rectangles, not Quran. The loading-state change is included in this passing run.
+The accounts/Friday/Screen Time application build also passed in workflow
+37498689320, job `focus-build`.
+Tanzil verification passed for all 6236 verses and 112 separate basmalas by
+exact Unicode equality. `check-mushaf-publication.py` deliberately fails while
+the matching artwork package is absent.
+
+The five before comparisons are recorded in `mushaf-before-comparison.json`,
+including exact input hashes, crops, uniform scales and component findings.
+They show current defects; they do not approve the new renderer.
