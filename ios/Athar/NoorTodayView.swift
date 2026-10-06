@@ -9,9 +9,7 @@ struct NoorTodayView: View {
     private var reduced: Bool { systemReduce || store.data.lowMotion }
     private var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Riyadh")!; return c }
     private var reviewed: Int {
-        Set(memorization.history.filter { calendar.isDateInToday($0.date) }.flatMap { result in
-            result.answers.filter { $0.assessment != "skip" }.map { "\(result.chapter):\($0.ayah)" }
-        }).count
+        memorization.completedToday()
     }
     private var resumeTitle: String {
         guard let p = MushafDatabase.shared?.pages.first(where: { $0.page == page }),
@@ -86,11 +84,11 @@ struct NoorTodayView: View {
                 Card {
                     HStack(spacing: 16) {
                         ZStack {
-                            NoorProgressDial(value: Double(reviewed) / Double(max(1, memorization.plan.daily)))
+                            NoorProgressDial(value: Double(reviewed) / Double(max(1, memorization.dailyTarget)))
                             Text("\(reviewed)").font(.title2.monospacedDigit()).contentTransition(.numericText())
                         }.frame(width: 62, height: 62).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 7) {
-                            Text("\(reviewed) من \(memorization.plan.daily) آيات").font(.headline)
+                            Text("\(reviewed) من \(memorization.dailyTarget) آيات").font(.headline)
                             Text("مراجعتك الفعلية، خطوة بعد خطوة").font(.caption).foregroundStyle(.secondary)
                             NavigationLink("ابدأ المراجعة") { MemorizationView() }.font(.subheadline).frame(minHeight: 44)
                         }

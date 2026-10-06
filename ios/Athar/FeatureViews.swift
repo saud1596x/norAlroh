@@ -187,7 +187,8 @@ struct SettingsView: View {
                             memorizationPlan: memorization.plan, memorizationHistory: memorization.history, memorizationSession: memorization.session,
                             prayerPreferences: notifications.preferences, localRecording: try recitation.exportRecording(),
                             lastMushafPage: max(1, min(604, UserDefaults.standard.integer(forKey: "noor.mushaf.lastPage"))),
-                            unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory)
+                            unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
+                            memorizationProgress: memorization.progress)
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
                     }

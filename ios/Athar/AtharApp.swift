@@ -26,9 +26,10 @@ struct AtharApp: App {
                 .preferredColorScheme(nil)
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
-                .task { dhikrCounters.refreshDay(); await notifications.refresh(store: store) }
+                .task { dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store) }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
+                        NoorFocusController.shared.sync(progress: memorization.progress)
                         dhikrCounters.refreshDay()
                         Task { await notifications.refresh(store: store) }
                     } else {

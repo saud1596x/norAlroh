@@ -7,6 +7,8 @@ struct SpeechRecitationView: View {
     @EnvironmentObject private var speech: LocalSpeechRecitation
     @EnvironmentObject private var recorder: LocalRecitationRecorder
     @State private var downloadConsent = false
+    @State private var hideVerses = true
+    @State private var confirmedWords: Set<Int> = []
     private var chapter: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
     private var end: Int { min(memorization.plan.to, memorization.plan.from + 9) }
     private var words: [RecitationExpectedWord] { chapter.map { RecitationComparison.words(chapter: $0, from: memorization.plan.from, to: end) } ?? [] }
@@ -19,6 +21,7 @@ struct SpeechRecitationView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("تابع تسميعك").font(.largeTitle.bold())
                 Text("\(chapter?.name ?? "الحفظ") · الآيات \(memorization.plan.from)–\(end)").font(.subheadline)
+                Toggle("إخفاء الآيات أثناء التسميع", isOn: $hideVerses).accessibilityIdentifier("speech.hideVerses")
                 Card {
                     Label(speech.ready ? "نموذج محلي جاهز" : "معالجة الصوت على جهازك", systemImage: "waveform").font(.headline)
                     Text(speech.status).font(.subheadline).accessibilityIdentifier("speech.status")
@@ -43,7 +46,9 @@ struct SpeechRecitationView: View {
                                 Text("الآية \(ayah.number)").font(.caption)
                                 if ayah.number == currentAyah && speech.anchor > 0 { Label("موضع المتابعة", systemImage: "waveform").font(.caption).foregroundStyle(Theme.gold) }
                             }
-                            QuranVerseText(ayah.text, size: 28)
+                            if hideVerses && speech.anchor == 0 {
+                                Text("الآية مخفية؛ ابدأ التسميع أو أوقف الإخفاء للمراجعة.").foregroundStyle(.secondary)
+                            } else { QuranVerseText(displayText(ayah), size: 28) }
                         }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
                             .overlay { RoundedRectangle(cornerRadius: 20).stroke(ayah.number == currentAyah && speech.anchor > 0 ? Theme.gold : .clear, lineWidth: 2) }
@@ -58,6 +63,13 @@ struct SpeechRecitationView: View {
                                 Text("فرق محتمل — يحتاج مراجعتك").font(.caption.bold()).foregroundStyle(Theme.gold)
                                 if let expected = difference.expected { Text("المتوقع: \(expected)") }
                                 Text("المتعرّف عليه: \(difference.heard ?? "لم تظهر الكلمة في التعرّف")").foregroundStyle(.secondary)
+                                if let position = difference.wordIndex, words.indices.contains(position) {
+                                    let word = words[position]
+                                    Button(confirmedWords.contains(position) ? "أُضيف إلى سجل المراجعة" : "أكد أن هذا الموضع يحتاج مراجعة") {
+                                        if memorization.confirmMistake(chapter: word.chapter, ayah: word.ayah, expected: word.text, heard: difference.heard) { confirmedWords.insert(position) }
+                                        else { speech.message = memorization.error ?? "تعذّر حفظ موضع المراجعة." }
+                                    }.disabled(confirmedWords.contains(position))
+                                }
                             }
                         }
                     }
@@ -74,7 +86,14 @@ struct SpeechRecitationView: View {
                 Button("إلغاء", role: .cancel) {}
             }
             .onDisappear { speech.stop(clear: true) }
+            .onChange(of: speech.listening) { _, new in if new { confirmedWords = [] } }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in speech.stop() }
             .alert("المتابعة الصوتية", isPresented: Binding(get: { speech.message != nil }, set: { if !$0 { speech.message = nil } })) { Button("تم") { speech.message = nil } } message: { Text(speech.message ?? "") }
+    }
+    private func displayText(_ ayah: Ayah) -> String {
+        guard hideVerses else { return QuranText.verse(chapter: memorization.plan.chapter, ayah: ayah) }
+        let verseWords = words.filter { $0.ayah == ayah.number }
+        let visible = verseWords.filter { $0.id < speech.anchor }.map(\.text).joined(separator: " ")
+        return visible + (verseWords.last.map { $0.id >= speech.anchor } == true ? " …" : "")
     }
 }
