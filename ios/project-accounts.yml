@@ -1,0 +1,27 @@
+include:
+  - project-focus.yml
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    exactVersion: 12.19.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    exactVersion: 9.2.0
+settings:
+  base:
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NOOR_FOCUS_ENABLED NOOR_ACCOUNT_ENABLED"
+targets:
+  Athar:
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: NoorAccounts.entitlements
+        OTHER_LDFLAGS: "$(inherited) -ObjC"
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: GoogleSignIn
+        product: GoogleSignIn
+      - package: GoogleSignIn
+        product: GoogleSignInSwift
