@@ -52,9 +52,9 @@ workflows:
       - name: Install generator and licensed release fonts
         script: |
           brew install xcodegen
-          cd ios && xcodegen generate && cd ..
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+          cd ios && xcodegen generate && cd ..
       - name: Audit local content
         script: |
           python3 scripts/prepare-publishing.py --check
@@ -69,6 +69,25 @@ workflows:
             --scheme Athar \
             --config Release \
             --archive-flags="CURRENT_PROJECT_VERSION=$((BUILD_NUMBER + 1))"
+      - name: Verify Quran resources inside signed IPA
+        script: |
+          python3 - <<'PY'
+          import glob, hashlib, json, zipfile
+          paths = glob.glob('build/ios/ipa/*.ipa')
+          assert len(paths) == 1, 'Expected one signed IPA'
+          expected = json.load(open('release/qcf-v2-manifest.json'))
+          assert len(expected['fonts']) == 604
+          with zipfile.ZipFile(paths[0]) as ipa:
+              roots = {n.split('/')[1] for n in ipa.namelist() if n.startswith('Payload/') and n.split('/')[1].endswith('.app')}
+              assert len(roots) == 1, 'Expected one app bundle'
+              root = 'Payload/' + next(iter(roots)) + '/'
+              assert json.loads(ipa.read(root + 'qcf-v2-manifest.json')) == expected, 'Missing or incorrect Quran font manifest'
+              for entry in expected['fonts']:
+                  data = ipa.read(root + 'p' + str(entry['page']) + '.ttf')
+                  assert len(data) == entry['bytes'], 'Incorrect Quran font size'
+                  assert hashlib.sha256(data).hexdigest() == entry['sha256'], 'Incorrect Quran font hash'
+          print('SIGNED_IPA_QURAN_RESOURCES_VERIFIED: 604 fonts and manifest')
+          PY
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
