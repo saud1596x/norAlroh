@@ -164,6 +164,9 @@ enum MushafArtworkGeometry {
                 return .ready(library)
             } catch { return .rejected }
         }
+        // This edition's index signals that the build requires its original PDF.
+        // A missing large resource must not silently restore the old typesetter.
+        if bundle.url(forResource: "king-fahd-chapter-pages", withExtension: "json") != nil { return .rejected }
         guard let url = bundle.url(forResource: "mushaf-artwork-manifest", withExtension: "json") else { return .absent }
         do {
             let manifest = try await Task.detached(priority: .userInitiated) {
