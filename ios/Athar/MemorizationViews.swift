@@ -50,7 +50,7 @@ struct MemorizationSession: Codable {
         do {
             defaults.set(try JSONEncoder().encode(value), forKey: "noor.memorization.session")
             session = value; return true
-        } catch { error = "تعذّر حفظ الجلسة. حاول مجددًا."; return false }
+        } catch { self.error = "تعذّر حفظ الجلسة. حاول مجددًا."; return false }
     }
     func clearSession() {
         defaults.removeObject(forKey: "noor.memorization.session"); session = nil
