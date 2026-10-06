@@ -1,7 +1,7 @@
 {
   "status": "implementation-awaiting-native-review",
   "supersedes": "Rejected printed PDF reader, including prior successful PDF tests",
-  "renderer": "Whole-page Core Text, fixed 540x930 coordinates, 32pt page font, 61pt line grid, no justification or per-line resizing",
+  "renderer": "Whole-page Core Text, fixed 540x940 coordinates, 32pt page font, 61pt line grid, no justification or per-line resizing",
   "font": {
     "edition": "QCF V2 candidate",
     "bodyManifest": "release/qcf-v2-manifest.json",
@@ -39,5 +39,27 @@
     "pageFonts": "Quran Foundation font bundling terms under existing developer account",
     "companion": "Original KFGQPC mirror, exact family/version/hash; explicit reuse terms still being verified",
     "rowMetadata": "QUL download; redistribution terms still being verified"
+  },
+  "designReview": {
+    "userAcceptedPrototypeAt": "2026-10-06T22:29:40+03:00",
+    "requestedAdjustment": "Balance typography and continue",
+    "implementedAdjustment": "Center original surah-title ink within FC20 vector frames; preserve 32pt body size and authored row grid",
+    "prototype": "noor-mushaf-balanced-proposal.png",
+    "prototypeEngine": "HarfBuzz original-font outlines; illustrative tools, not native app evidence",
+    "nativeVisualAcceptance": false
+  },
+  "currentNativeRun": {
+    "id": 37519940663,
+    "sourceCommit": "e422dc9327a5d4a291237018deced089b4c436e3",
+    "state": "failed"
+  },
+  "nativeFindings": {
+    "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
+    "fixes": [
+      "Remove arbitrary row-height restriction; validate complete page ink",
+      "Add10 canonical units below the existing immutable grid; no letter or baseline changes",
+      "Index first page per verse once; remove repeated corpus construction during initial604 lookup"
+    ],
+    "actualAppArtifactAccess": "127MB review package download timed out; no extracted screenshots yet"
   }
 }
