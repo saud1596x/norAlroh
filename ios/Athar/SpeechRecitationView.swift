@@ -130,24 +130,30 @@ struct SpeechRecitationView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    if let comparison = speech.comparison, comparison.reliableAlignment {
-                        Text("\(comparison.matchedIndices.count) كلمة متطابقة في المقطع الأخير").font(.headline)
-                        ForEach(comparison.possibleDifferences) { difference in
+                    Text("فروق محتملة من مقاطع الجلسة؛ لم تُسجّل أخطاء حفظ تلقائيًا.").font(.headline)
+                    if speech.observations.isEmpty { Text("لا توجد ملاحظات قابلة للمراجعة الآن.") }
+                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                        ForEach(speech.observations.filter { !$0.dismissed }) { note in
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("فرق محتمل؛ راجعه بعد فرصة للتصحيح الذاتي").font(.caption.bold())
-                                if let expected = difference.expected { Text("المتوقع: \(expected)") }
-                                Text("المتعرّف عليه: \(difference.heard ?? "لم تظهر الكلمة")").foregroundStyle(.secondary)
-                                if let position = difference.wordIndex, words.indices.contains(position) {
-                                    let word = words[position]
-                                    Button(confirmedWords.contains(position) ? "أُضيف للمراجعة" : "أكد أن الموضع يحتاج تثبيتًا") {
-                                        if memorization.confirmMistake(chapter: word.chapter, ayah: word.ayah, expected: word.text, heard: difference.heard) { confirmedWords.insert(position) }
-                                        else { speech.message = memorization.error ?? "تعذّر حفظ الموضع." }
-                                    }.disabled(confirmedWords.contains(position) || speech.listening || speech.settling)
+                                let word = words.indices.contains(note.wordIndex) ? words[note.wordIndex] : nil
+                                if let word { Text("الآية \(ArabicSearch.digits(word.ayah))").font(.caption.bold()) }
+                                Text("المتوقع: \(note.expected)")
+                                Text("المتعرّف عليه: \(note.heard ?? "لم تظهر الكلمة")").foregroundStyle(.secondary)
+                                if note.corrected { Text("تطابقت الكلمة عند إعادتها؛ لا تُضاف للمراجعة.").font(.caption) }
+                                else {
+                                    if !note.readyForReview(at: timeline.date) { Text("بانتظار فرصة للتصحيح الذاتي…").font(.caption) }
+                                    if let word {
+                                        Button(confirmedWords.contains(note.wordIndex) ? "أُضيف للمراجعة" : "أكد أن الموضع يحتاج تثبيتًا") {
+                                            if memorization.confirmMistake(chapter: word.chapter, ayah: word.ayah, expected: word.text, heard: note.heard) { confirmedWords.insert(note.wordIndex) }
+                                            else { speech.message = memorization.error ?? "تعذّر حفظ الموضع." }
+                                        }.disabled(confirmedWords.contains(note.wordIndex) || speech.listening || speech.settling || !note.readyForReview(at: timeline.date))
+                                    }
+                                    Button("استبعدها: خطأ في التعرّف") { speech.dismissObservation(note.wordIndex) }
+                                        .disabled(confirmedWords.contains(note.wordIndex))
                                 }
-                            }
+                            }.padding(.vertical, 8)
                         }
-                        if comparison.possibleDifferences.isEmpty { Text("لا فروق محتملة في المقطع الأخير.") }
-                    } else { Text("لا توجد مقارنة مؤكدة الآن. يمكنك إعادة المقطع أو مراجعته بنفسك.") }
+                    }
                     if !speech.transcript.isEmpty { DisclosureGroup("ما تعرّف عليه المحرك") { Text(verbatim: speech.transcript).textSelection(.enabled) } }
                 }.padding(20)
             }.navigationTitle("مراجعة الملاحظات").toolbar { Button("إغلاق") { details = false } }

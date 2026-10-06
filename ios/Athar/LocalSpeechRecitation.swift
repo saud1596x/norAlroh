@@ -15,6 +15,8 @@ import WhisperKit
     @Published private(set) var transcript = ""
     @Published private(set) var anchor = 0 { didSet { persistPosition() } }
     @Published private(set) var savedPosition: SpeechSessionPosition?
+    @Published private(set) var observations: [RecitationObservation] = []
+    private var ledger = RecitationObservationLedger()
     @Published private(set) var comparison: RecitationComparison?
     @Published private(set) var status = "جهّز النموذج قبل بدء المتابعة الصوتية."
     @Published var message: String?
@@ -33,6 +35,10 @@ import WhisperKit
     private let folderKey = "noor.speechModelFolder.v1"
     init() {
         positions = SpeechPositionStore(); savedPosition = positions.value
+    }
+    func dismissObservation(_ index: Int) { ledger.dismiss(index); observations = ledger.ordered }
+    private func collect(_ result: RecitationComparison) {
+        ledger.ingest(result, expected: activeWords, at: Date()); observations = ledger.ordered
     }
     func markHelpUsed() { usedHelp = true; persistPosition() }
     private func persistPosition() {
@@ -94,8 +100,11 @@ import WhisperKit
         let granted = await withCheckedContinuation { continuation in AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) } }
         guard attempt == revision, UIApplication.shared.applicationState == .active else { return }
         guard granted else { message = "اسمح بالميكروفون من إعدادات iOS للمتابعة الصوتية. القراءة والمراجعة اليدوية متاحتان."; return }
+        let continuing = resumeAt > 0 && SpeechSessionPosition.digest(activeWords) == SpeechSessionPosition.digest(expected)
         activeWords = expected; usedHelp = helped
-        recorder.stop(); buffer.erase(); buffer = RecitationAudioBuffer(); transcript = ""; comparison = nil; anchor = resumeAt
+        recorder.stop(); buffer.erase(); buffer = RecitationAudioBuffer(); transcript = ""; comparison = nil
+        if !continuing { ledger = RecitationObservationLedger(); observations = [] }
+        anchor = resumeAt
         do {
             let capture = buffer
             guard let processor = pipeline.audioProcessor as? AudioProcessor else { throw CocoaError(.featureUnsupported) }
@@ -146,7 +155,7 @@ import WhisperKit
                         }
                         transcript = results.map(\.text).joined(separator: " ")
                         let next = RecitationComparison.align(expected: expected, heard: transcript, anchor: anchor)
-                        comparison = next
+                        comparison = next; collect(next)
                         if next.reliableAlignment {
                             anchor = next.endIndex
                             status = next.possibleDifferences.isEmpty ? "تطابقت كلمات المقطع المسموع." : "ظهرت فروق محتملة؛ راجع المسموع مع النص."
@@ -172,7 +181,7 @@ import WhisperKit
         pipeline?.audioProcessor.stopRecording(); pipeline?.audioProcessor.purgeAudioSamples(keepingLast: 0)
         listening = false; buffer.erase()
         if wasListening { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
-        if clear { activeWords = []; transcript = ""; comparison = nil; anchor = 0 }
+        if clear { activeWords = []; transcript = ""; comparison = nil; anchor = 0; ledger = RecitationObservationLedger(); observations = [] }
         guard pending != nil || !samples.isEmpty else { settling = false; return }
         settling = true
         if !samples.isEmpty { status = "أراجع نهاية المقطع…" }
@@ -192,7 +201,7 @@ import WhisperKit
                 }
                 transcript = results.map(\.text).joined(separator: " ")
                 let result = RecitationComparison.align(expected: expected, heard: transcript, anchor: finalAnchor)
-                comparison = result
+                comparison = result; collect(result)
                 if result.reliableAlignment { anchor = result.endIndex }
                 status = result.reliableAlignment ? "انتهى التسميع؛ راجع النتيجة واحفظ تقييم الآية." : "راجع المقطع بنفسك أو أعد تسميع الآية."
             } catch { if generation == revision { status = "تعذّر تحليل نهاية المقطع. يمكنك إعادة التسميع." } }
