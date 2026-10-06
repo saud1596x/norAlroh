@@ -13,6 +13,22 @@ struct MemorizationSession: Codable {
     var hintCount = 0
     var revealed = false
 }
+struct MemorizationPracticeSession: Codable {
+    var chapter: Int
+    var from: Int
+    var to: Int
+    var ayah: Int
+    var visibleWords = 0
+    var hints = 0
+    var revealAll = false
+    var usedHelp = false
+    func valid(corpus: [Surah]) -> Bool {
+        corpus.indices.contains(chapter - 1) && from > 0 && to >= from
+            && to <= corpus[chapter - 1].ayahs.count && (from...to).contains(ayah)
+            && (0...1024).contains(visibleWords) && (0...100000).contains(hints)
+            && (!revealAll || usedHelp) && (visibleWords == 0 || usedHelp)
+    }
+}
 
 struct VerseReviewState: Codable {
     var stage = 0
@@ -82,6 +98,8 @@ struct MemorizationArchive: Codable {
     @Published private(set) var plan = MemorizationPlan()
     @Published private(set) var history: [MemorizationResult] = []
     @Published private(set) var session: MemorizationSession?
+    @Published private(set) var practice: MemorizationPracticeSession?
+    private(set) var unreadablePractice: Data?
     @Published var error: String?
     @Published private(set) var unreadableHistory: Data?
     @Published private(set) var progress = MemorizationProgress()
@@ -122,6 +140,20 @@ struct MemorizationArchive: Codable {
         if let data = defaults.data(forKey: "noor.memorization.session"),
            let value = try? JSONDecoder().decode(MemorizationSession.self, from: data),
            let corpus = QuranResources.corpus, validSession(value, corpus: corpus) { session = value }
+        if let data = defaults.data(forKey: "noor.memorization.practice") {
+            if let value = try? JSONDecoder().decode(MemorizationPracticeSession.self, from: data),
+               let corpus = QuranResources.corpus, value.valid(corpus: corpus) { practice = value }
+            else { unreadablePractice = data }
+        }
+    }
+    @discardableResult func savePractice(_ value: MemorizationPracticeSession) -> Bool {
+        guard unreadablePractice == nil, let corpus = QuranResources.corpus, value.valid(corpus: corpus) else {
+            error = "تعذّر حفظ التدريب. احتُفظ ببيانات الجلسة السابقة؛ يمكنك تصدير بياناتك من الإعدادات."; return false
+        }
+        do {
+            defaults.set(try JSONEncoder().encode(value), forKey: "noor.memorization.practice")
+            practice = value; return true
+        } catch { error = "تعذّر حفظ موضع التدريب."; return false }
     }
     private func validSession(_ value: MemorizationSession, corpus: [Surah]) -> Bool {
         guard corpus.indices.contains(value.chapter - 1), !value.keys.isEmpty, value.keys.count <= 50,
@@ -265,6 +297,8 @@ struct MemorizationArchive: Codable {
         defaults.removeObject(forKey: "noor.memorization.history"); defaults.removeObject(forKey: "noor.memorization.plan")
         defaults.removeObject(forKey: "noor.memorization.archive")
         defaults.removeObject(forKey: "noor.memorization.preRetentionFix")
+        defaults.removeObject(forKey: "noor.memorization.practice")
+        practice = nil; unreadablePractice = nil
         clearSession(); history = []; progress = MemorizationProgress(); plan = MemorizationPlan(); unreadableHistory = nil; error = nil
     }
 }
@@ -325,60 +359,83 @@ struct MemorizationView: View {
     }
 }
 struct MemorizationPracticeView: View {
-    @EnvironmentObject var store: AtharStore
-    @EnvironmentObject var memorization: MemorizationStore
-    @Environment(\.accessibilityReduceMotion) private var systemReduce
-    @State private var revealed = 0
-    @State private var practiceIndex = 0
-    private var surah: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
-    private var ayahs: [Ayah] {
-        guard let surah else { return [] }
-        return surah.ayahs.filter { (memorization.plan.from...memorization.plan.to).contains($0.number) }
-    }
-    private var practiceAyah: Ayah? { ayahs.indices.contains(practiceIndex) ? ayahs[practiceIndex] : ayahs.first }
-    private var total: Int { practiceAyah.map { QuranText.verse(chapter: memorization.plan.chapter, ayah: $0).split(whereSeparator: \.isWhitespace).count } ?? 0 }
+    @EnvironmentObject private var store: AtharStore
+    @EnvironmentObject private var memorization: MemorizationStore
+    @StateObject private var audio = MushafVerseAudio()
+    @State private var current: MemorizationPracticeSession?
+    @State private var wordCount = 0
+    @State private var saved = false
+    private var chapter: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Card {
-                    HStack {
-                        Text("تدريب آية بخطوة").font(.headline)
-                        Spacer()
-                        Text("\(min(practiceIndex + 1, ayahs.count)) / \(ayahs.count)").font(.caption.monospacedDigit())
-                    }
-                    if let ayah = practiceAyah {
-                        let words = QuranText.verse(chapter: memorization.plan.chapter, ayah: ayah).split(whereSeparator: \.isWhitespace)
-                        Text("الآية \(ayah.number)").font(.caption).foregroundStyle(.secondary)
-                        if revealed > 0 {
-                            QuranVerseText(words.prefix(revealed).joined(separator: " "))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            Label("استرجع الآية، ثم اكشف كلمة أو النص كاملًا", systemImage: "brain.head.profile")
-                                .foregroundStyle(.secondary).padding(.vertical, 20)
+        VStack(spacing: 8) {
+            if let current {
+                HStack {
+                    Button("السابقة") { move(-1) }.disabled(current.ayah <= current.from)
+                    Spacer()
+                    Text("الآية \(ArabicSearch.digits(current.ayah))").font(.headline)
+                    Spacer()
+                    Button("التالية") { move(1) }.disabled(current.ayah >= current.to)
+                }.frame(minHeight: 44).padding(.horizontal, 16)
+                MushafTrainingPage(chapter: current.chapter, ayah: current.ayah,
+                    revealedWords: current.visibleWords, revealAll: current.revealAll,
+                    onHint: revealNext, onWordCount: { wordCount = $0 })
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack {
+                    Button("كشف جزء") { revealNext() }.disabled(current.revealAll || current.visibleWords >= wordCount || wordCount == 0)
+                        .accessibilityIdentifier("hifz.revealPart")
+                    Spacer()
+                    Button(current.revealAll ? "إخفاء النص" : "كشف الآية") {
+                        change { value in
+                            value.revealAll.toggle(); value.visibleWords = 0
+                            if value.revealAll { value.usedHelp = true; value.hints += 1 }
                         }
-                        if revealed > 0 && revealed < total { Text("بقية الآية مخفية").font(.caption).foregroundStyle(.secondary) }
-                    }
-                    HStack {
-                        Button("الآية السابقة") { practiceIndex = max(0, practiceIndex - 1); revealed = 0 }
-                            .disabled(practiceIndex == 0).frame(minHeight: 44)
-                        Spacer()
-                        Button("الآية التالية") { practiceIndex = min(ayahs.count - 1, practiceIndex + 1); revealed = 0 }
-                            .disabled(practiceIndex + 1 >= ayahs.count).frame(minHeight: 44)
-                    }
-                    HStack {
-                        Button("إظهار كلمة") { withAnimation(systemReduce || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { revealed = min(total, revealed + 1) } }
-                            .disabled(revealed >= total).frame(minHeight: 44)
-                        Spacer()
-                        Button(revealed >= total ? "إخفاء الآيات" : "كشف الآيات") { revealed = revealed >= total ? 0 : total }.frame(minHeight: 44)
-                    }
-                    Text("استرجع الآيات، ثم اكشف النص للمقارنة. يمكنك المتابعة من حيث توقفت.").font(.caption).foregroundStyle(.secondary)
+                    }.accessibilityIdentifier("hifz.revealAll")
+                    Spacer()
+                    Button(audio.playing != nil || audio.loadingKey != nil ? "إيقاف" : "استمع") {
+                        if audio.playing != nil || audio.loadingKey != nil { audio.stop() }
+                        else { change { $0.usedHelp = true; $0.hints += 1 }; audio.play(["\(current.chapter):\(current.ayah)"]) }
+                    }.accessibilityIdentifier("hifz.listen")
+                }.frame(minHeight: 44).padding(.horizontal, 16)
+                HStack {
+                    Button(saved ? "حُفظ تقييمك" : "تذكّرتها") { record("remembered") }.disabled(saved)
+                    Spacer()
+                    Button("تحتاج تثبيتًا") { record("review") }.disabled(saved)
+                }.frame(minHeight: 44).padding(.horizontal, 16)
+                Text(current.usedHelp ? "استُخدمت مساعدة؛ يُسجّل التدريب كمراجعة مع مساعدة." : "قيّم استرجاعك بعد المقارنة. فتح الصفحة وحده لا يُكمل الورد.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 6)
+            } else { ProgressView("استعادة موضع التدريب…") }
+        }.background(Theme.panel).navigationTitle("تثبيت الآيات")
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                let plan = memorization.plan
+                if let saved = memorization.practice, saved.chapter == plan.chapter, saved.from == plan.from, saved.to == plan.to { current = saved }
+                else {
+                    let value = MemorizationPracticeSession(chapter: plan.chapter, from: plan.from, to: plan.to, ayah: plan.from)
+                    current = value; _ = memorization.savePractice(value)
                 }
-                Card { RecitationRecordingControls() }
-            }.padding(20)
-        }.background(Theme.background).navigationTitle("تثبيت الآيات")
-            .onChange(of: memorization.plan.chapter) { _, _ in revealed = 0; practiceIndex = 0 }
-            .onChange(of: memorization.plan.from) { _, _ in revealed = 0; practiceIndex = 0 }
-            .onChange(of: memorization.plan.to) { _, _ in revealed = 0; practiceIndex = 0 }
+            }
+            .onDisappear { audio.stop() }
+            .alert("التدريب", isPresented: Binding(get: { audio.error != nil || memorization.error != nil }, set: { if !$0 { audio.error = nil; memorization.error = nil } })) {
+                Button("حسنًا") { audio.error = nil; memorization.error = nil }
+            } message: { Text(audio.error ?? memorization.error ?? "") }
+    }
+    private func change(_ edit: (inout MemorizationPracticeSession) -> Void) {
+        guard var value = current else { return }
+        edit(&value)
+        if memorization.savePractice(value) { current = value }
+    }
+    private func revealNext() {
+        guard let current, !current.revealAll, current.visibleWords < wordCount else { return }
+        change { $0.visibleWords += 1; $0.hints += 1; $0.usedHelp = true }
+    }
+    private func move(_ delta: Int) {
+        guard let current, (current.from...current.to).contains(current.ayah + delta) else { return }
+        audio.stop(); saved = false; wordCount = 0
+        change { $0.ayah += delta; $0.visibleWords = 0; $0.hints = 0; $0.revealAll = false; $0.usedHelp = false }
+    }
+    private func record(_ assessment: String) {
+        guard let current else { return }
+        if memorization.finish(chapter: current.chapter, answers: [.init(ayah: current.ayah, assessment: assessment, revealed: current.usedHelp, hints: current.hints)]) { saved = true }
     }
 }
 struct NoorDailyWardCard: View {
@@ -493,60 +550,68 @@ struct MemorizationTestView: View {
     @State private var hintCount = 0
     private var surah: Surah? { store.quran.first { $0.number == chapter } }
     private var ayah: Ayah? { guard index < keys.count else { return nil }; return surah?.ayahs.first { $0.number == keys[index] } }
+    @State private var wordCount = 0
+    @State private var recording = false
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if done {
-                    NoorCompletionMark()
-                    Text("أكملت المراجعة").font(.largeTitle.bold()).accessibilityIdentifier("hifz.complete")
-                    Card { RecitationRecordingControls() }
-                    if !saved {
-                        Text("لم تُحفظ النتيجة. سجلّك السابق محفوظ دون استبدال.").font(.subheadline).foregroundStyle(.secondary)
-                        Button("حاول حفظ النتيجة") { saved = memorization.finish(chapter: chapter, answers: answers) }.frame(minHeight: 44)
-                    }
-                    Text("تذكّرت \(answers.filter { $0.assessment == "remembered" }.count) من \(answers.count) آيات بتقييمك الذاتي.")
-                    NavigationLink("سجل المراجعة") { MemorizationHistoryView() }.accessibilityIdentifier("hifz.resultHistory")
-                    Button("مراجعة جديدة") { start(forceNew: true) }.frame(minHeight: 44)
-                } else if !QuranTypography.available {
-                    ContentUnavailableView("الخط القرآني غير متاح", systemImage: "textformat", description: Text("أعد تثبيت نسخة موثوقة قبل اختبار الآيات."))
-                } else if let ayah {
-                    Text("السؤال \(index + 1) من \(keys.count) · الآية \(ayah.number)").font(.subheadline).foregroundStyle(.secondary)
-                    NoorProgressBar(value: Double(index) / Double(max(1, keys.count)), label: "تقدم اختبار الحفظ")
-                    Text(paused ? "خذ وقتك" : "أكمل الآية").font(.largeTitle.bold())
-                    Card {
-                        if paused { Text("الجلسة متوقفة").font(.headline) }
-                        else {
-                            QuranVerseText(revealed ? QuranText.verse(chapter: chapter, ayah: ayah) : QuranText.verse(chapter: chapter, ayah: ayah).split(whereSeparator: \.isWhitespace).prefix(cueWords + hintWords).joined(separator: " ") + " …")
-                                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: 8) {
+            if done {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        NoorCompletionMark()
+                        Text("أكملت المراجعة").font(.largeTitle.bold()).accessibilityIdentifier("hifz.complete")
+                        if !saved {
+                            Text("لم تُحفظ النتيجة. سجلّك السابق محفوظ دون استبدال.")
+                            Button("حاول حفظ النتيجة") { saved = memorization.finish(chapter: chapter, answers: answers) }
                         }
-                        HStack {
-                            Button("تلميح") { giveHint() }.disabled(paused || revealed || cueWords + hintWords >= wordCount)
-                            Button("كشف النص") { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { revealed = true }; persistSession() }.disabled(paused).accessibilityIdentifier("hifz.reveal")
-                            Button(paused ? "متابعة" : "استراحة") { paused.toggle(); if paused { audio.stop() } }.accessibilityIdentifier("hifz.pause")
-                        }.buttonStyle(.bordered).font(.subheadline)
-                    }
-                    Card { RecitationRecordingControls(recordingAllowed: !paused) }
-                    Text("قارن النص ثم قيّم استرجاعك بنفسك.").font(.subheadline).foregroundStyle(.secondary)
-                    PrimaryButton(title: "تذكّرتها", icon: "checkmark") { assess("remembered") }.disabled(paused).accessibilityIdentifier("hifz.remembered")
-                    Button("تحتاج مراجعة") { assess("review") }.buttonStyle(.bordered).disabled(paused).frame(minHeight: 44)
-                    Button("تجاوز هذه الآية") { assess("skip") }.disabled(paused).frame(minHeight: 44)
-                    Text("هذا تقييم ذاتي لاسترجاع الآيات. المتابعة الصوتية متاحة من مساحة الحفظ.").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    ContentUnavailableView("تعذّر بدء المراجعة", systemImage: "book.closed", description: Text("تحقّق من موارد المصحف واختر خطة حفظ صحيحة."))
-                    Button("إعادة المحاولة") { start() }
+                        Text("تذكّرت \(answers.filter { $0.assessment == "remembered" }.count) من \(answers.count) آيات بتقييمك الذاتي.")
+                        NavigationLink("سجل المراجعة") { MemorizationHistoryView() }.accessibilityIdentifier("hifz.resultHistory")
+                        Button("مراجعة جديدة") { start(forceNew: true) }.frame(minHeight: 44)
+                    }.padding(20)
                 }
-            }.padding(20)
-        }.background(Theme.background).navigationTitle("اختبار الاسترجاع")
+            } else if let ayah {
+                Text("السؤال \(ArabicSearch.digits(index + 1)) من \(ArabicSearch.digits(keys.count)) · الآية \(ArabicSearch.digits(ayah.number))")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                NoorProgressBar(value: Double(index) / Double(max(1, keys.count)), label: "تقدم اختبار الحفظ").padding(.horizontal, 16)
+                ZStack {
+                    MushafTrainingPage(chapter: chapter, ayah: ayah.number, revealedWords: hintWords, revealAll: revealed,
+                        onHint: giveHint, onWordCount: { wordCount = $0 })
+                        .opacity(paused ? 0 : 1).allowsHitTesting(!paused).accessibilityHidden(paused)
+                    if paused { Label("الجلسة متوقفة؛ موضعك محفوظ", systemImage: "pause.circle").font(.headline) }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack {
+                    Button("تلميح") { giveHint() }.disabled(paused || revealed || hintWords >= wordCount || wordCount == 0)
+                    Spacer()
+                    Button("كشف النص") { revealed = true; persistSession() }.disabled(paused).accessibilityIdentifier("hifz.reveal")
+                    Spacer()
+                    Button(paused ? "متابعة" : "استراحة") { paused.toggle(); if paused { audio.stop() }; persistSession() }.accessibilityIdentifier("hifz.pause")
+                }.frame(minHeight: 44).padding(.horizontal, 16)
+                HStack {
+                    Button("تذكّرتها") { assess("remembered") }.disabled(paused || wordCount == 0).accessibilityIdentifier("hifz.remembered")
+                    Spacer()
+                    Button("تحتاج مراجعة") { assess("review") }.disabled(paused || wordCount == 0)
+                    Spacer()
+                    Button("تجاوز") { assess("skip") }.disabled(paused)
+                }.frame(minHeight: 44).padding(.horizontal, 16)
+                Text("قارن النص ثم قيّم استرجاعك. التلميح والكشف يُسجّلان كمساعدة.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 6)
+            } else {
+                ContentUnavailableView("تعذّر بدء المراجعة", systemImage: "book.closed", description: Text("اختر خطة حفظ صحيحة ثم أعد المحاولة."))
+                Button("إعادة المحاولة") { start() }
+            }
+        }.background(Theme.panel).navigationTitle("اختبار الاسترجاع").navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button { recording = true } label: { Image(systemName: "mic") }.accessibilityLabel("تسجيل تسميع للمراجعة").accessibilityIdentifier("hifz.recording") }
+            .sheet(isPresented: $recording) {
+                NavigationStack { ScrollView { RecitationRecordingControls(recordingAllowed: !paused).padding(20) }
+                    .navigationTitle("تسجيل التسميع").toolbar { Button("إغلاق") { recording = false }.accessibilityIdentifier("hifz.recording.close") } }
+            }
             .onAppear { if keys.isEmpty { start() } }
             .onDisappear { persistSession(); audio.stop() }
             .onChange(of: phase) { _, new in if new != .active { persistSession(); paused = true; audio.stop() } }
     }
-    private var wordCount: Int { ayah.map { QuranText.verse(chapter: chapter, ayah: $0).split(whereSeparator: \.isWhitespace).count } ?? 0 }
-    private var cueWords: Int { min(2, max(0, wordCount - 1)) }
     private func giveHint() {
-        guard !paused, !revealed, cueWords + hintWords < wordCount else { return }
+        guard !paused, !revealed, hintWords < wordCount else { return }
         hintCount += 1
-        withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { hintWords = min(wordCount - cueWords, hintWords + 2) }
+        withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { hintWords = min(wordCount, hintWords + 2) }
         persistSession()
     }
     private func persistSession() {
@@ -566,8 +631,8 @@ struct MemorizationTestView: View {
     }
     private func assess(_ value: String) {
         guard !paused, !done, ["remembered", "review", "skip"].contains(value), let ayah else { return }
-        answers.append(.init(ayah: ayah.number, assessment: value, revealed: revealed || cueWords + hintWords >= wordCount, hints: hintCount))
-        index += 1; revealed = false; hintWords = 0; hintCount = 0
+        answers.append(.init(ayah: ayah.number, assessment: value, revealed: revealed || (wordCount > 0 && hintWords >= wordCount), hints: hintCount))
+        index += 1; revealed = false; hintWords = 0; hintCount = 0; wordCount = 0
         if index >= keys.count { audio.stop(); saved = memorization.finish(chapter: chapter, answers: answers); done = true } else { persistSession() }
     }
 }

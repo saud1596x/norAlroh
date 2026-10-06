@@ -67,6 +67,13 @@ struct OriginalPageData {
     private(set) var renderedSuccessfully = false
     private(set) var failureReason: String?
     private var lines: [(CTLine, CGPoint)] = []
+    private var lineWordRanges: [[(NSRange, Int)]] = []
+    var hiddenWordIDs: Set<Int> = [] {
+        didSet {
+            guard oldValue != hiddenWordIDs else { return }
+            refreshAccessibilityLabels(); ink.setNeedsDisplay()
+        }
+    }
     private var decorationPaths: [CGPath] = []
     struct RowGeometry { let line: Int; let kind: String; var ink: CGRect }
     private(set) var rowGeometry: [RowGeometry] = []
@@ -90,7 +97,7 @@ struct OriginalPageData {
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
-        lines = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
+        lines = []; lineWordRanges = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
         guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: 32),
               let companion = UIFont(name: OriginalMushafCompanion.name, size: 32) else { fail("Missing page or companion font"); return }
         // Content Sync contains ASCII separators both between logical words and
@@ -144,6 +151,7 @@ struct OriginalPageData {
                 fail("Authored row \(row.line) exceeds page canvas: \(pageInk)"); return
             }
             lines.append((line, origin))
+            lineWordRanges.append(ranges.map { ($0.0, $0.1.id) })
             rowGeometry.append(.init(line: row.line, kind: row.type, ink: pageInk))
             var wordRects: [Int: CGRect] = [:]
             var wordPaths: [Int: [CGPath]] = [:]
@@ -192,14 +200,23 @@ struct OriginalPageData {
             guard parts.count == 2, corpus.indices.contains(parts[0] - 1), corpus[parts[0] - 1].ayahs.indices.contains(parts[1] - 1) else { return nil }
             let element = MushafVerseAccessibility(accessibilityContainer: self)
             element.accessibilityIdentifier = "reader.verse.\(key)"
-            element.accessibilityLabel = "\(corpus[parts[0] - 1].name)، الآية \(parts[1]). \(corpus[parts[0] - 1].ayahs[parts[1] - 1].text)"
+            element.verseKey = key
+            element.heading = "\(corpus[parts[0] - 1].name)، الآية \(parts[1])"
+            element.fullText = corpus[parts[0] - 1].ayahs[parts[1] - 1].text
             element.accessibilityTraits = .button
             element.accessibilityLanguage = "ar"
             element.action = { [weak self] in self?.onVerse?(key) }
             element.accessibilityFrameInContainerSpace = regions.first { $0.verse == key }?.rect ?? .zero
             return element
         }
-        updateHighlight(); ink.setNeedsDisplay()
+        refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
+    }
+    private func refreshAccessibilityLabels() {
+        let hiddenVerses = Set(regions.filter { hiddenWordIDs.contains($0.word) }.map(\.verse))
+        for element in accessibilityElements as? [MushafVerseAccessibility] ?? [] {
+            element.accessibilityLabel = element.heading + ". " + (hiddenVerses.contains(element.verseKey)
+                ? "نص الآية مخفي للتدريب. استخدم كشف الكلمات للمساعدة." : element.fullText)
+        }
     }
     /// A title and its separate basmala share the space between actual body ink.
     /// Body baselines, line breaks and glyph advances are never moved or resized.
@@ -276,7 +293,28 @@ struct OriginalPageData {
         for path in decorationPaths { context.addPath(path); context.fillPath() }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height); context.scaleBy(x: 1, y: -1)
-        for (line, origin) in lines { context.textPosition = CGPoint(x: origin.x, y: bounds.height - origin.y); CTLineDraw(line, context) }
+        for (index, entry) in lines.enumerated() {
+            let (line, origin) = entry
+            context.textPosition = CGPoint(x: origin.x, y: bounds.height - origin.y)
+            let ranges = lineWordRanges[index]
+            if !ranges.contains(where: { hiddenWordIDs.contains($0.1) }) {
+                CTLineDraw(line, context)
+            } else {
+                // Shape the full authored line once. Suppress only glyphs belonging
+                // to hidden word IDs; their advances and every neighbour stay fixed.
+                for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+                    let count = CTRunGetGlyphCount(run)
+                    var indices = [CFIndex](repeating: 0, count: count)
+                    CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
+                    for glyph in 0..<count {
+                        let word = ranges.first { NSLocationInRange(indices[glyph], $0.0) }?.1
+                        if word.map({ hiddenWordIDs.contains($0) }) != true {
+                            CTRunDraw(run, context, CFRange(location: glyph, length: 1))
+                        }
+                    }
+                }
+            }
+        }
         context.restoreGState()
     }
 }
@@ -285,6 +323,9 @@ struct OriginalPageData {
     override func draw(_ rect: CGRect) { owner?.drawInk() }
 }
 @MainActor private final class MushafVerseAccessibility: UIAccessibilityElement {
+    var verseKey = ""
+    var heading = ""
+    var fullText = ""
     var action: (() -> Void)?
     override func accessibilityActivate() -> Bool { action?(); return true }
 }
@@ -322,6 +363,7 @@ struct OriginalPageData {
 }
 struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
+    var hiddenWordIDs: Set<Int> = []
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
@@ -333,6 +375,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
         }
         view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
         view.canvas.selected = selected
+        view.canvas.hiddenWordIDs = hiddenWordIDs
     }
     final class Coordinator { var page: Int? }
     func makeCoordinator() -> Coordinator { Coordinator() }
