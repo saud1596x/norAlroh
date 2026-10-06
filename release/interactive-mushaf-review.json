@@ -1,0 +1,43 @@
+{
+  "status": "implementation-awaiting-native-review",
+  "supersedes": "Rejected printed PDF reader, including prior successful PDF tests",
+  "renderer": "Whole-page Core Text, fixed 540x930 coordinates, 32pt page font, 61pt line grid, no justification or per-line resizing",
+  "font": {
+    "edition": "QCF V2 candidate",
+    "bodyManifest": "release/qcf-v2-manifest.json",
+    "companion": "QCF2BSML 5.10",
+    "companionSHA256": "457cd1bf2174e9c10b31eab25bc5eda20c12abbafe5f47bdea473c64036f411e",
+    "companionSourceCommit": "8a4f39d563ea69c994416a1692827e38156c548d"
+  },
+  "layout": {
+    "source": "https://qul.tarteel.ai/resources/mushaf-layout/10",
+    "label": "1421H",
+    "runtimeSnapshotLabel": "1441H",
+    "note": "Candidate alignment and header rows cross-validated against runtime line occupancy; matching Ayah font edition remains unproven. Runtime record IDs remain authoritative; QUL word IDs are not mixed in."
+  },
+  "verified": [
+    "All 604 source page fonts cover runtime Quran symbols",
+    "4517 multi-code logical words preserved",
+    "Unicode corpus remains separate",
+    "HTTP200 tafsir and MP3 for 112:1",
+    "All 6236 independent Unicode ayahs and 112 separate basmalas match pinned Tanzil source by exact codepoint; no normalization"
+  ],
+  "notYetVerified": [
+    "Native compilation and rendering",
+    "Ayah reference typography and fixed line grid fidelity",
+    "All 604 native bounds and hit tests",
+    "Actual audio and tafsir UI",
+    "Zoom and drag hit testing",
+    "Offline actual device use",
+    "Original vector frames reference fidelity",
+    "Explicit distribution rights for common font and row metadata"
+  ],
+  "publicationApproved": false,
+  "actualAppScreenshots": [],
+  "actualAppVideo": null,
+  "sourceRights": {
+    "pageFonts": "Quran Foundation font bundling terms under existing developer account",
+    "companion": "Original KFGQPC mirror, exact family/version/hash; explicit reuse terms still being verified",
+    "rowMetadata": "QUL download; redistribution terms still being verified"
+  }
+}
