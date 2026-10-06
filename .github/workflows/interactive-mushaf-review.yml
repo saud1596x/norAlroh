@@ -21,19 +21,46 @@ jobs:
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
           brew install xcodegen
           xcodegen generate --spec ios/project.yml --project ios
-      - name: Build and test shaped text plus actual reader interactions
+      - name: Select review iPhone
         run: |
           NOOR_GLYPH_SIMULATOR="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for r,a in d["devices"].items() if "SimRuntime.iOS" in r for x in a if x.get("isAvailable") and x["name"].startswith("iPhone") and "Pro Max" in x["name"]))')"
+          echo "NOOR_GLYPH_SIMULATOR=$NOOR_GLYPH_SIMULATOR" >> "$GITHUB_ENV"
+      - name: Build native reader and tests once
+        id: build
+        run: xcodebuild build-for-testing -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -derivedDataPath release/interactive-derived-data CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES
+      - name: Test actual page 604 interactions and record reader
+        if: steps.build.outcome == 'success'
+        run: |
           mkdir -p release/interactive-native-captures
           xcrun simctl boot "$NOOR_GLYPH_SIMULATOR" || true
           xcrun simctl bootstatus "$NOOR_GLYPH_SIMULATOR" -b
           xcrun simctl io "$NOOR_GLYPH_SIMULATOR" recordVideo --codec=h264 release/interactive-native-captures/actual-reader-session.mp4 &
           NOOR_GLYPH_VIDEO_PID=$!
           trap 'kill -INT "$NOOR_GLYPH_VIDEO_PID" || true; wait "$NOOR_GLYPH_VIDEO_PID" || true' EXIT
-          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -only-testing:AtharTests/InteractiveMushafTests -only-testing:AtharUITests/NoorInteractiveMushafUITests -parallel-testing-enabled NO -resultBundlePath release/interactive-mushaf.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES
-      - name: Export actual app captures
-        if: always()
-        run: xcrun xcresulttool export attachments --path release/interactive-mushaf.xcresult --output-path release/interactive-native-captures/attachments
+          xcodebuild test-without-building -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -derivedDataPath release/interactive-derived-data -only-testing:AtharUITests/NoorInteractiveMushafUITests -parallel-testing-enabled NO -resultBundlePath release/interactive-reader-ui.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES
+      - name: Export actual reader screenshots
+        if: always() && steps.build.outcome == 'success'
+        run: xcrun xcresulttool export attachments --path release/interactive-reader-ui.xcresult --output-path release/interactive-native-captures/reader-attachments
+      - name: Save early actual reader evidence
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: interactive-mushaf-native-preview
+          path: release/interactive-native-captures/reader-attachments
+          retention-days: 7
+      - name: Save actual reader video separately
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: interactive-mushaf-native-video
+          path: release/interactive-native-captures/actual-reader-session.mp4
+          retention-days: 7
+      - name: Audit all 604 native pages and word hit regions
+        if: always() && steps.build.outcome == 'success'
+        run: xcodebuild test-without-building -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -derivedDataPath release/interactive-derived-data -only-testing:AtharTests/InteractiveMushafTests -parallel-testing-enabled NO -resultBundlePath release/interactive-mushaf.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES
+      - name: Export original shaped-page diagnostics
+        if: always() && steps.build.outcome == 'success'
+        run: xcrun xcresulttool export attachments --path release/interactive-mushaf.xcresult --output-path release/interactive-native-captures/page-attachments
       - name: Save review evidence (not visual or release approval)
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,5 +68,6 @@ jobs:
           name: interactive-mushaf-INTERNAL-review
           path: |
             release/interactive-mushaf.xcresult
+            release/interactive-reader-ui.xcresult
             release/interactive-native-captures
           retention-days: 14
