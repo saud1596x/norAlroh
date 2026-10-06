@@ -36,6 +36,7 @@ final class MushafArtworkViewport: UIView, UIScrollViewDelegate {
         canvas.artwork = artwork; canvas.corpus = corpus; canvas.selected = selected
         canvas.onSelect = onSelect; canvas.onToggleTools = onToggleTools
         pageSize = CGSize(width: artwork.metadata.width, height: artwork.metadata.height)
+        canvas.contentScaleFactor = UIScreen.main.scale * 2
         canvas.setNeedsDisplay(); canvas.updateAccessibility(); setNeedsLayout()
     }
     override func layoutSubviews() {
@@ -61,7 +62,6 @@ final class MushafArtworkViewport: UIView, UIScrollViewDelegate {
 }
 
 final class MushafArtworkCanvas: UIView {
-    override class var layerClass: AnyClass { CATiledLayer.self }
     var artwork: MushafArtworkLibrary.Artwork?
     var corpus: [Surah] = []
     var selected: String?
@@ -70,10 +70,6 @@ final class MushafArtworkCanvas: UIView {
     private(set) var renderedSuccessfully = false
     override init(frame: CGRect) {
         super.init(frame: frame); backgroundColor = .clear
-        if let tiled = layer as? CATiledLayer {
-            tiled.levelsOfDetail = 1; tiled.levelsOfDetailBias = 3
-            tiled.tileSize = CGSize(width: 512, height: 512)
-        }
         isAccessibilityElement = false
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
         let press = UILongPressGestureRecognizer(target: self, action: #selector(pressed(_:)))
@@ -90,23 +86,18 @@ final class MushafArtworkCanvas: UIView {
         guard let artwork, let fit, fit.scale > 0, let context = UIGraphicsGetCurrentContext() else { return }
         context.saveGState()
         context.translateBy(x: fit.origin.x, y: fit.origin.y); context.scaleBy(x: fit.scale, y: fit.scale)
-        // Hit polygons use the manifest's top-left coordinate space. The PDF is
-        // drawn below with its ordinary bottom-left coordinate space.
+        // Keep the original paper, ink, ornaments and raster placement intact.
+        context.saveGState()
+        context.translateBy(x: 0, y: artwork.metadata.height); context.scaleBy(x: 1, y: -1)
+        context.drawPDFPage(artwork.page); context.restoreGState()
+        // Selection must be above opaque paper; only verified polygons qualify.
         if let region = artwork.metadata.regions.first(where: { $0.verseKey == selected }) {
             context.setFillColor(UIColor.systemYellow.withAlphaComponent(0.20).cgColor)
             for polygon in region.polygons {
                 context.addPath(MushafArtworkGeometry.path(polygon)); context.fillPath()
             }
         }
-        // Approved page PDFs must have transparent paper. Tint only coverage,
-        // preserving the app's existing ink color and every original path.
-        context.beginTransparencyLayer(auxiliaryInfo: nil)
-        context.saveGState()
-        context.translateBy(x: 0, y: artwork.metadata.height); context.scaleBy(x: 1, y: -1)
-        context.drawPDFPage(artwork.page); context.restoreGState()
-        context.setBlendMode(.sourceIn); context.setFillColor(UIColor.label.cgColor)
-        context.fill(CGRect(x: 0, y: 0, width: artwork.metadata.width, height: artwork.metadata.height))
-        context.endTransparencyLayer(); context.restoreGState()
+        context.restoreGState()
         renderedSuccessfully = true
     }
     @objc private func tapped(_ gesture: UITapGestureRecognizer) { onToggleTools?() }
@@ -118,6 +109,13 @@ final class MushafArtworkCanvas: UIView {
     }
     func updateAccessibility() {
         guard let metadata = artwork?.metadata, let fit, fit.scale > 0 else { accessibilityElements = nil; return }
+        if metadata.regions.isEmpty {
+            isAccessibilityElement = true
+            accessibilityLabel = "صفحة المصحف الأصلية \(metadata.number)"
+            accessibilityElements = nil
+            return
+        }
+        isAccessibilityElement = false
         accessibilityElements = metadata.regions.compactMap { region -> UIAccessibilityElement? in
             let key = region.verseKey.split(separator: ":").compactMap { Int($0) }
             guard key.count == 2, corpus.indices.contains(key[0] - 1), corpus[key[0] - 1].ayahs.indices.contains(key[1] - 1) else { return nil }

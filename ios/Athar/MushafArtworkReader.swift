@@ -64,7 +64,7 @@ struct MushafArtworkReader: View {
         .task {
             let key = "\(startingChapter):\(startingAyah)"
             number = startingPage.flatMap { (1...604).contains($0) ? $0 : nil }
-                ?? library.manifest.pages.first(where: { $0.regions.contains(where: { $0.verseKey == key }) })?.number ?? 1
+                ?? library.manifest.pages.first(where: { $0.regions.contains(where: { $0.verseKey == key }) })?.number ?? min(604, max(1, lastPage))
             load()
         }
         .onChange(of: number) { _, _ in load() }

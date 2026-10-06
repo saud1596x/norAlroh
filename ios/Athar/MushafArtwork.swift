@@ -114,9 +114,41 @@ enum MushafArtworkGeometry {
     let manifest: MushafArtworkManifest
     private let bundle: Bundle
     private var retained: [Int: Artwork] = [:]
+    private var originalDocument: CGPDFDocument?
+    nonisolated static let originalSHA256 = "5c4297de1fb6b654f641eed33242408d89432cbecf8a96ff5d297cb45fea7f07"
     private init(manifest: MushafArtworkManifest, bundle: Bundle) { self.manifest = manifest; self.bundle = bundle }
 
     static func installed(bundle: Bundle = .main, corpus: [Surah]) async -> Availability {
+        if let originalURL = bundle.url(forResource: "king-fahd-standard39-2", withExtension: "pdf") {
+            do {
+                let pages = try await Task.detached(priority: .userInitiated) {
+                    let bytes = try Data(contentsOf: originalURL, options: .mappedIfSafe)
+                    guard Self.digest(bytes) == Self.originalSHA256,
+                          let document = CGPDFDocument(originalURL as CFURL),
+                          document.numberOfPages == 640, !document.isEncrypted else { throw MushafArtworkManifest.Invalid.hash }
+                    return try (1...604).map { number -> MushafArtworkManifest.Page in
+                        // The publisher's three opening leaves precede printed page 1.
+                        guard let page = document.page(at: number + 3) else { throw MushafArtworkManifest.Invalid.page }
+                        let box = page.getBoxRect(.mediaBox)
+                        guard page.rotationAngle == 0, box.minX == 0, box.minY == 0,
+                              abs(box.width - 382.6771545410156) < 0.001,
+                              abs(box.height - 547.0866088867188) < 0.001,
+                              page.getBoxRect(.cropBox) == box else { throw MushafArtworkManifest.Invalid.artwork }
+                        // Empty regions deliberately disable unverified verse hit testing.
+                        return .init(number: number, width: Double(box.width), height: Double(box.height),
+                            file: "king-fahd-standard39-2.pdf", sha256: Self.originalSHA256, regions: [])
+                    }
+                }.value
+                let manifest = MushafArtworkManifest(schema: 1, edition: "KFGQPC المصحف العادي standard39-2",
+                    sourceURL: "https://qurancomplex.gov.sa/wp-content/uploads/isdarat/hafs/standard39-2.pdf",
+                    sourceRevision: Self.originalSHA256, rightsRecord: "Distribution review pending",
+                    reviewStatus: "USER_CONFIRMED_SOURCE_NATIVE_REVIEW_PENDING", reviewedReferencePages: [604], pages: pages)
+                let library = MushafArtworkLibrary(manifest: manifest, bundle: bundle)
+                library.originalDocument = CGPDFDocument(originalURL as CFURL)
+                guard library.originalDocument != nil else { throw MushafArtworkManifest.Invalid.artwork }
+                return .ready(library)
+            } catch { return .rejected }
+        }
         guard let url = bundle.url(forResource: "mushaf-artwork-manifest", withExtension: "json") else { return .absent }
         do {
             let manifest = try await Task.detached(priority: .userInitiated) {
@@ -137,6 +169,10 @@ enum MushafArtworkGeometry {
         if let cached = retained[number] { return cached }
         guard (1...604).contains(number) else { throw MushafArtworkManifest.Invalid.page }
         let metadata = manifest.pages[number - 1]
+        if let document = originalDocument {
+            guard let page = document.page(at: number + 3) else { throw MushafArtworkManifest.Invalid.artwork }
+            return Artwork(metadata: metadata, document: document, page: page)
+        }
         guard let url = bundle.url(forResource: String(metadata.file.dropLast(4)), withExtension: "pdf") else { throw MushafArtworkManifest.Invalid.artwork }
         let bytes = try Data(contentsOf: url)
         guard Self.digest(bytes) == metadata.sha256 else { throw MushafArtworkManifest.Invalid.hash }
