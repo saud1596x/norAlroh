@@ -113,10 +113,27 @@ struct MushafReader: View {
     @State private var renderingFailed = false
     @State private var database: MushafDatabase?
     @State private var contentError: String?
+    @State private var artworkAvailability: MushafArtworkLibrary.Availability = .absent
     private var page: MushafPage? { database?.pages.first { $0.page == number } }
     private var reduce: Bool { systemReduced || store.data.lowMotion }
     init(chapter: Int, ayah: Int = 1, page: Int? = nil) { startingChapter = chapter; startingAyah = ayah; startingPage = page }
     var body: some View {
+        Group {
+            switch artworkAvailability {
+            case .ready(let library):
+                MushafArtworkReader(library: library, startingChapter: startingChapter,
+                    startingAyah: startingAyah, startingPage: startingPage)
+            case .rejected:
+                ContentUnavailableView("تعذّر التحقق من صفحات المصحف", systemImage: "doc",
+                    description: Text("حزمة الصفحات الأصلية غير مكتملة أو غير معتمدة. لم يُعرض بديل عنها."))
+            case .absent:
+                legacyBody
+            }
+        }.task {
+            artworkAvailability = await MushafArtworkLibrary.installed(corpus: store.quran)
+        }
+    }
+    private var legacyBody: some View {
         VStack(spacing: 0) {
             if let page {
                 if renderingFailed {
