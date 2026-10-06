@@ -140,12 +140,15 @@ struct MemorizationArchive: Codable {
         for result in history where result.chapter == plan.chapter {
             for answer in result.answers where latest[answer.ayah] == nil { latest[answer.ayah] = answer }
         }
+        let states = progress.verses
+        let chapter = plan.chapter
+        let today = Calendar.current.startOfDay(for: Date())
         let keys = Array(plan.from...upper).shuffled().sorted { a, b in
             func priority(_ key: Int) -> Int {
-                if progress.verses["\(plan.chapter):\(key)"]?.needsHelp == true { return 0 }
+                if states["\(chapter):\(key)"]?.needsHelp == true { return 0 }
                 if let answer = latest[key], answer.assessment != "remembered" || answer.revealed || answer.hints > 0 { return 0 }
-                guard let state = progress.verses["\(plan.chapter):\(key)"] else { return 2 }
-                return state.nextReview <= Calendar.current.startOfDay(for: Date()) ? 1 : 3
+                guard let state = states["\(chapter):\(key)"] else { return 2 }
+                return state.nextReview <= today ? 1 : 3
             }
             return priority(a) < priority(b)
         }
