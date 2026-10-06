@@ -16,6 +16,7 @@ jobs:
         run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
       - name: Generate native project
         run: |
+          python3 scripts/prepare-king-fahd-mushaf.py
           brew install xcodegen
           xcodegen generate --spec ios/project.yml --project ios
       - name: Test production artwork geometry and activation gate
