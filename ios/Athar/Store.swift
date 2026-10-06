@@ -251,13 +251,14 @@ enum QuranText {
 }
 
 struct NoorPrivacyExport: Codable {
-    var schemaVersion = 3
+    var schemaVersion = 4
     var exportedAt = Date()
     let device: DeviceData
     let adhkarCounters: [String: Int]
     let adhkarFavorites: [String]
     let memorizationPlan: MemorizationPlan
     let memorizationHistory: [MemorizationResult]
+    var memorizationSession: MemorizationSession? = nil
     let prayerPreferences: PrayerNotificationPreferences
     let localRecording: Data?
     let lastMushafPage: Int

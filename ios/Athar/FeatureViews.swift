@@ -17,7 +17,7 @@ struct QuranView: View {
     var body: some View {
         List {
             Section {
-                Text("١١٤ سورة متاحة دون اتصال. النص محفوظ كما ورد من المصدر.")
+                Text("١١٤ سورة. تابع القراءة من آخر صفحة واحفظ علاماتك.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             ForEach(filtered) { surah in
@@ -79,7 +79,7 @@ struct QuranReader: View {
                     .accessibilityIdentifier("ayah.\(surah.number).\(ayah.number)")
                     Divider()
                 }
-                Text("المصدر: Tanzil · النص العثماني 1.1، منسوخ كما ورد دون تعديل. الأسئلة والتأملات في التطبيق ليست تفسيرًا أو فتوى.")
+                Text("اضغط على الآية لحفظ علامة والعودة إليها لاحقًا.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }.padding(20)
         }
@@ -184,7 +184,7 @@ struct SettingsView: View {
                 Button("تصدير بياناتي") {
                     do {
                         let snapshot = NoorPrivacyExport(device: store.data, adhkarCounters: dhikrCounters.counts, adhkarFavorites: Array(dhikrCounters.favorites).sorted(),
-                            memorizationPlan: memorization.plan, memorizationHistory: memorization.history,
+                            memorizationPlan: memorization.plan, memorizationHistory: memorization.history, memorizationSession: memorization.session,
                             prayerPreferences: notifications.preferences, localRecording: try recitation.exportRecording(),
                             lastMushafPage: max(1, min(604, UserDefaults.standard.integer(forKey: "noor.mushaf.lastPage"))),
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory)
@@ -200,7 +200,7 @@ struct SettingsView: View {
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
-                NavigationLink("مصادر المحتوى") { SourcesView() }.accessibilityIdentifier("settings.sources")
+                NavigationLink("التراخيص ونسب المحتوى") { SourcesView() }.accessibilityIdentifier("settings.sources")
             }
             Section("عن نور الروح") {
                 Text("مصحف كامل، أذكار موثّقة ومواقيت الصلاة. للحفظ تسجيل محلي ومتابعة صوتية اختيارية تقارن الكلمات وتعرض فروقًا محتملة تحتاج مراجعتك.")
@@ -211,7 +211,7 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("الإعدادات والخصوصية")
+        .navigationTitle("الإعدادات")
         .toolbar { ToolbarItem(placement: .topBarLeading) { Button("تم") { dismiss() } } }
         .confirmationDialog("سيُحذف سجل الرحلات والتأملات والعلامات والحفظ والأذكار والتسجيل والنموذج الصوتي المحلي والإعدادات نهائيًا.", isPresented: $erase, titleVisibility: .visible) {
             Button("حذف كل بياناتي", role: .destructive) {
@@ -288,7 +288,7 @@ struct SourcesView: View {
                 NavigationLink("تراخيص المكونات التابعة") { BundledLicenseView(title: "مكونات WhisperKit", resource: "WHISPERKIT-THIRD-PARTY", extension: "txt") }
                     .accessibilityIdentifier("sources.whispercomponents")
             }
-        }.navigationTitle("مصادر المحتوى")
+        }.navigationTitle("التراخيص ونسب المحتوى")
     }
 }
 

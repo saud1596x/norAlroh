@@ -64,7 +64,6 @@ struct NoorLegalDocumentView: View {
                let document = content.documents.first(where: { $0.id == documentID }) {
                 VStack(alignment: .leading, spacing: 22) {
                     Text(content.appName).font(.title2.bold())
-                    Text("الناشر: \(content.publisherName)").font(.subheadline)
                     Text("آخر تحديث: \(content.updatedAt)").font(.caption).foregroundStyle(.secondary)
                     ForEach(document.sections) { section in
                         VStack(alignment: .leading, spacing: 8) {
