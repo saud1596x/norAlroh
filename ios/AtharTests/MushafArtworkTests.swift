@@ -62,6 +62,9 @@ final class MushafArtworkTests: XCTestCase {
             return XCTFail("Pinned original PDF rejected")
         }
         XCTAssertEqual(library.manifest.pages.map(\.number), Array(1...604))
+        XCTAssertEqual(library.chapterStartPages.count, 114)
+        XCTAssertEqual(library.chapterStartPages[71], 572)
+        XCTAssertEqual(Array(library.chapterStartPages.suffix(3)), [604, 604, 604])
         for number in 1...604 {
             let artwork = try library.artwork(number: number)
             XCTAssertEqual(artwork.document.numberOfPages, 640)
