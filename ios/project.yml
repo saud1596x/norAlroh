@@ -27,6 +27,7 @@ targets:
     sources:
       - path: Athar
       - path: NoorFocusShared
+      - path: NoorWidgetShared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.saud1596x.nooralruh
@@ -34,11 +35,36 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Athar/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NoorWidgetShared/NoorWidgets.entitlements
     dependencies:
+      - target: NoorWidgets
+        embed: true
       - package: WhisperKit
         product: WhisperKit
       - package: Adhan
         product: Adhan
+  NoorWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NoorWidgets
+      - path: NoorWidgetShared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.saud1596x.nooralruh.widgets
+        DEVELOPMENT_TEAM: 4SY7K26FCX
+        CODE_SIGN_ENTITLEMENTS: NoorWidgetShared/NoorWidgets.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    dependencies:
+      - package: Adhan
+        product: Adhan
+    info:
+      path: NoorWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: نور الروح
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   AtharTests:
     type: bundle.unit-test
     platform: iOS
