@@ -20,12 +20,12 @@
     "4517 multi-code logical words preserved",
     "Unicode corpus remains separate",
     "HTTP200 tafsir and MP3 for 112:1",
-    "All 6236 independent Unicode ayahs and 112 separate basmalas match pinned Tanzil source by exact codepoint; no normalization"
+    "All 6236 independent Unicode ayahs and 112 separate basmalas match pinned Tanzil source by exact codepoint; no normalization",
+    "Native Release compilation succeeded",
+    "All604 native page bounds and actual word hit regions passed in28.211seconds"
   ],
   "notYetVerified": [
-    "Native compilation and rendering",
     "Ayah reference typography and fixed line grid fidelity",
-    "All 604 native bounds and hit tests",
     "Actual audio and tafsir UI",
     "Zoom and drag hit testing",
     "Offline actual device use",
@@ -49,9 +49,9 @@
     "nativeVisualAcceptance": false
   },
   "currentNativeRun": {
-    "id": 37519940663,
-    "sourceCommit": "e422dc9327a5d4a291237018deced089b4c436e3",
-    "state": "failed"
+    "id": 37523178310,
+    "sourceCommit": "cf7bac5419516bd8a0c8e9b4e50e834675619169",
+    "state": "all604-pass-ui-title-assertion-failed"
   },
   "nativeFindings": {
     "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
@@ -60,6 +60,8 @@
       "Add10 canonical units below the existing immutable grid; no letter or baseline changes",
       "Index first page per verse once; remove repeated corpus construction during initial604 lookup"
     ],
-    "actualAppArtifactAccess": "127MB review package download timed out; no extracted screenshots yet"
-  }
+    "actualAppArtifactAccess": "Preview13.2MB and video11MB generated; browser download timed out. Not visually reviewed.",
+    "run37523178310": "All604 native audit passed. UI opened604 and first verse tools; title assertion failed before subsequent interaction checks."
+  },
+  "crossPageAyahsInPinnedSnapshot": 0
 }
