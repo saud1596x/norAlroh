@@ -26,13 +26,13 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                     app.buttons["verse.tafsir"].tap()
                     XCTAssertTrue(app.staticTexts["verse.tafsir.text"].waitForExistence(timeout: 45))
                     capture(app, "text-reader-604-tafsir")
-                    app.buttons["إغلاق"].lastMatch.tap()
+                    app.buttons["verse.tafsir.close"].tap()
                     app.swipeUp()
                     app.buttons["verse.copy"].tap()
                     XCTAssertTrue(app.staticTexts["verse.notice"].waitForExistence(timeout: 10))
                     capture(app, "text-reader-604-copy-confirmed")
                 }
-                app.buttons["إغلاق"].lastMatch.tap()
+                app.buttons["verse.tools.close"].tap()
             }
         }
         let verse = app.buttons["reader.verse.114:1"]
