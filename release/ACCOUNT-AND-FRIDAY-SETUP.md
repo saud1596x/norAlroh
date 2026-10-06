@@ -1,6 +1,6 @@
 # Accounts and Friday release gates
 
-The source includes Apple and Google authentication through Firebase Auth and private, opt-in memorization backups through Firestore. No Firebase project or provider has been activated yet. The default project does not enable account SDKs; `ios/project-accounts.yml` builds the complete Screen Time + account integration. Neither build may be described as offering working cloud accounts before the gates below pass.
+The source includes Apple and Google authentication through Firebase Auth and private, opt-in memorization backups through Firestore. Firebase project `noor-alruh` now exists and iOS bundle `com.saud1596x.nooralruh` is registered. Google and Apple providers remain disabled; the Google support-email selector only offers the owner’s personal email, which must not be exposed without changing the approved public support configuration. The default project does not enable account SDKs; `ios/project-accounts.yml` builds the complete Screen Time + account integration. Neither build may be described as offering working cloud accounts before the gates below pass.
 
 ## Required configuration
 

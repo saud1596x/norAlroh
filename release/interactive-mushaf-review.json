@@ -1,5 +1,5 @@
 {
-  "status": "implementation-awaiting-native-review",
+  "status": "NATIVE_TESTS_PASSED_AWAITING_VISUAL_AND_RIGHTS_REVIEW",
   "supersedes": "Rejected printed PDF reader, including prior successful PDF tests",
   "renderer": "Whole-page Core Text, fixed 540x940 coordinates, 32pt page font, 61pt line grid, no justification or per-line resizing",
   "font": {
@@ -22,12 +22,14 @@
     "HTTP200 tafsir and MP3 for 112:1",
     "All 6236 independent Unicode ayahs and 112 separate basmalas match pinned Tanzil source by exact codepoint; no normalization",
     "Native Release compilation succeeded",
-    "All604 native page bounds and actual word hit regions passed in28.211seconds"
+    "All604 native page bounds and actual word hit regions passed in28.211seconds",
+    "Native UI test passed: all15 ayahs on604, tafsir text, actual playback indicator, copy confirmation and selection after zoom-pan",
+    "Actual navigation and unchanged viewport passed on604,572,598,1,2,3,151,48; 2:282 long ayah selected",
+    "All604 native bounds and word center-hit audit passed27.695s in review5",
+    "Pinned-edition rejection and atomic offline cache recovery passed24.465s"
   ],
   "notYetVerified": [
     "Ayah reference typography and fixed line grid fidelity",
-    "Actual audio and tafsir UI",
-    "Zoom and drag hit testing",
     "Offline actual device use",
     "Original vector frames reference fidelity",
     "Explicit distribution rights for common font and row metadata"
@@ -49,9 +51,10 @@
     "nativeVisualAcceptance": false
   },
   "currentNativeRun": {
-    "id": 37523178310,
-    "sourceCommit": "cf7bac5419516bd8a0c8e9b4e50e834675619169",
-    "state": "all604-pass-ui-title-assertion-failed"
+    "id": 37528605680,
+    "sourceCommit": "1d50ac206a1daa5b3c78101be6f0a52e12db4cdd",
+    "state": "success",
+    "url": "https://github.com/saud1596x/norAlroh/actions/runs/37528605680"
   },
   "nativeFindings": {
     "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
@@ -60,8 +63,26 @@
       "Add10 canonical units below the existing immutable grid; no letter or baseline changes",
       "Index first page per verse once; remove repeated corpus construction during initial604 lookup"
     ],
-    "actualAppArtifactAccess": "Preview13.2MB and video11MB generated; browser download timed out. Not visually reviewed.",
-    "run37523178310": "All604 native audit passed. UI opened604 and first verse tools; title assertion failed before subsequent interaction checks."
+    "actualAppArtifactAccess": "Successful native run produced preview11.5MB and video88.1MB. Preview download timed out; artifacts not extracted or visually reviewed.",
+    "run37523178310": "All604 native audit passed. UI opened604 and first verse tools; title assertion failed before subsequent interaction checks.",
+    "run37528605680": "Native review successful. Two UI tests passed161.625s and101.276s. Two unit tests passed52.159s, zero failures."
   },
-  "crossPageAyahsInPinnedSnapshot": 0
+  "crossPageAyahsInPinnedSnapshot": 0,
+  "all604DataValidated": true,
+  "all604NativeBoundsValidated": true,
+  "all604WordHitRegionsValidated": true,
+  "unicodeCorpusValidated": true,
+  "zoomPanSelectionVerified": true,
+  "offlineReadingVerified": false,
+  "rightsCleared": false,
+  "nativeArtifacts": {
+    "preview": {
+      "id": 11443986481,
+      "sha256": "3ad035d7d2d3b6cd0d5241a772375a881634bf20372127beaaf6a4c8e6117635"
+    },
+    "video": {
+      "id": 11443354028,
+      "sha256": "27e47750eed3c321b7e886fd6eac585066a9dc7613309907bc729b6ec0559218"
+    }
+  }
 }
