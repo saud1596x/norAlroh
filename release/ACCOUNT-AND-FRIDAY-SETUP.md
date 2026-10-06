@@ -23,4 +23,4 @@ The source includes Apple and Google authentication through Firebase Auth and pr
 
 ## Publishing remains blocked
 
-Family Controls terms must be explicitly accepted by the owner before requesting the distribution entitlement. Screen Time distribution, provisioning for three extensions, real-device ward blocking, actual speech accuracy benchmarks, account service activation, and updated privacy documents remain prerequisites. No new version has been submitted for App Store publication.
+On 2026-10-07 Asia/Riyadh, the owner explicitly accepted the displayed Family Controls terms. Apple confirmed the distribution request submission and said it will review the request and contact the owner. Approval is pending. Screen Time distribution, provisioning for three extensions, real-device ward blocking, actual speech accuracy benchmarks, account service activation, and updated privacy documents remain prerequisites. No new version has been submitted for App Store publication.
