@@ -46,6 +46,9 @@ workflows:
         certificates:
           - noor-alruh-distribution
     scripts:
+      - name: Require matching Mushaf artwork and actual visual review
+        script: |
+          python3 scripts/check-mushaf-publication.py
       - name: Verify Xcode and SDK
         script: |
           python3 scripts/check-upload-toolchain.py
