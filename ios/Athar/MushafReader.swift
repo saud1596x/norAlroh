@@ -277,13 +277,14 @@ private struct MushafLineRepresentable: UIViewRepresentable {
     }
 }
 
-private final class MushafLineCanvas: UIView {
+final class MushafLineCanvas: UIView {
     var words: [MushafWord] = []; var layout: MushafLayout?
     var bodyName = ""; var headerName = ""; var basmalaName = ""
     var headers: [Int] = []; var quran: [Surah] = []; var centered = false
     var onSelect: ((String) -> Void)?
     var onFailure: (() -> Void)?
     var selected: String?
+    private(set) var renderedSuccessfully = false
     private var drawnLine: CTLine?; private var origin = CGPoint.zero
     private var wordRanges: [(NSRange, String)] = []
     private var verseRects: [(key: String, rect: CGRect)] = []
@@ -294,6 +295,7 @@ private final class MushafLineCanvas: UIView {
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) { super.traitCollectionDidChange(previousTraitCollection); setNeedsDisplay() }
     override func draw(_ rect: CGRect) {
+        renderedSuccessfully = false
         guard bounds.width > 12, bounds.height > 8, let context = UIGraphicsGetCurrentContext() else { return }
         drawnLine = nil; verseRects = []; accessibilityElements = nil
         var text = ""; var fontName = bodyName; var size: CGFloat = bounds.width * 0.115
@@ -338,6 +340,7 @@ private final class MushafLineCanvas: UIView {
         context.saveGState(); context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height); context.scaleBy(x: 1, y: -1)
         context.textPosition = origin; CTLineDraw(line, context); context.restoreGState()
+        renderedSuccessfully = true
         if layout == nil {
             var elements: [UIAccessibilityElement] = []
             for target in verseRects {
