@@ -10,6 +10,7 @@ struct MushafTrainingPage: View {
     let ayah: Int
     let revealedWords: Int
     let revealAll: Bool
+    var hiddenRange: ClosedRange<Int>? = nil
     var onHint: () -> Void = {}
     var onWordCount: (Int) -> Void = { _ in }
     @State private var snapshot: QCFV2Snapshot?
@@ -28,7 +29,18 @@ struct MushafTrainingPage: View {
             }
     }
     private var pages: [Int] { Array(Set(verseWords.compactMap(\.page_number))).sorted() }
-    private var hidden: Set<Int> { revealAll ? [] : Set(verseWords.dropFirst(max(0, revealedWords)).map(\.id)) }
+    private var hidden: Set<Int> {
+        guard !revealAll else { return [] }
+        var result = Set(verseWords.dropFirst(max(0, revealedWords)).map(\.id))
+        if let hiddenRange, let snapshot {
+            let ids = Set(keys.enumerated().compactMap { offset, key -> Int? in
+                let parts = key.split(separator: ":").compactMap { Int($0) }
+                return parts.count == 2 && parts[0] == chapter && hiddenRange.contains(parts[1]) && parts[1] != ayah ? offset + 1 : nil
+            })
+            result.formUnion(snapshot.records.filter { $0.record_type == "mushaf_word" && $0.verse_id.map(ids.contains) == true }.map(\.id))
+        }
+        return result
+    }
     private var page: OriginalPageData? {
         guard let snapshot, let rows else { return nil }
         return .page(number, snapshot: snapshot, rows: rows, keys: keys)

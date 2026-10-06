@@ -13,11 +13,14 @@ import WhisperKit
     @Published private(set) var requestingPermission = false
     @Published private(set) var settling = false
     @Published private(set) var transcript = ""
-    @Published private(set) var anchor = 0
+    @Published private(set) var anchor = 0 { didSet { persistPosition() } }
+    @Published private(set) var savedPosition: SpeechSessionPosition?
     @Published private(set) var comparison: RecitationComparison?
     @Published private(set) var status = "جهّز النموذج قبل بدء المتابعة الصوتية."
     @Published var message: String?
     private var activeWords: [RecitationExpectedWord] = []
+    private let positions: SpeechPositionStore
+    private var usedHelp = false
     private var pipeline: WhisperKit?
     private var preparingTask: Task<Void, Never>?
     private var inferenceTask: Task<Void, Never>?
@@ -26,6 +29,16 @@ import WhisperKit
     private var revision = 0
     private let defaults = UserDefaults.standard
     private let folderKey = "noor.speechModelFolder.v1"
+    init() {
+        positions = SpeechPositionStore(); savedPosition = positions.value
+    }
+    func markHelpUsed() { usedHelp = true; persistPosition() }
+    private func persistPosition() {
+        guard let value = SpeechSessionPosition.make(words: activeWords, nextWord: anchor, usedHelp: usedHelp) else { return }
+        if positions.save(value) { savedPosition = value }
+        else { message = "تعذّر حفظ موضع التسميع. احتُفظ ببيانات الجلسة السابقة دون استبدال." }
+    }
+    func eraseSavedPosition() { stop(clear: true); positions.erase(); savedPosition = nil; usedHelp = false }
     private var cache: URL? {
         try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("NoorSpeech", isDirectory: true)
     }
@@ -61,8 +74,11 @@ import WhisperKit
             }
         }
     }
-    func start(expected: [RecitationExpectedWord], recorder: LocalRecitationRecorder) async {
+    func start(expected: [RecitationExpectedWord], recorder: LocalRecitationRecorder, resumeAt: Int = 0, helped: Bool = false) async {
         guard ready, !listening, !requestingPermission, !deleting, !expected.isEmpty, let pipeline else { return }
+        guard expected.count <= 1500, (0...expected.count).contains(resumeAt), positions.unreadable == nil else {
+            message = positions.unreadable == nil ? "اختر نطاقًا أقصر للتسميع على هذا الجهاز." : "تعذّر فتح موضع التسميع السابق. صدّر بياناتك قبل بدء جلسة جديدة."; return
+        }
         let waitingRevision = revision
         requestingPermission = true
         defer { requestingPermission = false }
@@ -76,8 +92,8 @@ import WhisperKit
         let granted = await withCheckedContinuation { continuation in AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) } }
         guard attempt == revision, UIApplication.shared.applicationState == .active else { return }
         guard granted else { message = "اسمح بالميكروفون من إعدادات iOS للمتابعة الصوتية. القراءة والمراجعة اليدوية متاحتان."; return }
-        activeWords = expected
-        recorder.stop(); buffer.erase(); buffer = RecitationAudioBuffer(); transcript = ""; comparison = nil; anchor = 0
+        activeWords = expected; usedHelp = helped
+        recorder.stop(); buffer.erase(); buffer = RecitationAudioBuffer(); transcript = ""; comparison = nil; anchor = resumeAt
         do {
             let capture = buffer
             guard let processor = pipeline.audioProcessor as? AudioProcessor else { throw CocoaError(.featureUnsupported) }
@@ -154,7 +170,7 @@ import WhisperKit
         pipeline?.audioProcessor.stopRecording(); pipeline?.audioProcessor.purgeAudioSamples(keepingLast: 0)
         listening = false; buffer.erase()
         if wasListening { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
-        if clear { transcript = ""; comparison = nil; anchor = 0; activeWords = [] }
+        if clear { activeWords = []; transcript = ""; comparison = nil; anchor = 0 }
         guard pending != nil || !samples.isEmpty else { settling = false; return }
         settling = true
         if !samples.isEmpty { status = "أراجع نهاية المقطع…" }
@@ -191,7 +207,7 @@ import WhisperKit
         self.pipeline = nil; ready = false
         do {
             if let cache, FileManager.default.fileExists(atPath: cache.path) { try FileManager.default.removeItem(at: cache) }
-            defaults.removeObject(forKey: folderKey); status = "حُذف النموذج المحلي وبيانات المتابعة."; return true
+            defaults.removeObject(forKey: folderKey); status = "حُذف النموذج المحلي؛ موضع جلسة التسميع محفوظ."; return true
         } catch { message = "تعذّر حذف ملفات النموذج. حاول مجددًا."; return false }
     }
 }

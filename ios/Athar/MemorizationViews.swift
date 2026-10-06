@@ -153,7 +153,7 @@ struct MemorizationArchive: Codable {
         do {
             defaults.set(try JSONEncoder().encode(value), forKey: "noor.memorization.practice")
             practice = value; return true
-        } catch { error = "تعذّر حفظ موضع التدريب."; return false }
+        } catch { self.error = "تعذّر حفظ موضع التدريب."; return false }
     }
     private func validSession(_ value: MemorizationSession, corpus: [Surah]) -> Bool {
         guard corpus.indices.contains(value.chapter - 1), !value.keys.isEmpty, value.keys.count <= 50,
@@ -324,7 +324,7 @@ struct MemorizationView: View {
                     action("احفظ آية جديدة", detail: "اقرأ الآية، أخفها، ثم اكشف كلماتها بالتدرج", icon: "book.closed", number: "١")
                 }.accessibilityIdentifier("hifz.practice")
                 NavigationLink { SpeechRecitationView() } label: {
-                    action("سمّع بصوتك", detail: "آية واحدة في كل خطوة، مع مراجعة المقطع", icon: "mic", number: "٢")
+                    action("سمّع بصوتك", detail: "نطاق تختاره، مع حفظ موضع المتابعة", icon: "mic", number: "٢")
                 }.accessibilityIdentifier("hifz.speech")
                 NavigationLink { MemorizationTestView() } label: {
                     action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")

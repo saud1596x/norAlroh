@@ -233,6 +233,7 @@ struct SettingsView: View {
                     notifications.erasePreferences()
                     dhikrCounters.erase()
                     memorization.erase()
+                    speech.eraseSavedPosition()
                     friday.erase()
                     fridayAlarms.disable()
                     UserDefaults.standard.removeObject(forKey: "noor.mushaf.lastPage")
