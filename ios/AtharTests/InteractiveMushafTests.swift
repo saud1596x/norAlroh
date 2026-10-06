@@ -20,7 +20,7 @@ import UIKit
             let page = OriginalPageData.page(number, snapshot: snapshot, rows: metadata, keys: keys)
             let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
             canvas.configure(page: page, corpus: corpus)
-            XCTAssertTrue(canvas.renderedSuccessfully, "Font, bounds, or glyph failure page \(number)")
+            XCTAssertTrue(canvas.renderedSuccessfully, "Page \(number): \(canvas.failureReason ?? "unknown")")
             XCTAssertEqual(canvas.regions.count, page.words.count, "Every logical word maps to its shaped glyph ink")
             XCTAssertNil(canvas.verse(at: CGPoint(x: 0, y: 0)), "Blank page must not select nearest verse")
             for region in canvas.regions {
