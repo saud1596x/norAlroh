@@ -71,6 +71,24 @@ struct QCFV2Snapshot: Decodable {
             // Upstream position_in_line resets inconsistently on some lines.
             // position_in_page is the verified ordering contract for rendering.
         }
+        // Page order alone cannot detect a missing word after positions have
+        // been renumbered. Validate each complete verse across page boundaries.
+        var expectedVerse = 1
+        var expectedPosition = 1
+        for page in 1...604 {
+            for word in positioned[page]!.sorted(by: { $0.position_in_page! < $1.position_in_page! }) {
+                guard word.verse_id == expectedVerse,
+                      word.position_in_verse == expectedPosition else { throw Invalid.sequence }
+                if word.char_type_name == "end" {
+                    guard expectedPosition > 1 else { throw Invalid.verse }
+                    expectedVerse += 1
+                    expectedPosition = 1
+                } else {
+                    expectedPosition += 1
+                }
+            }
+        }
+        guard expectedVerse == 6237, expectedPosition == 1 else { throw Invalid.verse }
         return self
     }
 
