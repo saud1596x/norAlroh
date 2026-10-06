@@ -1,0 +1,45 @@
+name: Interactive Mushaf native review
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: interactive-mushaf-review
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Install original glyph fonts for internal review
+        run: |
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          python3 scripts/prepare-mushaf-companion.py
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+          brew install xcodegen
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Build and test shaped text plus actual reader interactions
+        run: |
+          NOOR_GLYPH_SIMULATOR="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for r,a in d["devices"].items() if "SimRuntime.iOS" in r for x in a if x.get("isAvailable") and x["name"].startswith("iPhone") and "Pro Max" in x["name"]))')"
+          mkdir -p release/interactive-native-captures
+          xcrun simctl boot "$NOOR_GLYPH_SIMULATOR" || true
+          xcrun simctl bootstatus "$NOOR_GLYPH_SIMULATOR" -b
+          xcrun simctl io "$NOOR_GLYPH_SIMULATOR" recordVideo --codec=h264 release/interactive-native-captures/actual-reader-session.mp4 &
+          NOOR_GLYPH_VIDEO_PID=$!
+          trap 'kill -INT "$NOOR_GLYPH_VIDEO_PID" || true; wait "$NOOR_GLYPH_VIDEO_PID" || true' EXIT
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -only-testing:AtharTests/InteractiveMushafTests -only-testing:AtharUITests/NoorInteractiveMushafUITests -parallel-testing-enabled NO -resultBundlePath release/interactive-mushaf.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+      - name: Export actual app captures
+        if: always()
+        run: xcrun xcresulttool export attachments --path release/interactive-mushaf.xcresult --output-path release/interactive-native-captures/attachments
+      - name: Save review evidence (not visual or release approval)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interactive-mushaf-INTERNAL-review
+          path: |
+            release/interactive-mushaf.xcresult
+            release/interactive-native-captures
+          retention-days: 14

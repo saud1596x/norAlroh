@@ -23,7 +23,7 @@ jobs:
         run: brew install xcodegen
       - name: Install verified QCF V2 page fonts
         run: |
-          python3 scripts/prepare-king-fahd-mushaf.py
+          python3 scripts/prepare-mushaf-companion.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Verify bundled content
@@ -60,7 +60,7 @@ jobs:
       - name: Prepare verified Quran resources
         run: |
           brew install xcodegen
-          python3 scripts/prepare-king-fahd-mushaf.py
+          python3 scripts/prepare-mushaf-companion.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Build accounts, Friday alarms and Screen Time extensions
