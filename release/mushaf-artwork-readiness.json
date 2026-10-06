@@ -1,0 +1,55 @@
+{
+  "status": "BLOCKED_MATCHING_ASSETS_NOT_AVAILABLE",
+  "releaseApproved": false,
+  "referenceImagesActuallyOpened": [1, 2, 3, 151, 604],
+  "referencePagesVisuallyCompared": [],
+  "legacyNativeCanvasesAvailable": 604,
+  "all604DataValidated": false,
+  "nativeAfterEvidence": null,
+  "manifestSHA256": null,
+  "rightsCleared": false,
+  "rendererImplemented": "Complete PDF vector page with one uniform fit and disconnected ayah hit polygons",
+  "rendererActivated": false,
+  "existingReaderRetainedUntilApprovedPackageInstalled": true,
+  "confirmedCauses": [
+    "Amiri replaces original surah calligraphy and ornamental frames",
+    "Amiri replaces the original calligraphic basmala",
+    "Legacy typesetter inserts spaces, justifies and resizes individual lines",
+    "Legacy reader scrolls vertically instead of fitting the whole page",
+    "Legacy heading locations are inferred from first verse rather than original artwork metadata"
+  ],
+  "candidatesNotAccepted": [
+    {
+      "source": "quran-ws/quran-svg",
+      "edition": "Hafs / KFGQPC 1441H",
+      "reason": "Repository documents removed decorations and redrawn ayah markers; reference match is not demonstrated"
+    },
+    {
+      "source": "batoulapps/quran-svg",
+      "revision": "78d97544bfdc57e9f04bc97ace3f857ed972d772",
+      "reason": "Original 604 source page has green printing placeholders; the reference ornament artwork is absent"
+    },
+    {
+      "source": "KFGQPC 1441-AI-hafs.zip",
+      "sha256": "280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef",
+      "reason": "Individual original PDFs 1,2,3,151,604 retrieved; page 604 reviewed, no proof of full-archive or reference identity"
+    },
+    {
+      "source": "NedaaDevs/quran-image-generator",
+      "reason": "Author explicitly says generated pages are not proofread; not used as Quran artwork"
+    },
+    {
+      "source": "SurahHeader font supplied in common.zip",
+      "reason": "Embedded notice requires publishing permission and credits third-party design; excluded from application"
+    }
+  ],
+  "missing": [
+    "A licensed full-page artwork package matching the supplied references, including original frames, basmala and ayah ornaments",
+    "Exact source edition/build identity, not inferred from appearance alone",
+    "Ayah hit polygons in that same artwork coordinate system for all 604 pages",
+    "Transparent-paper vector pages suitable for retaining current app colors",
+    "Actual native after captures, overlays and component-by-component human review"
+  ],
+  "religiousAccuracyApproval": "NOT_CERTIFIED",
+  "geometryTestFixture": "NON-QURAN shapes only; cannot be counted as an after screenshot"
+}
