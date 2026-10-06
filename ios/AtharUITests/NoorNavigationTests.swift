@@ -30,7 +30,7 @@ final class NoorNavigationTests: XCTestCase {
     func attach(_ app: XCUIApplication, name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
-    func testArabicSurahSearchAndFlexibleReader() {
+    func testArabicSurahSearchAndInteractiveTextReader() {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         selectNoorTab("المصحف", in: app)
@@ -38,9 +38,11 @@ final class NoorNavigationTests: XCTestCase {
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("١١٤")
         let surah = app.buttons["surah.114"]
         XCTAssertTrue(surah.waitForExistence(timeout: 5)); surah.tap()
-        let flexible = app.buttons["reader.flexible"]
-        XCTAssertTrue(flexible.waitForExistence(timeout: 5)); flexible.tap()
-        XCTAssertTrue(app.buttons["ayah.114.1"].waitForExistence(timeout: 5))
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120))
+        let verse = app.buttons["reader.verse.114:1"]
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
         attach(app, name: "قراءة سورة الناس")
     }
 }

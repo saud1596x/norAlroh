@@ -19,7 +19,9 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                 let verse = app.buttons["reader.verse.\(key)"]
                 XCTAssertTrue(verse.waitForExistence(timeout: 10), key); verse.tap()
                 XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10), key)
-                let titleDigits = app.navigationBars.firstMatch.label.compactMap { $0.wholeNumberValue }
+                let actualTitle = app.staticTexts["verse.tools.title"]
+                XCTAssertTrue(actualTitle.waitForExistence(timeout: 10), key)
+                let titleDigits = actualTitle.label.compactMap { $0.wholeNumberValue }
                 XCTAssertEqual(titleDigits.reduce(0) { $0 * 10 + $1 }, number, "Correct ayah title \(key)")
                 if key == "114:1" {
                     capture(app, "text-reader-604-highlight-tools")
@@ -42,6 +44,8 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         app.buttons["إيقاف التلاوة"].tap()
         page.pinch(withScale: 1.6, velocity: 1)
         capture(app, "text-reader-604-zoom")
+        page.swipeLeft()
+        capture(app, "text-reader-604-zoom-and-pan")
         let zoomedVerse = app.buttons["reader.verse.114:1"]
         zoomedVerse.tap()
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))

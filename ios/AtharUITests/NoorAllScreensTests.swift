@@ -24,11 +24,17 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(app.textFields["reader.pageNumber"].waitForExistence(timeout: 5))
         capture(app, "04-page-navigation")
         app.buttons["إغلاق"].tap()
-        tap(app.buttons["reader.flexible"], in: app)
-        XCTAssertTrue(app.buttons["ayah.1.1"].waitForExistence(timeout: 5))
-        capture(app, "05-flexible-reader")
-        app.buttons["ayah.1.1"].tap() // A real bookmark, inspected in the library below.
-        back(app); back(app)
+        let verse = app.buttons["reader.verse.1:1"]
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
+        capture(app, "05-interactive-verse-tools")
+        let bookmark = app.buttons["verse.bookmark"]
+        XCTAssertTrue(bookmark.waitForExistence(timeout: 10))
+        if bookmark.label == "إضافة علامة مرجعية" { bookmark.tap() }
+        XCTAssertEqual(bookmark.label, "إزالة العلامة المرجعية")
+        app.buttons["verse.tools.close"].tap()
+        app.buttons["إغلاق المصحف"].tap()
+        XCTAssertTrue(app.buttons["surah.1"].waitForExistence(timeout: 10))
 
         selectNoorTab("الصلاة", in: app)
         capture(app, "06-prayers")
@@ -106,7 +112,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "31-support")
         back(app)
         tap(app.buttons["settings.sources"], in: app)
-        capture(app, "24-sources")
+        capture(app, "24-licenses")
         for (identifier, name) in [("tanzil", "26-tanzil-license"), ("qcf", "27-qcf-license"), ("amiri", "28-amiri-license"), ("adhan", "29-adhan-license"), ("whisperkit", "33-whisperkit-license"), ("whispermodel", "34-whisper-model-license"), ("whispercomponents", "35-whisper-components")] {
             tap(app.buttons["sources.\(identifier)"], in: app)
             XCTAssertTrue(app.staticTexts["license.notice"].waitForExistence(timeout: 5), "The bundled notice must be readable without a network connection.")
