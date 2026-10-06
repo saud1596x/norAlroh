@@ -9,6 +9,9 @@ struct AtharApp: App {
     @StateObject private var memorization = MemorizationStore()
     @StateObject private var recitation = LocalRecitationRecorder()
     @StateObject private var speech = LocalSpeechRecitation()
+    @StateObject private var friday = FridayStore()
+    @StateObject private var fridayAlarms = FridayAlarms()
+    @StateObject private var account = NoorAccountStore()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
 
@@ -21,17 +24,21 @@ struct AtharApp: App {
                 .environmentObject(memorization)
                 .environmentObject(recitation)
                 .environmentObject(speech)
+                .environmentObject(friday)
+                .environmentObject(fridayAlarms)
+                .environmentObject(account)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "ar_SA"))
                 .preferredColorScheme(nil)
+                .onOpenURL { account.handle($0) }
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
-                .task { dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store) }
+                .task { dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         NoorFocusController.shared.sync(progress: memorization.progress)
                         dhikrCounters.refreshDay()
-                        Task { await notifications.refresh(store: store) }
+                        Task { await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
                     } else {
                         if speech.listening || phase == .background { speech.stop() }
                         if phase == .background { recitation.stop() }

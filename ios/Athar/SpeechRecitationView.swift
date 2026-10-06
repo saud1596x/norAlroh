@@ -6,6 +6,7 @@ struct SpeechRecitationView: View {
     @EnvironmentObject private var memorization: MemorizationStore
     @EnvironmentObject private var speech: LocalSpeechRecitation
     @EnvironmentObject private var recorder: LocalRecitationRecorder
+    @State private var verseOffset = 0
     @State private var downloadConsent = false
     @State private var hideVerses = true
     @State private var confirmedWords: Set<Int> = []
@@ -13,8 +14,9 @@ struct SpeechRecitationView: View {
     @State private var reviewing = false
     @State private var resultSaved = false
     private var chapter: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
-    private var end: Int { min(memorization.plan.to, memorization.plan.from + 9) }
-    private var words: [RecitationExpectedWord] { chapter.map { RecitationComparison.words(chapter: $0, from: memorization.plan.from, to: end) } ?? [] }
+    private var start: Int { min(memorization.plan.to, memorization.plan.from + verseOffset) }
+    private var end: Int { start }
+    private var words: [RecitationExpectedWord] { chapter.map { RecitationComparison.words(chapter: $0, from: start, to: end) } ?? [] }
     private var currentAyah: Int {
         guard !words.isEmpty else { return memorization.plan.from }
         return words[min(words.count - 1, max(0, speech.anchor - 1))].ayah
@@ -22,8 +24,13 @@ struct SpeechRecitationView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("تابع تسميعك").font(.largeTitle.bold())
-                Text("\(chapter?.name ?? "الحفظ") · الآيات \(memorization.plan.from)–\(end)").font(.subheadline)
+                Text("سمّع آية بخطوة").font(.largeTitle.bold())
+                Text("\(chapter?.name ?? "الحفظ") · الآية \(start) من نطاقك").font(.subheadline)
+                HStack {
+                    Button("الآية السابقة") { move(-1) }.disabled(verseOffset == 0 || speech.listening || speech.settling)
+                    Spacer()
+                    Button("الآية التالية") { move(1) }.disabled(start >= memorization.plan.to || speech.listening || speech.settling)
+                }.frame(minHeight: 44)
                 Toggle("إخفاء الآيات أثناء التسميع", isOn: $hideVerses).accessibilityIdentifier("speech.hideVerses")
                 Card {
                     Label(speech.ready ? "نموذج محلي جاهز" : "معالجة الصوت على جهازك", systemImage: "waveform").font(.headline)
@@ -43,7 +50,7 @@ struct SpeechRecitationView: View {
                     }
                 }
                 if let chapter {
-                    ForEach(chapter.ayahs.filter { (memorization.plan.from...end).contains($0.number) }) { ayah in
+                    ForEach(chapter.ayahs.filter { (start...end).contains($0.number) }) { ayah in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text("الآية \(ayah.number)").font(.caption)
@@ -80,11 +87,11 @@ struct SpeechRecitationView: View {
                 if !speech.transcript.isEmpty {
                     DisclosureGroup("ما تعرّف عليه المحرك") { Text(verbatim: speech.transcript).font(.body).textSelection(.enabled) }
                 }
-                if speech.anchor > 0 && !speech.listening && !speech.settling && chapter != nil {
+                if !speech.transcript.isEmpty && !speech.listening && !speech.settling && chapter != nil {
                     Button(resultSaved ? "حُفظت مراجعة هذا التسميع" : "راجع النتيجة واحفظ إنجاز الورد") { reviewing = true }
                         .disabled(resultSaved).frame(minHeight: 44).accessibilityIdentifier("speech.reviewResult")
                 }
-                Text("المتابعة مقارنة كلمات باستخدام تعرّف صوتي متعدد اللغات؛ قد يخطئ المحرك نفسه. لا تقيس التشكيل أو التجويد، ولا تغيّر نص القرآن أو تمنح حكمًا نهائيًا بصحة الحفظ. المقطع الصوتي مؤقت في الذاكرة ولا يُرسل لخادم ولا يُحفظ تلقائيًا. الجلسة حتى خمس دقائق وعشر آيات من خطتك.")
+                Text("المتابعة مقارنة كلمات باستخدام تعرّف صوتي متعدد اللغات؛ قد يخطئ المحرك نفسه. لا تقيس التشكيل أو التجويد، ولا تغيّر نص القرآن أو تمنح حكمًا نهائيًا بصحة الحفظ. المقطع الصوتي مؤقت في الذاكرة ولا يُرسل لخادم ولا يُحفظ تلقائيًا. سمّع آية واحدة في كل خطوة، ثم راجع النتيجة قبل الانتقال. الجلسة حتى خمس دقائق.")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(20)
         }.background(Theme.background).navigationTitle("المتابعة الصوتية")
@@ -92,6 +99,7 @@ struct SpeechRecitationView: View {
                 Button("تنزيل وتجهيز النموذج") { speech.prepare() }
                 Button("إلغاء", role: .cancel) {}
             }
+            .task { speech.prepareLocalIfAvailable() }
             .onDisappear { speech.stop(clear: true) }
             .onChange(of: speech.listening) { _, new in if new { confirmedWords = []; usedReveal = !hideVerses; resultSaved = false } }
             .onChange(of: hideVerses) { _, new in if !new { usedReveal = true } }
@@ -99,12 +107,15 @@ struct SpeechRecitationView: View {
             .sheet(isPresented: $reviewing) {
                 if let chapter {
                     NavigationStack {
-                        SpeechSessionReviewView(chapter: chapter, from: memorization.plan.from, to: end, revealed: usedReveal) { resultSaved = true }
+                        SpeechSessionReviewView(chapter: chapter, from: start, to: end, revealed: usedReveal) { resultSaved = true }
                     }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in speech.stop() }
             .alert("المتابعة الصوتية", isPresented: Binding(get: { speech.message != nil }, set: { if !$0 { speech.message = nil } })) { Button("تم") { speech.message = nil } } message: { Text(speech.message ?? "") }
+    }
+    private func move(_ delta: Int) {
+        speech.stop(clear: true); verseOffset = max(0, min(memorization.plan.to - memorization.plan.from, verseOffset + delta)); confirmedWords = []; resultSaved = false; usedReveal = !hideVerses
     }
     private func displayText(_ ayah: Ayah) -> String {
         guard hideVerses else { return QuranText.verse(chapter: memorization.plan.chapter, ayah: ayah) }

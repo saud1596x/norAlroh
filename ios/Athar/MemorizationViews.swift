@@ -76,6 +76,7 @@ struct MemorizationArchive: Codable {
     let version: Int
     let history: [MemorizationResult]
     let progress: MemorizationProgress
+    var plan: MemorizationPlan? = nil
 }
 @MainActor final class MemorizationStore: ObservableObject {
     @Published private(set) var plan = MemorizationPlan()
@@ -102,6 +103,7 @@ struct MemorizationArchive: Codable {
                let corpus = QuranResources.corpus, value.progress.valid(corpus: corpus),
                value.history.allSatisfy({ Self.valid($0, corpus: corpus) }), Set(value.history.map(\.id)).count == value.history.count {
                 history = Array(value.history.prefix(100)); progress = value.progress; unreadableHistory = nil; error = nil
+                if let restoredPlan = value.plan, Self.validPlan(restoredPlan, corpus: corpus) { plan = restoredPlan }
             } else {
                 unreadableHistory = data; error = "تعذّر فتح سجل الإتقان. بياناتك محفوظة؛ صدّرها قبل بدء جلسات جديدة."
             }
@@ -203,8 +205,39 @@ struct MemorizationArchive: Codable {
     func configure(_ candidate: MemorizationPlan, corpus: [Surah]) -> Bool {
         guard corpus.indices.contains(candidate.chapter - 1), candidate.from > 0, candidate.to >= candidate.from,
               candidate.to <= corpus[candidate.chapter - 1].ayahs.count, (1...50).contains(candidate.daily) else { return false }
-        do { let data = try JSONEncoder().encode(candidate); defaults.set(data, forKey: "noor.memorization.plan"); plan = candidate; clearSession(); return true }
+        do {
+            let data = try JSONEncoder().encode(candidate)
+            let archive = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: progress, plan: candidate))
+            defaults.set(data, forKey: "noor.memorization.plan")
+            if unreadableHistory == nil { defaults.set(archive, forKey: "noor.memorization.archive") }
+            plan = candidate; clearSession(); return true
+        }
         catch { self.error = "تعذر حفظ خطة المراجعة."; return false }
+    }
+    private static func validPlan(_ plan: MemorizationPlan, corpus: [Surah]) -> Bool {
+        corpus.indices.contains(plan.chapter - 1) && plan.from > 0 && plan.to >= plan.from
+            && plan.to <= corpus[plan.chapter - 1].ayahs.count && (1...50).contains(plan.daily)
+    }
+    @discardableResult func restore(_ backup: MemorizationCloudBackup) -> Bool {
+        guard unreadableHistory == nil, backup.version == 1, backup.archive.version == 1,
+              let corpus = QuranResources.corpus, Self.validPlan(backup.plan, corpus: corpus),
+              backup.archive.history.count <= 100, backup.archive.progress.verses.count <= 6236,
+              backup.archive.progress.confirmedMistakes.count <= 500,
+              backup.archive.progress.valid(corpus: corpus),
+              backup.archive.history.allSatisfy({ Self.valid($0, corpus: corpus) }),
+              Set(backup.archive.history.map(\.id)).count == backup.archive.history.count else {
+            error = "لا يمكن استبدال تقدمك بنسخة غير صالحة. صدّر بياناتك المحلية إن تعذّر فتحها."; return false
+        }
+        var restored = backup.archive.progress
+        restored.practiceDays.removeValue(forKey: MemorizationProgress.dayKey(Date()))
+        do {
+            let archive = try JSONEncoder().encode(MemorizationArchive(version: 1, history: backup.archive.history, progress: restored, plan: backup.plan))
+            let savedPlan = try JSONEncoder().encode(backup.plan)
+            NoorFocusController.shared.disable()
+            defaults.set(archive, forKey: "noor.memorization.archive")
+            defaults.set(savedPlan, forKey: "noor.memorization.plan")
+            plan = backup.plan; history = backup.archive.history; progress = restored; clearSession(); return true
+        } catch { self.error = "تعذّرت استعادة نسخة الحفظ."; return false }
     }
     @discardableResult func finish(chapter: Int, answers: [MemorizationAnswer]) -> Bool {
         guard unreadableHistory == nil else { error = "لم تُحفظ النتيجة كي لا يُستبدل سجل سابق تعذّر فتحه. صدّر بياناتك من الإعدادات."; return false }
@@ -228,6 +261,62 @@ struct MemorizationArchive: Codable {
     }
 }
 struct MemorizationView: View {
+    @EnvironmentObject private var store: AtharStore
+    @EnvironmentObject private var memorization: MemorizationStore
+    private var surah: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(surah?.name ?? "خطة الحفظ").font(.largeTitle.bold())
+                        Text("الآيات \(memorization.plan.from)–\(memorization.plan.to)").foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    NavigationLink { MemorizationPlanView() } label: { Label("تعديل الخطة", systemImage: "slider.horizontal.3").font(.caption).frame(minHeight: 44) }
+                        .accessibilityIdentifier("hifz.plan")
+                }
+                NoorDailyWardCard()
+                Text("اختر خطوتك").font(.title3.bold())
+                NavigationLink { MemorizationPracticeView() } label: {
+                    action("احفظ آية جديدة", detail: "اقرأ الآية، أخفها، ثم اكشف كلماتها بالتدرج", icon: "book.closed", number: "١")
+                }.accessibilityIdentifier("hifz.practice")
+                NavigationLink { SpeechRecitationView() } label: {
+                    action("سمّع بصوتك", detail: "آية واحدة في كل خطوة، مع مراجعة المقطع", icon: "mic", number: "٢")
+                }.accessibilityIdentifier("hifz.speech")
+                NavigationLink { MemorizationTestView() } label: {
+                    action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")
+                }.accessibilityIdentifier("hifz.test")
+                Card {
+                    HStack {
+                        stat(memorization.masteredCount, "آيات متقنة")
+                        Spacer()
+                        stat(memorization.dueKeys().count, "مستحقة للمراجعة")
+                        Spacer()
+                        stat(memorization.streak(), "أيام متتابعة")
+                    }
+                    NavigationLink("خريطة الإتقان") { MemorizationInsightsView() }.accessibilityIdentifier("hifz.insights")
+                    NavigationLink("سجل المراجعة") { MemorizationHistoryView() }.accessibilityIdentifier("hifz.history")
+                    NavigationLink("الآيات المتشابهة") { LexicalSimilaritiesView() }.accessibilityIdentifier("hifz.similarities")
+                    NavigationLink("حماية وقت الورد") { NoorFocusView() }.accessibilityIdentifier("hifz.focus")
+                }
+            }.padding(20)
+        }.background(Theme.background).navigationTitle("الحفظ")
+    }
+    private func stat(_ count: Int, _ title: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) { Text("\(count)").font(.title2.bold()); Text(title).font(.caption).foregroundStyle(.secondary) }
+    }
+    private func action(_ title: String, detail: String, icon: String, number: String) -> some View {
+        HStack(spacing: 15) {
+            Image(systemName: icon).font(.title2).frame(width: 48, height: 54).foregroundStyle(Theme.gold)
+            VStack(alignment: .leading, spacing: 7) { Text(title).font(.headline); Text(detail).font(.caption).foregroundStyle(.secondary) }
+            Spacer(minLength: 0)
+            Text(number).font(.title3.bold()).foregroundStyle(Theme.gold)
+        }.padding(18).frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(.primary)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+    }
+}
+struct MemorizationPracticeView: View {
     @EnvironmentObject var store: AtharStore
     @EnvironmentObject var memorization: MemorizationStore
     @Environment(\.accessibilityReduceMotion) private var systemReduce
@@ -243,28 +332,6 @@ struct MemorizationView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                NoorDailyWardCard()
-                Card {
-                    HStack {
-                        VStack(alignment: .leading) { Text("\(memorization.masteredCount)").font(.title2.bold()); Text("آيات بإتقان متكرر").font(.caption) }
-                        Spacer()
-                        VStack(alignment: .leading) { Text("\(memorization.dueKeys().count)").font(.title2.bold()); Text("مراجعات مستحقة").font(.caption) }
-                        Spacer()
-                        VStack(alignment: .leading) { Text("\(memorization.streak())").font(.title2.bold()); Text("أيام ممارسة متتابعة").font(.caption) }
-                    }
-                    NavigationLink("خريطة الإتقان والآيات الضعيفة") { MemorizationInsightsView() }.accessibilityIdentifier("hifz.insights")
-                    NavigationLink("حماية وقت الورد") { NoorFocusView() }.accessibilityIdentifier("hifz.focus")
-                }
-                Card {
-                    Text(surah?.name ?? "اختر سورة").font(.title2.bold())
-                    Text("الآيات \(memorization.plan.from)–\(memorization.plan.to) · \(revealed) من \(total) كلمة مكشوفة")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    NavigationLink("السورة وخطة الحفظ") { MemorizationPlanView() }.accessibilityIdentifier("hifz.plan")
-                    NavigationLink(memorization.session == nil ? "ابدأ مراجعة اليوم" : "أكمل جلستك السابقة") { MemorizationTestView() }.accessibilityIdentifier("hifz.test")
-                    NavigationLink("التسميع والمتابعة الصوتية") { SpeechRecitationView() }.accessibilityIdentifier("hifz.speech")
-                    NavigationLink("سجل المراجعة") { MemorizationHistoryView() }.accessibilityIdentifier("hifz.history")
-                    NavigationLink("التشابه اللفظي") { LexicalSimilaritiesView() }.accessibilityIdentifier("hifz.similarities")
-                }
                 Card {
                     HStack {
                         Text("تدريب آية بخطوة").font(.headline)
@@ -300,10 +367,7 @@ struct MemorizationView: View {
                 }
                 Card { RecitationRecordingControls() }
             }.padding(20)
-        }.background(Theme.background).navigationTitle("مساحة الحفظ")
-            .alert("الحفظ والمراجعة", isPresented: Binding(get: { memorization.error != nil }, set: { if !$0 { memorization.error = nil } })) {
-                Button("تم") { memorization.error = nil }
-            } message: { Text(memorization.error ?? "") }
+        }.background(Theme.background).navigationTitle("تثبيت الآيات")
             .onChange(of: memorization.plan.chapter) { _, _ in revealed = 0; practiceIndex = 0 }
             .onChange(of: memorization.plan.from) { _, _ in revealed = 0; practiceIndex = 0 }
             .onChange(of: memorization.plan.to) { _, _ in revealed = 0; practiceIndex = 0 }

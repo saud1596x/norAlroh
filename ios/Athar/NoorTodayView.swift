@@ -96,6 +96,12 @@ struct NoorTodayView: View {
                     }
                 }
                 TimelineView(.periodic(from: .now, by: 60)) { context in
+                    if FridayPlan.active(at: context.date, city: store.data.city) {
+                        NavigationLink { FridayView() } label: {
+                            Label("يوم الجمعة", systemImage: "sun.max.fill").font(.title3.bold())
+                                .frame(maxWidth: .infinity, minHeight: 64).background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+                        }.accessibilityIdentifier("home.friday")
+                    }
                     if let reference = NoorDailyVerse.select(corpus: store.quran, date: context.date) {
                         NavigationLink { NoorReflectionView(reference: reference) } label: {
                             HStack(spacing: 16) {

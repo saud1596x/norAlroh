@@ -24,6 +24,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>نستخدم منبه النظام لإيقاظك لصلوات يوم الجمعة عند اختيارك تفعيل المنبهات.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>نسجّل تسميعك عند اختيارك للاستماع إليه، أو نستخدم الميكروفون للمتابعة الصوتية المحلية على جهازك. الصوت لا يُرسل إلى خادم، وفروق التعرّف تحتاج مراجعتك ولا تقيس التجويد.</string>
 	<key>UIAppFonts</key>

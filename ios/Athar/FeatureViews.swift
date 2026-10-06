@@ -165,6 +165,9 @@ struct SettingsView: View {
     @EnvironmentObject var memorization: MemorizationStore
     @EnvironmentObject var recitation: LocalRecitationRecorder
     @EnvironmentObject var speech: LocalSpeechRecitation
+    @EnvironmentObject var friday: FridayStore
+    @EnvironmentObject var fridayAlarms: FridayAlarms
+    @EnvironmentObject var account: NoorAccountStore
     @Environment(\.dismiss) private var dismiss
     @State private var erase = false
     @State private var exporting = false
@@ -173,6 +176,10 @@ struct SettingsView: View {
     @State private var erasing = false
     var body: some View {
         Form {
+            Section("حسابي") {
+                NavigationLink("الحساب والنسخة السحابية") { NoorAccountView() }
+                NavigationLink("إعدادات يوم الجمعة") { FridaySettingsView() }
+            }
             Section("مساحة تحترم خصوصيتك") {
                 Text("لا حساب مطلوب، ولا إعلانات أو تتبع. رحلاتك وتأملاتك وعلاماتك وسجلات حفظك محفوظة محليًا.")
                 Toggle("تقليل الحركة", isOn: Binding(
@@ -201,7 +208,7 @@ struct SettingsView: View {
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
-                NavigationLink("التراخيص ونسب المحتوى") { SourcesView() }.accessibilityIdentifier("settings.sources")
+                NavigationLink("التراخيص") { SourcesView() }.accessibilityIdentifier("settings.sources")
             }
             Section("عن نور الروح") {
                 Text("مصحف كامل، أذكار موثّقة ومواقيت الصلاة. للحفظ تسجيل محلي ومتابعة صوتية اختيارية تقارن الكلمات وتعرض فروقًا محتملة تحتاج مراجعتك.")
@@ -225,6 +232,8 @@ struct SettingsView: View {
                     notifications.erasePreferences()
                     dhikrCounters.erase()
                     memorization.erase()
+                    friday.erase()
+                    fridayAlarms.disable()
                     UserDefaults.standard.removeObject(forKey: "noor.mushaf.lastPage")
                     dismiss()
                 }
@@ -289,7 +298,7 @@ struct SourcesView: View {
                 NavigationLink("تراخيص المكونات التابعة") { BundledLicenseView(title: "مكونات WhisperKit", resource: "WHISPERKIT-THIRD-PARTY", extension: "txt") }
                     .accessibilityIdentifier("sources.whispercomponents")
             }
-        }.navigationTitle("التراخيص ونسب المحتوى")
+        }.navigationTitle("التراخيص")
     }
 }
 

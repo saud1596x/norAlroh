@@ -99,7 +99,7 @@ struct AdhkarView: View {
                     LazyVStack(alignment: .leading, spacing: 14) {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("ذكرٌ، وسكينة").font(.largeTitle.bold())
-                            Text("حصن المسلم · ١٣٢ بابًا و٢٦٧ نصًا").font(.subheadline)
+                            Text("١٣٢ بابًا و٢٦٧ ذكرًا").font(.subheadline)
                             HStack {
                                 Label("محفوظ على جهازك", systemImage: "checkmark.circle")
                                 Spacer()
@@ -133,8 +133,6 @@ struct AdhkarView: View {
                             }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 20)).noorEntrance()
                         }
                         if groups.isEmpty { ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass", description: Text("ابحث باسم الباب أو كلمة من الذكر، أو أضف بابًا إلى المفضلة.")) }
-                        Text("النص والعدد كما وردا في مصدر حصن المسلم. رقم المصدر لا يمثل درجة صحة الحديث.")
-                            .font(.caption).foregroundStyle(.secondary).padding(.vertical, 10)
                     }.padding(20)
                 }
             } else { ContentUnavailableView("تعذر تحميل الأذكار", systemImage: "book.closed") }
@@ -170,7 +168,6 @@ struct DhikrListView: View {
                             NavigationLink { DhikrReadingSession(group: group, entries: entries, start: index) } label: {
                                 Label("اقرأ هذا الذكر مع العداد", systemImage: "hand.tap").font(.subheadline.bold()).frame(minHeight: 44)
                             }.accessibilityIdentifier("dhikr.open.\(entry.id)")
-                            Label(entry.reference, systemImage: "book.closed").font(.caption).foregroundStyle(.secondary)
                         }.foregroundStyle(.primary).padding(20).frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
                             .accessibilityIdentifier("dhikr.card.\(entry.id)").noorEntrance()
@@ -228,10 +225,6 @@ struct DhikrSessionView: View {
                     DhikrReadingText(content: reading)
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
-                DisclosureGroup("تفاصيل الذكر") {
-                    Text(verbatim: entry.text).font(.body).lineSpacing(5).textSelection(.enabled)
-                    Link(entry.reference, destination: entry.sourceURL).font(.caption).tint(Theme.gold)
-                }
                 Button { change(count + 1) } label: {
                     ZStack {
                         Circle().fill(Theme.gold)
@@ -256,7 +249,7 @@ struct DhikrSessionView: View {
                     Button("تراجع", systemImage: "arrow.uturn.backward") { change(count - 1) }.disabled(count == 0)
                     Button("إعادة العدّ", systemImage: "arrow.counterclockwise") { change(0) }.disabled(count == 0)
                 }.buttonStyle(NoorPressStyle()).frame(minHeight: 44).font(.subheadline)
-                Text("عدد القراءة من نص المصدر، وعداد اليوم محفوظ على جهازك بتوقيت المملكة.").font(.caption).foregroundStyle(.secondary)
+                Text("عداد اليوم محفوظ على جهازك.").font(.caption).foregroundStyle(.secondary)
                 if reading.blocks.filter({ $0.quran != nil }).count > 1 {
                     Text("العداد لهذه المجموعة كاملة؛ اقرأ السور المعروضة ثم سجّل جولة واحدة.").font(.caption).foregroundStyle(.secondary)
                 }
