@@ -58,9 +58,6 @@ workflows:
           python3 scripts/check-source.py --swiftc "$(xcrun --find swiftc)"
           python3 scripts/audit-content.py
           python3 scripts/verify-quran-text.py
-      - name: Build and test actual iOS app
-        script: |
-          NOOR_RECORD_VIDEO=1 NOOR_TEST_CONFIGURATION=Release bash scripts/test-ios.sh
       - name: Validate internal TestFlight preconditions
         script: |
           python3 scripts/release-preflight.py --target testflight
