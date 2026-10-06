@@ -30,7 +30,7 @@ jobs:
           xcrun simctl io "$NOOR_GLYPH_SIMULATOR" recordVideo --codec=h264 release/interactive-native-captures/actual-reader-session.mp4 &
           NOOR_GLYPH_VIDEO_PID=$!
           trap 'kill -INT "$NOOR_GLYPH_VIDEO_PID" || true; wait "$NOOR_GLYPH_VIDEO_PID" || true' EXIT
-          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -only-testing:AtharTests/InteractiveMushafTests -only-testing:AtharUITests/NoorInteractiveMushafUITests -parallel-testing-enabled NO -resultBundlePath release/interactive-mushaf.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_GLYPH_SIMULATOR" -only-testing:AtharTests/InteractiveMushafTests -only-testing:AtharUITests/NoorInteractiveMushafUITests -parallel-testing-enabled NO -resultBundlePath release/interactive-mushaf.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES
       - name: Export actual app captures
         if: always()
         run: xcrun xcresulttool export attachments --path release/interactive-mushaf.xcresult --output-path release/interactive-native-captures/attachments
