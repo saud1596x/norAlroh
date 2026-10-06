@@ -148,6 +148,8 @@ struct NoorWidgetView: View {
 }
 struct NoorWidget: Widget {
     let type: NoorWidgetKind
+    init() { type = .nextPrayer }
+    init(type: NoorWidgetKind) { self.type = type }
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "noor." + type.rawValue, provider: NoorProvider()) { entry in NoorWidgetView(entry: entry, kind: type) }
             .configurationDisplayName(type.title)
