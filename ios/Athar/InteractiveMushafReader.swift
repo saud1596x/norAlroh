@@ -145,7 +145,7 @@ struct InteractiveMushafReader: View {
         }
         .task { await load() }
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
-        .onDisappear { audio.stop() }
+        .onDisappear { audio.stop(); audio.onVerse = nil }
         .onChange(of: number) { _, value in lastPage = value }
         .sheet(item: $sheetVerse) { selection in
             VerseTools(selection: selection, audio: audio, selected: $selected)
@@ -181,18 +181,32 @@ struct InteractiveMushafReader: View {
             } else { entry = try await cache.refresh() }
             let data = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated()
             try metadata.validate(data)
+            // Materialize the stable corpus IDs once, not for every snapshot record.
+            let corpusKeys = keys
+            var pagesByVerse: [String: Int] = [:]
+            for record in data.records where record.record_type == "mushaf_word" {
+                if let verseID = record.verse_id, let sourcePage = record.page_number {
+                    let key = corpusKeys[verseID - 1]
+                    pagesByVerse[key] = min(pagesByVerse[key] ?? sourcePage, sourcePage)
+                }
+            }
+            let versePages = pagesByVerse
+            try Task.checkCancellation()
             let first = snapshot == nil; snapshot = data; rows = metadata
             if first {
-                number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil } ?? data.records.first { $0.record_type == "mushaf_word" && $0.verse_id.map { keys[$0 - 1] == "\(chapter):\(ayah)" } == true }?.page_number ?? 1
+                number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil }
+                    ?? versePages["\(chapter):\(ayah)"] ?? 1
                 lastPage = number
             }
             audio.onVerse = { key in
                 selected = key
                 if page?.words.contains(where: { $0.verse == key }) != true,
-                   let target = data.records.first(where: { $0.record_type == "mushaf_word" && $0.verse_id.map { keys[$0 - 1] == key } == true })?.page_number { number = target }
+                   let target = versePages[key] { number = target }
             }
             await fonts.load(String(format: "QCF2%03d", number))
-        } catch { self.error = "تعذّر التحقق من بيانات المصحف أو خطوطه. اتصل بالإنترنت للتنزيل الأول؛ تبقى النسخة المحفوظة متاحة دون اتصال بعد اكتماله." }
+        } catch {
+            guard !Task.isCancelled else { return }
+            self.error = "تعذّر التحقق من بيانات المصحف أو خطوطه. اتصل بالإنترنت للتنزيل الأول؛ تبقى النسخة المحفوظة متاحة دون اتصال بعد اكتماله." }
     }
 }
 struct VerseSelection: Identifiable { let key: String; var id: String { key }; var chapter: Int { Int(key.split(separator: ":")[0])! }; var ayah: Int { Int(key.split(separator: ":")[1])! } }

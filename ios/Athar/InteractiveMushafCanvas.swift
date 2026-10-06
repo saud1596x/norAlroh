@@ -61,7 +61,7 @@ struct OriginalPageData {
 /// One immutable coordinate space. Lines are shaped whole, without justification,
 /// artificial kashida, per-line fitting, or font substitution.
 @MainActor final class OriginalMushafCanvas: UIView {
-    static let pageSize = CGSize(width: 540, height: 930)
+    static let pageSize = CGSize(width: 540, height: 940)
     struct Hit { let word: Int; let verse: String; let rect: CGRect }
     private(set) var regions: [Hit] = []
     private(set) var renderedSuccessfully = false
@@ -245,7 +245,7 @@ struct OriginalPageData {
         super.init(frame: frame); delegate = self
         showsVerticalScrollIndicator = false; showsHorizontalScrollIndicator = false
         bouncesZoom = true; backgroundColor = .clear; addSubview(canvas)
-        accessibilityIdentifier = "reader.page.ready"
+        accessibilityIdentifier = "reader.page.loading"
         contentSize = OriginalMushafCanvas.pageSize
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
@@ -272,6 +272,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
             view.canvas.configure(page: page, corpus: corpus)
             view.setZoomScale(view.minimumZoomScale, animated: false)
         }
+        view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
         view.canvas.selected = selected
     }
     final class Coordinator { var page: Int? }
