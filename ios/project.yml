@@ -26,6 +26,7 @@ targets:
     platform: iOS
     sources:
       - path: Athar
+      - path: NoorFocusShared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.saud1596x.nooralruh
