@@ -110,8 +110,9 @@ import GoogleSignInSwift
             let data = try (compressed as NSData).decompressed(using: .zlib) as Data
             guard data.count <= 10_000_000 else { throw CocoaError(.fileReadCorruptFile) }
             let backup = try JSONDecoder().decode(MemorizationCloudBackup.self, from: data)
+            guard Auth.auth().currentUser?.uid == user.uid else { message = "تغيّر الحساب أثناء الاستعادة. لم تتغير بيانات جهازك."; return }
             guard memorization.restore(backup) else { message = memorization.error; return }
-            message = "استُعيد تقدم الحفظ. ورد اليوم يبدأ بمراجعتك على هذا الجهاز."
+            message = "دُمج سجل الحفظ دون تكرار النتائج. بقيت جلستك وخطتك المحلية؛ الاستعادة لا تكمل ورد اليوم."
         } catch { message = "تعذّرت استعادة نسخة صالحة؛ لم تتغير بياناتك المحلية." }
     }
     #else
@@ -174,8 +175,8 @@ struct NoorAccountView: View {
             .confirmationDialog("حفظ خطة الحفظ والسجل والإتقان في الحساب المسجّل حاليًا؟ ستُستبدل نسخته السحابية السابقة.", isPresented: $uploading, titleVisibility: .visible) {
                 Button("حفظ النسخة") { Task { await account.backup(memorization: memorization) } }
             }
-            .confirmationDialog("استعادة النسخة السحابية واستبدال خطة الحفظ والسجل المحلي؟ صدّر بياناتك المحلية أولًا إذا أردت الاحتفاظ بها.", isPresented: $restoring, titleVisibility: .visible) {
-                Button("استعادة النسخة", role: .destructive) { Task { await account.restore(memorization: memorization) } }
+            .confirmationDialog("دمج سجل الحفظ السحابي مع سجل هذا الجهاز؟ تبقى الخطة والجلسة المحلية.", isPresented: $restoring, titleVisibility: .visible) {
+                Button("دمج النسخة") { Task { await account.restore(memorization: memorization) } }
             }
             #endif
     }

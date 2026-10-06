@@ -267,17 +267,74 @@ struct MemorizationArchive: Codable {
               Set(backup.archive.history.map(\.id)).count == backup.archive.history.count else {
             error = "لا يمكن استبدال تقدمك بنسخة غير صالحة. صدّر بياناتك المحلية إن تعذّر فتحها."; return false
         }
-        var restored = backup.archive.progress
-        restored.practiceDays.removeValue(forKey: MemorizationProgress.dayKey(Date()))
+        // Result UUIDs identify immutable events. An ID collision with different
+        // contents is a conflict, never permission to silently overwrite either copy.
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         do {
-            let archive = try JSONEncoder().encode(MemorizationArchive(version: 1, history: backup.archive.history, progress: restored, plan: backup.plan))
-            let savedPlan = try JSONEncoder().encode(backup.plan)
-            NoorFocusController.shared.disable()
+            var results = Dictionary(uniqueKeysWithValues: history.map { ($0.id, $0) })
+            for result in backup.archive.history {
+                if let local = results[result.id], try encoder.encode(local) != encoder.encode(result) {
+                    error = "تعارضت نتيجة محلية مع النسخة السحابية. لم تتغير بياناتك؛ صدّرها قبل معالجة التعارض."; return false
+                }
+                results[result.id] = result
+            }
+            let combined = results.values.sorted {
+                $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date > $1.date
+            }
+            var restored = MemorizationProgress()
+            for result in combined.reversed() { restored.record(result) }
+            // Retain older progress whose full event history may not be present in
+            // a legacy archive. Do not add cumulative counters from two devices.
+            for source in [progress, backup.archive.progress] {
+                for (key, value) in source.verses {
+                    guard var current = restored.verses[key] else { restored.verses[key] = value; continue }
+                    let attempts = max(current.attempts, value.attempts)
+                    let lapses = max(current.lapses, value.lapses)
+                    if value.lastPracticed > current.lastPracticed { current = value }
+                    else if value.lastPracticed == current.lastPracticed {
+                        current.stage = min(current.stage, value.stage)
+                        current.needsHelp = current.needsHelp || value.needsHelp
+                        current.nextReview = min(current.nextReview, value.nextReview)
+                    }
+                    current.attempts = attempts; current.lapses = lapses
+                    restored.verses[key] = current
+                }
+                for (day, keys) in source.practiceDays { restored.practiceDays[day, default: []].formUnion(keys) }
+            }
+            var notes: [UUID: ConfirmedRecitationMistake] = [:]
+            for note in progress.confirmedMistakes + backup.archive.progress.confirmedMistakes {
+                if let local = notes[note.id], try encoder.encode(local) != encoder.encode(note) {
+                    error = "تعارضت ملاحظة في السجل. لم تتغير بياناتك المحلية."; return false
+                }
+                notes[note.id] = note
+            }
+            restored.confirmedMistakes = notes.values.sorted {
+                $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date > $1.date
+            }
+            // Importing remote progress does not complete today's ward. Preserve
+            // practice actually completed here, rather than clearing it on restore.
+            let today = MemorizationProgress.dayKey(Date())
+            restored.practiceDays[today] = progress.practiceDays[today]
+            let selectedPlan = history.isEmpty && session == nil && practice == nil ? backup.plan : plan
+            guard restored.valid(corpus: corpus) else { throw CocoaError(.fileReadCorruptFile) }
+            let archive = try encoder.encode(MemorizationArchive(version: 1, history: combined, progress: restored, plan: selectedPlan))
+            let savedPlan = try encoder.encode(selectedPlan)
+            // One durable pre-merge snapshot, also included in user data export.
+            if defaults.object(forKey: "noor.memorization.preCloudMerge") == nil {
+                var original: [String: Data] = [:]
+                for key in ["archive", "history", "plan", "session", "practice"] {
+                    if let bytes = defaults.data(forKey: "noor.memorization." + key) { original[key] = bytes }
+                }
+                defaults.set(original, forKey: "noor.memorization.preCloudMerge")
+            }
             defaults.set(archive, forKey: "noor.memorization.archive")
             defaults.set(savedPlan, forKey: "noor.memorization.plan")
-            plan = backup.plan; history = backup.archive.history; progress = restored; clearSession(); return true
-        } catch { self.error = "تعذّرت استعادة نسخة الحفظ."; return false }
+            plan = selectedPlan; history = combined; progress = restored; error = nil
+            NoorFocusController.shared.sync(progress: progress)
+            return true
+        } catch { self.error = "تعذّرت استعادة نسخة الحفظ؛ بقيت بياناتك المحلية محفوظة."; return false }
     }
+    var preCloudMerge: [String: Data]? { defaults.dictionary(forKey: "noor.memorization.preCloudMerge") as? [String: Data] }
     @discardableResult func finish(chapter: Int, answers: [MemorizationAnswer]) -> Bool {
         guard unreadableHistory == nil else { error = "لم تُحفظ النتيجة كي لا يُستبدل سجل سابق تعذّر فتحه. صدّر بياناتك من الإعدادات."; return false }
         let result = MemorizationResult(chapter: chapter, answers: answers)
@@ -297,6 +354,7 @@ struct MemorizationArchive: Codable {
         defaults.removeObject(forKey: "noor.memorization.history"); defaults.removeObject(forKey: "noor.memorization.plan")
         defaults.removeObject(forKey: "noor.memorization.archive")
         defaults.removeObject(forKey: "noor.memorization.preRetentionFix")
+        defaults.removeObject(forKey: "noor.memorization.preCloudMerge")
         defaults.removeObject(forKey: "noor.memorization.practice")
         practice = nil; unreadablePractice = nil
         clearSession(); history = []; progress = MemorizationProgress(); plan = MemorizationPlan(); unreadableHistory = nil; error = nil

@@ -197,7 +197,7 @@ struct SettingsView: View {
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition)
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge)
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
                     }
