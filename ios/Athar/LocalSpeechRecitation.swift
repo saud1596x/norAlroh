@@ -20,6 +20,8 @@ import WhisperKit
     @Published var message: String?
     private var activeWords: [RecitationExpectedWord] = []
     private let positions: SpeechPositionStore
+    var unreadablePosition: Data? { positions.unreadable }
+    var previousPosition: Data? { defaults.data(forKey: "noor.speech.previousPosition.v1") }
     private var usedHelp = false
     private var pipeline: WhisperKit?
     private var preparingTask: Task<Void, Never>?
