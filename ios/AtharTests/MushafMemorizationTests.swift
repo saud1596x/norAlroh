@@ -56,4 +56,40 @@ final class MushafMemorizationTests: XCTestCase {
         XCTAssertEqual(empty.plan.chapter, 1)
         XCTAssertTrue(empty.history.isEmpty)
     }
+    @MainActor func testInterruptedSessionRestoresAnswersAndHints() throws {
+        let suite = "NoorSessionTests." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MemorizationStore(defaults: defaults)
+        let answer = MemorizationAnswer(ayah: 1, assessment: "review", revealed: true, hints: 2)
+        XCTAssertTrue(store.saveSession(.init(chapter: 1, keys: [1, 2, 3], answers: [answer], hintWords: 2, hintCount: 1)))
+        let reopened = MemorizationStore(defaults: defaults)
+        XCTAssertEqual(reopened.session?.answers.count, 1)
+        XCTAssertEqual(reopened.session?.keys, [1, 2, 3])
+        XCTAssertEqual(reopened.session?.hintWords, 2)
+        XCTAssertFalse(reopened.saveSession(.init(chapter: 1, keys: [1, 1])))
+        XCTAssertFalse(reopened.saveSession(.init(chapter: 114, keys: [7])))
+        XCTAssertFalse(reopened.saveSession(.init(chapter: 1, keys: [2, 1], answers: [answer])))
+        XCTAssertTrue(reopened.finish(chapter: 1, answers: [answer]))
+        XCTAssertNil(MemorizationStore(defaults: defaults).session)
+    }
+    @MainActor func testReviewPrioritizesHelpedAndWeakVersesThenUnseenVerses() throws {
+        let suite = "NoorPriorityTests." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MemorizationStore(defaults: defaults)
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        XCTAssertTrue(store.configure(.init(chapter: 1, from: 1, to: 4, daily: 2), corpus: corpus))
+        XCTAssertTrue(store.finish(chapter: 1, answers: [
+            .init(ayah: 1, assessment: "remembered", revealed: false, hints: 0),
+            .init(ayah: 2, assessment: "remembered", revealed: false, hints: 1),
+            .init(ayah: 3, assessment: "review", revealed: true, hints: 0)]))
+        XCTAssertEqual(Set(store.reviewKeys(corpus: corpus)), Set([2, 3]))
+        XCTAssertTrue(store.saveSession(.init(chapter: 1, keys: [2, 3])))
+        XCTAssertTrue(store.configure(.init(chapter: 114, from: 1, to: 6, daily: 3), corpus: corpus))
+        XCTAssertNil(store.session)
+        store.erase()
+        XCTAssertNil(MemorizationStore(defaults: defaults).session)
+    }
+
 }
