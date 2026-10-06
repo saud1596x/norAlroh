@@ -31,9 +31,9 @@ final class NoorOriginalMushafUITests: XCTestCase {
             app.buttons["reader.jump"].tap()
             let field = app.textFields["reader.pageNumber"]
             XCTAssertTrue(field.waitForExistence(timeout: 10)); field.tap()
-            let existing = field.value as? String ?? ""
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
-            field.typeText(String(number))
+            let pageInput = number == 598 ? "٥٩٨" : String(number)
+            field.typeText(pageInput)
+            XCTAssertEqual(field.value as? String, pageInput, "Page input must not append the previous page")
             app.buttons["انتقل"].tap()
             requirePage(number, in: app)
             XCTAssertTrue(paper.waitForExistence(timeout: 10))
