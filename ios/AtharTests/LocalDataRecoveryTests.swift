@@ -2,6 +2,29 @@ import XCTest
 @testable import Athar
 
 final class LocalDataRecoveryTests: XCTestCase {
+    @MainActor func testMushafPracticeRestoresPositionAndHelpWithoutCountingOpeningAsCompletion() throws {
+        let suite = "NoorPracticeRecovery." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MemorizationStore(defaults: defaults)
+        let value = MemorizationPracticeSession(chapter: 112, from: 1, to: 4, ayah: 3, visibleWords: 2, hints: 1, revealAll: false, usedHelp: true)
+        XCTAssertTrue(store.savePractice(value))
+        XCTAssertEqual(store.completedToday(), 0)
+        let reopened = MemorizationStore(defaults: defaults)
+        XCTAssertEqual(reopened.practice?.ayah, 3)
+        XCTAssertEqual(reopened.practice?.visibleWords, 2)
+        XCTAssertEqual(reopened.practice?.hints, 1)
+        XCTAssertEqual(reopened.practice?.usedHelp, true)
+        reopened.erase()
+        XCTAssertNil(defaults.data(forKey: "noor.memorization.practice"))
+    }
+    @MainActor func testUnreadablePracticeIsNotOverwrittenByNewTraining() throws {
+        let suite = "NoorPracticeUnreadable." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let damaged = Data("invalid-practice".utf8); defaults.set(damaged, forKey: "noor.memorization.practice")
+        let store = MemorizationStore(defaults: defaults)
+        XCTAssertFalse(store.savePractice(.init(chapter: 1, from: 1, to: 7, ayah: 1)))
+        XCTAssertEqual(defaults.data(forKey: "noor.memorization.practice"), damaged)
+    }
     @MainActor func testUnreadableDeviceFileIsExportableAndCannotBeOverwrittenUntilErase() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
