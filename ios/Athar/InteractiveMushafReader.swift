@@ -5,6 +5,8 @@ import AVFoundation
 @MainActor final class MushafVerseAudio: ObservableObject {
     @Published var playing: String?
     @Published var error: String?
+    @Published var loadingKey: String?
+    private var playbackObservation: NSKeyValueObservation?
     private var player: AVPlayer?
     private var observation: NSKeyValueObservation?
     private var end: NSObjectProtocol?
@@ -22,7 +24,15 @@ import AVFoundation
               let url = URL(string: String(format: "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1])) else { stop(); return }
         do { try AVAudioSession.sharedInstance().setCategory(.playback); try AVAudioSession.sharedInstance().setActive(true) }
         catch { self.error = "تعذّر تشغيل الصوت على الجهاز."; stop(); return }
-        let item = AVPlayerItem(url: url); player = AVPlayer(playerItem: item)
+        let item = AVPlayerItem(url: url); let playback = AVPlayer(playerItem: item); player = playback
+        playing = nil; loadingKey = key
+        playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            let started = player.timeControlStatus == .playing
+            Task { @MainActor in
+                guard let self, self.player === player else { return }
+                if started { self.playing = key; self.loadingKey = nil; self.onVerse?(key) }
+            }
+        }
         observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
             Task { @MainActor in self?.error = "تحتاج التلاوة إلى اتصال بالإنترنت. تعذّر تحميل تسجيل الآية."; self?.stop() }
@@ -33,9 +43,9 @@ import AVFoundation
         failure = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.error = "انقطع تحميل التلاوة. تحقق من الاتصال وأعد المحاولة."; self?.stop() }
         }
-        playing = key; error = nil; onVerse?(key); player?.play()
+        error = nil; player?.play()
     }
-    func stop() { player?.pause(); player = nil; observation = nil; playing = nil; queue = [] }
+    func stop() { player?.pause(); player = nil; observation = nil; playbackObservation = nil; playing = nil; loadingKey = nil; queue = [] }
     deinit { if let end { NotificationCenter.default.removeObserver(end) }; if let failure { NotificationCenter.default.removeObserver(failure) } }
 }
 
@@ -100,7 +110,7 @@ struct InteractiveMushafReader: View {
             Theme.panel.ignoresSafeArea()
             GeometryReader { geometry in
                 if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
-                    OriginalMushafDrawing(page: page, corpus: store.quran, selected: selected,
+                    OriginalMushafDrawing(page: page, corpus: store.quran, selected: selected, reduceMotion: reduced || store.data.lowMotion,
                         onVerse: { key in
                             if let key { selected = key; sheetVerse = VerseSelection(key: key) }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { tools.toggle() } }
@@ -119,7 +129,9 @@ struct InteractiveMushafReader: View {
                     Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
                     Spacer(); Text(title).font(.headline); Spacer()
                     if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
-                    else { Color.clear.frame(width: 44, height: 44) }
+                    else if audio.loadingKey != nil {
+                        Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
+                    } else { Color.clear.frame(width: 44, height: 44) }
                 }
                 Spacer()
                 HStack {
