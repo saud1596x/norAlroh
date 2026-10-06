@@ -34,7 +34,7 @@ import UIKit
             }
             // Capture every page with the exact native renderer, not a web mockup.
             do {
-                let format = UIGraphicsImageRendererFormat(); format.scale = 1
+                let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.preferredRange = .standard
                 let image = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
                     UIColor.systemBackground.setFill(); context.fill(canvas.bounds)
                     canvas.drawInk()
@@ -49,6 +49,9 @@ import UIKit
                     }
                     XCTAssertNotEqual(try XCTUnwrap(hiddenImage.pngData()), originalPNG, "Training must actually suppress target glyphs")
                     XCTAssertEqual(canvas.regions.map(\.rect), originalRegions, "Hiding must not reflow any word or change hit regions")
+                    let allowed = canvas.regions.filter { $0.verse == firstVerse }.map { $0.rect.insetBy(dx: -3, dy: -3) }
+                    XCTAssertEqual(try changedPixelsOutside(allowed, before: image, after: hiddenImage), 0,
+                        "Hidden glyphs must not move or alter any neighbouring text or decorations")
                     let elements = canvas.accessibilityElements as? [UIAccessibilityElement] ?? []
                     let hiddenElement = try XCTUnwrap(elements.first { $0.accessibilityIdentifier == "reader.verse.\(firstVerse)" })
                     XCTAssertTrue(hiddenElement.accessibilityLabel?.contains("مخفي") == true, "VoiceOver must not reveal hidden verse text")
@@ -63,4 +66,20 @@ import UIKit
             }
         }
     }
+    private func changedPixelsOutside(_ regions: [CGRect], before: UIImage, after: UIImage) throws -> Int {
+        let a = try XCTUnwrap(before.cgImage), b = try XCTUnwrap(after.cgImage)
+        XCTAssertEqual(a.width, b.width); XCTAssertEqual(a.height, b.height)
+        XCTAssertEqual(a.bitsPerPixel, 32); XCTAssertEqual(b.bitsPerPixel, 32)
+        XCTAssertEqual(a.bytesPerRow, b.bytesPerRow)
+        let left = try XCTUnwrap(a.dataProvider?.data), right = try XCTUnwrap(b.dataProvider?.data)
+        let lhs = try XCTUnwrap(CFDataGetBytePtr(left)), rhs = try XCTUnwrap(CFDataGetBytePtr(right))
+        var changed = 0
+        for y in 0..<a.height { for x in 0..<a.width {
+            guard !regions.contains(where: { $0.contains(CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)) }) else { continue }
+            let offset = y * a.bytesPerRow + x * 4
+            if (0..<4).contains(where: { abs(Int(lhs[offset + $0]) - Int(rhs[offset + $0])) > 3 }) { changed += 1 }
+        } }
+        return changed
+    }
+
 }
