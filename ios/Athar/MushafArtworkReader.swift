@@ -30,7 +30,7 @@ struct MushafArtworkReader: View {
                         onToggleTools: { toolsVisible.toggle() })
                         // These reserved margins never change when tools hide.
                         .padding(.horizontal, 12).padding(.vertical, 60)
-                        .accessibilityIdentifier("reader.artwork.page.ready")
+                        .accessibilityIdentifier("reader.page.ready")
                 } else if failed {
                     ContentUnavailableView("تعذّر عرض الصفحة الأصلية", systemImage: "doc",
                         description: Text("لم تُستبدل الصفحة بخط أو رسم بديل."))
@@ -41,6 +41,12 @@ struct MushafArtworkReader: View {
                             .accessibilityLabel("العودة")
                         Spacer()
                         Text("المصحف").font(.headline)
+                        if let chapter = store.quran.first(where: { $0.number == startingChapter }) {
+                            NavigationLink { QuranReader(surah: chapter) } label: {
+                                Image(systemName: "textformat.size").frame(width: 44, height: 44)
+                            }.accessibilityLabel("القراءة النصية لسورة \(chapter.name)")
+                                .accessibilityIdentifier("reader.flexible")
+                        }
                         Spacer()
                         Button { input = String(number); picker = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
                             .accessibilityLabel("الانتقال إلى صفحة")
@@ -50,7 +56,7 @@ struct MushafArtworkReader: View {
                         Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
                             .disabled(number == 604).accessibilityLabel("الصفحة التالية")
                         Spacer()
-                        Button("\(number) / 604") { input = String(number); picker = true }.frame(minHeight: 44)
+                        Button("\(number) / 604") { input = String(number); picker = true }.frame(minHeight: 44).accessibilityIdentifier("reader.jump")
                         Spacer()
                         Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
                             .disabled(number == 1).accessibilityLabel("الصفحة السابقة")
@@ -71,7 +77,7 @@ struct MushafArtworkReader: View {
         .sheet(isPresented: $picker) {
             NavigationStack {
                 Form {
-                    TextField("١ إلى ٦٠٤", text: $input).keyboardType(.numberPad)
+                    TextField("١ إلى ٦٠٤", text: $input).keyboardType(.numberPad).accessibilityIdentifier("reader.pageNumber")
                     Button("انتقل") {
                         if let page = ArabicSearch.integer(input), (1...604).contains(page) { number = page; picker = false }
                     }.disabled(!(ArabicSearch.integer(input).map { (1...604).contains($0) } ?? false))
