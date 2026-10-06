@@ -2,6 +2,45 @@ import XCTest
 @testable import Athar
 
 final class LocalDataRecoveryTests: XCTestCase {
+    func testSpeechPositionRestoresTrustedRangeAndAssistanceWithoutSavingTranscript() throws {
+        let suite = "NoorSpeechPosition." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let words = RecitationComparison.words(chapter: corpus[111], from: 1, to: 4)
+        let position = try XCTUnwrap(SpeechSessionPosition.make(words: words, nextWord: 3, usedHelp: true))
+        XCTAssertTrue(SpeechPositionStore(defaults: defaults).save(position))
+        let restored = try XCTUnwrap(SpeechPositionStore(defaults: defaults).value)
+        XCTAssertEqual(restored.nextWord, 3)
+        XCTAssertTrue(restored.usedHelp)
+        XCTAssertTrue(restored.matches(words))
+        let bytes = try XCTUnwrap(defaults.data(forKey: "noor.speech.position.v1"))
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
+        XCTAssertNil(payload["transcript"]); XCTAssertNil(payload["audio"])
+        var invalid = restored; invalid.nextWord = words.count + 1
+        XCTAssertFalse(SpeechPositionStore(defaults: defaults).save(invalid))
+        XCTAssertEqual(defaults.data(forKey: "noor.speech.position.v1"), bytes)
+        let changedWords = RecitationComparison.words(chapter: corpus[111], from: 2, to: 4)
+        XCTAssertFalse(restored.matches(changedWords))
+    }
+    func testSpeechPositionPreservesDamagedDataAndPreviousRangeUntilExplicitErase() throws {
+        let suite = "NoorSpeechRecovery." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let first = try XCTUnwrap(SpeechSessionPosition.make(words: RecitationComparison.words(chapter: corpus[0], from: 1, to: 7), nextWord: 4, usedHelp: false))
+        let store = SpeechPositionStore(defaults: defaults)
+        XCTAssertTrue(store.save(first))
+        let old = try XCTUnwrap(defaults.data(forKey: "noor.speech.position.v1"))
+        let second = try XCTUnwrap(SpeechSessionPosition.make(words: RecitationComparison.words(chapter: corpus[111], from: 1, to: 4), nextWord: 0, usedHelp: false))
+        XCTAssertTrue(store.save(second))
+        XCTAssertEqual(defaults.data(forKey: "noor.speech.previousPosition.v1"), old)
+        let damaged = Data("invalid-speech-position".utf8)
+        defaults.set(damaged, forKey: "noor.speech.position.v1")
+        let reopened = SpeechPositionStore(defaults: defaults)
+        XCTAssertFalse(reopened.save(first)); XCTAssertEqual(defaults.data(forKey: "noor.speech.position.v1"), damaged)
+        reopened.erase()
+        XCTAssertNil(defaults.data(forKey: "noor.speech.position.v1")); XCTAssertNil(defaults.data(forKey: "noor.speech.previousPosition.v1"))
+        XCTAssertTrue(reopened.save(first))
+    }
     @MainActor func testMushafPracticeRestoresPositionAndHelpWithoutCountingOpeningAsCompletion() throws {
         let suite = "NoorPracticeRecovery." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
