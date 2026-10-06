@@ -12,6 +12,7 @@ workflows:
           brew install xcodegen
       - name: Install verified QCF V2 page fonts
         script: |
+          python3 scripts/prepare-king-fahd-mushaf.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Verify all local content
@@ -55,6 +56,7 @@ workflows:
       - name: Install generator and licensed release fonts
         script: |
           brew install xcodegen
+          python3 scripts/prepare-king-fahd-mushaf.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
           cd ios && xcodegen generate && cd ..
@@ -112,6 +114,7 @@ workflows:
           brew install xcodegen
       - name: Install verified QCF V2 page fonts
         script: |
+          python3 scripts/prepare-king-fahd-mushaf.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Verify all local content

@@ -15,3 +15,5 @@ release/native-build-report.json
 *.mobileprovision
 .env
 .env.*
+
+ios/Athar/king-fahd-standard39-2.pdf
