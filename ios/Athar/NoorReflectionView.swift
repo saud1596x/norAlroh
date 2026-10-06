@@ -61,7 +61,7 @@ struct NoorReflectionView: View {
                     }.disabled(trimmed.isEmpty).accessibilityIdentifier("reflection.save")
                     NavigationLink("دفتر تأملاتي") { LibraryView() }.frame(minHeight: 44)
                 }
-                Text("المصدر: Tanzil، النص العثماني 1.1. اختيار الآية يتغيّر يوميًا بالتوقيت السعودي. التأملات كتابات شخصية وليست تفسيرًا.")
+                Text("آية جديدة كل يوم. تأملاتك كتابات شخصية وليست تفسيرًا.")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(20)
         }.background(Theme.background).navigationTitle("وقفة مع آية")
