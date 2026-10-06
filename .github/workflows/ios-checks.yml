@@ -21,6 +21,10 @@ jobs:
           python3 scripts/select-xcode.py >> "$GITHUB_ENV"
       - name: Install project generator
         run: brew install xcodegen
+      - name: Install verified QCF V2 page fonts
+        run: |
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Verify bundled content
         run: |
           python3 scripts/prepare-publishing.py --check
@@ -29,6 +33,7 @@ jobs:
       - name: Compile and run iOS unit and navigation tests
         env:
           NOOR_RECORD_VIDEO: '1'
+          NOOR_TEST_CONFIGURATION: Release
         run: bash scripts/test-ios.sh
       - name: Save native evidence
         if: always()
