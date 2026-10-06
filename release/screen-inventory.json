@@ -18,8 +18,8 @@
       "title": "الصفحات والأجزاء"
     },
     {
-      "id": "05-flexible-reader",
-      "title": "القراءة المرنة"
+      "id": "05-interactive-verse-tools",
+      "title": "تحديد الآية وأدواتها في المصحف النصي"
     },
     {
       "id": "06-prayers",
@@ -94,8 +94,8 @@
       "title": "الخصوصية"
     },
     {
-      "id": "24-sources",
-      "title": "مصادر المحتوى"
+      "id": "24-licenses",
+      "title": "إشعارات التراخيص الحالية — إزالة المصادر لم تكتمل"
     },
     {
       "id": "25-reflection",
@@ -140,6 +140,22 @@
     {
       "id": "35-whisper-components",
       "title": "تراخيص المكونات التابعة للتعرف الصوتي"
+    },
+    {
+      "id": "36-mastery-map",
+      "title": "خريطة المراجعة"
+    },
+    {
+      "id": "37-practice-mushaf-hidden",
+      "title": "تدريب الحفظ داخل المصحف — النص مخفي"
+    },
+    {
+      "id": "38-practice-mushaf-hint",
+      "title": "تدريب الحفظ داخل المصحف — المساعدة"
+    },
+    {
+      "id": "39-practice-mushaf-revealed",
+      "title": "تدريب الحفظ داخل المصحف — النص مكشوف"
     }
   ],
   "captureStatus": "NOT_CAPTURED",
