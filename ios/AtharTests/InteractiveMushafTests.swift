@@ -14,7 +14,8 @@ import UIKit
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
         let fonts = MushafFonts()
-        for number in 1...604 {
+        // Start with the acceptance reference and still validate every page.
+        for number in [604] + Array(1...603) {
             await fonts.load(String(format: "QCF2%03d", number))
             XCTAssertNil(fonts.error, "Page \(number)")
             let page = OriginalPageData.page(number, snapshot: snapshot, rows: metadata, keys: keys)
