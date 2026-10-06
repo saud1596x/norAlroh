@@ -1,0 +1,38 @@
+name: Quran visual audit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quran-visual-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose installed Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Prepare verified Quran fonts and native project
+        run: |
+          brew install xcodegen
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Capture all 604 native Quran pages
+        run: |
+          NOOR_AUDIT_SIMULATOR="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for r,a in d["devices"].items() if "SimRuntime.iOS" in r for x in a if x.get("isAvailable") and x["name"].startswith("iPhone") and "Pro Max" in x["name"]))')"
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination "platform=iOS Simulator,id=$NOOR_AUDIT_SIMULATOR" -only-testing:AtharTests/MushafTypesettingTests -parallel-testing-enabled NO -resultBundlePath release/quran-visual.xcresult CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+      - name: Export native page gallery
+        if: always()
+        run: python3 scripts/export-quran-visual-audit.py
+      - name: Save actual page images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-native-visual-audit
+          path: |
+            release/quran-visual-audit
+            release/quran-visual.xcresult
+          retention-days: 14
