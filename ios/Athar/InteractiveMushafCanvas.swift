@@ -10,8 +10,11 @@ struct OriginalMushafRows: Decodable {
     let rows: [Row]
     static func load() throws -> Self {
         guard let url = Bundle.main.url(forResource: "qpc-v2-line-layout", withExtension: "json") else { throw QCFV2Snapshot.Invalid.page }
-        let result = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
-        guard Set(result.rows.map(\.page)) == Set(1...604),
+        let bytes = try Data(contentsOf: url)
+        guard SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == "51b0ecce36ea708b974756348f25ec0031ed002871249a884c3386eeed5ca828" else { throw QCFV2Snapshot.Invalid.page }
+        let result = try JSONDecoder().decode(Self.self, from: bytes)
+        guard result.rows.count == 9046, result.rows.filter({ $0.type == "basmallah" }).count == 112,
+              Set(result.rows.map(\.page)) == Set(1...604),
               Set(result.rows.map { "\($0.page):\($0.line)" }).count == result.rows.count,
               result.rows.filter({ $0.type == "surah_name" }).compactMap(\.chapter) == Array(1...114),
               result.rows.allSatisfy({ (1...($0.page <= 2 ? 8 : 15)).contains($0.line) && ["ayah", "surah_name", "basmallah"].contains($0.type) }) else { throw QCFV2Snapshot.Invalid.page }
@@ -62,12 +65,13 @@ struct OriginalPageData {
     struct Hit { let word: Int; let verse: String; let rect: CGRect }
     private(set) var regions: [Hit] = []
     private(set) var renderedSuccessfully = false
+    private(set) var failureReason: String?
     private var lines: [(CTLine, CGPoint)] = []
     private var decorationPaths: [CGPath] = []
     var onVerse: ((String?) -> Void)?
     var onFailure: (() -> Void)?
     var reduceMotion = false
-    var selected: String? { didSet { updateHighlight() } }
+    var selected: String? { didSet { if oldValue != selected { updateHighlight() } } }
     private let highlight = CAShapeLayer()
     private var ink: OriginalMushafInk!
     override init(frame: CGRect) {
@@ -79,14 +83,14 @@ struct OriginalPageData {
         ink.owner = self; ink.isUserInteractionEnabled = false; ink.backgroundColor = .clear
         ink.isOpaque = false; addSubview(ink)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
-        accessibilityIdentifier = "reader.page.ready"
+        accessibilityIdentifier = "reader.page.canvas"
         shouldGroupAccessibilityChildren = true
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
-        lines = []; regions = []; decorationPaths = []; renderedSuccessfully = false
+        lines = []; regions = []; decorationPaths = []; renderedSuccessfully = false; failureReason = nil
         guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: 32),
-              let companion = UIFont(name: OriginalMushafCompanion.name, size: 32) else { fail(); return }
+              let companion = UIFont(name: OriginalMushafCompanion.name, size: 32) else { fail("Missing page or companion font"); return }
         // Original companion's 81-unit space is converted to the page font's
         // 2500-unit grid. This bridges authored units; it does not stretch letters.
         let space = companion.withSize(32 * 2048 / 2500)
@@ -107,7 +111,7 @@ struct OriginalPageData {
                     ranges.append((NSRange(location: offset, length: (word.code as NSString).length), word))
                 }
             }
-            guard !text.isEmpty else { fail(); return }
+            guard !text.isEmpty else { fail("Empty authored row \(row.line)"); return }
             let font = header ? companion : body
             let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
             let attributed = NSMutableAttributedString(string: text, attributes: [.font: font, .foregroundColor: UIColor.label, .writingDirection: [direction]])
@@ -118,20 +122,25 @@ struct OriginalPageData {
             }
             let line = CTLineCreateWithAttributedString(attributed as CFAttributedString)
             let ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
-            guard ink.width > 0, ink.width <= 532, ink.height <= rowHeight + 6 else { fail(); return }
+            guard ink.width > 0, ink.width <= 532, ink.height <= rowHeight + 6 else { fail("Ink outside fixed row \(row.line): \(ink)"); return }
             // Baselines are fixed; vowel bounds never change line spacing.
-            let baseline = top + CGFloat(row.line - 1) * rowHeight + 48
+            let rowTop = top + CGFloat(row.line - 1) * rowHeight
+            // Center title ink within its original vector frame. Body and
+            // basmala baselines retain the immutable authored row grid.
+            let baseline = row.type == "surah_name"
+                ? rowTop + 30.5 + ink.midY
+                : rowTop + 48
             if row.type == "surah_name" {
                 let originalFont = CTFontCreateWithName(OriginalMushafCompanion.name as CFString, 32, nil)
                 var scalar: UniChar = 0xFC20; var glyph: CGGlyph = 0
                 guard CTFontGetGlyphsForCharacters(originalFont, &scalar, &glyph, 1), glyph != 0,
-                      let framePath = CTFontCreatePathForGlyph(originalFont, glyph, nil) else { fail(); return }
+                      let framePath = CTFontCreatePathForGlyph(originalFont, glyph, nil) else { fail("Missing original FC20 vector ornament"); return }
                 let frameBox = framePath.boundingBoxOfPath
                 let scale = min(532 / frameBox.width, 57 / frameBox.height)
                 var transform = CGAffineTransform(a: scale, b: 0, c: 0, d: -scale,
                     tx: 270 - frameBox.midX * scale,
                     ty: top + CGFloat(row.line - 1) * rowHeight + 30.5 + frameBox.midY * scale)
-                guard let placed = framePath.copy(using: &transform) else { fail(); return }
+                guard let placed = framePath.copy(using: &transform) else { fail("Unable to position original ornament"); return }
                 decorationPaths.append(placed)
             }
             let origin = CGPoint(x: row.centered ? 270 - ink.midX : 535 - ink.maxX, y: baseline)
@@ -139,12 +148,12 @@ struct OriginalPageData {
             var wordRects: [Int: CGRect] = [:]
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
                 let attributes = CTRunGetAttributes(run) as NSDictionary
-                guard let runFontValue = attributes[kCTFontAttributeName] else { fail(); return }
+                guard let runFontValue = attributes[kCTFontAttributeName] else { fail("Missing Core Text run font"); return }
                 let runFont = runFontValue as! CTFont
                 let family = CTFontCopyPostScriptName(runFont) as String
                 let stringRange = CTRunGetStringRange(run)
                 let substring = (text as NSString).substring(with: NSRange(location: stringRange.location, length: stringRange.length))
-                guard family == font.fontName || (!header && family == companion.fontName && substring.allSatisfy({ $0 == " " })) else { fail(); return }
+                guard family == font.fontName || (!header && family == companion.fontName && substring.allSatisfy({ $0 == " " })) else { fail("Unexpected font \(family), row \(row.line)"); return }
                 let count = CTRunGetGlyphCount(run)
                 var glyphs = [CGGlyph](repeating: 0, count: count)
                 var positions = [CGPoint](repeating: .zero, count: count)
@@ -152,7 +161,7 @@ struct OriginalPageData {
                 CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
                 CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
                 CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
-                guard !glyphs.contains(0) else { fail(); return }
+                guard !glyphs.contains(0) else { fail("Missing shaped glyph, row \(row.line)"); return }
                 for i in 0..<count {
                     guard let path = CTFontCreatePathForGlyph(runFont, glyphs[i], nil) else { continue }
                     let box = path.boundingBoxOfPath
@@ -164,7 +173,7 @@ struct OriginalPageData {
                 }
             }
             for (_, word) in ranges {
-                guard let rect = wordRects[word.id], rect.minX >= 0, rect.maxX <= 540, rect.minY >= 0, rect.maxY <= Self.pageSize.height else { fail(); return }
+                guard let rect = wordRects[word.id], rect.minX >= 0, rect.maxX <= 540, rect.minY >= 0, rect.maxY <= Self.pageSize.height else { fail("Missing or clipped ink for word \(word.id), row \(row.line): \(String(describing: wordRects[word.id]))"); return }
                 regions.append(Hit(word: word.id, verse: word.verse, rect: rect))
             }
         }
@@ -178,6 +187,7 @@ struct OriginalPageData {
             element.accessibilityIdentifier = "reader.verse.\(key)"
             element.accessibilityLabel = "\(corpus[parts[0] - 1].name)، الآية \(parts[1]). \(corpus[parts[0] - 1].ayahs[parts[1] - 1].text)"
             element.accessibilityTraits = .button
+            element.accessibilityLanguage = "ar"
             element.action = { [weak self] in self?.onVerse?(key) }
             element.accessibilityFrameInContainerSpace = regions.first { $0.verse == key }?.rect ?? .zero
             return element
@@ -187,7 +197,12 @@ struct OriginalPageData {
     private func orderedKeys(_ page: OriginalPageData) -> [String] {
         var seen = Set<String>(); return page.words.compactMap { seen.insert($0.verse).inserted ? $0.verse : nil }
     }
-    private func fail() { lines = []; regions = []; accessibilityElements = []; ink.setNeedsDisplay(); onFailure?() }
+    private func fail(_ reason: String) { failureReason = reason; lines = []; regions = []; accessibilityElements = []; ink.setNeedsDisplay(); onFailure?() }
+    func redrawInk(atZoom scale: CGFloat) {
+        // Re-render text after a pinch; neither shaping nor source coordinates change.
+        ink.contentScaleFactor = UIScreen.main.scale * max(1, scale)
+        ink.setNeedsDisplay()
+    }
     func verse(at point: CGPoint) -> String? { regions.first { $0.rect.contains(point) }?.verse }
     @objc private func tapped(_ tap: UITapGestureRecognizer) { onVerse?(verse(at: tap.location(in: self))) }
     private func updateHighlight() {
@@ -223,10 +238,12 @@ struct OriginalPageData {
         super.init(frame: frame); delegate = self
         showsVerticalScrollIndicator = false; showsHorizontalScrollIndicator = false
         bouncesZoom = true; backgroundColor = .clear; addSubview(canvas)
+        accessibilityIdentifier = "reader.page.ready"
         contentSize = OriginalMushafCanvas.pageSize
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { canvas }
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { canvas.redrawInk(atZoom: scale) }
     override func layoutSubviews() {
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0 else { return }

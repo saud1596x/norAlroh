@@ -175,7 +175,10 @@ struct InteractiveMushafReader: View {
             let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             let cache = QCFV2ContentCache(file: directory.appendingPathComponent("qcf-v2-cache.json"), endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
             let entry: QCFV2ContentCache.Entry
-            do { entry = try await cache.refresh() } catch { guard let offline = await cache.cached() else { throw error }; entry = offline }
+            if let offline = await cache.cached() {
+                entry = offline
+                Task { _ = try? await cache.refresh() }
+            } else { entry = try await cache.refresh() }
             let data = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated()
             try metadata.validate(data)
             let first = snapshot == nil; snapshot = data; rows = metadata
@@ -238,7 +241,7 @@ private struct VerseTools: View {
             }
             .navigationTitle("\(surah.name) · الآية \(selection.ayah)")
             .accessibilityIdentifier("verse.tools.\(selection.key)")
-            .toolbar { Button("إغلاق") { dismiss() } }
+            .toolbar { Button("إغلاق") { dismiss() }.accessibilityIdentifier("verse.tools.close") }
             .onAppear { repeatEnd = selection.ayah }
             .sheet(isPresented: $showTafsir) {
                 NavigationStack {
@@ -248,7 +251,7 @@ private struct VerseTools: View {
                         else { ProgressView("تحميل التفسير الميسر…") }
                     }.padding() }
                     .navigationTitle("التفسير · \(surah.name) \(selection.ayah)")
-                    .toolbar { Button("إغلاق") { showTafsir = false } }
+                    .toolbar { Button("إغلاق") { showTafsir = false }.accessibilityIdentifier("verse.tafsir.close") }
                     .task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) }
                 }
             }
