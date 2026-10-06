@@ -24,7 +24,9 @@ The source is raster artwork embedded in PDF, not vector lettering. Zoom cannot 
 
 Tanzil Uthmani 1.1 remains the independent verified 6236-verse text for existing search and text features. Its text is not used to rebuild the printed face.
 
-This edition currently has **no verified verse hit coordinates or verse-to-page index**. The reader deliberately disables verse selection/highlighting rather than borrow geometry from a different edition. Opening an explicit page works; otherwise it restores the last page. Opening a search result at its precise verse is not implemented for this edition yet. Page-level accessibility labels are available; verse-level accessibility, audio and tafsir overlays remain incomplete.
+The original publisher surah index on physical leaves 634–637 was actually opened at full resolution and its 114 start-page entries checked. `king-fahd-chapter-pages.json` records those entries independently of any font/line database. Selecting a surah at ayah 1 opens its original starting page.
+
+This edition currently has **no verified verse hit coordinates or complete verse-to-page index**. The reader deliberately disables verse selection/highlighting rather than borrow geometry from a different edition. Opening an explicit page works; otherwise it opens the verified surah start for ayah 1 or restores the last page. Opening a search result at its precise verse is not implemented for this edition yet. Page-level accessibility labels are available; verse-level accessibility, audio and tafsir overlays remain incomplete.
 
 ## Acceptance evidence
 
