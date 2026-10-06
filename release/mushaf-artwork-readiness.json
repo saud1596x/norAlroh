@@ -1,5 +1,5 @@
 {
-  "status": "BLOCKED_MATCHING_ASSETS_NOT_AVAILABLE",
+  "status": "CONFIRMED_ORIGINAL_IMPLEMENTED_NATIVE_REVIEW_PENDING",
   "releaseApproved": false,
   "referenceImagesActuallyOpened": [
     1,
@@ -10,13 +10,13 @@
   ],
   "referencePagesVisuallyCompared": [],
   "legacyNativeCanvasesAvailable": 604,
-  "all604DataValidated": false,
+  "all604DataValidated": true,
   "nativeAfterEvidence": null,
   "manifestSHA256": null,
   "rightsCleared": false,
-  "rendererImplemented": "Complete PDF vector page with one uniform fit and disconnected ayah hit polygons",
-  "rendererActivated": false,
-  "existingReaderRetainedUntilApprovedPackageInstalled": true,
+  "rendererImplemented": "Unchanged full-color publisher raster PDF; original 640-leaf document, 604 printed Quran pages, uniform fit",
+  "rendererActivated": "When pinned original PDF is installed by preparation script",
+  "existingReaderRetainedUntilApprovedPackageInstalled": false,
   "confirmedCauses": [
     "Amiri replaces original surah calligraphy and ornamental frames",
     "Amiri replaces the original calligraphic basmala",
@@ -50,11 +50,10 @@
     }
   ],
   "missing": [
-    "A licensed full-page artwork package matching the supplied references, including original frames, basmala and ayah ornaments",
-    "Exact source edition/build identity, not inferred from appearance alone",
-    "Ayah hit polygons in that same artwork coordinate system for all 604 pages",
-    "Transparent-paper vector pages suitable for retaining current app colors",
-    "Actual native after captures, overlays and component-by-component human review"
+    "Native captures and component-by-component visual review of the confirmed original edition",
+    "Publisher-aligned ayah coordinates; verse overlays currently disabled for this edition",
+    "Verified verse-to-page index for search and accessibility of original edition",
+    "Redistribution permission record before public release"
   ],
   "religiousAccuracyApproval": "NOT_CERTIFIED",
   "geometryTestFixture": "NON-QURAN shapes only; cannot be counted as an after screenshot",
@@ -78,5 +77,12 @@
     "run": 37498689320,
     "job": "focus-build",
     "status": "PASSED"
+  },
+  "confirmedOriginal": {
+    "edition": "KFGQPC المصحف العادي standard39-2.pdf",
+    "sha256": "5c4297de1fb6b654f641eed33242408d89432cbecf8a96ff5d297cb45fea7f07",
+    "userConfirmedPage604": true,
+    "source": "https://qurancomplex.gov.sa/wp-content/uploads/isdarat/hafs/standard39-2.pdf",
+    "audit": "release/king-fahd-source-audit.json"
   }
 }

@@ -1,123 +1,33 @@
-# Fixed page renderer — source and acceptance record
+# Confirmed original King Fahd Mushaf
 
-## Current outcome
+The user confirmed the displayed original page 604 from **KFGQPC المصحف العادي / standard39-2.pdf**. This supersedes the earlier request to reconstruct the Ayah screenshot's artwork. No claim is made that these two references are identical.
 
-The attached references were actually opened: pages **1, 2, 3, 151 and 604**.
-Pages 604, 1, 2, 3 and 151 were compared to existing production UIKit canvas captures.
-These XCTest images are not full-screen after captures from the new reader. None of the
-retrieved packages is accepted as a visually matching replacement. The new
-renderer is implemented but **not activated**. No native Quran "after" image
-exists yet. A geometry fixture containing ordinary rectangles is not Quran
-artwork and must not be presented as an after image.
+## Source and installation
 
-This change preserves the existing reader until an accepted complete package
-exists, rejects malformed installed packages, and blocks the signed publishing
-workflow while the acceptance receipt is unresolved. This is an incomplete
-renderer migration, not a completed Ayah appearance match.
+Official source: https://qurancomplex.gov.sa/wp-content/uploads/isdarat/hafs/standard39-2.pdf
 
-## Confirmed causes in the old implementation
+Hash-verified transport mirror: https://cdn.quran.ws/KFGQPC/resources/quran-hafs/standard39-2/standard39-2.pdf
 
-`QCFV2PageLayout` infers headers from first-verse positions and assigns Amiri.
-`MushafLineCanvas` joins glyph records with added spaces. `MushafTypesetter`
-fits and justifies individual lines, and right-aligns short lines after fitting.
-`MushafReader` sets row heights from viewport width and vertically scrolls.
-The original ornamental frame, calligraphic basmala and title artwork are absent.
-The Quran Foundation QCF V2 font/snapshot hashes establish internal integrity;
-they do not identify the artwork build used in the supplied Ayah screenshots.
+SHA256: `5c4297de1fb6b654f641eed33242408d89432cbecf8a96ff5d297cb45fea7f07`; bytes: 243520529.
 
-## Investigated sources (none adopted)
+Run `python3 scripts/prepare-king-fahd-mushaf.py` before XcodeGen, or pass `--source` for an already downloaded exact original. The preparation script copies the full original unchanged. It refuses size or hash mismatches. The large reproducible PDF is not committed to Git.
 
-* KFGQPC master Hafs 1441H: individual PDF-compatible Illustrator pages 1, 2,
-  3, 151 and 604 retrieved from the Quran.ws archive. Source package metadata
-  names `1441-AI-hafs.zip`, SHA-256
-  `280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef`.
-  **The full archive was not downloaded or independently hash verified.**
-  Page 604 contains green printing placeholders, not the reference ornaments.
-  Official source: https://dm.qurancomplex.gov.sa/.
-  Archive metadata: https://github.com/quran-ws/kfgqpc-resources.
-* https://github.com/batoulapps/quran-svg, revision
-  `78d97544bfdc57e9f04bc97ace3f857ed972d772`: explicitly converted from the
-  Complex's Illustrator files. Raw page 604 was rendered and examined. It has
-  the same printing placeholders. Its optimized pipeline removes decorations.
-* https://github.com/quran-ws/quran-svg: Hafs/KFGQPC 1441H. Page 604 was
-  rendered and examined. Provenance explains removed decorations and redrawn
-  ayah markers. The base body is close, but the reference identity is unproven.
-* https://github.com/NedaaDevs/quran-image-generator: read source, not executed
-  as a Quran source. Its author warns generated pages have not been proofread.
-* `surah-header.ttf` from that project's `common.zip`: embedded name-table
-  notice restricts publishing without permission and credits Freepik artwork.
-  **Excluded from the app.** Merely locating a download does not establish rights.
+The document has 640 physical leaves. Printed Quran pages 1–604 occupy physical leaves 4–607 (one-based). The runtime verifies hash, total leaves and all 604 media/crop boxes and rotations before activating it. The audit records all original image dimensions. This is structural verification, not a claim of human review of all 604 pages.
 
-The screenshots alone do not establish the exact edition/build or ownership
-of the ornamental assets. Do not infer a precise edition year from font resemblance.
+## Rendering
 
-## Package contract
+CGPDFPage draws the original publisher content including paper, frames, surah titles, basmala and ayah markers. There is no font substitution, OCR, text regeneration, manual spacing or per-page exception. One uniform scale fits the complete original page. Reading tools reserve fixed margins, so showing/hiding tools does not reflow the page. Page number navigation, saved last page and zoom are implemented.
 
-Supply `ios/Athar/mushaf-artwork-manifest.json` and 604 one-page transparent
-PDFs named `mushaf-artwork-001.pdf` through `mushaf-artwork-604.pdf`.
+The source is raster artwork embedded in PDF, not vector lettering. Zoom cannot recover detail beyond the original raster resolution. Original colors are retained.
 
-The manifest contains `schema: 1`, exact `edition`, `sourceURL`, immutable
-`sourceRevision`, a checked `rightsRecord`, `reviewStatus`,
-`reviewedReferencePages`, and ordered `pages`. Each page has its original
-`width`, `height`, `file`, SHA-256 and ordered `regions`. Each region has a stable
-Tanzil-compatible `verseKey` (`surah:ayah`) and **separate** top-left-coordinate
-polygons for every printed line occupied by that ayah.
+## Interaction boundaries
 
-All Quran paths, diacritics, surah headings, basmalas, frames and ayah medallions
-must already exist in the source page. Neither screenshots nor OCR may create
-them. PDF media/crop boxes have origin (0,0), equal dimensions, no rotation,
-one page and transparent paper. Paths are tinted with the existing ink color;
-the background remains `Theme.panel`. Original paths are never stretched.
-Monochrome artwork must preserve lighter ornamental strokes as coverage/alpha;
-opaque gray strokes must not be flattened into the same opacity as black ink.
-This requirement is part of package review, not a claim about any retrieved PDF.
+Tanzil Uthmani 1.1 remains the independent verified 6236-verse text for existing search and text features. Its text is not used to rebuild the printed face.
 
-The loader checks 604 ordered pages, all 6236 canonical verse keys in order
-(including cross-page continuations), polygon bounds, page hashes and PDF
-boxes before activation. This structural validation is **not** content approval.
+This edition currently has **no verified verse hit coordinates or verse-to-page index**. The reader deliberately disables verse selection/highlighting rather than borrow geometry from a different edition. Opening an explicit page works; otherwise it restores the last page. Opening a search result at its precise verse is not implemented for this edition yet. Page-level accessibility labels are available; verse-level accessibility, audio and tafsir overlays remain incomplete.
 
-## Rendering and interactions
+## Acceptance evidence
 
-`MushafPageTransform` uses `min(viewportWidth/pageWidth, viewportHeight/pageHeight)`.
-Extra margins are retained. UIKit displays one vector page, with optional zoom
-on that page; there is no default vertical scrolling. Tap toggles controls;
-long press hit-tests the original polygons. Selection fills each polygon,
-never the bounding box of a multiline ayah. VoiceOver reads the independent,
-verified Tanzil text. Existing bookmarking/copy actions use canonical verse keys.
-New listening and tafsir services are **not** implemented by this canvas change;
-they require independent integration through the same verse-key callbacks.
-Last page uses the existing persistent key. Tools use opacity and overlay
-layout, so showing/hiding them does not reflow or rescale the page.
+Original page 604 was actually displayed and confirmed by the user. Runtime native tests cover all 604 page retrievals and capture pages 1,2,3,151,572,598,604, comparing production canvas PNG bytes with direct CoreGraphics rendering of the exact original. These tests must run on Xcode; adding them does not constitute a passing result. Native after captures, viewport screenshots, overlays and human visual inspection remain pending until their artifacts are retrieved.
 
-## Acceptance still required
-
-1. Resolve the exact matching asset package and documented rights, including ornaments.
-2. Verify all 604 source pages and same-package coordinates; do not mix editions.
-3. Capture actual application output for 604 first, then 1, 2, 3, 151.
-4. Crop the page regions and uniformly scale. Use
-   `scripts/compare-mushaf-reference.py` for paper-color-independent overlays
-   and edge-tolerant differences. Do not use nonuniform registration or
-   per-line warping to conceal layout discrepancies.
-5. Review letter paths, all marks, positions, short-line centers, line endings,
-   basmala, headings, ornaments and margins separately. A single score or a
-   passing build cannot approve these.
-6. Bind the approval receipt to the manifest SHA-256 and actual native after
-   evidence. Only then activate and pass `check-mushaf-publication.py`.
-
-No approval status may be generated automatically from hashes or screenshots.
-
-## Checks performed
-
-Six native geometry/activation tests passed on iPhone 16 Pro Max (iOS 18.5),
-workflow 37499128438, source commit
-`853143fccafd266ad63578bed876279841728f3d`. The drawing fixture contains only
-rectangles, not Quran. The loading-state change is included in this passing run.
-The accounts/Friday/Screen Time application build also passed in workflow
-37498689320, job `focus-build`.
-Tanzil verification passed for all 6236 verses and 112 separate basmalas by
-exact Unicode equality. `check-mushaf-publication.py` deliberately fails while
-the matching artwork package is absent.
-
-The five before comparisons are recorded in `mushaf-before-comparison.json`,
-including exact input hashes, crops, uniform scales and component findings.
-They show current defects; they do not approve the new renderer.
+The publication gate remains closed. The source identity is confirmed, but redistribution permission and remaining interaction/visual-review requirements have not been cleared. Historical Ayah before comparisons are retained in `release/mushaf-before-comparison.json`; they are not after evidence for this edition.
