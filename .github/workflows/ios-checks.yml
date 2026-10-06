@@ -49,3 +49,19 @@ jobs:
             release/native-screens/capture-report.json
             release/content-audit.json
           retention-days: 14
+  focus-build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose installed Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Prepare verified Quran resources
+        run: |
+          brew install xcodegen
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+      - name: Build Screen Time app and all extensions
+        run: |
+          xcodegen generate --spec ios/project-focus.yml --project ios
+          xcodebuild build -project ios/Athar.xcodeproj -scheme Athar -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
