@@ -82,7 +82,6 @@ struct OriginalPageData {
         ink = OriginalMushafInk(frame: CGRect(origin: .zero, size: Self.pageSize))
         ink.owner = self; ink.isUserInteractionEnabled = false; ink.backgroundColor = .clear
         ink.isOpaque = false; addSubview(ink)
-        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
         accessibilityIdentifier = "reader.page.canvas"
         shouldGroupAccessibilityChildren = true
     }
@@ -211,7 +210,6 @@ struct OriginalPageData {
         ink.setNeedsDisplay()
     }
     func verse(at point: CGPoint) -> String? { regions.first { $0.rect.contains(point) }?.verse }
-    @objc private func tapped(_ tap: UITapGestureRecognizer) { onVerse?(verse(at: tap.location(in: self))) }
     private func updateHighlight() {
         let path = UIBezierPath()
         for region in regions where region.verse == selected { path.append(UIBezierPath(roundedRect: region.rect.insetBy(dx: -0.8, dy: -0.8), cornerRadius: 2)) }
@@ -247,8 +245,16 @@ struct OriginalPageData {
         bouncesZoom = true; backgroundColor = .clear; addSubview(canvas)
         accessibilityIdentifier = "reader.page.loading"
         contentSize = OriginalMushafCanvas.pageSize
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tappedOnViewport(_:)))
+        tap.require(toFail: panGestureRecognizer)
+        addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
+    @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
+        // UIKit applies zoom and offset when converting into the fixed canvas.
+        // A margin tap stays blank; it never chooses a nearby verse.
+        canvas.onVerse?(canvas.verse(at: tap.location(in: canvas)))
+    }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { canvas }
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { canvas.redrawInk(atZoom: scale) }
     override func layoutSubviews() {

@@ -143,6 +143,9 @@ struct InteractiveMushafReader: View {
                 }
             }.padding(.horizontal, 10).opacity(tools ? 1 : 0).allowsHitTesting(tools).accessibilityHidden(!tools)
         }
+        .transaction { transaction in
+            if reduced || store.data.lowMotion { transaction.disablesAnimations = true }
+        }
         .task { await load() }
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
         .onDisappear { audio.stop(); audio.onVerse = nil }
@@ -239,7 +242,7 @@ private struct VerseTools: View {
                         audio.play((selection.ayah...surah.ayahs.count).map { "\(selection.chapter):\($0)" }); dismiss()
                     }.accessibilityIdentifier("verse.play")
                     Button("التفسير", systemImage: "book") { showTafsir = true }.accessibilityIdentifier("verse.tafsir")
-                    Button(store.data.bookmarks.contains(selection.key) ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية", systemImage: "bookmark") { store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah) }
+                    Button(store.data.bookmarks.contains(selection.key) ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية", systemImage: "bookmark") { store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah) }.accessibilityIdentifier("verse.bookmark")
                 }
                 Section("التكرار") {
                     Stepper("عدد التكرارات: \(repeatCount)", value: $repeatCount, in: 1...20)
@@ -254,8 +257,17 @@ private struct VerseTools: View {
                 }
             }
             .navigationTitle("\(surah.name) · الآية \(selection.ayah)")
+            .navigationBarTitleDisplayMode(.inline)
             .accessibilityIdentifier("verse.tools.\(selection.key)")
-            .toolbar { Button("إغلاق") { dismiss() }.accessibilityIdentifier("verse.tools.close") }
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("\(surah.name) · الآية \(selection.ayah)").font(.headline)
+                        .accessibilityIdentifier("verse.tools.title")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("إغلاق") { dismiss() }.accessibilityIdentifier("verse.tools.close")
+                }
+            }
             .onAppear { repeatEnd = selection.ayah }
             .sheet(isPresented: $showTafsir) {
                 NavigationStack {

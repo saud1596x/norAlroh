@@ -8,6 +8,8 @@ import FoundationNetworking
 struct QCFV2Snapshot: Decodable {
     let resource_group: String
     let resource_id: Int
+    // Immutable Content Sync edition matching the pinned original V2 fonts.
+    let resource_content_id: Int
     let schema_version: Int
     let sync_sequence: Int
     let records: [Record]
@@ -33,7 +35,7 @@ struct QCFV2Snapshot: Decodable {
     enum Invalid: Error { case envelope, edition, page, word, sequence, verse }
 
     func validated() throws -> QCFV2Snapshot {
-        guard resource_group == "mushafs", resource_id == 1,
+        guard resource_group == "mushafs", resource_id == 1, resource_content_id == 382,
               schema_version == 1, sync_sequence >= 0, records.count < 120_000 else { throw Invalid.envelope }
         let editions = records.filter { $0.record_type == "mushaf" }
         guard editions.count == 1, editions[0].id == 1,
