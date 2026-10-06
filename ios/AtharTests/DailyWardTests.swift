@@ -28,6 +28,7 @@ final class DailyWardTests: XCTestCase {
     func testWardContractCountsUniqueSelectedVersesOnly() {
         let contract = NoorWardContract(chapter: 1, from: 2, to: 5, target: 3)
         XCTAssertFalse(contract.completed(in: ["1:1", "1:2", "1:3", "2:4"]))
+        XCTAssertFalse(contract.completed(in: ["1:2", "01:02", "1:3"]))
         XCTAssertTrue(contract.completed(in: ["1:2", "1:3", "1:4"]))
         XCTAssertFalse(NoorWardContract(chapter: 1, from: 2, to: 3, target: 3).valid)
     }
