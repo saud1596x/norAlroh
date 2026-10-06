@@ -70,7 +70,9 @@ struct MushafArtworkReader: View {
         .task {
             let key = "\(startingChapter):\(startingAyah)"
             number = startingPage.flatMap { (1...604).contains($0) ? $0 : nil }
-                ?? library.manifest.pages.first(where: { $0.regions.contains(where: { $0.verseKey == key }) })?.number ?? min(604, max(1, lastPage))
+                ?? library.manifest.pages.first(where: { $0.regions.contains(where: { $0.verseKey == key }) })?.number
+                ?? ((startingAyah == 1 && library.chapterStartPages.indices.contains(startingChapter - 1))
+                    ? library.chapterStartPages[startingChapter - 1] : min(604, max(1, lastPage)))
             load()
         }
         .onChange(of: number) { _, _ in load() }

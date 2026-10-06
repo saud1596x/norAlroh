@@ -115,6 +115,12 @@ enum MushafArtworkGeometry {
     private let bundle: Bundle
     private var retained: [Int: Artwork] = [:]
     private var originalDocument: CGPDFDocument?
+    private(set) var chapterStartPages: [Int] = []
+    private struct ChapterIndex: Decodable {
+        let sourceSHA256: String
+        let publisherIndexPhysicalLeaves: [Int]
+        let chapterStartPages: [Int]
+    }
     nonisolated static let originalSHA256 = "5c4297de1fb6b654f641eed33242408d89432cbecf8a96ff5d297cb45fea7f07"
     private init(manifest: MushafArtworkManifest, bundle: Bundle) { self.manifest = manifest; self.bundle = bundle }
 
@@ -144,6 +150,15 @@ enum MushafArtworkGeometry {
                     sourceRevision: Self.originalSHA256, rightsRecord: "Distribution review pending",
                     reviewStatus: "USER_CONFIRMED_SOURCE_NATIVE_REVIEW_PENDING", reviewedReferencePages: [604], pages: pages)
                 let library = MushafArtworkLibrary(manifest: manifest, bundle: bundle)
+                guard let indexURL = bundle.url(forResource: "king-fahd-chapter-pages", withExtension: "json") else { throw MushafArtworkManifest.Invalid.metadata }
+                let index = try JSONDecoder().decode(ChapterIndex.self, from: Data(contentsOf: indexURL))
+                guard index.sourceSHA256 == Self.originalSHA256,
+                      index.publisherIndexPhysicalLeaves == [634, 635, 636, 637],
+                      index.chapterStartPages.count == 114,
+                      index.chapterStartPages == index.chapterStartPages.sorted(),
+                      index.chapterStartPages.allSatisfy({ (1...604).contains($0) }),
+                      index.chapterStartPages.first == 1, index.chapterStartPages.last == 604 else { throw MushafArtworkManifest.Invalid.metadata }
+                library.chapterStartPages = index.chapterStartPages
                 library.originalDocument = CGPDFDocument(originalURL as CFURL)
                 guard library.originalDocument != nil else { throw MushafArtworkManifest.Invalid.artwork }
                 return .ready(library)
