@@ -50,5 +50,30 @@ final class QCFV2ContentTests: XCTestCase {
         do { _ = try await corrupted.refresh(force: true); XCTFail("An incomplete Quran must be rejected") } catch { }
         let afterRejection = await corrupted.cached()
         XCTAssertEqual(afterRejection?.snapshot, entry.snapshot)
+
+        // Remove a word but repair its page positions: the old page-only
+        // validation accepted this while silently omitting Quran content.
+        var missingWordEnvelope = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.snapshot) as? [String: Any])
+        var missingWordRecords = try XCTUnwrap(missingWordEnvelope["records"] as? [[String: Any]])
+        let removed = try XCTUnwrap(missingWordRecords.firstIndex {
+            $0["record_type"] as? String == "mushaf_word" && $0["verse_id"] as? Int == 1
+                && $0["position_in_verse"] as? Int == 2
+        })
+        let removedPage = try XCTUnwrap(missingWordRecords[removed]["page_number"] as? Int)
+        let removedPosition = try XCTUnwrap(missingWordRecords[removed]["position_in_page"] as? Int)
+        missingWordRecords.remove(at: removed)
+        for index in missingWordRecords.indices {
+            if missingWordRecords[index]["record_type"] as? String == "mushaf_word",
+               missingWordRecords[index]["page_number"] as? Int == removedPage,
+               let position = missingWordRecords[index]["position_in_page"] as? Int, position > removedPosition {
+                missingWordRecords[index]["position_in_page"] = position - 1
+            }
+        }
+        missingWordEnvelope["records"] = missingWordRecords
+        let missingWordBytes = try JSONSerialization.data(withJSONObject: missingWordEnvelope)
+        let missingWordCache = QCFV2ContentCache(file: file, endpoint: endpoint, fetch: { _ in missingWordBytes })
+        do { _ = try await missingWordCache.refresh(force: true); XCTFail("A missing verse word must be rejected even with contiguous page positions") } catch { }
+        let preservedAfterMissingWord = await missingWordCache.cached()
+        XCTAssertEqual(preservedAfterMissingWord?.snapshot, entry.snapshot)
     }
 }
