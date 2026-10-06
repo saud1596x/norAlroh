@@ -34,10 +34,8 @@ workflows:
     name: Noor Alruh signed iOS / TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 120
-
     integrations:
       app_store_connect: noor-alruh-publisher
-
     environment:
       groups:
         - noor_release
@@ -47,25 +45,21 @@ workflows:
           - noor-alruh-appstore
         certificates:
           - noor-alruh-distribution
-
     scripts:
       - name: Verify Xcode and SDK
         script: |
           python3 scripts/check-upload-toolchain.py
-
       - name: Install generator and licensed release fonts
         script: |
           brew install xcodegen
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
-
       - name: Audit local content
         script: |
           python3 scripts/prepare-publishing.py --check
           python3 scripts/check-source.py --swiftc "$(xcrun --find swiftc)"
           python3 scripts/audit-content.py
           python3 scripts/verify-quran-text.py
-
       - name: Create signed archive
         script: |
           xcode-project use-profiles --project ios/Athar.xcodeproj
@@ -74,11 +68,9 @@ workflows:
             --scheme Athar \
             --config Release \
             --archive-flags="CURRENT_PROJECT_VERSION=$((BUILD_NUMBER + 1))"
-
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-
     publishing:
       app_store_connect:
         auth: integration
