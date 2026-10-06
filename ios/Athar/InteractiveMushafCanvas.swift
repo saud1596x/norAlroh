@@ -122,7 +122,9 @@ struct OriginalPageData {
             }
             let line = CTLineCreateWithAttributedString(attributed as CFAttributedString)
             let ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
-            guard ink.width > 0, ink.width <= 532, ink.height <= rowHeight + 6 else { fail("Ink outside fixed row \(row.line): \(ink)"); return }
+            // Original stop and vowel marks may exceed one baseline interval.
+            // Validate full-page ink below; never clip or reject them by row height.
+            guard !ink.isNull, !ink.isInfinite, ink.width > 0, ink.width <= 532, ink.height > 0 else { fail("Invalid authored row ink \(row.line): \(ink)"); return }
             // Baselines are fixed; vowel bounds never change line spacing.
             let rowTop = top + CGFloat(row.line - 1) * rowHeight
             // Center title ink within its original vector frame. Body and
@@ -144,6 +146,11 @@ struct OriginalPageData {
                 decorationPaths.append(placed)
             }
             let origin = CGPoint(x: row.centered ? 270 - ink.midX : 535 - ink.maxX, y: baseline)
+            let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
+            guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
+                  pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
+                fail("Authored row \(row.line) exceeds page canvas: \(pageInk)"); return
+            }
             lines.append((line, origin))
             var wordRects: [Int: CGRect] = [:]
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
