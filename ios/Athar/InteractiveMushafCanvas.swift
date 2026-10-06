@@ -309,7 +309,13 @@ struct OriginalPageData {
                     for glyph in 0..<count {
                         let word = ranges.first { NSLocationInRange(indices[glyph], $0.0) }?.1
                         if word.map({ hiddenWordIDs.contains($0) }) != true {
+                            // CTRunDraw may mutate the graphics context. Each partial
+                            // draw starts from the same authored line origin.
+                            context.saveGState()
+                            context.textMatrix = .identity
+                            context.textPosition = CGPoint(x: origin.x, y: bounds.height - origin.y)
                             CTRunDraw(run, context, CFRange(location: glyph, length: 1))
+                            context.restoreGState()
                         }
                     }
                 }

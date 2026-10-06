@@ -30,7 +30,7 @@ struct SpeechRecitationView: View {
         guard !words.isEmpty else { return beginAyah }
         let active = speech.listening || speech.settling
         let position = active ? speech.anchor : (resumeIndex ?? initialIndex)
-        return words[min(words.count - 1, max(0, active && position > 0 ? position - 1 : position))].ayah
+        return words[min(words.count - 1, max(0, active && speech.comparison?.reliableAlignment == true && position > 0 ? position - 1 : position))].ayah
     }
     private var initialIndex: Int { words.firstIndex { $0.ayah == beginAyah } ?? 0 }
     var body: some View {
