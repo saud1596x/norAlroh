@@ -48,7 +48,7 @@ final class FridayTests: XCTestCase {
         XCTAssertTrue(source.finish(chapter: 1, answers: [.init(ayah: 1, assessment: "remembered", revealed: false, hints: 0)]))
         let backup = MemorizationCloudBackup(version: 1, plan: source.plan, archive: .init(version: 1, history: source.history, progress: source.progress))
         XCTAssertTrue(source.restore(backup))
-        XCTAssertEqual(source.completedToday(), 0)
+        XCTAssertEqual(source.completedToday(), 1, "Restoring keeps practice actually completed locally")
         XCTAssertEqual(source.progress.verses["1:1"]?.attempts, 1)
         let before = defaults.data(forKey: "noor.memorization.archive")
         let invalid = MemorizationCloudBackup(version: 1, plan: .init(chapter: 115, from: 1, to: 7, daily: 3), archive: backup.archive)

@@ -41,6 +41,48 @@ final class LocalDataRecoveryTests: XCTestCase {
         XCTAssertNil(defaults.data(forKey: "noor.speech.position.v1")); XCTAssertNil(defaults.data(forKey: "noor.speech.previousPosition.v1"))
         XCTAssertTrue(reopened.save(first))
     }
+    @MainActor func testCloudMergePreservesLocalSessionPlanAndHistoryWithoutDuplicatingEvents() throws {
+        let suite = "Noor.Merge." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MemorizationStore(defaults: defaults)
+        XCTAssertTrue(store.finish(chapter: 1, answers: [.init(ayah: 1, assessment: "remembered", revealed: false, hints: 0)]))
+        let local = store.history[0]
+        let checkpoint = MemorizationSession(chapter: 1, keys: [2, 3])
+        XCTAssertTrue(store.saveSession(checkpoint))
+        let remote = MemorizationResult(date: Date().addingTimeInterval(-86400), chapter: 1,
+            answers: [.init(ayah: 2, assessment: "remembered", revealed: false, hints: 0)])
+        var progress = MemorizationProgress(); progress.record(remote); progress.record(local)
+        let backup = MemorizationCloudBackup(version: 1, plan: .init(chapter: 112, from: 1, to: 4, daily: 2),
+            archive: .init(version: 1, history: [remote, local], progress: progress))
+        XCTAssertTrue(store.restore(backup)); XCTAssertTrue(store.restore(backup))
+        XCTAssertEqual(Set(store.history.map(\.id)), Set([local.id, remote.id]))
+        XCTAssertEqual(store.progress.verses["1:1"]?.attempts, 1)
+        XCTAssertEqual(store.plan.chapter, 1); XCTAssertEqual(store.session?.keys, [2, 3])
+        XCTAssertEqual(store.completedToday(), 1)
+        let recovery = try XCTUnwrap(store.preCloudMerge?["archive"])
+        let original = try JSONDecoder().decode(MemorizationArchive.self, from: recovery)
+        XCTAssertEqual(original.history.map(\.id), [local.id])
+        let reopened = MemorizationStore(defaults: defaults)
+        XCTAssertEqual(reopened.history.count, 2); XCTAssertEqual(reopened.session?.keys, [2, 3])
+    }
+    @MainActor func testCloudMergeRejectsConflictingImmutableResultBeforeWritingAnything() throws {
+        let suite = "Noor.MergeConflict." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MemorizationStore(defaults: defaults)
+        XCTAssertTrue(store.finish(chapter: 1, answers: [.init(ayah: 1, assessment: "remembered", revealed: false, hints: 0)]))
+        let original = store.history[0]
+        let conflicting = MemorizationResult(id: original.id, date: original.date, chapter: 1,
+            answers: [.init(ayah: 1, assessment: "review", revealed: false, hints: 0)])
+        let bytes = defaults.data(forKey: "noor.memorization.archive")
+        let backup = MemorizationCloudBackup(version: 1, plan: store.plan,
+            archive: .init(version: 1, history: [conflicting], progress: store.progress))
+        XCTAssertFalse(store.restore(backup))
+        XCTAssertEqual(defaults.data(forKey: "noor.memorization.archive"), bytes)
+        XCTAssertNil(store.preCloudMerge)
+    }
+
     @MainActor func testMushafPracticeRestoresPositionAndHelpWithoutCountingOpeningAsCompletion() throws {
         let suite = "NoorPracticeRecovery." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
