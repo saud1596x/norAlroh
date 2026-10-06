@@ -1,12 +1,32 @@
 """Require the current text engine's native interaction and reference evidence.
 Earlier PDF approval cannot authorize this renderer.
 """
+import argparse
 import hashlib
 import json
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--testflight-preview', action='store_true')
+    args = parser.parse_args()
+    if args.testflight_preview:
+        preview = json.loads((ROOT / 'release/testflight-preview-review.json').read_text())
+        native = json.loads((ROOT / 'release/interactive-mushaf-review.json').read_text())
+        assert preview['channel'] == 'TESTFLIGHT_PREVIEW' and preview['submitToAppStore'] is False
+        assert preview['nativeRunState'] == 'success'
+        assert native['currentNativeRun']['id'] == preview['nativeRun']
+        assert native['currentNativeRun']['sourceCommit'] == preview['nativeSourceCommit']
+        assert native['currentNativeRun']['state'] == 'success'
+        for field in ['all604DataValidated','all604NativeBoundsValidated','all604WordHitRegionsValidated','unicodeCorpusValidated','zoomPanSelectionVerified']:
+            assert native[field] is True, field
+        required = {'ios/Athar/InteractiveMushafCanvas.swift','ios/Athar/InteractiveMushafReader.swift','ios/Athar/MushafReader.swift','ios/Athar/QCFV2Content.swift','ios/Athar/qpc-v2-line-layout.json','release/qcf-v2-manifest.json','ios/project.yml'}
+        assert required.issubset(preview['reviewedSourceHashes'])
+        for name, expected in preview['reviewedSourceHashes'].items():
+            assert hashlib.sha256((ROOT/name).read_bytes()).hexdigest() == expected, name
+        print('TESTFLIGHT_PREVIEW_NATIVE_SOURCE_VERIFIED; final reference approval remains pending')
+        return
     path = ROOT / 'release/interactive-mushaf-review.json'
     if not path.is_file():
         raise SystemExit('MUSHAF_PUBLICATION_BLOCKED: shaped reader review is missing')
