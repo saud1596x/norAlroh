@@ -40,9 +40,11 @@ workflows:
       groups:
         - noor_release
       xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.saud1596x.nooralruh
+     ios_signing:
+  provisioning_profiles:
+    - noor-alruh-appstore
+  certificates:
+    - noor-alruh-distribution
     scripts:
       - name: Verify Xcode and SDK
         script: |
