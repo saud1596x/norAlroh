@@ -27,7 +27,7 @@ final class NoorMushafPageNavigationUITests: XCTestCase {
         capture(app, "native-text-reader-page-604-tools-hidden")
         viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.002, dy: 0.03)).tap()
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 10))
-        for number in [572, 598, 1, 2, 3, 151, 48] {
+        for number in [560, 603, 572, 598, 1, 2, 3, 151, 48] {
             app.buttons["reader.jump"].tap()
             let field = app.textFields["reader.pageNumber"]
             XCTAssertTrue(field.waitForExistence(timeout: 10)); field.tap()
@@ -55,7 +55,7 @@ final class NoorMushafPageNavigationUITests: XCTestCase {
         let counter = app.buttons["reader.jump"]
         XCTAssertTrue(counter.waitForExistence(timeout: 10))
         let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let prefix = counter.label.split(separator: "/").first ?? ""
+            let prefix = counter.label.components(separatedBy: " من ").first ?? ""
             let digits = prefix.compactMap { $0.wholeNumberValue }
             return !digits.isEmpty && digits.reduce(0, { $0 * 10 + $1 }) == number
         }, object: nil)
