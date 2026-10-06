@@ -117,23 +117,14 @@ struct MushafReader: View {
     private var page: MushafPage? { database?.pages.first { $0.page == number } }
     private var reduce: Bool { systemReduced || store.data.lowMotion }
     init(chapter: Int, ayah: Int = 1, page: Int? = nil) { startingChapter = chapter; startingAyah = ayah; startingPage = page }
+    @Environment(\.dismiss) private var dismiss
+    @State private var presented = false
     var body: some View {
-        Group {
-            switch artworkAvailability {
-            case .checking:
-                ProgressView("التحقق من صفحات المصحف…")
-            case .ready(let library):
-                MushafArtworkReader(library: library, startingChapter: startingChapter,
-                    startingAyah: startingAyah, startingPage: startingPage)
-            case .rejected:
-                ContentUnavailableView("تعذّر التحقق من صفحات المصحف", systemImage: "doc",
-                    description: Text("حزمة الصفحات الأصلية غير مكتملة أو غير معتمدة. لم يُعرض بديل عنها."))
-            case .absent:
-                legacyBody
+        Color.clear
+            .onAppear { presented = true }
+            .fullScreenCover(isPresented: $presented, onDismiss: { dismiss() }) {
+                InteractiveMushafReader(chapter: startingChapter, ayah: startingAyah, initialPage: startingPage)
             }
-        }.task {
-            artworkAvailability = await MushafArtworkLibrary.installed(corpus: store.quran)
-        }
     }
     private var legacyBody: some View {
         VStack(spacing: 0) {
