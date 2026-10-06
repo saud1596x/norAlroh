@@ -93,8 +93,12 @@ struct OriginalPageData {
         lines = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
         guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: 32),
               let companion = UIFont(name: OriginalMushafCompanion.name, size: 32) else { fail("Missing page or companion font"); return }
-        // FB50 is the page font's authored separator. Keep the entire body
-        // line in one font/run rather than bridging a space from another font.
+        // Content Sync contains ASCII separators both between logical words and
+        // inside multi-glyph words. Some page fonts omit FB50 entirely. Keep
+        // their codes intact and use the explicit companion blank (81 units),
+        // converted from its 2048-unit em to the body's 2500-unit em.
+        // No Qur'anic glyph is permitted to use this separator font.
+        let space = companion.withSize(32 * 2048 / 2500)
         let rowHeight: CGFloat = 61
         let top: CGFloat = page.number <= 2 ? 214 : 7
         for row in page.rows {
@@ -106,7 +110,7 @@ struct OriginalPageData {
             } else if row.type == "basmallah" { text = OriginalMushafCompanion.basmala }
             else {
                 for word in page.words.filter({ $0.line == row.line }) {
-                    if !text.isEmpty { text += "\u{FB50}" }
+                    if !text.isEmpty { text += " " }
                     let offset = (text as NSString).length
                     text += word.code
                     ranges.append((NSRange(location: offset, length: (word.code as NSString).length), word))
@@ -116,6 +120,11 @@ struct OriginalPageData {
             let font = header ? companion : body
             let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
             let attributed = NSMutableAttributedString(string: text, attributes: [.font: font, .foregroundColor: UIColor.label, .writingDirection: [direction]])
+            if !header {
+                for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
+                    attributed.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
+                }
+            }
             let line = CTLineCreateWithAttributedString(attributed as CFAttributedString)
             let ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
             // Original stop and vowel marks may exceed one baseline interval.
@@ -143,7 +152,11 @@ struct OriginalPageData {
                 guard let runFontValue = attributes[kCTFontAttributeName] else { fail("Missing Core Text run font"); return }
                 let runFont = runFontValue as! CTFont
                 let family = CTFontCopyPostScriptName(runFont) as String
-                guard family == font.fontName else { fail("Unexpected font \(family), row \(row.line)"); return }
+                let stringRange = CTRunGetStringRange(run)
+                let substring = (text as NSString).substring(with: NSRange(location: stringRange.location, length: stringRange.length))
+                guard family == font.fontName || (!header && family == companion.fontName && substring.allSatisfy({ $0 == " " })) else {
+                    fail("Unexpected font \(family), row \(row.line)"); return
+                }
                 let count = CTRunGetGlyphCount(run)
                 var glyphs = [CGGlyph](repeating: 0, count: count)
                 var positions = [CGPoint](repeating: .zero, count: count)
