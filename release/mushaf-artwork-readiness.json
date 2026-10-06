@@ -1,17 +1,45 @@
 {
-  "status": "CONFIRMED_ORIGINAL_IMPLEMENTED_NATIVE_REVIEW_PENDING",
+  "status": "ORIGINAL_FACE_NATIVE_MATCH_VERIFIED_READER_NAVIGATION_RETEST_PENDING",
   "releaseApproved": false,
   "referenceImagesActuallyOpened": [
     1,
     2,
     3,
     151,
+    572,
+    598,
     604
   ],
-  "referencePagesVisuallyCompared": [],
+  "referencePagesVisuallyCompared": [
+    1,
+    2,
+    3,
+    151,
+    572,
+    598,
+    604
+  ],
   "legacyNativeCanvasesAvailable": 604,
   "all604DataValidated": true,
-  "nativeAfterEvidence": null,
+  "nativeAfterEvidence": {
+    "review": "release/king-fahd-native-review.json",
+    "canvasRun": 37504933226,
+    "canvasPages": [
+      1,
+      2,
+      3,
+      151,
+      572,
+      598,
+      604
+    ],
+    "canvasTestStatus": "PASSED",
+    "fullReaderRun": 37506718249,
+    "fullReaderPages": [
+      604
+    ],
+    "fullReaderNavigationRetest": 37509273094
+  },
   "manifestSHA256": null,
   "rightsCleared": false,
   "rendererImplemented": "Unchanged full-color publisher raster PDF; original 640-leaf document, 604 printed Quran pages, uniform fit",
@@ -50,7 +78,7 @@
     }
   ],
   "missing": [
-    "Native captures and component-by-component visual review of the confirmed original edition",
+    "Passing full-reader navigation retest after fixing prefilled RTL page input",
     "Publisher-aligned ayah coordinates; verse overlays currently disabled for this edition",
     "Complete verified verse-to-page index for search and accessibility of original edition",
     "Redistribution permission record before public release"

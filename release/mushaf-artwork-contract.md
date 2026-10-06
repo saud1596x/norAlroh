@@ -16,7 +16,7 @@ The document has 640 physical leaves. Printed Quran pages 1–604 occupy physica
 
 ## Rendering
 
-CGPDFPage draws the original publisher content including paper, frames, surah titles, basmala and ayah markers. There is no font substitution, OCR, text regeneration, manual spacing or per-page exception. One uniform scale fits the complete original page. Reading tools reserve fixed margins, so showing/hiding tools does not reflow the page. Page number navigation, saved last page and zoom are implemented.
+The canvas supplies a white paper base for the PDF’s unpainted outer margins. CGPDFPage draws the original publisher content including frames, surah titles, basmala and ayah markers. There is no font substitution, OCR, text regeneration, manual spacing or per-page exception. One uniform scale fits the complete original page. Reading tools reserve fixed margins, so showing/hiding tools does not reflow the page. Page number navigation, saved last page and zoom are implemented.
 
 The source is raster artwork embedded in PDF, not vector lettering. Zoom cannot recover detail beyond the original raster resolution. Original colors are retained.
 
@@ -30,6 +30,10 @@ This edition currently has **no verified verse hit coordinates or complete verse
 
 ## Acceptance evidence
 
-Original page 604 was actually displayed and confirmed by the user. Runtime native tests cover all 604 page retrievals and capture pages 1,2,3,151,572,598,604, comparing production canvas PNG bytes with direct CoreGraphics rendering of the exact original. These tests must run on Xcode; adding them does not constitute a passing result. Native after captures, viewport screenshots, overlays and human visual inspection remain pending until their artifacts are retrieved.
+Original page 604 was actually displayed and confirmed by the user. Runtime native tests cover all 604 page retrievals and capture pages 1,2,3,151,572,598,604, comparing production canvas PNG bytes with direct CoreGraphics rendering of the exact original. These tests must run on Xcode; adding them does not constitute a passing result. Native canvas run 37504933226 on commit 3f19d569ac928f75b7437920c4c4ee82373c0174 passed all six tests. Its artifact was retrieved and all seven original page captures inspected. Production canvas PNG bytes equal direct CoreGraphics original-PDF output on every sample. Separate MuPDF-reference overlays compare dark lettering and decorations without color or per-line geometry adjustments; rasterization/threshold fringes remain at edges. This is not word-by-word religious certification of all 604 pages.
+
+Full application screenshots were retrieved from run 37506718249 on iPhone 16 Pro Max: page 604 with reader tools shown and hidden. The original page remains wholly visible. The frame-equality test passed when tools hid. The full UI test then exposed a real page-input usability problem: the RTL caret sat before prefilled 604, so entering 572 yielded 572604. The picker now opens with an empty field; run 37509273094 verifies actual navigation through pages 572,598,1 using English and Arabic numerals. That retest is still in progress.
+
+`release/king-fahd-native-review.json` records source hashes, test runs, exact artifact attachments, crop geometry and remaining limitations. Before evidence is the actual old canvas on commit c395914b36a712ace699746cf8189eb8f13604e2; it is not a full application screenshot. Full-page and detailed comparison evidence must not be confused with generated layouts or non-Quran geometry fixtures.
 
 The publication gate remains closed. The source identity is confirmed, but redistribution permission and remaining interaction/visual-review requirements have not been cleared. Historical Ayah before comparisons are retained in `release/mushaf-before-comparison.json`; they are not after evidence for this edition.

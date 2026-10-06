@@ -1,0 +1,358 @@
+{
+  "status": "ORIGINAL_NATIVE_CANVAS_MATCH_VERIFIED_FULL_READER_604_CAPTURED_NAVIGATION_RETEST_PENDING",
+  "sourceEdition": "KFGQPC المصحف العادي standard39-2.pdf",
+  "sourceSHA256": "5c4297de1fb6b654f641eed33242408d89432cbecf8a96ff5d297cb45fea7f07",
+  "nativeSourceCommit": "3f19d569ac928f75b7437920c4c4ee82373c0174",
+  "nativeRun": 37504933226,
+  "nativeArtifactSHA256": "03cfb5115b1733864121ccbb9c808eba8936a330c3e198be6fe8133d658cd4c1",
+  "nativeTestStatus": "PASSED",
+  "nativeComparison": "Production UIView image PNG bytes equal direct CoreGraphics PDF rendering with white paper on all 7 sampled pages",
+  "verifiedPageRetrievals": 604,
+  "printedPageMapping": "Quran page n -> physical PDF leaf n+3, one-based",
+  "publisherChapterIndexLeavesActuallyOpened": [
+    634,
+    635,
+    636,
+    637
+  ],
+  "publisherChapterIndexEntriesChecked": 114,
+  "referenceSupersedes": "Earlier Ayah app screenshots; user explicitly confirmed original King Fahd standard PDF page 604",
+  "legacyBeforeSourceCommit": "c395914b36a712ace699746cf8189eb8f13604e2",
+  "actualCanvasPagesAvailable": [
+    1,
+    2,
+    3,
+    151,
+    572,
+    598,
+    604
+  ],
+  "all604HumanWordByWordReview": false,
+  "religiousCertification": "NOT_CERTIFIED",
+  "fullApplicationScreenEvidence": {
+    "sourceCommit": "54752e04be9ff36f88aaa2be77395d4603a8977a",
+    "run": 37506718249,
+    "artifactSHA256": "ad43a8b5d1038200b4d95066624b0b3113d05e94ceabc6816378af832e4a73d0",
+    "actualPagesCaptured": [
+      604
+    ],
+    "toolsVisibilityFrameCheck": "PASSED",
+    "overallUITest": "FAILED_PAGE_INPUT_CONCATENATION",
+    "pageInputCause": "RTL insertion caret at start of prefilled 604; deleting there did not remove old digits; entered 572 became 572604",
+    "fixCommit": "5a261a5427419014edde3c88f00e51573027533d",
+    "retestRun": 37509273094,
+    "retestStatus": "IN_PROGRESS",
+    "paperCrop": [
+      36,
+      510,
+      1284,
+      2294
+    ],
+    "screenSize": [
+      1320,
+      2868
+    ],
+    "screenshots": [
+      {
+        "name": "KFGQPC-full-reader-page-604-tools-visible",
+        "attachment": "F0CDEA4D-5025-4614-A406-18F3AE7CA16B.png"
+      },
+      {
+        "name": "KFGQPC-full-reader-page-604-tools-hidden",
+        "attachment": "7C9BD2DF-298E-410A-8285-B779AF0DD016.png"
+      }
+    ]
+  },
+  "remaining": [
+    "Exact edition-aligned verse hit regions and complete verse-to-page index",
+    "Audio/tafsir overlays on original faces",
+    "Redistribution rights record before public release"
+  ],
+  "comparisons": [
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-001.png",
+        "sha256": "e173aecd9fb0e6e5c43a2bf8f48cf81bb5efbc256c8aed1d08f4eb8a776b7215",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-001.png",
+        "sha256": "56b92dd7755df7672e4b54db8430ab38bd8bc621bce971ee29a089583bae825c",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 1
+    },
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-002.png",
+        "sha256": "c66eee873af8640fe38442c2a4ae2dba0dd4377fc9cc86e441769e528e214f9c",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-002.png",
+        "sha256": "3e2108d968d0c8c09cd647a6cd16cc34e73165ec311af5ceb8ba965203507c54",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 2
+    },
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-003.png",
+        "sha256": "e6e985b504360db93c12ca8fd84572ee83f04b975dc82cb71b9e1d14718a7eb5",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-003.png",
+        "sha256": "1241834afa5069a73e488ca78f5d7ebac409a6c073e6eeace726eedbac32535a",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 3
+    },
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-151.png",
+        "sha256": "085995205e4996a582a97310e89ab6e496e0ab413817efde6b797b70e143d49d",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-151.png",
+        "sha256": "d7d3e1832cc69dcb47cf1a96d9d234898d36897c0782c08fda3f835a1ab7da0c",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 151
+    },
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-572.png",
+        "sha256": "959941cfdb78eb7d37d10c19129da6a6043ac8e69764c1492fcd95492aa05b10",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-572.png",
+        "sha256": "72475cbe7d03bf6232eec64f60eab79474f386d11e2a5e2f39631fdc0651b339",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 572
+    },
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-598.png",
+        "sha256": "df85fabc1d104ab302687f4309900e14cc79f72361cc540c1db5dbc88e5866bc",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-598.png",
+        "sha256": "2222843e3aee63c8e0454f33a64494cbe1bb4f8eaa649f101b9c539cd4982881",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 598
+    },
+    {
+      "status": "COMPARISON_ONLY_NOT_APPROVAL",
+      "reference": {
+        "path": "source-page-604.png",
+        "sha256": "dcd8d30f6ade0f8e40ace38a33a2ec02523d906f3bd3c8db0501ae268f6d504a",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "render": {
+        "path": "native-page-604.png",
+        "sha256": "7fd129102c9e3c1c87597d17cfe4c3793b786070f1a12f6b007b48c1fc76462b",
+        "crop": [
+          0,
+          0,
+          1149,
+          1642
+        ],
+        "uniformScale": 0.783289817232376,
+        "resultSize": [
+          900,
+          1286
+        ]
+      },
+      "edgeTolerancePixels": 2,
+      "mask": "dark-ink",
+      "geometryTransform": "uniform width fit; top aligned; no vertical stretch, registration or per-line warping",
+      "warning": "Inspect glyphs, marks, basmala, headers, markers, baselines and margins separately. No aggregate similarity score.",
+      "page": 604
+    }
+  ],
+  "humanVisualInspection": {
+    "pages": [
+      1,
+      2,
+      3,
+      151,
+      572,
+      598,
+      604
+    ],
+    "detailedLetteringAndDecorationOverlays": [
+      598,
+      604
+    ],
+    "fullReaderScreenPages": [
+      604
+    ],
+    "finding": "Original calligraphy, vowel marks, basmala, surah frames, ayah markers, line endings and full-face geometry retained. CoreGraphics versus MuPDF comparisons show raster/edge threshold fringes, without per-line reflow. Not human word-by-word certification of all 604 pages."
+  }
+}
