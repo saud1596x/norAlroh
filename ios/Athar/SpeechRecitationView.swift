@@ -9,6 +9,9 @@ struct SpeechRecitationView: View {
     @State private var downloadConsent = false
     @State private var hideVerses = true
     @State private var confirmedWords: Set<Int> = []
+    @State private var usedReveal = false
+    @State private var reviewing = false
+    @State private var resultSaved = false
     private var chapter: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
     private var end: Int { min(memorization.plan.to, memorization.plan.from + 9) }
     private var words: [RecitationExpectedWord] { chapter.map { RecitationComparison.words(chapter: $0, from: memorization.plan.from, to: end) } ?? [] }
@@ -77,6 +80,10 @@ struct SpeechRecitationView: View {
                 if !speech.transcript.isEmpty {
                     DisclosureGroup("ما تعرّف عليه المحرك") { Text(verbatim: speech.transcript).font(.body).textSelection(.enabled) }
                 }
+                if speech.anchor > 0 && !speech.listening && !speech.settling && chapter != nil {
+                    Button(resultSaved ? "حُفظت مراجعة هذا التسميع" : "راجع النتيجة واحفظ إنجاز الورد") { reviewing = true }
+                        .disabled(resultSaved).frame(minHeight: 44).accessibilityIdentifier("speech.reviewResult")
+                }
                 Text("المتابعة مقارنة كلمات باستخدام تعرّف صوتي متعدد اللغات؛ قد يخطئ المحرك نفسه. لا تقيس التشكيل أو التجويد، ولا تغيّر نص القرآن أو تمنح حكمًا نهائيًا بصحة الحفظ. المقطع الصوتي مؤقت في الذاكرة ولا يُرسل لخادم ولا يُحفظ تلقائيًا. الجلسة حتى خمس دقائق وعشر آيات من خطتك.")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(20)
@@ -86,7 +93,16 @@ struct SpeechRecitationView: View {
                 Button("إلغاء", role: .cancel) {}
             }
             .onDisappear { speech.stop(clear: true) }
-            .onChange(of: speech.listening) { _, new in if new { confirmedWords = [] } }
+            .onChange(of: speech.listening) { _, new in if new { confirmedWords = []; usedReveal = !hideVerses; resultSaved = false } }
+            .onChange(of: hideVerses) { _, new in if !new { usedReveal = true } }
+            .onChange(of: speech.comparison?.possibleDifferences.count) { _, new in if (new ?? 0) > 0 { usedReveal = true } }
+            .sheet(isPresented: $reviewing) {
+                if let chapter {
+                    NavigationStack {
+                        SpeechSessionReviewView(chapter: chapter, from: memorization.plan.from, to: end, revealed: usedReveal) { resultSaved = true }
+                    }
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in speech.stop() }
             .alert("المتابعة الصوتية", isPresented: Binding(get: { speech.message != nil }, set: { if !$0 { speech.message = nil } })) { Button("تم") { speech.message = nil } } message: { Text(speech.message ?? "") }
     }
@@ -95,5 +111,45 @@ struct SpeechRecitationView: View {
         let verseWords = words.filter { $0.ayah == ayah.number }
         let visible = verseWords.filter { $0.id < speech.anchor }.map(\.text).joined(separator: " ")
         return visible + (verseWords.last.map { $0.id >= speech.anchor } == true ? " …" : "")
+    }
+}
+
+struct SpeechSessionReviewView: View {
+    @EnvironmentObject private var memorization: MemorizationStore
+    @Environment(\.dismiss) private var dismiss
+    let chapter: Surah
+    let from: Int
+    let to: Int
+    let revealed: Bool
+    let saved: () -> Void
+    @State private var grades: [Int: String] = [:]
+    @State private var error: String?
+    private var verses: [Ayah] { chapter.ayahs.filter { (from...to).contains($0.number) } }
+    var body: some View {
+        Form {
+            Section {
+                Text("قارن تسميعك بالنص ثم قيّم كل آية. لا يقرر المحرك صحة الحفظ، ولن نحتسب آية لم تختَر تقييمها.")
+                if revealed { Text("استُخدم إظهار النص؛ يُحسب الورد ممارسةً، ولا يُحسب استرجاعًا مستقلًا.").font(.caption).foregroundStyle(.secondary) }
+            }
+            ForEach(verses) { ayah in
+                Section("الآية \(ayah.number)") {
+                    QuranVerseText(QuranText.verse(chapter: chapter.number, ayah: ayah))
+                    Picker("تقييمك", selection: Binding(get: { grades[ayah.number] ?? "skip" }, set: { grades[ayah.number] = $0 })) {
+                        Text("لم أراجعها").tag("skip")
+                        Text("تذكّرتها").tag("remembered")
+                        Text("تحتاج تثبيتًا").tag("review")
+                    }
+                }
+            }
+            Section {
+                Button("حفظ نتيجة التسميع") {
+                    let answers = verses.map { MemorizationAnswer(ayah: $0.number, assessment: grades[$0.number] ?? "skip", revealed: revealed, hints: 0) }
+                    if memorization.finish(chapter: chapter.number, answers: answers) { saved(); dismiss() }
+                    else { error = memorization.error ?? "تعذّر حفظ نتيجة التسميع." }
+                }.disabled(!grades.values.contains { $0 != "skip" }).accessibilityIdentifier("speech.saveResult")
+            }
+        }.navigationTitle("مراجعة التسميع")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إلغاء") { dismiss() } } }
+            .alert("نتيجة التسميع", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("تم") { error = nil } } message: { Text(error ?? "") }
     }
 }

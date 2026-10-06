@@ -14,6 +14,7 @@ import ManagedSettings
     @Published private(set) var authorizing = false
     @Published private(set) var authorized = false
     private var state = NoorFocusState.load() ?? NoorFocusState()
+    var contract: NoorWardContract? { state.contract }
     private init() { selection = state.selection; enabled = state.enabled; refreshAuthorization() }
     func refreshAuthorization() {
         authorized = AuthorizationCenter.shared.authorizationStatus == .approved
@@ -93,6 +94,9 @@ struct NoorFocusView: View {
                     Text("\(focus.selection.applicationTokens.count) تطبيقات · \(focus.selection.webDomainTokens.count) مواقع مختارة")
                     if focus.enabled {
                         Label("الحماية مفعلة", systemImage: "checkmark.shield")
+                        if let contract = focus.contract {
+                            Text("الورد المحمي: السورة \(contract.chapter)، الآيات \(contract.from)–\(contract.to)، الهدف \(contract.target) آيات مختلفة.").font(.subheadline)
+                        }
                         Button("إيقاف الحماية", role: .destructive) { focus.disable() }
                     } else {
                         Button("تفعيل الورد قبل التواصل") { focus.enable(plan: memorization.plan, progress: memorization.progress) }

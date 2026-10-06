@@ -55,7 +55,7 @@ struct MemorizationProgress: Codable {
     func valid(corpus: [Surah]) -> Bool {
         func validKey(_ key: String) -> Bool {
             let parts = key.split(separator: ":").compactMap { Int($0) }
-            return parts.count == 2 && corpus.indices.contains(parts[0] - 1) && (1...corpus[parts[0] - 1].ayahs.count).contains(parts[1])
+            return parts.count == 2 && corpus.indices.contains(parts[0] - 1) && (1...corpus[parts[0] - 1].ayahs.count).contains(parts[1]) && key == "\(parts[0]):\(parts[1])"
         }
         return version == 1 && verses.allSatisfy { key, value in
             validKey(key) && (0...6).contains(value.stage) && value.attempts >= 0 && value.lapses >= 0
@@ -163,7 +163,8 @@ struct MemorizationArchive: Codable {
     var masteredCount: Int { progress.verses.values.filter { $0.stage >= 3 && !$0.needsHelp }.count }
     @discardableResult func confirmMistake(chapter: Int, ayah: Int, expected: String, heard: String?) -> Bool {
         guard unreadableHistory == nil, let corpus = QuranResources.corpus, corpus.indices.contains(chapter - 1),
-              (1...corpus[chapter - 1].ayahs.count).contains(ayah), !expected.isEmpty else { return false }
+              (1...corpus[chapter - 1].ayahs.count).contains(ayah),
+              corpus[chapter - 1].ayahs[ayah - 1].text.split(whereSeparator: \.isWhitespace).contains(Substring(expected)) else { return false }
         var next = progress
         next.confirmedMistakes.insert(.init(chapter: chapter, ayah: ayah, expected: expected, heard: heard), at: 0)
         next.confirmedMistakes = Array(next.confirmedMistakes.prefix(500))
@@ -173,7 +174,7 @@ struct MemorizationArchive: Codable {
         do {
             let data = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: next))
             defaults.set(data, forKey: "noor.memorization.archive"); progress = next; return true
-        } catch { error = "تعذّر حفظ موضع المراجعة."; return false }
+        } catch { self.error = "تعذّر حفظ موضع المراجعة."; return false }
     }
     func dueKeys(at date: Date = Date()) -> [Int] {
         (plan.from...plan.to).filter { (progress.verses["\(plan.chapter):\($0)"]?.nextReview ?? .distantFuture) <= Calendar.current.startOfDay(for: date) }
