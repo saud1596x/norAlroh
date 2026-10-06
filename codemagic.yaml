@@ -34,17 +34,17 @@ workflows:
     name: Noor Alruh signed iOS / TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 120
-    integrations:
+        integrations:
       app_store_connect: noor-alruh-publisher
     environment:
       groups:
         - noor_release
       xcode: latest
-     ios_signing:
-  provisioning_profiles:
-    - noor-alruh-appstore
-  certificates:
-    - noor-alruh-distribution
+      ios_signing:
+        provisioning_profiles:
+          - noor-alruh-appstore
+        certificates:
+          - noor-alruh-distribution
     scripts:
       - name: Verify Xcode and SDK
         script: |
