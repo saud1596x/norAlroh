@@ -27,7 +27,7 @@ import WidgetKit
         do {
             try JSONEncoder().encode(snapshot).write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             WidgetCenter.shared.reloadAllTimelines()
-        } catch { /* Widget shows its last update date; core data remains in the app. */ }
+        } catch { /* Keep the last complete snapshot; never replace it with a partial write. */ }
     }
 }
 
