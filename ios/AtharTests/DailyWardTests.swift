@@ -38,14 +38,17 @@ final class DailyWardTests: XCTestCase {
         XCTAssertNotEqual(NoorWardContract.dayKey(before, calendar: calendar), NoorWardContract.dayKey(after, calendar: calendar))
         XCTAssertEqual(NoorWardContract.dayKey(before, calendar: calendar), MemorizationProgress.dayKey(before, calendar: calendar))
     }
-    @MainActor func testProgressSurvivesHistoryLimitAndRestart() throws {
+    @MainActor func testFullHistoryAndProgressSurviveRestartBeyondFormerLimit() throws {
         let suite = "NoorWardPersistence." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
         let store = MemorizationStore(defaults: defaults)
         XCTAssertTrue(store.finish(chapter: 1, answers: [independent]))
+        let firstSessionID = try XCTUnwrap(store.history.first?.id)
         for _ in 0..<105 { XCTAssertTrue(store.finish(chapter: 1, answers: [.init(ayah: 2, assessment: "review", revealed: true, hints: 0)])) }
         let reopened = MemorizationStore(defaults: defaults)
-        XCTAssertEqual(reopened.history.count, 100)
+        XCTAssertEqual(reopened.history.count, 106)
+        XCTAssertEqual(Set(reopened.history.map(\.id)).count, 106)
+        XCTAssertTrue(reopened.history.contains { $0.id == firstSessionID })
         XCTAssertEqual(reopened.progress.verses["1:1"]?.attempts, 1)
         XCTAssertEqual(reopened.progress.verses["1:2"]?.attempts, 105)
         XCTAssertEqual(reopened.completedToday(), 2)
