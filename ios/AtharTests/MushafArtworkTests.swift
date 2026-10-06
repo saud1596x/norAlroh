@@ -53,12 +53,42 @@ final class MushafArtworkTests: XCTestCase {
         pages[0] = .init(number: page.number, width: page.width, height: page.height, file: page.file, sha256: page.sha256, regions: regions)
         XCTAssertThrowsError(try replacing(original, pages: pages).validated(corpus: corpus))
     }
-    @MainActor func testInstalledArtworkAbsenceIsNotApproval() async throws {
+    @MainActor func testOriginalPublisherPDFIsCompleteAndNativeCanvasMatchesDirectPDFRendering() async throws {
+        guard Bundle.main.url(forResource: "king-fahd-standard39-2", withExtension: "pdf") != nil else {
+            throw XCTSkip("Install the pinned publisher PDF using the preparation script")
+        }
         let corpus = try XCTUnwrap(QuranResources.corpus)
-        // This source revision deliberately contains NO approved artwork package.
-        // A successful build cannot turn it into a reference match.
-        if case .ready = await MushafArtworkLibrary.installed(corpus: corpus) {
-            XCTFail("Artwork cannot activate before a matching package is supplied and reviewed")
+        guard case .ready(let library) = await MushafArtworkLibrary.installed(corpus: corpus) else {
+            return XCTFail("Pinned original PDF rejected")
+        }
+        XCTAssertEqual(library.manifest.pages.map(\.number), Array(1...604))
+        for number in 1...604 {
+            let artwork = try library.artwork(number: number)
+            XCTAssertEqual(artwork.document.numberOfPages, 640)
+            XCTAssertTrue(artwork.metadata.regions.isEmpty, "Never borrow coordinates from another edition")
+        }
+        for number in [1, 2, 3, 151, 572, 598, 604] {
+            let artwork = try library.artwork(number: number)
+            let size = CGSize(width: artwork.metadata.width, height: artwork.metadata.height)
+            let canvas = MushafArtworkCanvas(frame: CGRect(origin: .zero, size: size))
+            canvas.artwork = artwork
+            let format = UIGraphicsImageRendererFormat(); format.scale = 3; format.opaque = true
+            let renderer = UIGraphicsImageRenderer(size: size, format: format)
+            let actual = renderer.image { _ in canvas.draw(canvas.bounds) }
+            let reference = renderer.image { output in
+                let context = output.cgContext
+                context.translateBy(x: 0, y: size.height); context.scaleBy(x: 1, y: -1)
+                context.drawPDFPage(artwork.page)
+            }
+            XCTAssertTrue(canvas.renderedSuccessfully)
+            XCTAssertEqual(actual.pngData(), reference.pngData(), "Original page pixel output changed: \(number)")
+            let attachment = XCTAttachment(image: actual)
+            attachment.name = String(format: "KFGQPC-original-native-page-%03d", number)
+            attachment.lifetime = .keepAlways; add(attachment)
+            let viewport = MushafArtworkViewport(frame: CGRect(x: 0, y: 0, width: 430, height: 740))
+            viewport.set(artwork: artwork, corpus: corpus, selected: nil, onSelect: { _ in }, onToggleTools: {})
+            viewport.layoutIfNeeded()
+            XCTAssertTrue(viewport.bounds.contains(viewport.canvas.convert(viewport.canvas.bounds, to: viewport)))
         }
     }
     @MainActor func testProductionCanvasDrawsAnUnchangedVectorPageAndSelectionOverlay() throws {
