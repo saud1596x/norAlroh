@@ -80,6 +80,8 @@ final class MushafArtworkTests: XCTestCase {
             let actual = renderer.image { _ in canvas.draw(canvas.bounds) }
             let reference = renderer.image { output in
                 let context = output.cgContext
+                context.setFillColor(UIColor.white.cgColor)
+                context.fill(CGRect(origin: .zero, size: size))
                 context.translateBy(x: 0, y: size.height); context.scaleBy(x: 1, y: -1)
                 context.drawPDFPage(artwork.page)
             }
