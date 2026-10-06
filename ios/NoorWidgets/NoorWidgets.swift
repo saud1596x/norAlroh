@@ -113,7 +113,13 @@ struct NoorWidgetView: View {
             if let next = PrayerCalculator.next(data: snapshot.prayer, now: entry.date) {
                 Text(summary(snapshot)).font(lockScreen ? .headline : .title2.bold())
                 Text(next.date, style: .relative).font(.caption).monospacedDigit()
-                if !lockScreen { Text(snapshot.prayer.city.name).font(.caption).foregroundStyle(.secondary) }
+                if !lockScreen {
+                    HStack {
+                        Text(snapshot.prayer.city.name)
+                        Spacer()
+                        Text(next.date, style: .date)
+                    }.font(.caption).foregroundStyle(.secondary)
+                }
             } else { Text("افتح التطبيق لتحديث المواقيت") }
         case .prayerDay:
             Text(snapshot.prayer.city.name).font(.headline)
@@ -139,10 +145,13 @@ struct NoorWidgetView: View {
         case .ward:
             Text(summary(snapshot)).font(.headline)
             ProgressView(value: Double(min(snapshot.completed(at: entry.date), snapshot.dailyTarget)), total: Double(max(1, snapshot.dailyTarget)))
-            if !lockScreen { Text("تقدم التدريب المسجّل").font(.caption).foregroundStyle(.secondary) }
+            if !lockScreen {
+                Text(entry.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                Text("تقدم التدريب المسجّل").font(.caption).foregroundStyle(.secondary)
+            }
         case .review:
             Text(summary(snapshot)).font(.headline)
-            Text("ثبّت محفوظك اليوم").font(.caption).foregroundStyle(.secondary)
+            Text(snapshot.updated, style: .date).font(.caption).foregroundStyle(.secondary)
         }
     }
 }
