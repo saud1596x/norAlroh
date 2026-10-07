@@ -40,7 +40,7 @@ final class NoorMushafPageNavigationUITests: XCTestCase {
             capture(app, String(format: "native-text-reader-page-%03d", number))
             if number == 48 {
                 let debtVerse = app.buttons["reader.verse.2:282"]
-                XCTAssertTrue(debtVerse.waitForExistence(timeout: 10)); debtVerse.tap()
+                XCTAssertTrue(debtVerse.waitForExistence(timeout: 10)); debtVerse.press(forDuration: 0.6)
                 XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
                 let title = app.staticTexts["verse.tools.title"]
                 XCTAssertTrue(title.waitForExistence(timeout: 10))
