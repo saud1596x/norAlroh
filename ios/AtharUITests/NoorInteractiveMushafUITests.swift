@@ -23,7 +23,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
             for number in 1...(chapter == 112 ? 4 : chapter == 113 ? 5 : 6) {
                 let key = "\(chapter):\(number)"
                 let verse = app.buttons["reader.verse.\(key)"]
-                XCTAssertTrue(verse.waitForExistence(timeout: 10), key); verse.tap()
+                XCTAssertTrue(verse.waitForExistence(timeout: 10), key); verse.press(forDuration: 0.6)
                 XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10), key)
                 let actualTitle = app.staticTexts["verse.tools.title"]
                 XCTAssertTrue(actualTitle.waitForExistence(timeout: 10), key)
@@ -44,7 +44,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
             }
         }
         let verse = app.buttons["reader.verse.114:1"]
-        verse.tap(); app.buttons["verse.play"].tap()
+        verse.press(forDuration: 0.6); app.buttons["verse.play"].tap()
         XCTAssertTrue(app.buttons["إيقاف التلاوة"].waitForExistence(timeout: 20))
         capture(app, "text-reader-604-audio-started")
         app.buttons["إيقاف التلاوة"].tap()
@@ -53,7 +53,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         page.swipeLeft()
         capture(app, "text-reader-604-zoom-and-pan")
         let zoomedVerse = app.buttons["reader.verse.114:1"]
-        zoomedVerse.tap()
+        zoomedVerse.press(forDuration: 0.6)
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
         capture(app, "text-reader-604-zoom-reselection")
     }
