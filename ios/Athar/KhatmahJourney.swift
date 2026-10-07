@@ -61,10 +61,34 @@ struct KhatmahPlan: Codable, Identifiable {
               dailyPages.map({ (1...604).contains($0) }) ?? true,
               (dailyPages == nil) != (deadline == nil), completed.isSubset(of: Set(firstPage...604)),
               completed == Set(firstPage..<nextPage), !days.isEmpty,
-              sessions.allSatisfy({ $0.first >= firstPage && $0.last <= 604 && $0.first <= $0.last && $0.newlyCompleted >= 0 && $0.newlyCompleted <= $0.last - $0.first + 1 }) else { return false }
+              (finished == nil) == (nextPage <= 604),
+              sessions.allSatisfy({ $0.date.timeIntervalSince1970.isFinite && $0.first >= firstPage && $0.last <= 604 && $0.first <= $0.last && $0.newlyCompleted >= 0 && $0.newlyCompleted <= $0.last - $0.first + 1 }) else { return false }
         return (days.first?.first ?? 605) <= nextPage && zip(days, days.dropFirst()).allSatisfy { $0.date < $1.date && $0.last + 1 == $1.first }
             && days.allSatisfy { $0.date.timeIntervalSince1970.isFinite && $0.first >= firstPage && $0.last <= 604 && $0.first <= $0.last && weekdays.contains(calendar.component(.weekday, from: $0.date)) }
             && days.last?.last == 604
+    }
+}
+
+struct KhatmahReminder: Equatable {
+    let id: String
+    let fire: Date
+    let first: Int
+    let last: Int
+    var url: String { "nooralruh://reading/\(first)" }
+}
+enum KhatmahReminderPlan {
+    static let prefix = "noor.khatmah."
+    static func make(_ plan: KhatmahPlan, now: Date, otherPending: Int) -> [KhatmahReminder] {
+        guard plan.valid, !plan.paused, plan.finished == nil, let minutes = plan.reminderMinutes else { return [] }
+        let room = max(0, min(14, 60 - max(0, otherPending)))
+        // Filter expired dates before taking the budget, so a missed week cannot
+        // consume every available slot. Opening always resumes confirmed progress.
+        return Array(plan.days.compactMap { day -> KhatmahReminder? in
+            guard day.last >= plan.nextPage,
+                  let fire = plan.calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day.date),
+                  fire > now else { return nil }
+            return KhatmahReminder(id: prefix + "\(plan.id).\(day.first)", fire: fire, first: plan.nextPage, last: day.last)
+        }.prefix(room))
     }
 }
 enum KhatmahFailure: Error, LocalizedError {
@@ -201,20 +225,18 @@ enum KhatmahCalculator {
         guard let plan = active, !plan.paused, plan.finished == nil, let minutes = plan.reminderMinutes else { notificationStatus = "التذكير غير مفعّل"; return }
         guard [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) else { notificationStatus = "التذكير يحتاج إذن الإشعارات من إعدادات الجهاز"; return }
         // Leave room for prayer/adhkar requests in iOS's shared 64-request budget.
-        let room = max(0, min(14, 60 - pending.filter { !$0.identifier.hasPrefix("noor.khatmah.") }.count))
-        for day in plan.days.filter({ $0.last >= plan.nextPage }).prefix(room) {
-                guard let fire = plan.calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day.date), fire > .now else { continue }
+        let reminders = KhatmahReminderPlan.make(plan, now: .now, otherPending: pending.filter { !$0.identifier.hasPrefix(KhatmahReminderPlan.prefix) }.count)
+        for reminder in reminders {
             let content = UNMutableNotificationContent()
             content.title = "رحلة الختمة"
-            content.body = "وردك من الصفحة \(max(day.first, plan.nextPage)) إلى \(day.last). اقرأ في الوقت المناسب لك."
+            content.body = "تابع رحلتك من الصفحة \(reminder.first). اقرأ في الوقت المناسب لك."
             content.sound = .default
-            content.userInfo = ["url": "nooralruh://reading/\(max(day.first, plan.nextPage))"]
-            var components = plan.calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            content.userInfo = ["url": reminder.url]
+            var components = plan.calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.fire)
             components.timeZone = plan.calendar.timeZone
-            let id = "noor.khatmah.\(plan.id).\(day.first)"
-            do { try await center.add(UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))) }
+            do { try await center.add(UNNotificationRequest(identifier: reminder.id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))) }
             catch { notificationStatus = "تعذرت جدولة التذكير؛ الخطة محفوظة."; return }
         }
-        notificationStatus = room == 0 ? "عدد التذكيرات الأخرى كبير؛ لا توجد مساحة لجدولة وردك الآن" : "التذكير مفعّل للأيام القادمة"
+        notificationStatus = reminders.isEmpty ? "لا توجد تذكيرات قادمة متاحة؛ راجع موعد الورد وإعدادات التذكير" : "التذكير مفعّل للأيام القادمة"
     }
 }
