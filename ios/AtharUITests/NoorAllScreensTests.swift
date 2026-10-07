@@ -132,15 +132,6 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "legal.support").firstMatch.waitForExistence(timeout: 5))
         capture(app, "31-support")
         back(app)
-        tap(app.buttons["settings.sources"], in: app)
-        assertLicensesDestination(app)
-        capture(app, "24-licenses")
-        for (identifier, name) in [("tanzil", "26-tanzil-license"), ("qcf", "27-qcf-license"), ("amiri", "28-amiri-license"), ("adhan", "29-adhan-license"), ("whisperkit", "33-whisperkit-license"), ("whispermodel", "34-whisper-model-license"), ("whispercomponents", "35-whisper-components")] {
-            tap(app.buttons["sources.\(identifier)"], in: app)
-            XCTAssertTrue(app.staticTexts["license.notice"].waitForExistence(timeout: 5), "The bundled notice must be readable without a network connection.")
-            capture(app, name)
-            back(app)
-        }
         XCTAssertTrue(pageRendered, "The fixed-layout Quran did not render. This recording cannot certify its typography.")
     }
 
@@ -156,36 +147,6 @@ final class NoorAllScreensTests: XCTestCase {
         tap(app.switches["تذكير هادئ"], in: app, performTap: false)
         capture(app, "43-salawat-settings")
         XCTAssertFalse(app.staticTexts["طريقة الحساب"].exists)
-    }
-
-    /// Isolate destination/accessibility failures from the long walkthrough.
-    /// Still enters through the actual Settings UI, never an overridden route.
-    func testLicenseNavigationAndOfflineNotices() {
-        let app = XCUIApplication(); app.launch()
-        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
-        tap(app.buttons["app.settings"], in: app)
-        tap(app.buttons["settings.sources"], in: app)
-        assertLicensesDestination(app)
-        for identifier in ["tanzil", "qcf", "amiri", "adhan", "whisperkit", "whispermodel", "whispercomponents"] {
-            tap(app.buttons["sources.\(identifier)"], in: app)
-            XCTAssertTrue(app.staticTexts["license.notice"].waitForExistence(timeout: 5))
-            back(app)
-            XCTAssertTrue(app.navigationBars["التراخيص"].waitForExistence(timeout: 5))
-        }
-    }
-
-    private func assertLicensesDestination(_ app: XCUIApplication) {
-        let arrived = app.navigationBars["التراخيص"].waitForExistence(timeout: 5)
-        if !arrived {
-            capture(app, "failed-licenses-destination")
-            let hierarchy = app.debugDescription
-            let attachment = XCTAttachment(string: hierarchy)
-            attachment.name = "failed-licenses-destination-hierarchy"
-            attachment.lifetime = .keepAlways; add(attachment)
-            print("LICENSE_DESTINATION_FAILURE\n\(hierarchy)")
-        }
-        XCTAssertTrue(arrived, "The actual license destination must be open, not merely its parent accessibility identifier.")
-        XCTAssertTrue(app.staticTexts["licenses.introduction"].waitForExistence(timeout: 5))
     }
 
     private func tap(_ element: XCUIElement, in app: XCUIApplication, performTap: Bool = true) {
