@@ -22,7 +22,12 @@ project=(ROOT/'ios/project.yml').read_text();workflow=(ROOT/'codemagic.yaml').re
 check('consistentBundleIdentifier',bool(re.fullmatch(r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+',bundle))and re.findall(r'^\s*PRODUCT_BUNDLE_IDENTIFIER:\s*(\S+)\s*$',project,re.M)==[bundle]and re.findall(r'^\s*bundle_identifier:\s*(\S+)\s*$',workflow,re.M)==[bundle]and info.get('CFBundleIdentifier')=='$(PRODUCT_BUNDLE_IDENTIFIER)','معرف التطبيق لا يطابق إعدادات المشروع والتوقيع وInfo.plist.')
 check('completeHisnAndSourceReferences',len(adhkar['groups'])==132 and len(adhkar['entries'])==267 and all(e['reference']and e['sourceURL'].startswith('https://www.hisnmuslim.com/')for e in adhkar['entries']),'محتوى حصن المسلم يحتاج استكمالًا أو مصادر.')
 check('resourceHashes',all(hashlib.sha256((ROOT/'ios/Athar'/n).read_bytes()).hexdigest()==hashes[n]for n in ['quran.json','quran-basmalas.json','mushaf.json','mushaf-headers.json','adhkar.json','saudi-cities.json','AmiriQuran.ttf']),'أحد موارد المحتوى يختلف عن البصمة المراجعة.')
-check('permissionPurposeStrings',bool(info.get('NSMicrophoneUsageDescription'))and'NSLocationWhenInUseUsageDescription'not in info,'راجع وصف الميكروفون وإزالة إذن الموقع غير المستخدم.')
+check('permissionPurposeStrings',bool(info.get('NSMicrophoneUsageDescription'))
+      and bool(info.get('NSLocationWhenInUseUsageDescription'))
+      and not info.get('NSLocationAlwaysAndWhenInUseUsageDescription')
+      and not info.get('NSLocationAlwaysUsageDescription')
+      and 'location' not in info.get('UIBackgroundModes', []),
+      'راجع وصفي إذن الميكروفون والموقع أثناء الاستخدام؛ لا يحتاج حساب المواقيت إلى تتبع الموقع في الخلفية.')
 check('reviewedInfoPlist',info.get('CFBundleDisplayName')=='نور الروح'and info.get('CFBundleVersion')=='$(CURRENT_PROJECT_VERSION)'and info.get('ITSAppUsesNonExemptEncryption')is False,'راجع الاسم ورقم البناء وإقرار التشفير في Info.plist.')
 check('privacyManifest',privacy.get('NSPrivacyTracking')is False and any(x['NSPrivacyAccessedAPIType']=='NSPrivacyAccessedAPICategoryUserDefaults'and'CA92.1'in x['NSPrivacyAccessedAPITypeReasons']for x in privacy['NSPrivacyAccessedAPITypes']),'راجع Privacy Manifest.')
 check('speechDownloadFileMetadataReason',any(x['NSPrivacyAccessedAPIType']=='NSPrivacyAccessedAPICategoryFileTimestamp'and'C617.1'in x['NSPrivacyAccessedAPITypeReasons']for x in privacy['NSPrivacyAccessedAPITypes']),'أضف سبب C617.1 لقراءة بيانات ملفات التنزيل داخل مساحة التطبيق عبر مكتبة الصوت.')
