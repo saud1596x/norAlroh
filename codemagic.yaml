@@ -43,8 +43,8 @@ workflows:
       xcode: latest
       ios_signing:
         provisioning_profiles:
-          - noor-alruh-appstore
-          - noor-alruh-widgets-appstore
+          - noor-alruh-appstore-accounts
+          - noor-alruh-widgets-appstore-verified
           - noor-alruh-focus-monitor-appstore
           - noor-alruh-focus-shield-appstore
           - noor-alruh-focus-action-appstore
