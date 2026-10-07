@@ -94,28 +94,8 @@
       "title": "الخصوصية"
     },
     {
-      "id": "24-licenses",
-      "title": "إشعارات التراخيص الحالية — إزالة المصادر لم تكتمل"
-    },
-    {
       "id": "25-reflection",
       "title": "وقفة مع آية وتأمل شخصي"
-    },
-    {
-      "id": "26-tanzil-license",
-      "title": "ترخيص نص Tanzil"
-    },
-    {
-      "id": "27-qcf-license",
-      "title": "ترخيص بيانات المصحف والخطوط"
-    },
-    {
-      "id": "28-amiri-license",
-      "title": "ترخيص خط أميري"
-    },
-    {
-      "id": "29-adhan-license",
-      "title": "ترخيص مكتبة حساب الصلاة"
     },
     {
       "id": "30-terms",
@@ -128,18 +108,6 @@
     {
       "id": "32-speech-model-setup",
       "title": "تجهيز النموذج للمتابعة الصوتية"
-    },
-    {
-      "id": "33-whisperkit-license",
-      "title": "ترخيص WhisperKit"
-    },
-    {
-      "id": "34-whisper-model-license",
-      "title": "ترخيص نموذج Whisper"
-    },
-    {
-      "id": "35-whisper-components",
-      "title": "تراخيص المكونات التابعة للتعرف الصوتي"
     },
     {
       "id": "36-mastery-map",
