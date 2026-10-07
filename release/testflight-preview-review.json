@@ -2,17 +2,17 @@
   "channel": "TESTFLIGHT_PREVIEW",
   "authorizedAt": "2026-10-07T00:11:20+03:00",
   "authorization": "User requested publishing the new TestFlight version after disclosure of unfinished visual review and service setup.",
-  "nativeRun": 37528605680,
-  "nativeSourceCommit": "1d50ac206a1daa5b3c78101be6f0a52e12db4cdd",
+  "nativeRun": 37618599248,
+  "nativeSourceCommit": "05d28d6e860ac0e20c546ca7b0de9d29e92a3375",
   "nativeRunState": "success",
   "reviewedSourceHashes": {
-    "ios/Athar/InteractiveMushafCanvas.swift": "c028e6f3a6d90587cc6292cb29627b2f317187f86734d33c7bbe845ce5b8c0fd",
-    "ios/Athar/InteractiveMushafReader.swift": "ef6746bc3f78514a318756564864b434a42c0e9d6d8c74914621413c5e0d81df",
+    "ios/Athar/InteractiveMushafCanvas.swift": "71b005b5f736bec59152d210a5fa9e2cb8a5ec8a3767df7b4215db72af11ed61",
+    "ios/Athar/InteractiveMushafReader.swift": "cc2412bd60f66b754d8e0a3d7d4f459c132cae608e3ccc7ebb858ee1f969c6b4",
     "ios/Athar/MushafReader.swift": "e9accc94c43183e61af67aa5f40c1302eea13448e35f7f1acdcf4e585e5d0a88",
     "ios/Athar/QCFV2Content.swift": "db40ad7db84f0be98261d441dabfa43fdbe22930e56f85deb972a8c93c56d002",
     "ios/Athar/qpc-v2-line-layout.json": "51b0ecce36ea708b974756348f25ec0031ed002871249a884c3386eeed5ca828",
     "release/qcf-v2-manifest.json": "b309f2080ef4a3a28efee8d6334e8e30ad44bc86fa54152221267c39866bb82b",
-    "ios/project.yml": "4622aae26f11a6988c0a83cf0bc40598c69d84ed5be009096f4bb2c6add3da9c"
+    "ios/project.yml": "a9dbaa12aa762aaa1e42f550c88a1eb9f30d8474fde5ad9b3ac773c33d106ff1"
   },
   "limitations": [
     "Exact reference visual match is not yet verified",
@@ -21,5 +21,6 @@
     "Google account provider disabled",
     "Family Controls distribution request submitted, awaiting Apple review"
   ],
-  "submitToAppStore": false
+  "submitToAppStore": false,
+  "nativeEvidenceScope": "CI189 source matches current iOS inputs; native bounds, UI interaction and unsigned account/extension Release compilation. No device, visual-reference or production-service acceptance."
 }
