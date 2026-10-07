@@ -19,6 +19,63 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/ttf/'
 MANIFEST = ROOT / 'release/qcf-v2-manifest.json'
 
+def checksum(data):
+    data += b'\0' * (-len(data) % 4)
+    return sum(struct.unpack('>' + 'I' * (len(data) // 4), data)) & 0xffffffff
+
+def sanitize_cmap(data):
+    """Remove only the upstream's truncated legacy Mac format-6 cmap.
+
+    Keep all Unicode cmap bytes, glyph outlines, names and table offsets intact.
+    Apple's ITMS-90853 rejects the six-byte format-6 header (minimum is 10).
+    """
+    result = bytearray(data)
+    entries = {}
+    for i in range(struct.unpack_from('>H', data, 4)[0]):
+        pos = 12 + i * 16
+        tag, _, off, size = struct.unpack_from('>4sIII', data, pos)
+        entries[tag] = (pos, off, size)
+    directory, off, size = entries[b'cmap']
+    cmap = data[off:off + size]
+    version, count = struct.unpack_from('>HH', cmap)
+    if version != 0 or 4 + count * 8 > size:
+        raise ValueError('Invalid cmap directory')
+    kept, removed = [], []
+    for i in range(count):
+        record = cmap[4 + i * 8:12 + i * 8]
+        platform, encoding, start = struct.unpack('>HHI', record)
+        if start + 6 > size:
+            raise ValueError('Truncated cmap subtable')
+        fmt, length, language = struct.unpack_from('>HHH', cmap, start)
+        if platform == 1 and encoding == 0 and fmt == 6 and length == 6 and language == 0:
+            removed.append(start)
+            continue
+        if fmt not in (0, 4, 6):
+            raise ValueError(f'Unreviewed cmap format: {fmt}')
+        if start + length > size or length < {0: 262, 4: 16, 6: 10}[fmt]:
+            raise ValueError('Invalid cmap length')
+        if fmt == 0 and length != 262:
+            raise ValueError('Invalid format-0 length')
+        if fmt == 6 and length != 10 + 2 * struct.unpack_from('>H', cmap, start + 8)[0]:
+            raise ValueError('Invalid format-6 entry count')
+        kept.append(record)
+    if not kept:
+        raise ValueError('No usable cmap')
+    if not removed:
+        return data, False
+    new = bytearray(cmap)
+    struct.pack_into('>H', new, 2, len(kept))
+    new[4:4 + len(kept) * 8] = b''.join(kept)
+    new[4 + len(kept) * 8:4 + count * 8] = b'\0' * (8 * len(removed))
+    for start in removed:
+        new[start:start + 6] = b'\0' * 6
+    result[off:off + size] = new
+    struct.pack_into('>I', result, directory + 4, checksum(bytes(new)))
+    _, head, _ = entries[b'head']
+    struct.pack_into('>I', result, head + 8, 0)
+    struct.pack_into('>I', result, head + 8, (0xb1b0afba - checksum(bytes(result))) & 0xffffffff)
+    return bytes(result), True
+
 def download_font(url):
     """Retry transient transport/server failures, never change source or integrity."""
     for attempt in range(4):
@@ -77,17 +134,29 @@ def main():
             data = path.read_bytes()
         else:
             data = download_font(BASE + name)
+        upstream_digest = hashlib.sha256(data).hexdigest()
+        if not args.record_manifest and 'upstreamSha256' in expected[page] and upstream_digest == expected[page]['sha256']:
+            _, changed = sanitize_cmap(data)
+            if changed:
+                raise ValueError('Pinned repaired font still has malformed cmap')
+            ps = inspect_font(data)
+            return expected[page]
         ps = inspect_font(data)
         if ps != f'QCF2{page:03}':
             raise ValueError(f'Wrong font for page {page}: {ps}')
+        if not args.record_manifest and upstream_digest != expected[page].get('upstreamSha256', expected[page]['sha256']):
+            raise ValueError(f'Font version changed: page {page}; review before updating manifest')
+        data, repaired = sanitize_cmap(data)
         digest = hashlib.sha256(data).hexdigest()
         if not args.record_manifest and digest != expected[page]['sha256']:
-            raise ValueError(f'Font version changed: page {page}; review before updating manifest')
-        if not path.is_file():
-            tmp = path.with_suffix('.part')
-            tmp.write_bytes(data)
-            os.replace(tmp, path)
-        return {'page': page, 'file': name, 'postScriptName': ps, 'bytes': len(data), 'sha256': digest}
+            raise ValueError(f'Bundled font hash mismatch: page {page}')
+        tmp = path.with_suffix('.part')
+        tmp.write_bytes(data)
+        os.replace(tmp, path)
+        entry = {'page': page, 'file': name, 'postScriptName': ps, 'bytes': len(data), 'sha256': digest}
+        if repaired:
+            entry.update(upstreamSha256=upstream_digest, repair='Remove truncated Macintosh format-6 cmap; preserve Unicode mappings and all glyph tables')
+        return entry
     fonts = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         for font in pool.map(fetch, range(1, 605)):
