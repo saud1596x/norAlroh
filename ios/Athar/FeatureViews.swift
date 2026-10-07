@@ -181,7 +181,9 @@ struct SettingsView: View {
                 NavigationLink("إعدادات يوم الجمعة") { FridaySettingsView() }
             }
             Section("مساحة تحترم خصوصيتك") {
-                Text("لا حساب مطلوب، ولا إعلانات أو تتبع. رحلاتك وتأملاتك وعلاماتك وسجلات حفظك محفوظة محليًا.")
+                Text(account.available
+                     ? "الحساب اختياري، ولا إعلانات أو تتبع. بياناتك محفوظة على جهازك؛ لا تُرفع نسخة الحفظ السحابية إلا باختيارك من صفحة الحساب."
+                     : "لا حساب مطلوب، ولا إعلانات أو تتبع. رحلاتك وتأملاتك وعلاماتك وسجلات حفظك محفوظة محليًا.")
                 Toggle("تقليل الحركة", isOn: Binding(
                     get: { store.data.lowMotion }, set: { value in store.update { $0.lowMotion = value } }
                 ))
@@ -267,6 +269,7 @@ struct SourcesView: View {
         List {
             Section("القرآن الكريم") {
                 Text("١١٤ سورة و٦٢٣٦ آية من Tanzil، النص العثماني 1.1 برواية حفص. الآيات منسوخة حرفيًا من المصدر، والبسملة غير المرقمة منفصلة وفق ملف المصدر. الترخيص CC BY 3.0 مع شرط عدم تغيير النص.")
+                    .accessibilityIdentifier("licenses.introduction")
                 Link("المصدر وتحديثات النص: Tanzil", destination: URL(string: "https://tanzil.net/")!)
                 NavigationLink("نسبة النص وترخيص Tanzil") { BundledLicenseView(title: "ترخيص Tanzil", resource: "Tanzil-LICENSE", extension: "txt") }
                     .accessibilityIdentifier("sources.tanzil")
@@ -304,7 +307,7 @@ struct SourcesView: View {
                 NavigationLink("تراخيص المكونات التابعة") { BundledLicenseView(title: "مكونات WhisperKit", resource: "WHISPERKIT-THIRD-PARTY", extension: "txt") }
                     .accessibilityIdentifier("sources.whispercomponents")
             }
-        }.navigationTitle("التراخيص").accessibilityIdentifier("licenses.list")
+        }.navigationTitle("التراخيص")
     }
 }
 
