@@ -66,6 +66,27 @@ final class LocalDataRecoveryTests: XCTestCase {
         let reopened = MemorizationStore(defaults: defaults)
         XCTAssertEqual(reopened.history.count, 2); XCTAssertEqual(reopened.session?.keys, [2, 3])
     }
+    @MainActor func testOlderCloudReviewCannotReplaceMoreRecentIndependentPractice() throws {
+        let suite = "Noor.MergeChronology." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MemorizationStore(defaults: defaults)
+        XCTAssertTrue(store.finish(chapter: 1, answers: [.init(ayah: 1, assessment: "remembered", revealed: false, hints: 0)]))
+        let latest = try XCTUnwrap(store.progress.verses["1:1"])
+        let old = MemorizationResult(date: latest.lastPracticed.addingTimeInterval(-86400), chapter: 1,
+            answers: [.init(ayah: 1, assessment: "review", revealed: true, hints: 1)])
+        var oldProgress = MemorizationProgress(); oldProgress.record(old)
+        let backup = MemorizationCloudBackup(version: 1, plan: store.plan,
+            archive: .init(version: 1, history: [old], progress: oldProgress))
+        XCTAssertTrue(store.restore(backup)); XCTAssertTrue(store.restore(backup))
+        let merged = try XCTUnwrap(store.progress.verses["1:1"])
+        XCTAssertEqual(merged.lastPracticed, latest.lastPracticed)
+        XCTAssertEqual(merged.nextReview, latest.nextReview)
+        XCTAssertFalse(merged.needsHelp)
+        XCTAssertEqual(merged.attempts, 2); XCTAssertEqual(merged.lapses, 1)
+        XCTAssertEqual(store.history.count, 2)
+        XCTAssertEqual(store.completedToday(), 1)
+    }
     @MainActor func testCloudMergeRejectsConflictingImmutableResultBeforeWritingAnything() throws {
         let suite = "Noor.MergeConflict." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
