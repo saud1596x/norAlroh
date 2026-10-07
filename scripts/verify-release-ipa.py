@@ -54,6 +54,9 @@ def verify(path):
             if identifier not in EXTENSIONS or identifier in found:
                 raise ValueError('Unexpected or duplicate extension')
             found.add(identifier)
+            display_name = extension.get('CFBundleDisplayName')
+            if not isinstance(display_name, str) or not display_name.strip():
+                raise ValueError('Missing extension display name: ' + identifier)
             if extension.get('NSExtension', {}).get('NSExtensionPointIdentifier') != EXTENSIONS[identifier]:
                 raise ValueError('Incorrect extension registration: ' + identifier)
             if (extension.get('CFBundleShortVersionString'), extension.get('CFBundleVersion')) != version:
