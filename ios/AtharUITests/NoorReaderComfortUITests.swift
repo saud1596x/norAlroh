@@ -1,7 +1,9 @@
 import XCTest
+import UIKit
 
 final class NoorReaderComfortUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+    override func setUpWithError() throws { continueAfterFailure = false; XCUIDevice.shared.orientation = .portrait }
+    override func tearDownWithError() throws { XCUIDevice.shared.orientation = .portrait }
     func testPageToolsGesturesAndRelaunchPreservePosition() {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
@@ -16,7 +18,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         // A tap on Quran ink, not just a margin, toggles tools without selection.
         verse.tap()
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            !app.buttons["reader.jump"].isHittable
+            !app.buttons["reader.jump"].exists
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 5), .completed)
         XCTAssertFalse(app.buttons["verse.tafsir"].exists)
@@ -46,10 +48,26 @@ final class NoorReaderComfortUITests: XCTestCase {
         requirePage(151, app: app)
         capture(app, "stage1-151-restored-after-relaunch")
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(page.waitForExistence(timeout: 10))
+        requireStableLayout(app, page: page, landscape: true)
+        requirePage(151, app: app)
         capture(app, "stage1-151-landscape")
         XCUIDevice.shared.orientation = .portrait
+        requireStableLayout(app, page: page, landscape: false)
         capture(app, "stage1-151-portrait-restored")
+    }
+    private func requireStableLayout(_ app: XCUIApplication, page: XCUIElement, landscape: Bool) {
+        var previous: CGRect?
+        var stableSince = Date()
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let screen = app.frame
+            guard (screen.width > screen.height) == landscape, page.exists else { previous = nil; stableSince = Date(); return false }
+            let frame = page.frame
+            guard frame.width > 0, frame.height > 0, screen.contains(frame) else { previous = nil; stableSince = Date(); return false }
+            if previous != frame { previous = frame; stableSince = Date(); return false }
+            return Date().timeIntervalSince(stableSince) >= 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 15), .completed)
+        XCTAssertEqual(app.buttons["reader.jump"].frame.midX, page.frame.midX, accuracy: 1)
     }
     private func jump(_ number: Int, app: XCUIApplication) {
         app.buttons["reader.jump"].tap()
@@ -67,7 +85,11 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 20), .completed)
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = XCUIScreen.main.screenshot()
+        if let bitmap = screenshot.image.cgImage {
+            XCTAssertEqual(bitmap.width > bitmap.height, app.frame.width > app.frame.height, "Screenshot orientation must match the settled reader")
+        } else { XCTFail("Missing screenshot bitmap") }
+        let shot = XCTAttachment(screenshot: screenshot)
         shot.name = name; shot.lifetime = .keepAlways; add(shot)
     }
 }

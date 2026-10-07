@@ -14,6 +14,7 @@ final class NoorKhatmahUITests: XCTestCase {
         assertProgress(app, pages: 0)
         capture(app, "khatmah-active-plan")
         app.buttons["khatmah.read"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 20))
         XCTAssertFalse(app.buttons["reader.previous"].isEnabled)
         capture(app, "khatmah-reader-entry")
