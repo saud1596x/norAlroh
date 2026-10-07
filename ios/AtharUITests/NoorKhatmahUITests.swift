@@ -1,9 +1,10 @@
 import XCTest
 final class NoorKhatmahUITests: XCTestCase {
+    override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testPreviewConfirmationPauseAndRelaunch() throws {
         let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; app.launch()
         XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30))
-        app.swipeUp(); app.buttons["home.khatmah"].tap()
+        openJourney(app)
         XCTAssertTrue(app.buttons["khatmah.setup"].waitForExistence(timeout: 10)); app.buttons["khatmah.setup"].tap()
         app.swipeUp(); app.swipeUp()
         XCTAssertTrue(app.buttons["khatmah.preview"].waitForExistence(timeout: 10)); app.buttons["khatmah.preview"].tap()
@@ -29,9 +30,19 @@ final class NoorKhatmahUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["الرحلة متوقفة مؤقتًا"].waitForExistence(timeout: 10))
         app.buttons["khatmah.pause"].tap()
         app.terminate(); app.launch()
-        XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30)); app.buttons["home.khatmah"].tap()
+        XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30)); openJourney(app)
         assertProgress(app, pages: 20)
         capture(app, "khatmah-progress-restored")
+    }
+    @MainActor private func openJourney(_ app: XCUIApplication) {
+        let button = app.buttons["home.khatmah"]
+        // Scroll only when needed; a full-screen swipe can move this already
+        // visible card out of view on a larger iPhone.
+        if !button.isHittable { app.swipeUp() }
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in button.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 10), .completed)
+        button.tap()
+        XCTAssertTrue(app.staticTexts["رحلة الختمة"].waitForExistence(timeout: 10))
     }
     @MainActor private func assertProgress(_ app: XCUIApplication, pages: Int, file: StaticString = #filePath, line: UInt = #line) {
         let count = app.staticTexts["khatmah.completedPages"]
