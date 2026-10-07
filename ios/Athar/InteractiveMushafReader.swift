@@ -93,7 +93,9 @@ struct InteractiveMushafReader: View {
     @State private var rows: OriginalMushafRows?
     @State private var number = 1
     @State private var selected: String?
+    @State private var manualSelection: VerseSelection?
     @State private var sheetVerse: VerseSelection?
+    @State private var sheetAction = VerseToolAction.details
     @State private var tools = true
     @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 44]
     @State private var picker = false
@@ -113,10 +115,14 @@ struct InteractiveMushafReader: View {
                 if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: selected, reduceMotion: reduced || store.data.lowMotion,
                         onVerse: { key in
-                            if let key { selected = key; sheetVerse = VerseSelection(key: key) }
+                            if let key {
+                                selected = key; manualSelection = VerseSelection(key: key)
+                                withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools = true }
+                            }
                         }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) },
                         onToggleTools: {
-                            withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() }
+                            if manualSelection != nil { clearManualSelection() }
+                            else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() } }
                         })
                         .padding(.horizontal, 12)
                         .padding(.top, (controlHeights["header"] ?? 44) + 8)
@@ -130,21 +136,35 @@ struct InteractiveMushafReader: View {
             }
             if tools { VStack {
                 HStack {
-                    Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
-                    Spacer(); Text(title).font(.headline).lineLimit(1); Spacer()
-                    if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
+                    if manualSelection != nil {
+                        Button { clearManualSelection() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
+                            .accessibilityLabel("إلغاء تحديد الآية").accessibilityIdentifier("verse.tools.close")
+                    } else {
+                        Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
+                    }
+                    Spacer()
+                    Text(manualSelection.map { "\(title) · الآية \(ArabicSearch.digits($0.ayah))" } ?? title)
+                        .font(.headline).lineLimit(1).accessibilityIdentifier(manualSelection == nil ? "reader.title" : "verse.tools.title")
+                    Spacer()
+                    if let selection = manualSelection {
+                        Button { openTools(selection, action: .details) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                            .accessibilityLabel("المزيد من أدوات الآية").accessibilityIdentifier("verse.more")
+                    } else if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else { Color.clear.frame(width: 44, height: 44) }
                 }.background { readerControlMeasurement("header") }
                 Spacer()
-                HStack {
+                Group {
+                    if let selection = manualSelection { verseActions(selection) }
+                    else { HStack {
                     Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
                     Button("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤") { input = ""; picker = true }
                         .frame(minHeight: 44).accessibilityIdentifier("reader.jump")
                     Spacer()
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
+                    } }
                 }.background { readerControlMeasurement("footer") }
             }.padding(.horizontal, 10).transition(.opacity) }
         }
@@ -160,8 +180,8 @@ struct InteractiveMushafReader: View {
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
         .onDisappear { audio.stop(); audio.onVerse = nil }
         .onChange(of: number) { _, value in lastPage = value }
-        .sheet(item: $sheetVerse, onDismiss: { if audio.playing == nil { selected = nil } }) { selection in
-            VerseTools(selection: selection, audio: audio, selected: $selected)
+        .sheet(item: $sheetVerse, onDismiss: { clearManualSelection() }) { selection in
+            VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction)
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $picker) {
@@ -177,6 +197,35 @@ struct InteractiveMushafReader: View {
             Color.clear.preference(key: ReaderControlHeight.self, value: [key: geometry.size.height])
         }
     }
+    private func clearManualSelection() {
+        manualSelection = nil
+        selected = audio.playing
+    }
+    private func openTools(_ selection: VerseSelection, action: VerseToolAction) {
+        sheetAction = action; sheetVerse = selection
+    }
+    private func verseActions(_ selection: VerseSelection) -> some View {
+        HStack(spacing: 0) {
+            verseAction("تفسير", symbol: "book", identifier: "verse.tafsir") { openTools(selection, action: .tafsir) }
+            verseAction("استماع", symbol: "play.fill", identifier: "verse.play") {
+                let count = store.quran[selection.chapter - 1].ayahs.count
+                manualSelection = nil
+                audio.play((selection.ayah...count).map { "\(selection.chapter):\($0)" })
+            }
+            verseAction("تكرار", symbol: "repeat", identifier: "verse.repeat") { openTools(selection, action: .repeatRange) }
+            let bookmarked = store.data.bookmarks.contains(selection.key)
+            verseAction(bookmarked ? "محفوظة" : "علامة", symbol: bookmarked ? "bookmark.fill" : "bookmark", identifier: "verse.bookmark") {
+                store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
+            }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
+            verseAction("حفظ", symbol: "mic", identifier: "verse.hifz") { openTools(selection, action: .hifz) }
+        }.accessibilityIdentifier("verse.actions")
+    }
+    private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) { Image(systemName: symbol).font(.system(size: 16)); Text(label).font(.caption2).lineLimit(1) }
+                .frame(maxWidth: .infinity).frame(height: 44).contentShape(Rectangle())
+        }.accessibilityLabel(label).accessibilityIdentifier(identifier)
+    }
     private var title: String {
         guard let key = selected ?? page?.words.first?.verse, let n = Int(key.split(separator: ":")[0]), store.quran.indices.contains(n - 1) else { return "المصحف" }
         return store.quran[n - 1].name
@@ -186,7 +235,7 @@ struct InteractiveMushafReader: View {
         let destination = number + amount
         // Persist before publishing the new page, including a quick close/background.
         lastPage = destination
-        number = destination; selected = nil
+        number = destination; selected = nil; manualSelection = nil
     }
     private func load() async {
         error = nil
@@ -220,6 +269,7 @@ struct InteractiveMushafReader: View {
                 lastPage = number
             }
             audio.onVerse = { key in
+                manualSelection = nil
                 selected = key
                 if page?.words.contains(where: { $0.verse == key }) != true,
                    let target = versePages[key] { number = target }
@@ -238,6 +288,7 @@ private struct ReaderControlHeight: PreferenceKey {
 }
 struct VerseSelection: Identifiable { let key: String; var id: String { key }; var chapter: Int { Int(key.split(separator: ":")[0])! }; var ayah: Int { Int(key.split(separator: ":")[1])! } }
 
+private enum VerseToolAction: Equatable { case details, tafsir, repeatRange, hifz }
 private struct VerseTools: View {
     let selection: VerseSelection
     @ObservedObject var audio: MushafVerseAudio
@@ -251,8 +302,10 @@ private struct VerseTools: View {
     @State private var repeatCount = 3
     @State private var repeatEnd = 1
     @State private var notice: String?
-    init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>) {
+    let initialAction: VerseToolAction
+    init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>, initialAction: VerseToolAction = .details) {
         self.selection = selection; self.audio = audio; self._selected = selected
+        self.initialAction = initialAction
         self._repeatEnd = State(initialValue: selection.ayah)
     }
     private var surah: Surah { store.quran[selection.chapter - 1] }
@@ -260,7 +313,11 @@ private struct VerseTools: View {
     private var copyText: String { "\(QuranText.verse(chapter: selection.chapter, ayah: verse))\n[\(surah.name): \(selection.ayah)]" }
     var body: some View {
         NavigationStack {
-            List {
+            Group {
+                if initialAction == .tafsir { tafsirContent }
+                else if initialAction == .hifz { hifzContent }
+                else { List {
+                if initialAction == .details {
                 Section {
                     Button("الاستماع من هذه الآية", systemImage: "play.fill") {
                         audio.play((selection.ayah...surah.ayahs.count).map { "\(selection.chapter):\($0)" }); dismiss()
@@ -268,17 +325,21 @@ private struct VerseTools: View {
                     Button("التفسير", systemImage: "book") { showTafsir = true }.accessibilityIdentifier("verse.tafsir")
                     Button(store.data.bookmarks.contains(selection.key) ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية", systemImage: "bookmark") { store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah) }.accessibilityIdentifier("verse.bookmark")
                 }
+                }
                 Section("التكرار") {
                     Stepper("عدد التكرارات: \(repeatCount)", value: $repeatCount, in: 1...20)
                     Stepper("إلى الآية: \(repeatEnd)", value: $repeatEnd, in: selection.ayah...surah.ayahs.count)
-                    Button("تشغيل التكرار") { audio.play((0..<repeatCount).flatMap { _ in (selection.ayah...repeatEnd).map { "\(selection.chapter):\($0)" } }); dismiss() }
+                    Button("تشغيل التكرار") { audio.play((0..<repeatCount).flatMap { _ in (selection.ayah...repeatEnd).map { "\(selection.chapter):\($0)" } }); dismiss() }.accessibilityIdentifier("verse.repeat.start")
                 }
+                if initialAction == .details {
                 Section("الحفظ والمشاركة") {
                     Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { showHifz = true }
                     Button("نسخ نص الآية", systemImage: "doc.on.doc") { UIPasteboard.general.string = copyText; notice = "نُسخ نص الآية مع اسم السورة ورقمها." }.accessibilityIdentifier("verse.copy")
                     ShareLink(item: copyText) { Label("مشاركة الآية", systemImage: "square.and.arrow.up") }
                     if let notice { Text(notice).accessibilityIdentifier("verse.notice") }
                 }
+                }
+                } }
             }
             .navigationTitle("\(surah.name) · الآية \(selection.ayah)")
             .navigationBarTitleDisplayMode(.inline)
@@ -289,33 +350,40 @@ private struct VerseTools: View {
                         .accessibilityIdentifier("verse.tools.title")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("إغلاق") { dismiss() }.accessibilityIdentifier("verse.tools.close")
+                    Button("إغلاق") { dismiss() }.accessibilityIdentifier(initialAction == .tafsir ? "verse.tafsir.close" : "verse.tools.close")
                 }
             }
             .onAppear { repeatEnd = selection.ayah }
             .sheet(isPresented: $showTafsir) {
                 NavigationStack {
-                    ScrollView { VStack(alignment: .leading, spacing: 18) {
-                        if let text = tafsir.text { Text(text).font(.title3).accessibilityIdentifier("verse.tafsir.text") }
-                        else if let error = tafsir.error { Text(error); Button("إعادة المحاولة") { Task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) } } }
-                        else { ProgressView("تحميل التفسير الميسر…") }
-                    }.padding() }
+                    tafsirContent
                     .navigationTitle("التفسير · \(surah.name) \(selection.ayah)")
                     .toolbar { Button("إغلاق") { showTafsir = false }.accessibilityIdentifier("verse.tafsir.close") }
-                    .task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) }
                 }
             }
             .sheet(isPresented: $showHifz) {
                 NavigationStack {
-                    Form {
-                        Text("ابدأ بالآية \(selection.ayah) من \(surah.name). تُحفظ نتائج المراجعة السابقة؛ البدء يستبدل خطة الحفظ والجلسة الحالية.")
-                        Button("بدء جلسة هذه الآية") {
-                            let plan = MemorizationPlan(chapter: selection.chapter, from: selection.ayah, to: selection.ayah, daily: 1)
-                            if memorization.configure(plan, corpus: store.quran), memorization.saveSession(MemorizationSession(chapter: selection.chapter, keys: [selection.ayah])) { notice = "أُضيفت الآية إلى جلسة الحفظ. افتح قسم الحفظ للمتابعة."; showHifz = false }
-                        }
-                    }.navigationTitle("الحفظ والمراجعة").toolbar { Button("إغلاق") { showHifz = false } }
+                    hifzContent.navigationTitle("الحفظ والمراجعة").toolbar { Button("إغلاق") { showHifz = false } }
                 }
             }
+        }
+    }
+    private var tafsirContent: some View {
+        ScrollView { VStack(alignment: .leading, spacing: 18) {
+            if let text = tafsir.text { Text(text).font(.title3).accessibilityIdentifier("verse.tafsir.text") }
+            else if let error = tafsir.error { Text(error); Button("إعادة المحاولة") { Task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) } } }
+            else { ProgressView("تحميل التفسير الميسر…") }
+        }.padding().frame(maxWidth: .infinity, alignment: .leading) }
+            .task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) }
+    }
+    private var hifzContent: some View {
+        Form {
+            Text("ابدأ بالآية \(selection.ayah) من \(surah.name). تُحفظ نتائج المراجعة السابقة؛ البدء يستبدل خطة الحفظ والجلسة الحالية.")
+            Button("بدء جلسة هذه الآية") {
+                let plan = MemorizationPlan(chapter: selection.chapter, from: selection.ayah, to: selection.ayah, daily: 1)
+                if memorization.configure(plan, corpus: store.quran), memorization.saveSession(MemorizationSession(chapter: selection.chapter, keys: [selection.ayah])) { notice = "أُضيفت الآية إلى جلسة الحفظ. افتح قسم الحفظ للمتابعة."; showHifz = false }
+            }
+            if let notice { Text(notice).accessibilityIdentifier("verse.notice") }
         }
     }
 }
