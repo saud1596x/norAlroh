@@ -24,13 +24,14 @@ import FirebaseFirestore
     private var syncTask: Task<Void, Never>?
     private var syncGeneration = UUID()
     private var pendingSync = false
+    private var foreground = true
     private var applyingSync = false
     private var deferredPlan: MemorizationPlan?
     private var observedMemorization: Data?
     private let connection = NWPathMonitor()
     private var nonce: String?
     func attach(store: AtharStore, memorization: MemorizationStore) {
-        syncStore = store; syncMemorization = memorization
+        foreground = true; syncStore = store; syncMemorization = memorization
         captureLocalChanges(); scheduleSync()
     }
     private func localBackup(_ memorization: MemorizationStore) -> MemorizationCloudBackup {
@@ -95,6 +96,7 @@ import FirebaseFirestore
         readingListeners.forEach { $0.remove() }; readingListeners = []; listenerOwner = nil
         #endif
     }
+    func enterBackground() { foreground = false; suspendSync() }
     func disconnectLocalSync() {
         suspendSync(); NoorReadingSyncJournal.shared.pause()
         syncStatus = "المزامنة متوقفة. النسخة السحابية تبقى حتى تحذف الحساب."
@@ -102,7 +104,7 @@ import FirebaseFirestore
     private func scheduleSync() {
         #if NOOR_ACCOUNT_ENABLED
         let journal = NoorReadingSyncJournal.shared
-        guard available, let uid, journal.enabled, journal.record?.owner == uid, !deletionRequested else { return }
+        guard foreground, available, let uid, journal.enabled, journal.record?.owner == uid, !deletionRequested else { return }
         ensureSyncListeners(owner: uid)
         if syncing { pendingSync = true; return }
         syncTask?.cancel()
@@ -125,7 +127,7 @@ import FirebaseFirestore
     #if NOOR_ACCOUNT_ENABLED
     private func performSync() async {
         let journal = NoorReadingSyncJournal.shared
-        guard !syncing, !busy, !deletionRequested, journal.enabled,
+        guard foreground, !syncing, !busy, !deletionRequested, journal.enabled,
               let user = Auth.auth().currentUser, user.uid == uid, journal.record?.owner == user.uid,
               let localReading = journal.record?.state, let store = syncStore, store.unreadableDeviceData == nil,
               let memorization = syncMemorization, memorization.unreadableHistory == nil,
