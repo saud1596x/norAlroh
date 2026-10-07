@@ -340,6 +340,7 @@ struct OriginalPageData {
     let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
     private var fitted: CGFloat = 0
     var onTurn: ((Int) -> Void)?
+    var onToggleTools: (() -> Void)?
     private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
     var canTurnPages: Bool {
         onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
@@ -349,10 +350,18 @@ struct OriginalPageData {
     override init(frame: CGRect) {
         super.init(frame: frame); delegate = self
         showsVerticalScrollIndicator = false; showsHorizontalScrollIndicator = false
-        bouncesZoom = true; backgroundColor = .clear; addSubview(canvas)
+        // SwiftUI has already removed the system safe area and reader controls.
+        // Applying automatic UIKit insets again shifts the authored page.
+        contentInsetAdjustmentBehavior = .never
+        bounces = false; bouncesZoom = false; backgroundColor = .clear; addSubview(canvas)
         accessibilityIdentifier = "reader.page.loading"
         contentSize = OriginalMushafCanvas.pageSize
         let tap = UITapGestureRecognizer(target: self, action: #selector(tappedOnViewport(_:)))
+        let selection = UILongPressGestureRecognizer(target: self, action: #selector(selectedOnViewport(_:)))
+        selection.minimumPressDuration = 0.4
+        selection.allowableMovement = 10
+        tap.require(toFail: selection)
+        addGestureRecognizer(selection)
         for direction in [UISwipeGestureRecognizer.Direction.right, .left] {
             let swipe = UISwipeGestureRecognizer(target: self, action: #selector(turnPage(_:)))
             swipe.direction = direction; swipe.numberOfTouchesRequired = 1
@@ -371,9 +380,15 @@ struct OriginalPageData {
         onTurn?(gesture.direction == .right ? 1 : -1)
     }
     @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
+        if let onToggleTools { onToggleTools(); return }
         // UIKit applies zoom and offset when converting into the fixed canvas.
         // A margin tap stays blank; it never chooses a nearby verse.
         canvas.onVerse?(canvas.verse(at: tap.location(in: canvas)))
+    }
+    @objc private func selectedOnViewport(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began,
+              let key = canvas.verse(at: gesture.location(in: canvas)) else { return }
+        canvas.onVerse?(key)
     }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { canvas }
     func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { canvas.redrawInk(atZoom: scale) }
@@ -381,10 +396,24 @@ struct OriginalPageData {
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0 else { return }
         let fit = min(bounds.width / OriginalMushafCanvas.pageSize.width, bounds.height / OriginalMushafCanvas.pageSize.height)
-        if abs(fitted - fit) > 0.001 {
-            fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4; zoomScale = fit
+        if abs(fitted - fit) > 0.00001 {
+            let relativeZoom = fitted > 0 ? zoomScale / fitted : 1
+            fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4
+            zoomScale = fit * min(4, max(1, relativeZoom))
         }
-        contentInset = UIEdgeInsets(top: max(0, (bounds.height - canvas.frame.height) / 2), left: max(0, (bounds.width - canvas.frame.width) / 2), bottom: 0, right: 0)
+        let vertical = max(0, (bounds.height - canvas.frame.height) / 2)
+        let horizontal = max(0, (bounds.width - canvas.frame.width) / 2)
+        let centered = UIEdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
+        if contentInset != centered { contentInset = centered }
+        if zoomScale <= minimumZoomScale * 1.0001, !isDragging, !isDecelerating {
+            let origin = CGPoint(x: -horizontal, y: -vertical)
+            if contentOffset != origin { setContentOffset(origin, animated: false) }
+        }
+    }
+    func resetToFittedPage() {
+        setZoomScale(minimumZoomScale, animated: false)
+        setNeedsLayout(); layoutIfNeeded()
+        setContentOffset(CGPoint(x: -contentInset.left, y: -contentInset.top), animated: false)
     }
 }
 @MainActor private final class MushafPagingGestureDelegate: NSObject, UIGestureRecognizerDelegate {
@@ -399,10 +428,12 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     var hiddenWordIDs: Set<Int> = []
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     var onTurn: ((Int) -> Void)? = nil
+    var onToggleTools: (() -> Void)? = nil
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
+        view.onToggleTools = onToggleTools
         if context.coordinator.page != page.number || !view.canvas.renderedSuccessfully {
             let animate = context.coordinator.page != nil && context.coordinator.page != page.number
                 && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -411,8 +442,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
                 view.canvas.configure(page: self.page, corpus: self.corpus)
                 view.canvas.selected = self.selected
                 view.canvas.hiddenWordIDs = self.hiddenWordIDs
-                view.setZoomScale(view.minimumZoomScale, animated: false)
-                view.setContentOffset(.zero, animated: false)
+                view.resetToFittedPage()
                 view.canvas.setNeedsDisplay(); view.canvas.layoutIfNeeded()
             }
             if animate {
