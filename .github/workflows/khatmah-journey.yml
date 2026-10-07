@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [mushaf-viewport-20261007]
-    paths: ['.github/workflows/khatmah-journey.yml', 'ios/Athar/Khatmah*.swift', 'ios/AtharTests/KhatmahJourneyTests.swift', 'ios/AtharUITests/NoorKhatmahUITests.swift']
+    paths: ['.github/workflows/khatmah-journey.yml', 'ios/Athar/Khatmah*.swift', 'ios/Athar/Noor*Journey*.swift', 'ios/AtharTests/*Journey*Tests.swift', 'ios/AtharUITests/NoorKhatmahUITests.swift']
 permissions:
   contents: read
 jobs:
@@ -46,6 +46,7 @@ jobs:
           xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
             -only-testing:AtharTests/KhatmahJourneyTests \
+            -only-testing:AtharTests/NoorJourneyIndexTests \
             -only-testing:AtharUITests/NoorKhatmahUITests \
             -parallel-testing-enabled NO -resultBundlePath release/khatmah-${{ matrix.display }}.xcresult \
             CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
