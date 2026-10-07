@@ -19,7 +19,9 @@ struct KhatmahJourneyView: View {
                 if let plan = journey.active {
                     Card {
                         Label(plan.finished != nil ? "اكتملت رحلتك" : plan.paused ? "الرحلة متوقفة مؤقتًا" : "خطوتك القادمة", systemImage: "book.closed")
-                        Text("\(plan.completed.count) من \(605 - plan.firstPage) صفحة").font(.title2.bold())
+                        Text(verbatim: "\(plan.completed.count) من \(605 - plan.firstPage) صفحة").font(.title2.bold())
+                            .accessibilityIdentifier("khatmah.completedPages")
+                            .accessibilityValue(String(plan.completed.count))
                         NoorProgressBar(value: plan.progress, label: "تقدم الختمة")
                         if let finish = plan.expectedFinish { Text("الإتمام \(date(finish, plan: plan))").font(.subheadline).foregroundStyle(.secondary) }
                         if let due = plan.due(on: .now) {
