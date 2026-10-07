@@ -111,4 +111,17 @@ final class KhatmahJourneyTests: XCTestCase {
         XCTAssertFalse(store.adopt(try KhatmahCalculator.make(first: 1, date: start, weekdays: [1], daily: 20, deadline: nil, reminder: nil, calendar: calendar)))
         XCTAssertEqual(try Data(contentsOf: file), bad)
     }
+    @MainActor func testExportPreservesRawArchiveAndExplicitEraseRemovesIt() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let store = KhatmahStore(file: file)
+        XCTAssertTrue(store.adopt(try KhatmahCalculator.make(first: 600, date: start, weekdays: [1], daily: 1, deadline: nil, reminder: nil, calendar: calendar)))
+        let bytes = try XCTUnwrap(store.exportBytes)
+        XCTAssertEqual(try JSONDecoder().decode(KhatmahStore.Archive.self, from: bytes).plans.first?.firstPage, 600)
+        let erased = await store.erase()
+        XCTAssertTrue(erased)
+        XCTAssertNil(store.active)
+        XCTAssertNil(store.exportBytes)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
 }
