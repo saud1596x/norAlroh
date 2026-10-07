@@ -86,7 +86,7 @@ struct NoorReadingCloudState: Codable {
                     throw CocoaError(.fileReadCorruptFile)
                 }
                 record = value
-            } catch { unreadable = bytes; error = "تعذر فتح سجل المزامنة. صدّر بياناتك قبل إصلاحه؛ بيانات الجهاز لم تتغير." }
+            } catch { unreadable = bytes; self.error = "تعذر فتح سجل المزامنة. صدّر بياناتك قبل إصلاحه؛ بيانات الجهاز لم تتغير." }
         }
     }
     @discardableResult private func save(_ value: Record) -> Bool {
@@ -94,7 +94,7 @@ struct NoorReadingCloudState: Codable {
         do {
             defaults.set(try JSONEncoder().encode(value), forKey: key)
             record = value; error = nil; revision += 1; return true
-        } catch { error = "تعذر حفظ سجل المزامنة. بقي تقدمك المحلي محفوظًا."; return false }
+        } catch { self.error = "تعذر حفظ سجل المزامنة. بقي تقدمك المحلي محفوظًا."; return false }
     }
     @discardableResult func setEnabled(_ enabled: Bool, owner: String, data: DeviceData, page: Int?, plan: MemorizationPlan?) -> Bool {
         guard !owner.isEmpty, unreadable == nil else { return false }

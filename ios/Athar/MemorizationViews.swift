@@ -333,7 +333,7 @@ struct MemorizationArchive: Codable {
             defaults.set(archive, forKey: "noor.memorization.archive")
             defaults.set(bytes, forKey: "noor.memorization.plan")
             plan = candidate; return true
-        } catch { error = "تعذر حفظ الخطة المتزامنة. بقيت خطتك المحلية."; return false }
+        } catch { self.error = "تعذر حفظ الخطة المتزامنة. بقيت خطتك المحلية."; return false }
     }
     func erase() {
         NoorFocusController.shared.disable()
