@@ -24,7 +24,7 @@ import AVFoundation
               let url = URL(string: String(format: "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1])) else { stop(); return }
         do { try AVAudioSession.sharedInstance().setCategory(.playback); try AVAudioSession.sharedInstance().setActive(true) }
         catch { self.error = "تعذّر تشغيل الصوت على الجهاز."; stop(); return }
-        let item = AVPlayerItem(url: url); let playback = AVPlayer(playerItem: item); player = playback
+        let item = AVPlayerItem(url: NoorAudioDownloads.shared.localURL(key) ?? url); let playback = AVPlayer(playerItem: item); player = playback
         playing = nil; loadingKey = key
         playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             let started = player.timeControlStatus == .playing
@@ -35,7 +35,7 @@ import AVFoundation
         }
         observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
-            Task { @MainActor in self?.error = "تحتاج التلاوة إلى اتصال بالإنترنت. تعذّر تحميل تسجيل الآية."; self?.stop() }
+            Task { @MainActor in self?.error = "تعذّر تشغيل الآية. أعد تنزيلها من التنزيلات، أو تحقق من اتصال الإنترنت."; self?.stop() }
         }
         if let end { NotificationCenter.default.removeObserver(end) }
         end = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in Task { @MainActor in self?.advance() } }

@@ -7,6 +7,7 @@ import WhisperKit
 @MainActor final class LocalSpeechRecitation: ObservableObject {
     static let model = "large-v3-v20240930_626MB"
     @Published private(set) var preparing = false
+    @Published private(set) var downloadProgress: Double?
     @Published private(set) var deleting = false
     @Published private(set) var ready = false
     @Published private(set) var listening = false
@@ -59,7 +60,7 @@ import WhisperKit
         preparing = true
         preparingTask = Task { [weak self] in
             guard let self else { return }
-            defer { preparing = false }
+            defer { preparing = false; downloadProgress = nil }
             do {
                 try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
                 var folder = cache; var values = URLResourceValues(); values.isExcludedFromBackup = true; try folder.setResourceValues(values)
@@ -69,19 +70,33 @@ import WhisperKit
                 }
                 guard local != nil || downloadAllowed else { throw CocoaError(.fileReadNoSuchFile) }
                 status = local == nil ? "تنزيل النموذج متعدد اللغات وتجهيزه…" : "تحميل النموذج المحلي…"
+                var selectedFolder = local
+                downloadProgress = nil
+                if selectedFolder == nil {
+                    let free = try NoorAudioIntegrity.availableCapacity(at: cache)
+                    guard free >= 1_500_000_000 else { throw CocoaError(.fileWriteOutOfSpace) }
+                    let downloaded = try await WhisperKit.download(variant: Self.model, downloadBase: cache) { [weak self] progress in
+                        let fraction = progress.fractionCompleted
+                        Task { @MainActor in guard let self, preparing else { return }; downloadProgress = min(1, max(0, fraction)) }
+                    }
+                    try Task.checkCancellation(); selectedFolder = downloaded.path
+                }
+                downloadProgress = nil; status = "التحقق من النموذج وتحميله…"
                 let config = WhisperKitConfig(model: Self.model, downloadBase: cache, modelRepo: "argmaxinc/whisperkit-coreml",
-                    modelFolder: local, tokenizerFolder: cache.appendingPathComponent("Tokenizers"), verbose: false,
-                    prewarm: true, load: true, download: local == nil)
+                    modelFolder: selectedFolder, tokenizerFolder: cache.appendingPathComponent("Tokenizers"), verbose: false,
+                    prewarm: true, load: true, download: false)
                 let loaded = try await WhisperKit(config)
                 try Task.checkCancellation()
                 if let folder = loaded.modelFolder, folder.path.hasPrefix(cache.path + "/") { defaults.set(folder.path, forKey: folderKey) }
                 pipeline = loaded; ready = true; status = "النموذج جاهز؛ معالجة الصوت على جهازك."
             } catch {
                 ready = false; status = "تعذّر تجهيز النموذج. يمكنك إعادة المحاولة."
-                if !Task.isCancelled { message = "لم يكتمل التنزيل أو التحميل. تحقق من الاتصال والمساحة المتاحة وأعد المحاولة." }
+                if Task.isCancelled { status = "أُوقف تجهيز النموذج. أعد المحاولة لاستكمال الملفات المتاحة." }
+                else { message = "لم يكتمل التنزيل أو التحميل. تحقق من الاتصال والمساحة المتاحة وأعد المحاولة." }
             }
         }
     }
+    func cancelPreparation() { guard preparing else { return }; preparingTask?.cancel(); status = "إيقاف تجهيز النموذج…" }
     func start(expected: [RecitationExpectedWord], recorder: LocalRecitationRecorder, resumeAt: Int = 0, helped: Bool = false) async {
         guard ready, !listening, !requestingPermission, !deleting, !expected.isEmpty, let pipeline else { return }
         guard expected.count <= 1500, (0...expected.count).contains(resumeAt), positions.unreadable == nil else {

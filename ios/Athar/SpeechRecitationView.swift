@@ -47,7 +47,11 @@ struct SpeechRecitationView: View {
                     hiddenRange: from...to, onHint: { hideVerses = false; usedReveal = true; speech.markHelpUsed() })
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
-            if speech.preparing || speech.deleting || speech.settling { ProgressView().accessibilityLabel("تجهيز أو إنهاء المعالجة الصوتية") }
+            if speech.preparing {
+                if let progress = speech.downloadProgress { ProgressView(value: progress).padding(.horizontal, 16) }
+                else { ProgressView().accessibilityLabel("تجهيز المعالجة الصوتية") }
+                Button("إيقاف تجهيز النموذج") { speech.cancelPreparation() }.frame(minHeight: 44)
+            } else if speech.deleting || speech.settling { ProgressView().accessibilityLabel("إنهاء المعالجة الصوتية") }
             if !speech.ready {
                 Button("تجهيز النموذج الصوتي") { downloadConsent = true }.frame(minHeight: 44)
                     .disabled(speech.preparing || speech.deleting).accessibilityIdentifier("speech.prepare")

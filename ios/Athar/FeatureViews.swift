@@ -210,6 +210,7 @@ struct SettingsView: View {
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
+                NavigationLink("التنزيلات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
                 NavigationLink("التراخيص") { SourcesView() }.accessibilityIdentifier("settings.sources")
             }
@@ -230,6 +231,7 @@ struct SettingsView: View {
                 guard !erasing else { return }
                 erasing = true; defer { erasing = false }
                 guard await speech.eraseModel() else { exportMessage = speech.message; return }
+                guard NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
                 guard recitation.erase() else { exportMessage = recitation.message; return }
                 if store.erase() {
                     notifications.erasePreferences()
