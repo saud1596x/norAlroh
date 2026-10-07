@@ -26,23 +26,37 @@ enum PrayerCalculator {
         calendar.timeZone = TimeZone(identifier: "Asia/Riyadh")!
         return calendar.isDate(left, inSameDayAs: right)
     }
-    static func rows(data: PrayerInputs, date: Date = Date()) -> [PrayerRow] {
+    static func isSameDay(_ left: Date, _ right: Date, city: PrayerLocation) -> Bool {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: data.city.timeZone) ?? .current
+        calendar.timeZone = TimeZone(identifier: city.timeZone) ?? .current
+        return calendar.isDate(left, inSameDayAs: right)
+    }
+    static func rows(data: PrayerInputs, date: Date = Date()) -> [PrayerRow] {
+        guard data.city.latitude.isFinite, data.city.longitude.isFinite,
+              (-90...90).contains(data.city.latitude), (-180...180).contains(data.city.longitude),
+              let timeZone = TimeZone(identifier: data.city.timeZone) else { return [] }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
         let day = calendar.dateComponents([.year, .month, .day], from: date)
         var params: CalculationParameters
         switch data.method {
-        case "UmmAlQuraRamadan":
-            params = CalculationMethod.ummAlQura.params
-            params.ishaInterval = 120
+        case "Dubai": params = CalculationMethod.dubai.params
+        case "Qatar": params = CalculationMethod.qatar.params
+        case "Kuwait": params = CalculationMethod.kuwait.params
+        case "Egyptian": params = CalculationMethod.egyptian.params
+        case "Karachi": params = CalculationMethod.karachi.params
+        case "Singapore": params = CalculationMethod.singapore.params
+        case "Turkey": params = CalculationMethod.turkey.params
+        case "Moonsighting": params = CalculationMethod.moonsightingCommittee.params
+        case "MuslimWorldLeague": params = CalculationMethod.muslimWorldLeague.params
         default:
             params = CalculationMethod.ummAlQura.params
             var hijri = Calendar(identifier: .islamicUmmAlQura)
-            hijri.timeZone = TimeZone(identifier: "Asia/Riyadh")!
+            hijri.timeZone = calendar.timeZone
             params.ishaInterval = hijri.component(.month, from: date) == 9 ? 120 : 90
         }
         params.madhab = data.hanafi ? .hanafi : .shafi
-        params.highLatitudeRule = .middleOfTheNight
+        params.highLatitudeRule = abs(data.city.latitude) > 48 ? .seventhOfTheNight : .middleOfTheNight
         let coordinates = Coordinates(latitude: data.city.latitude, longitude: data.city.longitude)
         guard let times = PrayerTimes(coordinates: coordinates, date: day, calculationParameters: params) else { return [] }
         return [
@@ -70,3 +84,23 @@ enum PrayerCalculator {
     }
 }
 
+
+// Versioned regional defaults, shared by the application and WidgetKit.
+// Unknown regions use a general astronomical preset, not a claim of official times.
+enum AutomaticPrayerProfile {
+    static let version = 1
+    static func resolve(countryCode: String?) -> (method: String, lateAsr: Bool) {
+        switch countryCode?.uppercased() {
+        case "SA": return ("UmmAlQura", false)
+        case "AE": return ("Dubai", false)
+        case "QA": return ("Qatar", false)
+        case "KW": return ("Kuwait", false)
+        case "EG": return ("Egyptian", false)
+        case "PK", "BD", "AF": return ("Karachi", true)
+        case "SG", "MY", "ID": return ("Singapore", false)
+        case "TR": return ("Turkey", false)
+        case "US", "CA", "GB": return ("Moonsighting", false)
+        default: return ("MuslimWorldLeague", false)
+        }
+    }
+}
