@@ -44,6 +44,15 @@ struct AtharApp: App {
                     Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage) }
                 }
                 .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page) }
+                .onChange(of: notifications.salawat.enabled) { _, _ in
+                    Task { await friday.refresh(data: store.data) }
+                }
+                .onChange(of: notifications.enabled) { _, _ in
+                    Task { await friday.refresh(data: store.data) }
+                }
+                .onChange(of: notifications.preferences.prayers) { _, _ in
+                    Task { await friday.refresh(data: store.data) }
+                }
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
                 .onChange(of: store.data.prayerScheduleKey, initial: true) { _, _ in
