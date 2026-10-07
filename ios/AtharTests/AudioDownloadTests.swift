@@ -56,4 +56,40 @@ final class AudioDownloadTests: XCTestCase {
         XCTAssertNotNil(defaults.data(forKey: "noor.memorization.session"))
     }
 
+    // Integration test against the actual configured audio host, not synthetic audio.
+    // A host/network failure is reported as a failure, never as an offline pass.
+    @MainActor func testLiveServerCancellationRetryPlayableFilesAndOfflineRestart() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let suite = "Noor.LiveAudio." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let cache = NoorAudioDownloads(directory: folder, defaults: defaults)
+        cache.download(["1:1", "1:2"])
+        XCTAssertNotNil(cache.active)
+        cache.cancel()
+        for _ in 0..<100 {
+            if cache.active == nil { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertNil(cache.active, "Cancellation must settle before retry")
+        XCTAssertEqual(cache.pending, ["1:1", "1:2"])
+        cache.retry()
+        for _ in 0..<900 {
+            if cache.active == nil { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        if cache.active != nil { cache.cancel(); XCTFail("Audio download did not finish within 90 seconds"); return }
+        XCTAssertEqual(cache.files.count, 2, cache.message ?? "Missing verified audio files")
+        XCTAssertTrue(cache.pending.isEmpty)
+        let first = try XCTUnwrap(cache.localURL("1:1"), cache.message ?? "No verified first verse")
+        XCTAssertGreaterThan(try first.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0, 0)
+        let reopened = NoorAudioDownloads(directory: folder, defaults: defaults)
+        XCTAssertNotNil(reopened.localURL("1:1"))
+        XCTAssertNotNil(reopened.localURL("1:2"))
+        reopened.remove("1:1")
+        XCTAssertNil(reopened.localURL("1:1"))
+        XCTAssertNotNil(reopened.localURL("1:2"), "Deleting one verse must preserve the other")
+        XCTAssertTrue(reopened.erase())
+    }
+
 }
