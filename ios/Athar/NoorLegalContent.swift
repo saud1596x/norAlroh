@@ -35,7 +35,8 @@ struct NoorLegalContent: Decodable {
     let documents: [NoorLegalDocument]
     static func decode(_ data: Data) -> NoorLegalContent? {
         guard let result = try? JSONDecoder().decode(Self.self, from: data),
-              result.version == 1, result.accountMode == "local-only",
+              ((result.version == 1 && result.accountMode == "local-only") ||
+               (result.version == 2 && result.accountMode == "firebase-opt-in")),
               !result.appName.isEmpty, !result.publisherName.isEmpty,
               Set(result.documents.map(\.id)) == ["privacy", "terms", "support"],
               result.documents.count == 3,

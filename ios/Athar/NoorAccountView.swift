@@ -6,8 +6,6 @@ import Security
 import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
-import GoogleSignIn
-import GoogleSignInSwift
 #endif
 
 @MainActor final class NoorAccountStore: ObservableObject {
@@ -24,10 +22,10 @@ import GoogleSignInSwift
         guard let config = Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist"),
               let data = try? Data(contentsOf: config),
               let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-              let scheme = plist["REVERSED_CLIENT_ID"] as? String,
+              plist["PROJECT_ID"] as? String == "noor-alruh",
+              plist["GOOGLE_APP_ID"] as? String == "1:149675464789:ios:32a19ae8e5a62439561cdc",
               plist["BUNDLE_ID"] as? String == Bundle.main.bundleIdentifier,
-              let types = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]],
-              types.compactMap({ $0["CFBundleURLSchemes"] as? [String] }).flatMap({ $0 }).contains(scheme) else { return }
+              let apiKey = plist["API_KEY"] as? String, !apiKey.isEmpty else { return }
         if FirebaseApp.app() == nil { FirebaseApp.configure() }
         available = true
         listener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
@@ -39,8 +37,9 @@ import GoogleSignInSwift
         do { try await user.reload(); signedIn = Auth.auth().currentUser != nil }
         catch { message = "تعذّر التحقق من اتصال الحساب. بياناتك المحلية متاحة." }
     }
-    func handle(_ url: URL) { guard available else { return }; _ = GIDSignIn.sharedInstance.handle(url) }
+    func handle(_ url: URL) {}
     func prepareApple(_ request: ASAuthorizationAppleIDRequest) {
+        guard available, !busy else { return }
         var bytes = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else { message = "تعذّر بدء تسجيل الدخول بأمان."; nonce = nil; return }
         let value = bytes.map { String(format: "%02x", $0) }.joined(); nonce = value
@@ -60,34 +59,19 @@ import GoogleSignInSwift
                 try await Auth.auth().revokeToken(withAuthorizationCode: code)
                 try await deleteUser(user)
             } else { _ = try await Auth.auth().signIn(with: credential) }
-        } catch { message = "لم يكتمل الدخول بحساب Apple. حاول مجددًا." }
-    }
-    func google() async {
-        guard available, !busy, let client = FirebaseApp.app()?.options.clientID,
-              let root = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController else { return }
-        busy = true; defer { busy = false }
-        var presenter = root; while let shown = presenter.presentedViewController { presenter = shown }
-        do {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: client)
-            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
-            guard let token = result.user.idToken?.tokenString else { throw CocoaError(.coderInvalidValue) }
-            let credential = GoogleAuthProvider.credential(withIDToken: token, accessToken: result.user.accessToken.tokenString)
-            if deletionRequested {
-                guard let user = Auth.auth().currentUser else { throw CocoaError(.coderInvalidValue) }
-                _ = try await user.reauthenticate(with: credential)
-                try await deleteUser(user)
-            } else { _ = try await Auth.auth().signIn(with: credential) }
-        } catch { message = "لم يكتمل الدخول بحساب Google. حاول مجددًا." }
+        } catch let error as ASAuthorizationError where error.code == .canceled {
+            message = nil
+        } catch { message = deletionRequested ? "لم يكتمل حذف الحساب. أعد التحقق من Apple والاتصال وحاول مجددًا." : "لم يكتمل الدخول بحساب Apple. حاول مجددًا." }
     }
     private func deleteUser(_ user: User) async throws {
         try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").delete()
         try await user.delete()
-        GIDSignIn.sharedInstance.signOut(); signedIn = false; deletionRequested = false; name = ""
+        signedIn = false; deletionRequested = false; name = ""
         message = "حُذف حسابك ونسخة الحفظ السحابية. بيانات جهازك متاحة دون حساب؛ احذفها من الإعدادات إذا أردت."
     }
     func signOut() {
         guard available, !busy else { return }
-        do { try Auth.auth().signOut(); GIDSignIn.sharedInstance.signOut(); signedIn = false; name = "" }
+        do { try Auth.auth().signOut(); signedIn = false; deletionRequested = false; name = "" }
         catch { message = "تعذّر تسجيل الخروج." }
     }
     func backup(memorization: MemorizationStore) async {
@@ -148,7 +132,6 @@ struct NoorAccountView: View {
                         if account.deletionRequested {
                             Text("أعد تسجيل الدخول بالطريقة المرتبطة بحسابك لتأكيد الحذف.")
                             SignInWithAppleButton(.continue, onRequest: account.prepareApple) { result in Task { await account.completeApple(result) } }.frame(height: 50).disabled(account.busy)
-                            GoogleSignInButton { Task { await account.google() } }.frame(height: 50).disabled(account.busy)
                             Button("إلغاء الحذف") { account.deletionRequested = false }
                         }
                         Button("تسجيل الخروج") { account.signOut() }.disabled(account.busy)
@@ -158,15 +141,14 @@ struct NoorAccountView: View {
                     Section("تسجيل الدخول") {
                         SignInWithAppleButton(.signIn, onRequest: account.prepareApple) { result in Task { await account.completeApple(result) } }
                             .signInWithAppleButtonStyle(.black).frame(height: 50).disabled(account.busy)
-                        GoogleSignInButton { Task { await account.google() } }.frame(height: 50).disabled(account.busy)
                     }
                 }
-            } else { Section { Text("الدخول بحساب Apple وGoogle قيد التجهيز، ولم يُفعّل على هذه النسخة بعد.") } }
+            } else { Section { Text("الدخول بحساب Apple قيد التجهيز، ولم يُفعّل على هذه النسخة بعد.") } }
             #else
-            Section { Text("الدخول بحساب Apple وGoogle قيد التجهيز، ولم يُفعّل على هذه النسخة بعد.") }
+            Section { Text("الدخول بحساب Apple قيد التجهيز، ولم يُفعّل على هذه النسخة بعد.") }
             #endif
             if let message = account.message { Section { Text(message) } }
-            Section { Text("تسجيل الدخول بالطريقتين لا يدمج الحسابين تلقائيًا. استخدم الطريقة نفسها لاستعادة نسختك.").font(.caption) }
+            Section { Text("استخدم حساب Apple نفسه لاستعادة نسختك على جهاز آخر.").font(.caption) }
         }.navigationTitle("حسابي")
             #if NOOR_ACCOUNT_ENABLED
             .confirmationDialog("حذف الحساب ونسخة الحفظ السحابية نهائيًا؟ تبقى بيانات جهازك حتى تحذفها من الإعدادات.", isPresented: $deleting, titleVisibility: .visible) {
