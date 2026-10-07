@@ -87,6 +87,7 @@ final class NotificationReconciliationTests: XCTestCase {
         XCTAssertEqual(notifications.salawatCount, 7)
         XCTAssertTrue(client.pending.values.filter { $0.identifier.hasPrefix(SalawatNotificationPlan.prefix) }.allSatisfy {
             $0.content.sound == nil && ($0.trigger as? UNCalendarNotificationTrigger)?.repeats == true
+                && ($0.trigger as? UNCalendarNotificationTrigger)?.dateComponents.timeZone == nil
         })
         func scheduledTimes() -> [String: Date] {
             client.pending.values.filter { $0.identifier.hasPrefix(PrayerNotificationPlan.prefix) }
