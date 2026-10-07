@@ -160,6 +160,18 @@
     {
       "id": "40-downloads",
       "title": "التنزيلات وإدارة التلاوات المحلية"
+    },
+    {
+      "id": "41-automatic-prayers",
+      "title": "المواقيت التلقائية والموقع"
+    },
+    {
+      "id": "42-prayer-alert-settings",
+      "title": "إعدادات تنبيهات الصلوات"
+    },
+    {
+      "id": "43-salawat-settings",
+      "title": "إعدادات الصلاة على النبي ﷺ"
     }
   ],
   "captureStatus": "NOT_CAPTURED",
