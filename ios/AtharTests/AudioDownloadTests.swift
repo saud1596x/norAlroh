@@ -2,6 +2,23 @@ import XCTest
 @testable import Athar
 
 final class AudioDownloadTests: XCTestCase {
+    func testResponseLengthRejectsPlayablePrefixesAndAcceptsAssembledResume() throws {
+        let url = try XCTUnwrap(URL(string: "https://everyayah.com/data/example.mp3"))
+        func response(_ status: Int, _ headers: [String: String]) -> HTTPURLResponse? {
+            HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)
+        }
+        XCTAssertTrue(NoorAudioIntegrity.completeResponse(response(200, ["Content-Length": "1000"]), bytes: 1000))
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(response(200, ["Content-Length": "1000"]), bytes: 800))
+        XCTAssertTrue(NoorAudioIntegrity.completeResponse(response(206,
+            ["Content-Range": "bytes 800-999/1000", "Content-Length": "200"]), bytes: 1000))
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(response(206,
+            ["Content-Range": "bytes 800-999/1000", "Content-Length": "200"]), bytes: 200))
+        for range in ["bytes 0-799/1000", "bytes 0-999/*", "bytes -1-999/1000", "invalid", "bytes 0-1000/1000"] {
+            XCTAssertFalse(NoorAudioIntegrity.completeResponse(response(206, ["Content-Range": range]), bytes: 1000), range)
+        }
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(response(404, [:]), bytes: 1000))
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(response(200, ["Content-Encoding": "gzip"]), bytes: 1000))
+    }
     func testInstalledDigestRejectsTruncationReplacementAndInvalidVerseKeys() {
         let original = Data("labelled file integrity fixture; not Quran audio".utf8)
         let metadata = NoorAudioFile(key: "1:1", bytes: original.count, sha256: NoorAudioIntegrity.digest(original))
