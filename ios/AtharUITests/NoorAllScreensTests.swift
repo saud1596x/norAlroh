@@ -113,6 +113,10 @@ final class NoorAllScreensTests: XCTestCase {
 
         tap(app.buttons["app.settings"], in: app)
         capture(app, "21-settings")
+        tap(app.buttons["settings.downloads"], in: app)
+        XCTAssertTrue(app.buttons["downloads.range"].waitForExistence(timeout: 5))
+        capture(app, "40-downloads")
+        back(app)
         tap(app.buttons["settings.library"], in: app)
         capture(app, "22-library")
         back(app)
