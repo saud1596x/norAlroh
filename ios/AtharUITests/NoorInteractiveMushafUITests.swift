@@ -13,6 +13,12 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 120))
         capture(app, "text-reader-604-open")
+        page.swipeLeft()
+        XCTAssertTrue(app.buttons["reader.verse.109:1"].waitForExistence(timeout: 30), "Fitted swipe opens page 603")
+        capture(app, "text-reader-603-swiped")
+        page.swipeRight()
+        XCTAssertTrue(app.buttons["reader.verse.114:1"].waitForExistence(timeout: 30), "RTL forward swipe returns to 604")
+        capture(app, "text-reader-604-swiped-back")
         for chapter in 112...114 {
             for number in 1...(chapter == 112 ? 4 : chapter == 113 ? 5 : 6) {
                 let key = "\(chapter):\(number)"
