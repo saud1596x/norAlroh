@@ -43,7 +43,7 @@ import Combine
     }
     func useManualCity() {
         automatic = false; defaults.set(false, forKey: key)
-        deactivate(); message = nil
+        deactivate(); lastResolved = nil; message = nil
     }
     func erase() { useManualCity(); defaults.removeObject(forKey: key); lastResolved = nil }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -87,9 +87,11 @@ import Combine
             defer { if revision == self.generation { self.resolving = false; self.locating = false; self.timeout?.cancel() } }
             do {
                 let places = try await self.geocoder.reverseGeocodeLocation(location, preferredLocale: Locale(identifier: "ar"))
-                guard revision == self.generation, self.active, self.automatic,
-                      let place = places.first, let code = place.isoCountryCode?.uppercased(), code.count == 2,
-                      let zone = place.timeZone else { return }
+                guard revision == self.generation, self.active, self.automatic else { return }
+                guard let place = places.first, let code = place.isoCountryCode?.uppercased(), code.count == 2,
+                      let zone = place.timeZone else {
+                    self.message = "تعذر تحديد البلد أو المنطقة. أبقينا آخر موقع صالح؛ حاول مجددًا."; return
+                }
                 let city = City(id: "location.current", name: place.locality ?? place.administrativeArea ?? place.country ?? "الموقع الحالي",
                     latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
                     timeZone: zone.identifier, region: place.administrativeArea, countryCode: code, sourceID: nil)
@@ -105,6 +107,7 @@ import Combine
         }
     }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        guard active, automatic else { return }
         locating = false; timeout?.cancel()
         message = "تعذر تحديث الموقع. نستخدم آخر موقع محفوظ أو المدينة المختارة."
     }
