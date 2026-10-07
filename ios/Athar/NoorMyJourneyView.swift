@@ -39,7 +39,7 @@ struct NoorMyJourneyView: View {
                     Text(verbatim: "\(index.readingDays.count) أيام قراءة · \(index.newlyCompletedPages) صفحات جديدة في رحلات الختمة")
                         .font(.subheadline).accessibilityIdentifier("journey.summary")
                     NavigationLink { MemorizationHistoryView() } label: {
-                        Label("الحفظ والمراجعة · \(memorization.history.count) جلسات محفوظة", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                        Label("الحفظ والمراجعة · \(memorization.history.count) جلسات محفوظة", systemImage: "arrow.clockwise")
                             .frame(minHeight: 44)
                     }
                 }
@@ -90,7 +90,7 @@ struct NoorMyJourneyView: View {
         }
     }
     private var calendarCard: some View {
-        Card {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Button { changeMonth(-1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("الشهر السابق").accessibilityIdentifier("journey.previousMonth")
                 Spacer()
@@ -98,7 +98,8 @@ struct NoorMyJourneyView: View {
                 Spacer()
                 Button { changeMonth(1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.accessibilityLabel("الشهر التالي").accessibilityIdentifier("journey.nextMonth")
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 44), spacing: 0), count: 7), spacing: 6) {
                 ForEach(["أحد", "إثن", "ثلا", "أرب", "خمي", "جمع", "سبت"], id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary).accessibilityHidden(true) }
                 ForEach(0..<index.leadingDays(in: month), id: \.self) { _ in Color.clear.frame(height: 44).accessibilityHidden(true) }
                 ForEach(index.days(in: month), id: \.self) { day in
@@ -113,8 +114,11 @@ struct NoorMyJourneyView: View {
                         .accessibilityIdentifier("journey.day.\(calendar.component(.day, from: day))")
                         .accessibilityAddTraits(selectedDay == day ? .isSelected : [])
                 }
+            }.frame(minWidth: 308)
             }
-        }
+        }.padding(.horizontal, 8).padding(.vertical, 16)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+            .noorEntrance()
     }
     private func eventRow(_ event: NoorReadingEvent) -> some View {
         Button { selectedEvent = event } label: {
