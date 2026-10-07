@@ -28,6 +28,9 @@ final class CloudPayloadTests: XCTestCase {
         let packed = try compress(Data(String(repeating: "test archive", count: 300).utf8))
         XCTAssertThrowsError(try NoorCloudPayload.decode(Data(packed.prefix(packed.count / 2))))
         XCTAssertThrowsError(try NoorCloudPayload.decode(packed + Data([0, 1, 2])))
+        XCTAssertThrowsError(try NoorCloudPayload.decode(packed + Data([0])))
+        XCTAssertThrowsError(try NoorCloudPayload.decode(packed + packed))
+        XCTAssertThrowsError(try NoorCloudPayload.decode(Data(packed.dropLast())))
     }
 
     func testInvalidCompressedInputsAndInvalidLimitsAreRejected() {
