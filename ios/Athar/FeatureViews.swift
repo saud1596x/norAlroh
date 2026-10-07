@@ -215,7 +215,6 @@ struct SettingsView: View {
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
                 NavigationLink("التنزيلات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
-                NavigationLink("التراخيص") { SourcesView() }.accessibilityIdentifier("settings.sources")
             }
             Section("عن نور الروح") {
                 Text("مصحف كامل، أذكار موثّقة ومواقيت الصلاة. للحفظ تسجيل محلي ومتابعة صوتية اختيارية تقارن الكلمات وتعرض فروقًا محتملة تحتاج مراجعتك.")
@@ -269,72 +268,5 @@ struct SettingsView: View {
 struct PrivacyView: View {
     var body: some View {
         NoorLegalDocumentView(documentID: "privacy")
-    }
-}
-
-struct SourcesView: View {
-    var body: some View {
-        List {
-            Section("القرآن الكريم") {
-                Text("١١٤ سورة و٦٢٣٦ آية من Tanzil، النص العثماني 1.1 برواية حفص. الآيات منسوخة حرفيًا من المصدر، والبسملة غير المرقمة منفصلة وفق ملف المصدر. الترخيص CC BY 3.0 مع شرط عدم تغيير النص.")
-                    .accessibilityIdentifier("licenses.introduction")
-                Link("المصدر وتحديثات النص: Tanzil", destination: URL(string: "https://tanzil.net/")!)
-                NavigationLink("نسبة النص وترخيص Tanzil") { BundledLicenseView(title: "ترخيص Tanzil", resource: "Tanzil-LICENSE", extension: "txt") }
-                    .accessibilityIdentifier("sources.tanzil")
-            }
-            Section("صفحات المصحف") {
-                Text("٦٠٤ صفحات برواية حفص، بخطوط QCF V2 من Quran Foundation. تُنزّل بيانات المصحف كاملة عند أول فتح، وتُحفظ للقراءة دون اتصال، مع محاولة تحديث كل سبعة أيام. عناوين السور والقراءة المرنة بخط أميري المرخص تحت OFL.")
-                Link("مصدر التخطيط والرموز", destination: URL(string: "https://api-docs.quran.foundation/")!)
-                NavigationLink("ترخيص بيانات التخطيط والخطوط") { BundledLicenseView(title: "تراخيص المصحف", resource: "QCF-DATA-AND-FONTS-LICENSE", extension: "md") }
-                    .accessibilityIdentifier("sources.qcf")
-                NavigationLink("ترخيص خط أميري") { BundledLicenseView(title: "ترخيص أميري", resource: "Amiri-OFL", extension: "txt") }
-                    .accessibilityIdentifier("sources.amiri")
-            }
-            Section("الأذكار والتأمل") {
-                Text("محتوى حصن المسلم: ١٣٢ بابًا و٢٦٧ نصًا، كما وردت في مصدر hisnmuslim.com. يعرض كل نص الباب ورقمه وعدد التكرار من المصدر. التأملات الشخصية ليست تفسيرًا أو فتوى.")
-                Link("المصدر: حصن المسلم", destination: URL(string: "https://www.hisnmuslim.com/")!)
-            }
-            Section("مدن المملكة") {
-                Text("٩٣ مدينة في المناطق الثلاث عشرة. الإحداثيات من GeoNames، والأسماء العربية واختيار المدن من مشروع نور الروح. بيانات المراكز تقريبية.")
-                Link("GeoNames · CC BY 4.0", destination: URL(string: "https://www.geonames.org/")!)
-                Link("رخصة البيانات", destination: URL(string: "https://creativecommons.org/licenses/by/4.0/")!)
-            }
-            Section("حساب مواقيت الصلاة") {
-                Text("Adhan Swift 1.5.0 · Batoul Apps · ترخيص MIT. الحساب يستخدم المدينة وإعدادات المواقيت المحفوظة، مع فاصل عشاء رمضان بحسب تقويم أم القرى.")
-                Link("مكتبة Adhan", destination: URL(string: "https://github.com/batoulapps/adhan-swift")!)
-                NavigationLink("ترخيص مكتبة حساب الصلاة") { BundledLicenseView(title: "ترخيص Adhan", resource: "ADHAN-SWIFT-LICENSE", extension: "txt") }
-                    .accessibilityIdentifier("sources.adhan")
-            }
-            Section("المتابعة الصوتية المحلية") {
-                Text("WhisperKit 1.1.0 · Argmax · MIT. نموذج Whisper متعدد اللغات يُنزّل باختيارك من Hugging Face؛ معالجة الصوت محلية. مقارنة الكلمات لا تعتمد صحة التجويد أو الحفظ، وقد يخطئ التعرّف نفسه.")
-                Link("مصدر WhisperKit", destination: URL(string: "https://github.com/argmaxinc/argmax-oss-swift")!)
-                NavigationLink("ترخيص WhisperKit") { BundledLicenseView(title: "ترخيص WhisperKit", resource: "WHISPERKIT-LICENSE", extension: "txt") }
-                    .accessibilityIdentifier("sources.whisperkit")
-                NavigationLink("ترخيص نموذج Whisper") { BundledLicenseView(title: "ترخيص نموذج Whisper", resource: "WHISPER-MODEL-LICENSE", extension: "txt") }
-                    .accessibilityIdentifier("sources.whispermodel")
-                NavigationLink("تراخيص المكونات التابعة") { BundledLicenseView(title: "مكونات WhisperKit", resource: "WHISPERKIT-THIRD-PARTY", extension: "txt") }
-                    .accessibilityIdentifier("sources.whispercomponents")
-            }
-        }.navigationTitle("التراخيص")
-    }
-}
-
-struct BundledLicenseView: View {
-    let title: String
-    let resource: String
-    let `extension`: String
-    private var notice: String? {
-        guard let url = Bundle.main.url(forResource: resource, withExtension: `extension`) else { return nil }
-        return try? String(contentsOf: url, encoding: .utf8)
-    }
-    var body: some View {
-        ScrollView {
-            if let notice {
-                Text(verbatim: notice).font(.footnote).textSelection(.enabled)
-                    .accessibilityIdentifier("license.notice")
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(20)
-                    .environment(\.layoutDirection, .leftToRight)
-            } else { ContentUnavailableView("تعذّر فتح الترخيص", systemImage: "doc.text") }
-        }.background(Theme.background).navigationTitle(title).navigationBarTitleDisplayMode(.inline)
     }
 }

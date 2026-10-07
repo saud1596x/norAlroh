@@ -29,7 +29,7 @@ struct DhikrReadingText: View {
                         .frame(maxWidth: .infinity).padding(.top, 6)
                 case .instruction:
                     VStack(alignment: .leading, spacing: 6) {
-                        Label("ملاحظة من المصدر", systemImage: "info.circle").font(.caption.bold()).foregroundStyle(Theme.gold)
+                        Label("ملاحظة", systemImage: "info.circle").font(.caption.bold()).foregroundStyle(Theme.gold)
                         Text(block.sourceText).font(.subheadline).lineSpacing(4).textSelection(.enabled)
                     }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.gold.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
