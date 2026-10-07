@@ -25,7 +25,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "04-page-navigation")
         app.buttons["إغلاق"].tap()
         let verse = app.buttons["reader.verse.1:1"]
-        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.press(forDuration: 0.6)
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
         capture(app, "05-interactive-verse-tools")
         let bookmark = app.buttons["verse.bookmark"]

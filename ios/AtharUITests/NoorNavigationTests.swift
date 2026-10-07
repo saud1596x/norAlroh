@@ -41,7 +41,7 @@ final class NoorNavigationTests: XCTestCase {
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 120))
         let verse = app.buttons["reader.verse.114:1"]
-        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.press(forDuration: 0.6)
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
         attach(app, name: "قراءة سورة الناس")
     }
