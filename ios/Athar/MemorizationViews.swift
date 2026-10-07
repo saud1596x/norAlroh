@@ -55,13 +55,27 @@ struct MemorizationProgress: Codable {
     var verses: [String: VerseReviewState] = [:]
     var practiceDays: [String: Set<String>] = [:]
     var confirmedMistakes: [ConfirmedRecitationMistake] = []
-    private enum CodingKeys: String, CodingKey { case version, verses, practiceDays, confirmedMistakes }
+    // Durable exclusions prevent stale backups/devices from restoring ASR notes.
+    var excludedMistakeIDs = Set<UUID>()
+    private enum CodingKeys: String, CodingKey { case version, verses, practiceDays, confirmedMistakes, excludedMistakeIDs }
+    init() {}
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        version = try values.decode(Int.self, forKey: .version)
+        verses = try values.decode([String: VerseReviewState].self, forKey: .verses)
+        practiceDays = try values.decode([String: Set<String>].self, forKey: .practiceDays)
+        confirmedMistakes = try values.decode([ConfirmedRecitationMistake].self, forKey: .confirmedMistakes)
+        excludedMistakeIDs = try values.decodeIfPresent(Set<UUID>.self, forKey: .excludedMistakeIDs) ?? []
+    }
     func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(version, forKey: .version)
         try values.encode(verses, forKey: .verses)
         try values.encode(practiceDays.mapValues { $0.sorted() }, forKey: .practiceDays)
         try values.encode(confirmedMistakes, forKey: .confirmedMistakes)
+        if !excludedMistakeIDs.isEmpty {
+            try values.encode(excludedMistakeIDs.sorted { $0.uuidString < $1.uuidString }, forKey: .excludedMistakeIDs)
+        }
     }
     static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
@@ -85,7 +99,7 @@ struct MemorizationProgress: Codable {
             validKey(key) && (0...6).contains(value.stage) && value.attempts >= 0 && value.lapses >= 0
                 && value.lastPracticed.timeIntervalSince1970.isFinite && value.nextReview.timeIntervalSince1970.isFinite
         } && practiceDays.values.allSatisfy { $0.allSatisfy(validKey) }
-            && confirmedMistakes.allSatisfy { validKey("\($0.chapter):\($0.ayah)") && !$0.expected.isEmpty && $0.date.timeIntervalSince1970.isFinite }
+            && confirmedMistakes.allSatisfy { !excludedMistakeIDs.contains($0.id) && validKey("\($0.chapter):\($0.ayah)") && !$0.expected.isEmpty && $0.date.timeIntervalSince1970.isFinite }
     }
 }
 struct ConfirmedRecitationMistake: Codable, Identifiable {
@@ -228,6 +242,15 @@ struct MemorizationArchive: Codable {
             let data = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: next, plan: plan))
             defaults.set(data, forKey: "noor.memorization.archive"); progress = next; return true
         } catch { self.error = "تعذّر حفظ موضع المراجعة."; return false }
+    }
+    @discardableResult func excludeMistake(_ id: UUID) -> Bool {
+        guard unreadableHistory == nil, progress.confirmedMistakes.contains(where: { $0.id == id }) else { return false }
+        var next = progress
+        next.confirmedMistakes.removeAll { $0.id == id }; next.excludedMistakeIDs.insert(id)
+        do {
+            let archive = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: next, plan: plan))
+            defaults.set(archive, forKey: "noor.memorization.archive"); progress = next; return true
+        } catch { self.error = "تعذر استبعاد الملاحظة. أعد المحاولة."; return false }
     }
     func dueKeys(at date: Date = Date()) -> [Int] {
         (plan.from...plan.to).filter { (progress.verses["\(plan.chapter):\($0)"]?.nextReview ?? .distantFuture) <= Calendar.current.startOfDay(for: date) }
@@ -505,6 +528,7 @@ struct NoorDailyWardCard: View {
 }
 
 struct MemorizationInsightsView: View {
+    @State private var visibleMistakes = 50
     @EnvironmentObject private var memorization: MemorizationStore
     @EnvironmentObject private var store: AtharStore
     private var range: [Int] { Array(memorization.plan.from...memorization.plan.to) }
@@ -519,7 +543,7 @@ struct MemorizationInsightsView: View {
             Section("مواضع أكدت أنها تحتاج مراجعة") {
                 let mistakes = memorization.progress.confirmedMistakes.filter { $0.chapter == memorization.plan.chapter }
                 if mistakes.isEmpty { Text("يمكنك إضافة موضع من المقارنة الصوتية بعد التأكد منه بنفسك.").foregroundStyle(.secondary) }
-                ForEach(Array(mistakes.prefix(50))) { mistake in
+                ForEach(Array(mistakes.prefix(visibleMistakes))) { mistake in
                     NavigationLink { MushafReader(chapter: mistake.chapter, ayah: mistake.ayah) } label: {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("الآية \(mistake.ayah)").font(.caption)
@@ -527,7 +551,11 @@ struct MemorizationInsightsView: View {
                             Text("المتعرّف عليه: \(mistake.heard ?? "لم تظهر الكلمة")").font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                    .swipeActions { Button("استبعاد الملاحظة", role: .destructive) { _ = memorization.excludeMistake(mistake.id) } }
+                    .accessibilityAction(named: Text("استبعاد الملاحظة")) { _ = memorization.excludeMistake(mistake.id) }
                 }
+                if mistakes.count > visibleMistakes { Button("عرض المزيد من المواضع") { visibleMistakes += 50 } }
+                if !mistakes.isEmpty { Text("اسحب الملاحظة لاستبعاد نتيجة تعرف غير صحيحة. الاستبعاد لا يغيّر تقييمات المراجعات السابقة أو يضيف إنجازًا للورد.").font(.caption).foregroundStyle(.secondary) }
             }
             Section("آيات نطاقك") {
                 ForEach(range, id: \.self) { number in

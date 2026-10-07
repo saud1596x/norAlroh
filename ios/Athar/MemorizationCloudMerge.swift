@@ -50,8 +50,10 @@ enum MemorizationCloudMerge {
             }
             for (day, keys) in source.practiceDays { restored.practiceDays[day, default: []].formUnion(keys) }
         }
+        restored.excludedMistakeIDs = local.archive.progress.excludedMistakeIDs.union(remote.archive.progress.excludedMistakeIDs)
         var notes: [UUID: ConfirmedRecitationMistake] = [:]
         for note in local.archive.progress.confirmedMistakes + remote.archive.progress.confirmedMistakes {
+            guard !restored.excludedMistakeIDs.contains(note.id) else { continue }
             if let local = notes[note.id], try encoder.encode(local) != encoder.encode(note) {
                 throw MergeError.conflictingEvent
             }
