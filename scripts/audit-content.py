@@ -48,7 +48,12 @@ check('everyDhikrTextAndRepeatMatchesDownloadedSource',parity)
 check('93SaudiCitiesAcross13Regions',len(cities)==93 and len({x['region']for x in cities})==13)
 check('onlySaudiCitiesAndTimezone',all(x['countryCode']=='SA'and x['timeZone']=='Asia/Riyadh'and 16<=x['latitude']<=33 and 34<=x['longitude']<=56 for x in cities))
 swift='\n'.join(x.read_text()for x in (base).glob('*.swift'))
-check('qiblaAndCompassRemoved',not any(x in swift for x in ['Qibla','LocationService','CoreLocation','القبلة','قبلة','startUpdatingHeading']))
+check('qiblaAndCompassRemoved',not any(x in swift for x in ['Qibla','القبلة','قبلة','startUpdatingHeading']))
+import plistlib
+info=plistlib.loads((base/'Info.plist').read_bytes())
+check('prayerLocationForegroundPurpose', bool(info.get('NSLocationWhenInUseUsageDescription'))
+      and not info.get('NSLocationAlwaysAndWhenInUseUsageDescription')
+      and 'location' not in info.get('UIBackgroundModes', []))
 fontReport={'checked':False,'reason':'Font files are private inputs until distribution rights are documented.'}
 if args.font_source:
  from fontTools.ttLib import TTFont
