@@ -23,7 +23,9 @@ final class NoorReaderComfortUITests: XCTestCase {
         // A tap on Quran ink, not just a margin, toggles tools without selection.
         verse.tap()
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            !app.buttons["reader.jump"].isHittable
+            // A missing control must be queried by existence. Resolving
+            // isHittable on an unmounted element blocks with XCTest retries.
+            !app.buttons["reader.jump"].exists
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 5), .completed)
         XCTAssertFalse(app.buttons["verse.tafsir"].exists)
@@ -106,7 +108,8 @@ final class NoorReaderComfortUITests: XCTestCase {
     }
     private func requireTools(_ visible: Bool, app: XCUIApplication) {
         let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            app.buttons["reader.jump"].isHittable == visible
+            let control = app.buttons["reader.jump"]
+            return visible ? control.exists && control.isHittable : !control.exists
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 5), .completed)
         if visible {
