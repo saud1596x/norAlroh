@@ -233,11 +233,11 @@ import FirebaseFirestore
         for name in ["readingState", "memorization"] {
             let registration = parent.document(name).addSnapshotListener { [weak self] document, error in
                 Task { @MainActor in
-                    guard let self, listenerOwner == owner, uid == owner, error == nil,
+                    guard let self, self.listenerOwner == owner, self.uid == owner, error == nil,
                           let document, !document.metadata.isFromCache, !document.metadata.hasPendingWrites else { return }
                     let bytes = document.data()?["data"] as? Data
-                    if !seenDocuments.contains(name) || remoteBytes[name] != bytes {
-                        seenDocuments.insert(name); remoteBytes[name] = bytes; scheduleSync()
+                    if !self.seenDocuments.contains(name) || self.remoteBytes[name] != bytes {
+                        self.seenDocuments.insert(name); self.remoteBytes[name] = bytes; self.scheduleSync()
                     }
                 }
             }
