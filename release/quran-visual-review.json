@@ -656,5 +656,18 @@
     604
   ],
   "userExamplesAreAyahReference": false,
-  "releaseApproved": false
+  "releaseApproved": false,
+  "scopeNotice": "Historical review applies only to the commit recorded above. It is not approval of the current layout engine.",
+  "currentSourceReview": {
+    "commit": "6bfbc7ff4527bff663b6e3c6662649ba94125478",
+    "status": "ACTUAL_IMAGES_NOT_RETRIEVED_VISUAL_COMPARISON_PENDING",
+    "userRegressionPages": [
+      560,
+      603,
+      604
+    ],
+    "actualAfterPagesInspected": [],
+    "automatic604TestsAreVisualApproval": false,
+    "releaseApproved": false
+  }
 }
