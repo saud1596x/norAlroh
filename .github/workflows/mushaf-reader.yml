@@ -1,6 +1,9 @@
 name: Mushaf stage 1 native acceptance
 on:
   workflow_dispatch:
+  push:
+    branches: [mushaf-ux-stage1-20261007]
+    paths: ['.github/workflows/mushaf-reader.yml', 'ios/Athar/InteractiveMushaf*.swift', 'ios/AtharTests/MushafViewportTests.swift', 'ios/AtharUITests/NoorReaderComfortUITests.swift']
 permissions:
   contents: read
 jobs:
