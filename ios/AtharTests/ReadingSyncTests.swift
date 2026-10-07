@@ -109,4 +109,32 @@ final class ReadingSyncTests: XCTestCase {
         XCTAssertTrue(store.applySyncedPlan(.init(chapter: 112, from: 1, to: 4, daily: 1)))
         XCTAssertEqual(MemorizationStore(defaults: defaults).plan.chapter, 112)
     }
+    @MainActor func testExcludedRecognitionNoteSurvivesRestartAndStaleCloudRestore() throws {
+        let suite = "Noor.SyncExclusion." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let corpus = try XCTUnwrap(QuranResources.corpus), store = MemorizationStore(defaults: defaults)
+        let expected = try XCTUnwrap(corpus.first?.ayahs.first?.text.split(whereSeparator: \.isWhitespace).first)
+        XCTAssertTrue(store.confirmMistake(chapter: 1, ayah: 1, expected: String(expected), heard: nil))
+        let note = try XCTUnwrap(store.progress.confirmedMistakes.first)
+        let stale = MemorizationCloudBackup(version: 1, plan: store.plan,
+            archive: .init(version: 1, history: store.history, progress: store.progress, plan: store.plan))
+        XCTAssertTrue(store.saveSession(.init(chapter: 1, keys: [1, 2])))
+        let session = defaults.data(forKey: "noor.memorization.session"), ward = store.completedToday()
+        XCTAssertTrue(store.excludeMistake(note.id))
+        XCTAssertFalse(store.excludeMistake(note.id))
+        XCTAssertEqual(store.completedToday(), ward)
+        let reopened = MemorizationStore(defaults: defaults)
+        XCTAssertTrue(reopened.progress.confirmedMistakes.isEmpty)
+        XCTAssertTrue(reopened.progress.excludedMistakeIDs.contains(note.id))
+        XCTAssertTrue(reopened.restore(stale))
+        XCTAssertTrue(reopened.progress.confirmedMistakes.isEmpty)
+        XCTAssertTrue(reopened.progress.excludedMistakeIDs.contains(note.id))
+        XCTAssertEqual(defaults.data(forKey: "noor.memorization.session"), session)
+        let local = MemorizationCloudBackup(version: 1, plan: reopened.plan,
+            archive: .init(version: 1, history: reopened.history, progress: reopened.progress, plan: reopened.plan))
+        let reverse = try MemorizationCloudMerge.merge(local: stale, remote: local, corpus: corpus)
+        XCTAssertTrue(reverse.archive.progress.confirmedMistakes.isEmpty)
+        XCTAssertTrue(reverse.archive.progress.excludedMistakeIDs.contains(note.id))
+    }
+
 }
