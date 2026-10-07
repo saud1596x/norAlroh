@@ -114,9 +114,12 @@ struct InteractiveMushafReader: View {
                         onVerse: { key in
                             if let key { selected = key; sheetVerse = VerseSelection(key: key) }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { tools.toggle() } }
-                        }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) })
-                        .padding(.horizontal, 5)
-                        .padding(.top, 50).padding(.bottom, 54)
+                        }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) },
+                        onToggleTools: { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { tools.toggle() } })
+                        // Reserve identical toolbar lanes even when chrome is hidden.
+                        // GeometryReader already excludes the system safe area.
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 50)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
                     VStack(spacing: 18) { Text(message); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
