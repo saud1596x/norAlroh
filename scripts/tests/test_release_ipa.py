@@ -5,6 +5,9 @@ import plistlib
 import tempfile
 import unittest
 import zipfile
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from account_privacy import configure as configure_privacy
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'verify-release-ipa.py'
 spec = importlib.util.spec_from_file_location('release_ipa', SCRIPT)
@@ -12,7 +15,7 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
 class ReleasePayloadTests(unittest.TestCase):
-    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False):
+    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False):
         path = Path(folder) / 'test.ipa'
         config = {'PROJECT_ID': 'wrong' if wrong_project else 'noor-alruh',
                   'BUNDLE_ID': gate.BUNDLE,
@@ -26,6 +29,8 @@ class ReleasePayloadTests(unittest.TestCase):
             if omit != 'firebase':
                 archive.writestr(root + 'GoogleService-Info.plist', plistlib.dumps(config))
             archive.writestr(root + 'embedded.mobileprovision', b'synthetic-profile')
+            if omit != 'privacy':
+                archive.writestr(root + 'PrivacyInfo.xcprivacy', plistlib.dumps(configure_privacy({}, not local_manifest)))
             archive.writestr(root + 'app-legal.json', __import__('json').dumps({
                 'accountMode': 'local-only' if local_policy else 'firebase-opt-in',
                 'contact': {'supportEmail': 'noralrohsupport@gmail.com'}}))
@@ -68,6 +73,13 @@ class ReleasePayloadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(ValueError, 'privacy policy still describes local-only'):
                 gate.verify(self.payload(folder, local_policy=True))
+
+    def test_missing_or_local_only_privacy_manifest_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(KeyError):
+                gate.verify(self.payload(folder, omit='privacy'))
+            with self.assertRaisesRegex(ValueError, 'Account privacy manifest'):
+                gate.verify(self.payload(folder, local_manifest=True))
 
 if __name__ == '__main__':
     unittest.main()
