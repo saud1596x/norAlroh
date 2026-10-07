@@ -22,3 +22,7 @@ ios/Athar/king-fahd-standard39-2.pdf
 ios/Athar/GoogleService-Info.plist
 ios/Athar/Info.plist.before-firebase
 ios/Athar/Info.plist.pending
+
+# Isolated backend test dependencies and emulator logs
+backend/node_modules/
+backend/*debug.log
