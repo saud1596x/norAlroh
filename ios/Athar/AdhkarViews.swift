@@ -29,6 +29,24 @@ struct AdhkarContent: Codable {
         let lookup = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
         return group.items.compactMap { lookup[$0] }
     }
+    func searchGroups(_ search: String, favorites: Set<String>? = nil) -> [DhikrGroup] {
+        let query = ArabicSearch.normalize(search)
+        let eligible = groups.filter { favorites?.contains($0.id) ?? true }
+        guard !query.isEmpty else { return eligible }
+        let matchingEntries = Set(entries.filter { ArabicSearch.normalize($0.text).contains(query) }.map(\.id))
+        func rank(_ group: DhikrGroup) -> Int {
+            let name = ArabicSearch.normalize(group.name)
+            if name == query || name == ArabicSearch.normalize("أذكار " + search) { return 0 }
+            if name.contains(query) { return 1 }
+            return 2
+        }
+        return eligible.enumerated().filter {
+            rank($0.element) < 2 || $0.element.items.contains(where: matchingEntries.contains)
+        }.sorted {
+            let left = rank($0.element), right = rank($1.element)
+            return left == right ? $0.offset < $1.offset : left < right
+        }.map(\.element)
+    }
 }
 
 @MainActor final class DhikrCounterStore: ObservableObject {
@@ -85,12 +103,7 @@ struct AdhkarView: View {
     private let content = AdhkarContent.shared
     private var groups: [DhikrGroup] {
         guard let content else { return [] }
-        let query = ArabicSearch.normalize(search)
-        let matchingEntries = Set(content.entries.filter { ArabicSearch.normalize($0.text).contains(query) }.map(\.id))
-        return content.groups.filter { group in
-            (!favoritesOnly || counters.favorites.contains(group.id)) &&
-                (query.isEmpty || ArabicSearch.normalize(group.name).contains(query) || group.items.contains(where: matchingEntries.contains))
-        }
+        return content.searchGroups(search, favorites: favoritesOnly ? counters.favorites : nil)
     }
     var body: some View {
         Group {
@@ -124,7 +137,7 @@ struct AdhkarView: View {
                                         }
                                         Spacer(); Image(systemName: "chevron.left").font(.caption).foregroundStyle(.secondary)
                                     }.frame(minHeight: 58)
-                                }.buttonStyle(NoorPressStyle())
+                                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("adhkar.group.\(group.id)")
                                 Button { counters.toggleFavorite(group.id) } label: {
                                     Image(systemName: counters.favorites.contains(group.id) ? "star.fill" : "star")
                                         .foregroundStyle(Theme.gold).frame(width: 44, height: 44)
