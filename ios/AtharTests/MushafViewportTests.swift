@@ -3,6 +3,58 @@ import UIKit
 @testable import Athar
 
 @MainActor final class MushafViewportTests: XCTestCase {
+    func testAuthoredInkAndHeadingAlignmentAtReferencePages() async throws {
+        try OriginalMushafCompanion.register()
+        let metadata = try OriginalMushafRows.load()
+        let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
+        let (data, response) = try await URLSession.shared.data(from: url)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
+        try metadata.validate(snapshot)
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let fonts = MushafFonts()
+        for number in [1, 2, 151, 560, 603, 604] {
+            await fonts.load(String(format: "QCF2%03d", number))
+            XCTAssertNil(fonts.error, "Font page \(number)")
+            let source = OriginalPageData.page(number, snapshot: snapshot, rows: metadata, keys: keys)
+            let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+            viewport.canvas.configure(page: source, corpus: corpus)
+            viewport.layoutIfNeeded()
+            let canvas = viewport.canvas
+            XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Page \(number)")
+            let authoredInk = canvas.rowGeometry.map(\.ink)
+            let ornaments = canvas.ornamentBounds
+            XCTAssertEqual(ornaments.count, source.rows.filter { $0.type == "surah_name" }.count)
+            for row in canvas.rowGeometry {
+                let authored = try XCTUnwrap(source.rows.first { $0.line == row.line })
+                if authored.centered {
+                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2,
+                                   accuracy: 0.01, "Actual ink center: page \(number), row \(row.line)")
+                } else {
+                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15,
+                                   accuracy: 0.01, "Authored right edge: page \(number), row \(row.line)")
+                }
+                if row.kind == "surah_name" {
+                    let ornament = try XCTUnwrap(ornaments.first { $0.minY <= row.ink.minY && $0.maxY >= row.ink.maxY })
+                    XCTAssertEqual(row.ink.midX, ornament.midX, accuracy: 0.01)
+                    XCTAssertEqual(row.ink.midY, ornament.midY, accuracy: 0.01)
+                    XCTAssertTrue(ornament.contains(row.ink), "Title must fit its original frame")
+                }
+            }
+            // Resizing changes only the viewport's uniform scale, never source ink.
+            for size in [CGSize(width: 296, height: 460), CGSize(width: 406, height: 728), CGSize(width: 788, height: 246)] {
+                viewport.frame.size = size
+                viewport.setNeedsLayout(); viewport.layoutIfNeeded()
+                assertFitted(viewport)
+                XCTAssertEqual(canvas.transform.b, 0, accuracy: 0.0001, "No rotation or shear")
+                XCTAssertEqual(canvas.transform.c, 0, accuracy: 0.0001, "No rotation or shear")
+                XCTAssertEqual(canvas.transform.a, canvas.transform.d, accuracy: 0.0001, "No stretching")
+                XCTAssertEqual(canvas.rowGeometry.map(\.ink), authoredInk)
+                XCTAssertEqual(canvas.ornamentBounds, ornaments)
+            }
+        }
+    }
     func testCompletePageIsCenteredWithoutStretchingAcrossReadingSizes() {
         for size in [CGSize(width: 296, height: 460), CGSize(width: 351, height: 560),
                      CGSize(width: 366, height: 656), CGSize(width: 406, height: 728),
