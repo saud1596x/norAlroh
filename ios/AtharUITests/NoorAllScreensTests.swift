@@ -198,6 +198,20 @@ final class NoorAllScreensTests: XCTestCase {
             if app.scrollViews.firstMatch.exists { return app.scrollViews.firstMatch }
             return app
         }
+        func scroll(up: Bool) {
+            // SwiftUI may replace its List between an exists check and a swipe
+            // (CI151). Gesture against the stable app, within the observed
+            // viewport, rather than resolving that transient List a second time.
+            let surface = scrollingSurface()
+            let visible = surface.frame.intersection(app.frame)
+            guard !visible.isEmpty, visible.width > 0, visible.height > 0 else { return }
+            let low = CGPoint(x: visible.midX, y: visible.minY + visible.height * 0.75)
+            let high = CGPoint(x: visible.midX, y: visible.minY + visible.height * 0.25)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: up ? low.x : high.x, dy: up ? low.y : high.y))
+            let end = origin.withOffset(CGVector(dx: up ? high.x : low.x, dy: up ? high.y : low.y))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
         func ready() -> Bool {
             guard element.exists else { return false }
             let frame = element.frame
@@ -232,12 +246,12 @@ final class NoorAllScreensTests: XCTestCase {
         if !ready() {
             for _ in 0..<7 {
                 if ready() { break }
-                scrollingSurface().swipeDown()
+                scroll(up: false)
             }
         }
         for _ in 0..<14 {
             if ready() { break }
-            scrollingSurface().swipeUp()
+            scroll(up: true)
         }
         if !ready() {
             let description = app.debugDescription
