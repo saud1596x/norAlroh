@@ -10,8 +10,17 @@ struct NoorJourneyIndex {
     let calendar: Calendar
     init(archive: KhatmahStore.Archive, calendar: Calendar = .current) {
         self.calendar = calendar
-        events = archive.plans.flatMap { plan in plan.sessions.map { NoorReadingEvent(planID: plan.id, session: $0) } }
-            .sorted { $0.session.date == $1.session.date ? $0.id < $1.id : $0.session.date > $1.session.date }
+        var collected: [NoorReadingEvent] = []
+        for plan in archive.plans {
+            for session in plan.sessions {
+                collected.append(NoorReadingEvent(planID: plan.id, session: session))
+            }
+        }
+        collected.sort { (left: NoorReadingEvent, right: NoorReadingEvent) -> Bool in
+            if left.session.date == right.session.date { return left.id < right.id }
+            return left.session.date > right.session.date
+        }
+        events = collected
     }
     var readingDays: Set<Date> { Set(events.map { calendar.startOfDay(for: $0.session.date) }) }
     var newlyCompletedPages: Int { events.reduce(0) { $0 + $1.session.newlyCompleted } }
