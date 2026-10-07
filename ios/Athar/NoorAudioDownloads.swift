@@ -21,6 +21,29 @@ enum NoorAudioIntegrity {
     static func valid(_ data: Data, metadata: NoorAudioFile) -> Bool {
         data.count > 0 && data.count <= maximumBytes && data.count == metadata.bytes && digest(data) == metadata.sha256
     }
+    /// Resumed downloads contain the assembled file, not only the last range.
+    /// Reject a playable prefix when the server declares a longer complete file.
+    static func completeResponse(_ response: HTTPURLResponse?, bytes: Int) -> Bool {
+        guard let response, bytes > 0, bytes <= maximumBytes,
+              response.url?.scheme == "https", response.url?.host == "everyayah.com" else { return false }
+        if response.statusCode == 200 {
+            let encoding = response.value(forHTTPHeaderField: "Content-Encoding")?.lowercased()
+            guard encoding == nil || encoding == "identity" else { return false }
+            if let declared = response.value(forHTTPHeaderField: "Content-Length") {
+                return Int(declared) == bytes
+            }
+            return true // Chunked transfers rely on URLSession completion + AVAsset verification.
+        }
+        guard response.statusCode == 206,
+              let range = response.value(forHTTPHeaderField: "Content-Range"), range.hasPrefix("bytes ") else { return false }
+        let components = range.dropFirst(6).split(separator: "/", omittingEmptySubsequences: false)
+        guard components.count == 2, let total = Int(components[1]), total == bytes else { return false }
+        let interval = components[0].split(separator: "-", omittingEmptySubsequences: false)
+        guard interval.count == 2, let start = Int(interval[0]), let end = Int(interval[1]),
+              start >= 0, end >= start, end == total - 1 else { return false }
+        if let declared = response.value(forHTTPHeaderField: "Content-Length"), Int(declared) != end - start + 1 { return false }
+        return true
+    }
     static func url(_ key: String) -> URL? {
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, let corpus = QuranResources.corpus,
@@ -150,10 +173,8 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         guard token == generation else { return }
         checking = true
         do {
-            guard response?.statusCode == 200 || response?.statusCode == 206,
-                  response?.url?.host == "everyayah.com", response?.url?.scheme == "https" else { throw CocoaError(.fileReadCorruptFile) }
             let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            guard size > 0, size <= NoorAudioIntegrity.maximumBytes else { throw CocoaError(.fileReadCorruptFile) }
+            guard NoorAudioIntegrity.completeResponse(response, bytes: size) else { throw CocoaError(.fileReadCorruptFile) }
             let data = try Data(contentsOf: temporary, options: .mappedIfSafe)
             guard !data.isEmpty, data.count <= NoorAudioIntegrity.maximumBytes else { throw CocoaError(.fileReadCorruptFile) }
             let asset = AVURLAsset(url: temporary)
@@ -179,6 +200,11 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     func cancel() {
         guard let key = active, !cancelling, let stopped = task else { return }
         generation = UUID(); let token = generation; cancelling = true
+        if checking {
+            cancelling = false
+            fail("أُوقف التحقق من التنزيل. يمكنك إعادة المحاولة.")
+            return
+        }
         stopped.cancel(byProducingResumeData: { [weak self] bytes in Task { @MainActor in
             guard let self, self.generation == token else { return }
             if let bytes { try? bytes.write(to: self.resumeFile(key), options: .atomic) }
