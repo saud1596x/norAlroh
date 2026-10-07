@@ -227,6 +227,9 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("الإعدادات")
+        // Pulling a long settings list must not dismiss the entire sheet.
+        // Users can still leave explicitly with the Done button.
+        .interactiveDismissDisabled()
         .toolbar { ToolbarItem(placement: .topBarLeading) { Button("تم") { dismiss() } } }
         .confirmationDialog("سيُحذف سجل الرحلات والتأملات والعلامات والحفظ والأذكار والتسجيل والنموذج الصوتي المحلي والإعدادات نهائيًا.", isPresented: $erase, titleVisibility: .visible) {
             Button("حذف كل بياناتي", role: .destructive) {
