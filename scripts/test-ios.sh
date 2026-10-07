@@ -31,7 +31,10 @@ TEST_CONFIGURATION="${NOOR_TEST_CONFIGURATION:-Debug}"
 [[ "$TEST_CONFIGURATION" == Debug || "$TEST_CONFIGURATION" == Release ]] || { echo 'NOOR_TEST_CONFIGURATION must be Debug or Release.' >&2; exit 2; }
 [[ ! -e "$PROJECT_ROOT/release/native-unit.xcresult" && ! -e "$PROJECT_ROOT/release/native-ui.xcresult" ]] || { echo 'احتفظ بنتائج التشغيل السابق ثم انقلها قبل إعادة الاختبار.' >&2; exit 2; }
 xcodebuild build -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
-xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharTests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-unit.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+UNIT_EXIT=0
+xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharTests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-unit.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES || UNIT_EXIT=$?
+# Collect actual UI evidence even when an independent unit/integration test
+# fails. The combined check still fails; a network outage is never a pass.
 CAPTURE_PID=''
 finish_capture() {
   if [[ -n "$CAPTURE_PID" ]]; then kill -INT "$CAPTURE_PID" 2>/dev/null || true; wait "$CAPTURE_PID" || true; CAPTURE_PID=''; fi
@@ -47,5 +50,5 @@ xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -conf
 finish_capture
 GALLERY_EXIT=0
 python3 "$PROJECT_ROOT/scripts/export-native-gallery.py" || GALLERY_EXIT=$?
-[[ "$UI_EXIT" == 0 && "$GALLERY_EXIT" == 0 ]] || { echo 'Native UI tests or complete screen capture failed; inspect actual artifacts.' >&2; exit 1; }
+[[ "$UNIT_EXIT" == 0 && "$UI_EXIT" == 0 && "$GALLERY_EXIT" == 0 ]] || { echo "Native checks failed: unit=$UNIT_EXIT UI=$UI_EXIT gallery=$GALLERY_EXIT; inspect actual artifacts." >&2; exit 1; }
 python3 "$PROJECT_ROOT/scripts/native-build-report.py"
