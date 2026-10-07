@@ -70,10 +70,15 @@ enum PrayerCalculator {
     }
     static func time(_ date: Date, city: PrayerLocation) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ar_SA")
+        // POSIX fixes the hour cycle even when the device prefers 12-hour time.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(identifier: city.timeZone)
         formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
+        let digits = Array("٠١٢٣٤٥٦٧٨٩")
+        return String(formatter.string(from: date).map { character in
+            character.wholeNumberValue.map { digits[$0] } ?? character
+        })
     }
     static func next(data: PrayerInputs, now: Date) -> PrayerRow? {
         if let next = rows(data: data, date: now).first(where: { !$0.sunrise && $0.date > now }) { return next }
