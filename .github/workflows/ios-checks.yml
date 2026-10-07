@@ -51,6 +51,16 @@ jobs:
             release/native-screens/capture-report.json
             release/content-audit.json
           retention-days: 14
+      - name: Save actual reader screenshots separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noor-reader-screens
+          path: |
+            release/native-screens.zip
+            release/native-screens/capture-report.json
+            release/native-build-report.json
+          retention-days: 14
   focus-build:
     runs-on: macos-15
     timeout-minutes: 35
