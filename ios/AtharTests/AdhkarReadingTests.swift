@@ -2,6 +2,14 @@ import XCTest
 @testable import Athar
 
 final class AdhkarReadingTests: XCTestCase {
+    func testChapterSearchPrioritizesRequestedTitleAndPreservesFavorites() throws {
+        let content = try XCTUnwrap(AdhkarContent.shared)
+        XCTAssertEqual(content.searchGroups("النوم").first?.id, "hisn-28")
+        XCTAssertEqual(content.searchGroups("أذكار النوم").first?.id, "hisn-28")
+        XCTAssertEqual(content.searchGroups("النوم", favorites: ["hisn-1"]).map(\.id), ["hisn-1"])
+        XCTAssertEqual(content.searchGroups("").map(\.id), content.groups.map(\.id))
+        XCTAssertTrue(content.searchGroups("عبارة لا توجد في الأذكار مطلقا").isEmpty)
+    }
     func testEverySourceCharacterRemainsAvailableAfterSplitting() throws {
         let content = try XCTUnwrap(AdhkarContent.shared)
         for entry in content.entries {
