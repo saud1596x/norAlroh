@@ -1,3 +1,5 @@
+> سجل تاريخي لمرحلة سابقة، وليس حالة أحدث مشروع. راجع `EXECUTION-CHECKPOINT-20261007.md` و`STORE-METADATA.md` قبل تجهيز النشر.
+
 # نور الروح — حالة الإصدار
 
 الناشر سعود الكثيري لديه حساب Apple Developer، ويستخدم PC دون Mac. يمكن البناء والتوقيع في السحابة؛ إعدادات GitHub Actions وCodemagic أضيفت. ظهر ربط مستودع nor-alroh في حسابه على Codemagic، لكن YAML لم يُكتشف بعد ولم تُشغّل الاختبارات. لا IPA موقّعة ولا TestFlight حتى الآن. بريد الدعم المؤكد noralrohsupport@gmail.com، وأُضيف إلى المصدر.
