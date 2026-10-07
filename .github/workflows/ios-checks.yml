@@ -28,6 +28,7 @@ jobs:
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
       - name: Verify bundled content
         run: |
+          python3 -m unittest discover -s scripts/tests -v
           python3 scripts/prepare-publishing.py --check
           python3 scripts/audit-content.py
           python3 scripts/verify-quran-text.py
