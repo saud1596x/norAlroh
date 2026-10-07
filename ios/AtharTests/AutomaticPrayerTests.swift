@@ -77,12 +77,14 @@ final class AutomaticPrayerTests: XCTestCase {
         XCTAssertNotNil(PrayerAlertSound.sound(preferences: preferences))
     }
     func testCalendarUsesDestinationDateAcrossInternationalDayBoundary() {
+        let boundary = date.addingTimeInterval(8 * 3600) // Oct 4 UTC, Oct 5 in Auckland.
         let location = PrayerLocation(name: "أوكلاند", latitude: -36.8485, longitude: 174.7633, timeZone: "Pacific/Auckland")
         let input = PrayerInputs(city: location, method: "MuslimWorldLeague", hanafi: false)
-        let rows = PrayerCalculator.rows(data: input, date: date)
+        let rows = PrayerCalculator.rows(data: input, date: boundary)
         XCTAssertEqual(rows.count, 6)
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: location.timeZone)!
-        XCTAssertTrue(rows.allSatisfy { calendar.isDate($0.date, inSameDayAs: date) })
+        XCTAssertEqual(calendar.component(.day, from: boundary), 5)
+        XCTAssertTrue(rows.allSatisfy { calendar.isDate($0.date, inSameDayAs: boundary) })
         XCTAssertEqual(rows.map(\.date), rows.map(\.date).sorted())
     }
 }
