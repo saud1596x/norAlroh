@@ -21,9 +21,14 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
         notification.request.content.sound == nil ? [.banner] : [.banner, .sound]
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
-              let destination = response.notification.request.content.userInfo["destination"] as? String else { return }
-        await MainActor.run { _ = NoorWidgetRouter.shared.openNotification(destination: destination) }
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        let info = response.notification.request.content.userInfo
+        if response.notification.request.identifier.hasPrefix("noor.khatmah."),
+           let raw = info["url"] as? String, let url = URL(string: raw), url.scheme == "nooralruh", url.host == "reading" {
+            await MainActor.run { _ = NoorWidgetRouter.shared.open(url) }
+        } else if let destination = info["destination"] as? String {
+            await MainActor.run { _ = NoorWidgetRouter.shared.openNotification(destination: destination) }
+        }
     }
 }
 

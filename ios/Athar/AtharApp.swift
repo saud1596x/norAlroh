@@ -3,6 +3,7 @@ import UIKit
 
 @main
 struct AtharApp: App {
+    @StateObject private var khatmah = KhatmahStore.shared
     @StateObject private var store = AtharStore()
     @StateObject private var notifications = PrayerNotifications()
     @StateObject private var prayerLocation = PrayerLocationController()
@@ -22,6 +23,7 @@ struct AtharApp: App {
         WindowGroup {
             NoorLaunchGate()
                 .environmentObject(store)
+                .task { await khatmah.refreshReminders() }
                 .environmentObject(notifications)
                 .environmentObject(prayerLocation)
                 .environmentObject(dhikrCounters)
@@ -78,6 +80,7 @@ struct AtharApp: App {
                 .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
+                        Task { await khatmah.refreshReminders() }
                         account.attach(store: store, memorization: memorization)
                         prayerLocation.activate(store: store)
                         PrayerBackgroundRefresh.submit()

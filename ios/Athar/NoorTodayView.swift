@@ -76,6 +76,9 @@ struct NoorTodayView: View {
                     }
                     .overlay { RoundedRectangle(cornerRadius: 28).stroke(Theme.buttonInk.opacity(0.15), lineWidth: 1).allowsHitTesting(false) }
                     .noorEntrance(delay: 0.08)
+                NavigationLink { KhatmahJourneyView() } label: {
+                    Card { Label("رحلة الختمة", systemImage: "book.closed"); Text("خطتك ووردك اليومي").font(.subheadline).foregroundStyle(.secondary) }
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.khatmah")
                 HStack {
                     Text("خطواتك اليوم").font(.title3.bold())
                     Spacer()

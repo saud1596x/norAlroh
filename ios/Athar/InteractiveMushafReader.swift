@@ -96,6 +96,7 @@ struct InteractiveMushafReader: View {
     @State private var sheetVerse: VerseSelection?
     @State private var tools = true
     @State private var controlHeights: [String: CGFloat] = [:]
+    @State private var khatmah = false
     @State private var picker = false
     @State private var input = ""
     @State private var error: String?
@@ -136,7 +137,7 @@ struct InteractiveMushafReader: View {
                     if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
-                    } else { Color.clear.frame(width: 44, height: 44) }
+                    } else { Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }.accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah") }
                 }.background { measureControl("header") }
                 Spacer()
                 HStack {
@@ -164,6 +165,7 @@ struct InteractiveMushafReader: View {
             VerseTools(selection: selection, audio: audio, selected: $selected)
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
         .sheet(isPresented: $picker) {
             NavigationStack { Form {
                 TextField("١ إلى ٦٠٤", text: $input).keyboardType(.numberPad).accessibilityIdentifier("reader.pageNumber")
