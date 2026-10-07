@@ -35,8 +35,14 @@ final class NoorKhatmahUITests: XCTestCase {
         capture(app, "khatmah-progress-restored")
         app.buttons["إغلاق"].tap()
         let journey = app.buttons["home.myJourney"]
+        // Home's lazy grid creates this link only when it approaches the
+        // viewport. Do not wait for an offscreen, uncreated element first.
+        for _ in 0..<6 {
+            if journey.exists && journey.isHittable { break }
+            app.swipeUp()
+        }
         XCTAssertTrue(journey.waitForExistence(timeout: 10))
-        if !journey.isHittable { app.swipeUp() }
+        XCTAssertTrue(journey.isHittable)
         journey.tap()
         XCTAssertTrue(app.staticTexts["journey.summary"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["journey.summary"].label.contains("20 صفحات جديدة"))
