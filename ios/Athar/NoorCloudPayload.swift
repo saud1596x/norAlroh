@@ -18,7 +18,7 @@ enum NoorCloudPayload {
             let destination = UnsafeMutablePointer<UInt8>.allocate(capacity: chunkSize)
             defer { destination.deallocate() }
             var stream = compression_stream(dst_ptr: destination, dst_size: chunkSize,
-                                            src_ptr: source, src_size: compressed.count)
+                                            src_ptr: source, src_size: compressed.count, state: nil)
             guard compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
                 throw CocoaError(.fileReadCorruptFile)
             }
