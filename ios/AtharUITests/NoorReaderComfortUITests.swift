@@ -86,10 +86,20 @@ final class NoorReaderComfortUITests: XCTestCase {
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let screenshot = XCUIScreen.main.screenshot()
-        if let bitmap = screenshot.image.cgImage {
-            XCTAssertEqual(bitmap.width > bitmap.height, app.frame.width > app.frame.height, "Screenshot orientation must match the settled reader")
-        } else { XCTFail("Missing screenshot bitmap") }
         let shot = XCTAttachment(screenshot: screenshot)
         shot.name = name; shot.lifetime = .keepAlways; add(shot)
+        if let bitmap = screenshot.image.cgImage {
+            // The physical screen raster can remain portrait while UIImage
+            // carries a quarter-turn orientation. Check the displayed image,
+            // keeping original screenshot bytes untouched as review evidence.
+            let quarterTurn: Bool
+            switch screenshot.image.imageOrientation {
+            case .left, .right, .leftMirrored, .rightMirrored: quarterTurn = true
+            default: quarterTurn = false
+            }
+            let displayedLandscape = quarterTurn ? bitmap.height > bitmap.width : bitmap.width > bitmap.height
+            XCTAssertEqual(displayedLandscape, app.frame.width > app.frame.height,
+                           "Screenshot orientation must match the settled reader (raster \(bitmap.width)x\(bitmap.height), orientation \(screenshot.image.imageOrientation.rawValue))")
+        } else { XCTFail("Missing screenshot bitmap") }
     }
 }
