@@ -2,6 +2,17 @@ import XCTest
 @testable import Athar
 
 final class WidgetTests: XCTestCase {
+    @MainActor func testNotificationDestinationSurvivesColdStartAndRejectsUnknownPayload() {
+        let router = NoorWidgetRouter()
+        XCTAssertTrue(router.openNotification(destination: "prayers"))
+        XCTAssertEqual(router.destination?.host, "prayers")
+        let id = router.destination?.id
+        XCTAssertFalse(router.openNotification(destination: "untrusted"))
+        XCTAssertEqual(router.destination?.id, id)
+        XCTAssertTrue(router.openNotification(destination: "dhikr"))
+        XCTAssertEqual(router.destination?.host, "dhikr")
+        XCTAssertNil(router.destination?.page)
+    }
     func testWidgetAndNotificationPrayerInputsUseIdenticalTimesAcrossMidnight() throws {
         let data = DeviceData()
         let now = Date(timeIntervalSince1970: 1791320340)
