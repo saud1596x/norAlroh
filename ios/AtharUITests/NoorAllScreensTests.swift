@@ -175,32 +175,51 @@ final class NoorAllScreensTests: XCTestCase {
     }
 
     private func tap(_ element: XCUIElement, in app: XCUIApplication, performTap: Bool = true) {
-        let list = app.collectionViews.containing(.button, identifier: element.identifier).firstMatch
-        let scroll = app.scrollViews.containing(.button, identifier: element.identifier).firstMatch
-        let container = list.exists ? list : (scroll.exists ? scroll : app)
+        // A lazy List may remove an off-screen row from its snapshot. A
+        // `containing(target)` container then disappears during scrolling even
+        // though the List itself is still present (CI144). Resolve the current
+        // scrolling surface independently of the row on every gesture.
+        func scrollingSurface() -> XCUIElement {
+            if app.collectionViews.firstMatch.exists { return app.collectionViews.firstMatch }
+            if app.scrollViews.firstMatch.exists { return app.scrollViews.firstMatch }
+            return app
+        }
         func ready() -> Bool {
-            guard element.exists && element.isHittable else { return false }
-            guard container != app else { return true }
-            // Preserve the concurrent fix: clipped List rows may report hittable
-            // while their synthesized tap lands in the bottom safe area.
-            let viewport = container.frame.intersection(app.frame.insetBy(dx: 0, dy: 60))
-            return !viewport.isEmpty && viewport.contains(element.frame)
+            guard element.exists else { return false }
+            let frame = element.frame
+            // Querying isHittable for a zero/off-screen activation frame can
+            // fail XCTest itself, rather than return false. Check geometry first.
+            guard frame.width > 0, frame.height > 0,
+                  frame.minX.isFinite, frame.minY.isFinite,
+                  frame.maxX.isFinite, frame.maxY.isFinite,
+                  app.frame.contains(frame) else { return false }
+            let identifier = element.identifier
+            let isNavigationControl = !identifier.isEmpty &&
+                app.navigationBars.descendants(matching: .any).matching(identifier: identifier).firstMatch.exists
+            let container = scrollingSurface()
+            if !isNavigationControl && container != app && container.frame.intersects(frame) {
+                let viewport = container.frame.intersection(app.frame.insetBy(dx: 0, dy: 60))
+                guard !viewport.isEmpty, viewport.contains(frame) else { return false }
+            }
+            return element.isHittable
         }
         // Returning to a long List can restore its scroll position. Search both
         // directions instead of assuming every destination starts at its top.
         if !ready() {
             for _ in 0..<7 {
                 if ready() { break }
-                container.swipeDown()
+                scrollingSurface().swipeDown()
             }
         }
         for _ in 0..<14 {
             if ready() { break }
-            container.swipeUp()
+            scrollingSurface().swipeUp()
         }
         if !ready() {
-            let hierarchy = XCTAttachment(string: app.debugDescription)
+            let description = app.debugDescription
+            let hierarchy = XCTAttachment(string: description)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+            print("NAVIGATION_TARGET_FAILURE \(element.identifier)\n\(description)")
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
