@@ -71,7 +71,7 @@ struct OriginalPageData {
     var hiddenWordIDs: Set<Int> = [] {
         didSet {
             guard oldValue != hiddenWordIDs else { return }
-            refreshAccessibilityLabels(); ink.setNeedsDisplay()
+            refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
         }
     }
     private var decorationPaths: [CGPath] = []
@@ -88,7 +88,7 @@ struct OriginalPageData {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear; isOpaque = false
-        highlight.fillColor = UIColor.systemYellow.withAlphaComponent(0.22).cgColor
+        highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
         layer.addSublayer(highlight)
         ink = OriginalMushafInk(frame: CGRect(origin: .zero, size: Self.pageSize))
         ink.owner = self; ink.isUserInteractionEnabled = false; ink.backgroundColor = .clear
@@ -281,10 +281,42 @@ struct OriginalPageData {
         let actual = Set(candidates.filter { $0.paths.contains { $0.contains(point) } }.map(\.verse))
         return actual.count == 1 ? actual.first : nil
     }
+    private var selectionColor: UIColor {
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.86, green: 0.71, blue: 0.49, alpha: 0.28)
+                : UIColor(red: 0.45, green: 0.30, blue: 0.13, alpha: 0.16)
+        }
+    }
+    /// Use the same shaped outlines as the ink, including vowels and every line.
+    /// Never paint word rectangles or the space between separate verse lines.
+    func selectionPath(for key: String?) -> CGPath? {
+        guard let key else { return nil }
+        let chosen = regions.filter { $0.verse == key && !hiddenWordIDs.contains($0.word) }
+        guard !chosen.isEmpty else { return nil }
+        let glyphs = CGMutablePath()
+        for region in chosen { for path in region.paths { glyphs.addPath(path) } }
+        let halo = glyphs.union(glyphs.copy(strokingWithWidth: 4, lineCap: .round, lineJoin: .round, miterLimit: 1))
+        let neighbors = CGMutablePath()
+        for region in regions where region.verse != key && !hiddenWordIDs.contains(region.word)
+            && region.rect.insetBy(dx: -2, dy: -2).intersects(halo.boundingBoxOfPath) {
+            for path in region.paths {
+                neighbors.addPath(path)
+                neighbors.addPath(path.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1))
+            }
+        }
+        return neighbors.isEmpty ? halo : halo.subtracting(neighbors)
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
+        }
+    }
     private func updateHighlight() {
-        let path = UIBezierPath()
-        for region in regions where region.verse == selected { path.append(UIBezierPath(roundedRect: region.rect.insetBy(dx: -0.8, dy: -0.8), cornerRadius: 2)) }
-        CATransaction.begin(); CATransaction.setDisableActions(true); highlight.path = path.cgPath; CATransaction.commit()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        highlight.path = selectionPath(for: selected)
+        CATransaction.commit()
         if !reduceMotion && !UIAccessibility.isReduceMotionEnabled { let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1; fade.duration = 0.16; highlight.add(fade, forKey: "select") }
     }
     func drawInk() {
