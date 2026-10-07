@@ -33,6 +33,29 @@ final class NoorKhatmahUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30)); openJourney(app)
         assertProgress(app, pages: 20)
         capture(app, "khatmah-progress-restored")
+        app.buttons["إغلاق"].tap()
+        let journey = app.buttons["home.myJourney"]
+        XCTAssertTrue(journey.waitForExistence(timeout: 10))
+        if !journey.isHittable { app.swipeUp() }
+        journey.tap()
+        XCTAssertTrue(app.staticTexts["journey.summary"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["journey.summary"].label.contains("20 صفحات جديدة"))
+        let session = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "journey.session.")).firstMatch
+        XCTAssertTrue(session.waitForExistence(timeout: 10))
+        for _ in 0..<4 where !session.isHittable { app.swipeUp() }
+        XCTAssertTrue(session.isHittable)
+        capture(app, "my-journey-confirmed-timeline")
+        session.tap()
+        XCTAssertTrue(app.navigationBars["تفاصيل القراءة"].waitForExistence(timeout: 10))
+        capture(app, "my-journey-session-detail")
+        app.buttons["إغلاق"].tap()
+        let previousMonth = app.buttons["journey.previousMonth"]
+        for _ in 0..<4 where !previousMonth.isHittable { app.swipeDown() }
+        XCTAssertTrue(previousMonth.isHittable)
+        previousMonth.tap()
+        app.buttons["journey.day.1"].tap()
+        XCTAssertTrue(app.staticTexts["لا توجد قراءة مؤكدة في هذا اليوم."].waitForExistence(timeout: 10))
+        capture(app, "my-journey-calendar-empty-day")
     }
     @MainActor private func openJourney(_ app: XCUIApplication) {
         let button = app.buttons["home.khatmah"]
