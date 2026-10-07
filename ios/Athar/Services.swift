@@ -197,6 +197,8 @@ final class PrayerNotifications: ObservableObject {
             enabled = requested && allowed
             let pending = await client.pendingIdentifiers()
             guard generation == revision else { continue }
+            let delivered = Set(await client.deliveredIdentifiers())
+            guard generation == revision else { continue }
             guard !Task.isCancelled else { return }
             let owns: (String) -> Bool = { self.isOwned($0) || $0.hasPrefix(SalawatNotificationPlan.prefix) }
             client.removePending(pending.filter(owns))
@@ -208,7 +210,10 @@ final class PrayerNotifications: ObservableObject {
             let slots = SalawatNotificationPlan.slots(salawat)
             let foreignCount = pending.filter { !owns($0) }.count
             let prayerCapacity = max(0, min(PrayerNotificationPlan.maximumRequests, 64 - foreignCount))
-            let plan = enabled ? Array(PrayerNotificationPlan.make(data: data, preferences: preferences, now: now()).prefix(prayerCapacity)) : []
+            // Travel or a clock change can move an already delivered prayer
+            // back into the future. Do not alert again for that prayer/day ID.
+            let plan = enabled ? Array(PrayerNotificationPlan.make(data: data, preferences: preferences, now: now())
+                .filter { !delivered.contains($0.id) }.prefix(prayerCapacity)) : []
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = TimeZone(identifier: data.city.timeZone) ?? .current
             message = nil
