@@ -128,7 +128,7 @@ struct InteractiveMushafReader: View {
                     ContentUnavailableView("تعذّر فتح الصفحة", systemImage: "book.closed", description: Text("حاول الانتقال إلى صفحة أخرى ثم العودة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة."))
                 } else { ProgressView("تنزيل بيانات المصحف والتحقق من الخط…").frame(maxWidth: .infinity, maxHeight: .infinity) }
             }
-            VStack {
+            if tools { VStack {
                 HStack {
                     Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
                     Spacer(); Text(title).font(.headline).lineLimit(1); Spacer()
@@ -146,7 +146,7 @@ struct InteractiveMushafReader: View {
                     Spacer()
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                 }.background { readerControlMeasurement("footer") }
-            }.padding(.horizontal, 10).opacity(tools ? 1 : 0).allowsHitTesting(tools).accessibilityHidden(!tools)
+            }.padding(.horizontal, 10).transition(.opacity) }
         }
         .onPreferenceChange(ReaderControlHeight.self) { heights in
             for (key, height) in heights where height.isFinite && height > 0 {
