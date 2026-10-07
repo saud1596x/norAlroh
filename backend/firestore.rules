@@ -1,12 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid}/private/memorization {
-      allow read, delete: if request.auth != null && request.auth.uid == uid;
-      allow create, update: if request.auth != null && request.auth.uid == uid
+    // Irreversible deletion marker blocks still-valid tokens on other devices.
+    // It contains no profile, Quran activity or audio. Client cannot undo it.
+    match /accountDeletions/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['deletedAt'])
+        && request.resource.data.deletedAt == request.time;
+    }
+    // Only the two implemented documents; no collection-wide access.
+    match /users/{uid}/private/{document} {
+      function owner() { return request.auth != null && request.auth.uid == uid; }
+      function supported() { return document in ['memorization', 'readingState']; }
+      function active() { return !exists(/databases/$(database)/documents/accountDeletions/$(uid)); }
+      allow read: if owner() && supported() && active();
+      allow delete: if owner() && supported();
+      allow create, update: if owner() && supported()
+        && !existsAfter(/databases/$(database)/documents/accountDeletions/$(uid))
         && request.resource.data.keys().hasOnly(['version', 'data', 'updatedAt'])
         && request.resource.data.version == 1
         && request.resource.data.data is bytes
+        && request.resource.data.data.size() > 0
         && request.resource.data.data.size() <= 750000
         && request.resource.data.updatedAt == request.time;
     }

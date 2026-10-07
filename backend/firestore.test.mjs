@@ -2,7 +2,7 @@
 import {before, after, beforeEach, test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment, assertFails, assertSucceeds} from '@firebase/rules-unit-testing';
-import {doc, setDoc, getDoc, deleteDoc, getDocs, collection, serverTimestamp, Timestamp, Bytes} from 'firebase/firestore';
+import {doc, setDoc, getDoc, deleteDoc, getDocs, collection, serverTimestamp, Timestamp, Bytes, writeBatch} from 'firebase/firestore';
 let env;
 before(async () => {
   env = await initializeTestEnvironment({projectId:'demo-noor-security',
@@ -50,4 +50,59 @@ test('accepts maximum payload size and rejects one byte above it',async () => {
   const ref=doc(user('alice'),path('alice'));
   await assertSucceeds(setDoc(ref,{...value(),data:Bytes.fromUint8Array(new Uint8Array(750000))}));
   await assertFails(setDoc(ref,{...value(),data:Bytes.fromUint8Array(new Uint8Array(750001))}));
+});
+
+for (const name of ['readingState','memorization']) {
+  test(`${name}: owner-only access, no guest access or empty payload`, async () => {
+    const db=user('alice'), location=`users/alice/private/${name}`;
+    await assertSucceeds(setDoc(doc(db,location),value()));
+    await assertSucceeds(getDoc(doc(db,location)));
+    await assertFails(getDoc(doc(user('bob'),location)));
+    await assertFails(setDoc(doc(user('bob'),location),value()));
+    await assertFails(deleteDoc(doc(user('bob'),location)));
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),location)));
+    await assertFails(setDoc(doc(db,location),{...value(),data:Bytes.fromUint8Array(new Uint8Array(0))}));
+  });
+}
+test('two-document sync batch is atomic and cannot include another owner', async () => {
+  const db=user('alice');
+  const allowed=writeBatch(db);
+  allowed.set(doc(db,'users/alice/private/readingState'),value());
+  allowed.set(doc(db,'users/alice/private/memorization'),value());
+  await assertSucceeds(allowed.commit());
+  const rejected=writeBatch(db);
+  rejected.delete(doc(db,'users/alice/private/readingState'));
+  rejected.set(doc(db,'users/bob/private/memorization'),value());
+  await assertFails(rejected.commit());
+  await assertSucceeds(getDoc(doc(db,'users/alice/private/readingState')));
+});
+
+test('deletion marker prevents another device with the same valid identity from recreating data', async () => {
+  const db=user('alice'), oldDevice=user('alice');
+  await assertSucceeds(setDoc(doc(db,'users/alice/private/memorization'),value()));
+  await assertSucceeds(setDoc(doc(db,'users/alice/private/readingState'),value()));
+  const deletion=writeBatch(db);
+  deletion.set(doc(db,'accountDeletions/alice'),{deletedAt:serverTimestamp()});
+  deletion.delete(doc(db,'users/alice/private/readingState'));
+  deletion.delete(doc(db,'users/alice/private/memorization'));
+  await assertSucceeds(deletion.commit());
+  for (const name of ['memorization','readingState']) {
+    await assertFails(setDoc(doc(oldDevice,`users/alice/private/${name}`),value()));
+    await assertFails(getDoc(doc(oldDevice,`users/alice/private/${name}`)));
+  }
+  await assertFails(deleteDoc(doc(oldDevice,'accountDeletions/alice')));
+  await assertFails(setDoc(doc(oldDevice,'accountDeletions/alice'),{deletedAt:serverTimestamp()}));
+  await assertFails(setDoc(doc(user('bob'),'accountDeletions/alice'),{deletedAt:serverTimestamp()}));
+  await assertFails(getDoc(doc(user('bob'),'accountDeletions/alice')));
+  await assertSucceeds(getDoc(doc(db,'accountDeletions/alice')));
+  // Repeating cleanup remains possible if deleting the Auth user failed once.
+  await assertSucceeds(deleteDoc(doc(db,'users/alice/private/memorization')));
+});
+
+test('a batch cannot mark deletion and simultaneously recreate private data', async () => {
+  const db=user('alice'), batch=writeBatch(db);
+  batch.set(doc(db,'accountDeletions/alice'),{deletedAt:serverTimestamp()});
+  batch.set(doc(db,'users/alice/private/memorization'),value());
+  await assertFails(batch.commit());
+  await assertFails(setDoc(doc(db,'accountDeletions/alice'),{deletedAt:Timestamp.fromMillis(1)}));
 });
