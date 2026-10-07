@@ -6,9 +6,14 @@ on:
     paths: ['.github/workflows/khatmah-journey.yml', 'ios/Athar/Khatmah*.swift', 'ios/Athar/Noor*Journey*.swift', 'ios/AtharTests/*Journey*Tests.swift', 'ios/AtharUITests/NoorKhatmahUITests.swift']
 permissions:
   contents: read
+concurrency:
+  group: khatmah-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   reading:
-    runs-on: macos-15
+    # Standard Intel runner avoids the current arm64 capacity queue. Keep real
+    # Xcode/simulator acceptance; never substitute a build-only check.
+    runs-on: macos-15-intel
     timeout-minutes: 35
     strategy:
       fail-fast: false
