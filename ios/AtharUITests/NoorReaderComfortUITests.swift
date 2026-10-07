@@ -16,6 +16,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         let verse = app.buttons["reader.verse.114:1"]
         XCTAssertTrue(verse.waitForExistence(timeout: 20))
         let frame = verse.frame
+        requireTools(true, app: app)
         capture(app, "stage1-604-tools-visible")
         // A tap on Quran ink, not just a margin, toggles tools without selection.
         verse.tap()
@@ -52,6 +53,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         requireStableReadingLayout(app, page: page, landscape: true)
         requirePage(151, app: app)
+        requireTools(true, app: app)
         capture(app, "stage1-151-landscape")
         let landscapeFrame = page.frame
         app.buttons["reader.verse.7:1"].tap()
@@ -70,6 +72,11 @@ final class NoorReaderComfortUITests: XCTestCase {
             app.buttons["reader.jump"].isHittable == visible
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 5), .completed)
+        if visible {
+            let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+            XCTAssertEqual(app.buttons["reader.jump"].frame.midX, page.frame.midX, accuracy: 1,
+                           "Page counter and reading viewport must share one center")
+        }
     }
     private func requireStableReadingLayout(_ app: XCUIApplication, page: XCUIElement, landscape: Bool) {
         var previous: CGRect?
