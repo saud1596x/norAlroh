@@ -15,7 +15,7 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
 class ReleasePayloadTests(unittest.TestCase):
-    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False):
+    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False, missing_name=None):
         path = Path(folder) / 'test.ipa'
         config = {'PROJECT_ID': 'wrong' if wrong_project else 'noor-alruh',
                   'BUNDLE_ID': gate.BUNDLE,
@@ -41,6 +41,7 @@ class ReleasePayloadTests(unittest.TestCase):
                 archive.writestr(ext + 'Info.plist', plistlib.dumps({
                     'CFBundleIdentifier': identifier, 'CFBundleShortVersionString': '1.0',
                     'CFBundleVersion': '13' if stale_build else '14',
+                    **({} if missing_name == identifier else {'CFBundleDisplayName': 'نور الروح'}),
                     'NSExtension': {'NSExtensionPointIdentifier': point}}))
                 archive.writestr(ext + 'embedded.mobileprovision', b'synthetic-profile')
         return path
@@ -50,6 +51,12 @@ class ReleasePayloadTests(unittest.TestCase):
             result = gate.verify(self.payload(folder))
             self.assertEqual(len(result['extensions']), 4)
             self.assertFalse(result['deviceTested'])
+
+    def test_each_extension_requires_a_nonempty_display_name(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for identifier in gate.EXTENSIONS:
+                with self.subTest(identifier=identifier), self.assertRaisesRegex(ValueError, 'Missing extension display name'):
+                    gate.verify(self.payload(folder, missing_name=identifier))
 
     def test_each_missing_extension_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
