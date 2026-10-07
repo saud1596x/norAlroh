@@ -25,19 +25,12 @@
     "93SaudiCitiesAcross13Regions": true,
     "onlySaudiCitiesAndTimezone": true,
     "qiblaAndCompassRemoved": true,
-    "everyHeaderGlyphExists": true,
-    "everyBasmalaGlyphExists": true,
-    "all47FontFilesMatchPinnedSHA256": true,
-    "headerFontMatchesPinnedSHA256": true,
-    "everyRenderedWordAndStopGlyphExists": true
+    "prayerLocationForegroundPurpose": true
   },
   "issues": [],
   "fontAudit": {
-    "checked": true,
-    "fonts": 48,
-    "restoredStopMarks": 4303,
-    "unmapped": [],
-    "differentHashes": []
+    "checked": false,
+    "reason": "Font files are private inputs until distribution rights are documented."
   },
   "coverage": {
     "pages": 604,
