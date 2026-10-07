@@ -11,11 +11,29 @@ import json
 import os
 from pathlib import Path
 import struct
+import time
+import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/ttf/'
 MANIFEST = ROOT / 'release/qcf-v2-manifest.json'
+
+def download_font(url):
+    """Retry transient transport/server failures, never change source or integrity."""
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response:
+                if response.status != 200 or response.url != url:
+                    raise ValueError('Unexpected font source')
+                return response.read(8_000_001)
+        except urllib.error.HTTPError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt == 3:
+                raise
+        time.sleep(2 ** attempt)
 
 def inspect_font(data):
     if len(data) < 12 or len(data) > 8_000_000 or data[:4] != b'\x00\x01\x00\x00':
@@ -58,10 +76,7 @@ def main():
         if path.is_file():
             data = path.read_bytes()
         else:
-            with urllib.request.urlopen(BASE + name, timeout=60) as response:
-                if response.status != 200 or response.url != BASE + name:
-                    raise ValueError('Unexpected font source')
-                data = response.read(8_000_001)
+            data = download_font(BASE + name)
         ps = inspect_font(data)
         if ps != f'QCF2{page:03}':
             raise ValueError(f'Wrong font for page {page}: {ps}')
