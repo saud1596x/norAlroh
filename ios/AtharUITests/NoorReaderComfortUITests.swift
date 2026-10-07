@@ -40,7 +40,13 @@ final class NoorReaderComfortUITests: XCTestCase {
         page.swipeRight()
         requirePage(604, app: app)
         verse.press(forDuration: 0.6)
-        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
+        let verseToolsVisible = app.buttons["verse.tafsir"].waitForExistence(timeout: 5)
+        if !verseToolsVisible {
+            // Preserve the real interface hierarchy to distinguish hit testing
+            // from an inaccessible action bar. Do not relax the acceptance gate.
+            print("INLINE_VERSE_ACTIONS_FAILURE_HIERARCHY\n" + app.debugDescription)
+        }
+        XCTAssertTrue(verseToolsVisible)
         XCTAssertEqual(verse.frame, frame, "Selection must preserve the exact Quran ink position")
         for id in ["verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
             let action = app.buttons[id]
