@@ -3,6 +3,28 @@ import UIKit
 @testable import Athar
 
 @MainActor final class InteractiveMushafTests: XCTestCase {
+    func testFittedViewportCentersWholePageAcrossPhoneSizesAndPageResets() {
+        // Reading sizes after system safe areas and the two fixed toolbar lanes.
+        for size in [CGSize(width: 300, height: 448), CGSize(width: 355, height: 567),
+                     CGSize(width: 370, height: 660), CGSize(width: 410, height: 732),
+                     CGSize(width: 760, height: 270)] {
+            let viewport = OriginalMushafViewport(frame: CGRect(origin: .zero, size: size))
+            viewport.layoutIfNeeded()
+            for _ in 0..<3 {
+                viewport.resetToFittedPage()
+                let page = viewport.canvas.convert(viewport.canvas.bounds, to: viewport)
+                XCTAssertEqual(page.midX, viewport.bounds.midX, accuracy: 0.5)
+                XCTAssertEqual(page.midY, viewport.bounds.midY, accuracy: 0.5)
+                XCTAssertGreaterThanOrEqual(page.minX, viewport.bounds.minX - 0.5)
+                XCTAssertGreaterThanOrEqual(page.minY, viewport.bounds.minY - 0.5)
+                XCTAssertLessThanOrEqual(page.maxX, viewport.bounds.maxX + 0.5)
+                XCTAssertLessThanOrEqual(page.maxY, viewport.bounds.maxY + 0.5)
+                XCTAssertEqual(page.width / page.height, 560.0 / 940.0, accuracy: 0.0001)
+                viewport.setZoomScale(viewport.minimumZoomScale * 2, animated: false)
+                viewport.setContentOffset(CGPoint(x: 50, y: 80), animated: false)
+            }
+        }
+    }
     func testAll604ShapedPagesAndActualWordHitRegions() async throws {
         try OriginalMushafCompanion.register()
         let metadata = try OriginalMushafRows.load()
