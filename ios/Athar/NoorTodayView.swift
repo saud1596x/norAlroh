@@ -127,7 +127,7 @@ struct NoorTodayView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 14)], spacing: 14) {
                     NavigationLink { AdhkarView() } label: { tile("أذكارك", "حصن المسلم كاملًا", "sparkles") }
                     NavigationLink { LibraryView() } label: { tile("علاماتك", "\(store.data.bookmarks.count) علامات محفوظة", "bookmark") }.accessibilityIdentifier("home.library")
-                    NavigationLink { MemorizationHistoryView() } label: { tile("سجل الحفظ", "\(memorization.history.count) جلسات مراجعة", "chart.bar") }
+                    NavigationLink { NoorMyJourneyView() } label: { tile("رحلتي", "قراءتك وحفظك ومراجعتك", "chart.bar") }.accessibilityIdentifier("home.myJourney")
                     NavigationLink { LexicalSimilaritiesView() } label: { tile("قارن الآيات", "التشابه اللفظي", "text.magnifyingglass") }
                 }.buttonStyle(NoorPressStyle())
                 HStack(spacing: 8) {
