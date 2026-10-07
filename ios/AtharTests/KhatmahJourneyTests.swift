@@ -50,6 +50,13 @@ final class KhatmahJourneyTests: XCTestCase {
         XCTAssertGreaterThan(extended.expectedFinish!, deadline)
         XCTAssertThrowsError(try KhatmahCalculator.revised(read, date: later, weekdays: [1], daily: nil, deadline: start, reminder: nil))
     }
+    func testReadingAheadResumesAtFirstUnconfirmedPage() throws {
+        let plan = try KhatmahCalculator.make(first: 1, date: start, weekdays: Set(1...7), daily: 20, deadline: nil, reminder: nil, calendar: calendar)
+        let ahead = try KhatmahCalculator.confirm(plan, first: 1, last: 25, date: start)
+        XCTAssertEqual(ahead.due(on: start)?.first, 26)
+        XCTAssertEqual(ahead.due(on: start)?.last, 40)
+        XCTAssertEqual(ahead.completed.count, 25)
+    }
     @MainActor func testPauseEditEarlyCompletionAndPersistence() throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("journey.json")
         defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
