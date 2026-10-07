@@ -267,50 +267,13 @@ struct MemorizationArchive: Codable {
               Set(backup.archive.history.map(\.id)).count == backup.archive.history.count else {
             error = "لا يمكن استبدال تقدمك بنسخة غير صالحة. صدّر بياناتك المحلية إن تعذّر فتحها."; return false
         }
-        // Result UUIDs identify immutable events. An ID collision with different
-        // contents is a conflict, never permission to silently overwrite either copy.
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         do {
-            var results = Dictionary(uniqueKeysWithValues: history.map { ($0.id, $0) })
-            for result in backup.archive.history {
-                if let local = results[result.id], try encoder.encode(local) != encoder.encode(result) {
-                    error = "تعارضت نتيجة محلية مع النسخة السحابية. لم تتغير بياناتك؛ صدّرها قبل معالجة التعارض."; return false
-                }
-                results[result.id] = result
-            }
-            let combined = results.values.sorted {
-                $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date > $1.date
-            }
-            var restored = MemorizationProgress()
-            for result in combined.reversed() { restored.record(result) }
-            // Retain older progress whose full event history may not be present in
-            // a legacy archive. Do not add cumulative counters from two devices.
-            for source in [progress, backup.archive.progress] {
-                for (key, value) in source.verses {
-                    guard var current = restored.verses[key] else { restored.verses[key] = value; continue }
-                    let attempts = max(current.attempts, value.attempts)
-                    let lapses = max(current.lapses, value.lapses)
-                    if value.lastPracticed > current.lastPracticed { current = value }
-                    else if value.lastPracticed == current.lastPracticed {
-                        current.stage = min(current.stage, value.stage)
-                        current.needsHelp = current.needsHelp || value.needsHelp
-                        current.nextReview = min(current.nextReview, value.nextReview)
-                    }
-                    current.attempts = attempts; current.lapses = lapses
-                    restored.verses[key] = current
-                }
-                for (day, keys) in source.practiceDays { restored.practiceDays[day, default: []].formUnion(keys) }
-            }
-            var notes: [UUID: ConfirmedRecitationMistake] = [:]
-            for note in progress.confirmedMistakes + backup.archive.progress.confirmedMistakes {
-                if let local = notes[note.id], try encoder.encode(local) != encoder.encode(note) {
-                    error = "تعارضت ملاحظة في السجل. لم تتغير بياناتك المحلية."; return false
-                }
-                notes[note.id] = note
-            }
-            restored.confirmedMistakes = notes.values.sorted {
-                $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date > $1.date
-            }
+            let local = MemorizationCloudBackup(version: 1, plan: plan,
+                archive: MemorizationArchive(version: 1, history: history, progress: progress, plan: plan))
+            let merged = try MemorizationCloudMerge.merge(local: local, remote: backup, corpus: corpus)
+            let combined = merged.archive.history
+            var restored = merged.archive.progress
             // Importing remote progress does not complete today's ward. Preserve
             // practice actually completed here, rather than clearing it on restore.
             let today = MemorizationProgress.dayKey(Date())

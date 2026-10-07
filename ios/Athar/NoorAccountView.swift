@@ -78,12 +78,34 @@ import FirebaseFirestore
         guard available, !busy, let user = Auth.auth().currentUser, memorization.unreadableHistory == nil else { return }
         busy = true; defer { busy = false }
         do {
-            let data = try JSONEncoder().encode(MemorizationCloudBackup(version: 1, plan: memorization.plan, archive: .init(version: 1, history: memorization.history, progress: memorization.progress)))
-            guard data.count <= NoorCloudPayload.decodedLimit else { throw CocoaError(.fileWriteOutOfSpace) }
-            let compressed = try (data as NSData).compressed(using: .zlib) as Data
-            guard compressed.count <= NoorCloudPayload.compressedLimit else { throw CocoaError(.fileWriteOutOfSpace) }
-            try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").setData(["version": 1, "data": compressed, "updatedAt": FieldValue.serverTimestamp()])
-            message = "حُفظت نسخة تقدم الحفظ في حسابك. لا تتضمن صوتك أو تأملاتك."
+            guard let corpus = QuranResources.corpus else { throw CocoaError(.fileReadCorruptFile) }
+            let local = MemorizationCloudBackup(version: 1, plan: memorization.plan,
+                archive: .init(version: 1, history: memorization.history, progress: memorization.progress, plan: memorization.plan))
+            let database = Firestore.firestore()
+            let reference = database.collection("users").document(user.uid).collection("private").document("memorization")
+            _ = try await database.runTransaction { transaction, errorPointer in
+                do {
+                    let document = try transaction.getDocument(reference)
+                    var merged = try MemorizationCloudMerge.merge(local: local, remote: local, corpus: corpus)
+                    if document.exists {
+                        guard document.data()?["version"] as? Int == 1,
+                              let bytes = document.data()?["data"] as? Data else { throw CocoaError(.fileReadCorruptFile) }
+                        let remote = try JSONDecoder().decode(MemorizationCloudBackup.self, from: NoorCloudPayload.decode(bytes))
+                        merged = try MemorizationCloudMerge.merge(local: local, remote: remote, corpus: corpus)
+                    }
+                    let data = try JSONEncoder().encode(merged)
+                    guard data.count <= NoorCloudPayload.decodedLimit else { throw CocoaError(.fileWriteOutOfSpace) }
+                    let compressed = try (data as NSData).compressed(using: .zlib) as Data
+                    guard compressed.count <= NoorCloudPayload.compressedLimit else { throw CocoaError(.fileWriteOutOfSpace) }
+                    transaction.setData(["version": 1, "data": compressed, "updatedAt": FieldValue.serverTimestamp()], forDocument: reference)
+                    return true
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+            }
+            guard Auth.auth().currentUser?.uid == user.uid else { message = "تغيّر الحساب أثناء الحفظ. بقيت بيانات جهازك محفوظة."; return }
+            message = "دُمج تقدمك مع نسخة حسابك دون تكرار النتائج. لا تتضمن النسخة صوتك أو تأملاتك."
         } catch { message = "لم تُحفظ النسخة السحابية. تحقق من الاتصال وحاول مجددًا؛ تقدمك المحلي محفوظ." }
     }
     func restore(memorization: MemorizationStore) async {
@@ -155,7 +177,7 @@ struct NoorAccountView: View {
             .confirmationDialog("حذف الحساب ونسخة الحفظ السحابية نهائيًا؟ تبقى بيانات جهازك حتى تحذفها من الإعدادات.", isPresented: $deleting, titleVisibility: .visible) {
                 Button("متابعة حذف الحساب", role: .destructive) { account.deletionRequested = true }
             }
-            .confirmationDialog("حفظ خطة الحفظ والسجل والإتقان في الحساب المسجّل حاليًا؟ ستُستبدل نسخته السحابية السابقة.", isPresented: $uploading, titleVisibility: .visible) {
+            .confirmationDialog("حفظ خطة الحفظ والسجل والإتقان في الحساب المسجّل حاليًا؟ سيُدمج السجل مع نسخته السحابية دون حذف النتائج السابقة.", isPresented: $uploading, titleVisibility: .visible) {
                 Button("حفظ النسخة") { Task { await account.backup(memorization: memorization) } }
             }
             .confirmationDialog("دمج سجل الحفظ السحابي مع سجل هذا الجهاز؟ تبقى الخطة والجلسة المحلية.", isPresented: $restoring, titleVisibility: .visible) {
