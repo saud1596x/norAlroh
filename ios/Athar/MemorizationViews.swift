@@ -55,6 +55,14 @@ struct MemorizationProgress: Codable {
     var verses: [String: VerseReviewState] = [:]
     var practiceDays: [String: Set<String>] = [:]
     var confirmedMistakes: [ConfirmedRecitationMistake] = []
+    private enum CodingKeys: String, CodingKey { case version, verses, practiceDays, confirmedMistakes }
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(version, forKey: .version)
+        try values.encode(verses, forKey: .verses)
+        try values.encode(practiceDays.mapValues { $0.sorted() }, forKey: .practiceDays)
+        try values.encode(confirmedMistakes, forKey: .confirmedMistakes)
+    }
     static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
         return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
@@ -292,7 +300,10 @@ struct MemorizationArchive: Codable {
             }
             defaults.set(archive, forKey: "noor.memorization.archive")
             defaults.set(savedPlan, forKey: "noor.memorization.plan")
-            plan = selectedPlan; history = combined; progress = restored; error = nil
+            if plan.chapter != selectedPlan.chapter || plan.from != selectedPlan.from || plan.to != selectedPlan.to || plan.daily != selectedPlan.daily {
+                plan = selectedPlan
+            }
+            history = combined; progress = restored; error = nil
             NoorFocusController.shared.sync(progress: progress)
             return true
         } catch { self.error = "تعذّرت استعادة نسخة الحفظ؛ بقيت بياناتك المحلية محفوظة."; return false }
@@ -311,6 +322,18 @@ struct MemorizationArchive: Codable {
             NoorFocusController.shared.sync(progress: progress); return true
         }
         catch { self.error = "تعذر حفظ نتيجة المراجعة."; return false }
+    }
+    @discardableResult func applySyncedPlan(_ candidate: MemorizationPlan) -> Bool {
+        guard session == nil, practice == nil, unreadableHistory == nil, let corpus = QuranResources.corpus,
+              Self.validPlan(candidate, corpus: corpus) else { return false }
+        if plan.chapter == candidate.chapter && plan.from == candidate.from && plan.to == candidate.to && plan.daily == candidate.daily { return true }
+        do {
+            let archive = try JSONEncoder().encode(MemorizationArchive(version: 1, history: history, progress: progress, plan: candidate))
+            let bytes = try JSONEncoder().encode(candidate)
+            defaults.set(archive, forKey: "noor.memorization.archive")
+            defaults.set(bytes, forKey: "noor.memorization.plan")
+            plan = candidate; return true
+        } catch { error = "تعذر حفظ الخطة المتزامنة. بقيت خطتك المحلية."; return false }
     }
     func erase() {
         NoorFocusController.shared.disable()

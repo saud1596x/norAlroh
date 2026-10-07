@@ -36,14 +36,23 @@ struct AtharApp: App {
                 .environment(\.locale, Locale(identifier: "ar_SA"))
                 .preferredColorScheme(nil)
                 .onOpenURL { if !widgetRouter.open($0) { account.handle($0) } }
-                .onReceive(store.$data) { data in NoorWidgetBridge.publish(data: data, memorization: memorization, page: widgetPage) }
+                .onReceive(store.$data) { data in
+                    NoorWidgetBridge.publish(data: data, memorization: memorization, page: widgetPage)
+                    Task { @MainActor in account.captureLocalChanges() }
+                }
+                .onChange(of: account.uid) { _, _ in account.authenticationChanged() }
+                .onReceive(memorization.$session.dropFirst()) { value in if value == nil { Task { @MainActor in account.captureLocalChanges() } } }
+                .onReceive(memorization.$practice.dropFirst()) { value in if value == nil { Task { @MainActor in account.captureLocalChanges() } } }
                 .onReceive(memorization.$progress.dropFirst()) { _ in
-                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage) }
+                    Task { @MainActor in
+                        NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage)
+                        account.captureLocalChanges(memoryChanged: true)
+                    }
                 }
                 .onReceive(memorization.$plan.dropFirst()) { _ in
-                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage) }
+                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage); account.captureLocalChanges(planChanged: true) }
                 }
-                .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page) }
+                .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page); account.captureLocalChanges() }
                 .onChange(of: notifications.salawat.enabled) { _, _ in
                     Task { await friday.refresh(data: store.data) }
                 }
@@ -66,9 +75,10 @@ struct AtharApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
                     Task { await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences) }
                 }
-                .task { prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
+                .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
+                        account.attach(store: store, memorization: memorization)
                         prayerLocation.activate(store: store)
                         PrayerBackgroundRefresh.submit()
                         NoorFocusController.shared.sync(progress: memorization.progress)
@@ -76,7 +86,7 @@ struct AtharApp: App {
                         Task { await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
                     } else {
                         if speech.listening || phase == .background { speech.stop() }
-                        if phase == .background { recitation.stop(); prayerLocation.deactivate(); PrayerBackgroundRefresh.submit() }
+                        if phase == .background { account.suspendSync(); recitation.stop(); prayerLocation.deactivate(); PrayerBackgroundRefresh.submit() }
                     }
                 }
         }

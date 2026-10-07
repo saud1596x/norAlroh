@@ -183,7 +183,7 @@ struct SettingsView: View {
             }
             Section("مساحة تحترم خصوصيتك") {
                 Text(account.available
-                     ? "الحساب اختياري، ولا إعلانات أو تتبع. بياناتك محفوظة على جهازك؛ لا تُرفع نسخة الحفظ السحابية إلا باختيارك من صفحة الحساب."
+                     ? "الحساب اختياري، ولا إعلانات أو تتبع. بياناتك محفوظة على جهازك؛ لا تُرفع بيانات تقدمك إلا باختيارك من صفحة الحساب. المزامنة لا تتضمن التسجيلات والتأملات والموقع."
                      : "لا حساب مطلوب، ولا إعلانات أو تتبع. رحلاتك وتأملاتك وعلاماتك وسجلات حفظك محفوظة محليًا.")
                 Toggle("تقليل الحركة", isOn: Binding(
                     get: { store.data.lowMotion }, set: { value in store.update { $0.lowMotion = value } }
@@ -200,7 +200,7 @@ struct SettingsView: View {
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge)
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"))
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
                     }
@@ -231,11 +231,12 @@ struct SettingsView: View {
         // Users can still leave explicitly with the Done button.
         .interactiveDismissDisabled()
         .toolbar { ToolbarItem(placement: .topBarLeading) { Button("تم") { dismiss() } } }
-        .confirmationDialog("سيُحذف سجل الرحلات والتأملات والعلامات والحفظ والأذكار والتسجيل والنموذج الصوتي المحلي والإعدادات نهائيًا.", isPresented: $erase, titleVisibility: .visible) {
+        .confirmationDialog("سيُحذف سجل الرحلات والتأملات والعلامات والحفظ والأذكار والتسجيل والنموذج الصوتي المحلي والإعدادات المحلية نهائيًا وتتوقف المزامنة. تبقى بيانات حسابك السحابية حتى تحذف الحساب.", isPresented: $erase, titleVisibility: .visible) {
             Button("حذف كل بياناتي", role: .destructive) {
                 Task {
                 guard !erasing else { return }
                 erasing = true; defer { erasing = false }
+                account.disconnectLocalSync()
                 guard await speech.eraseModel() else { exportMessage = speech.message; return }
                 guard NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
                 guard recitation.erase() else { exportMessage = recitation.message; return }
@@ -248,6 +249,8 @@ struct SettingsView: View {
                     friday.erase()
                     fridayAlarms.disable()
                     UserDefaults.standard.removeObject(forKey: "noor.mushaf.lastPage")
+                    NoorReadingSyncJournal.shared.erase()
+                    UserDefaults.standard.removeObject(forKey: "noor.sync.preReadingMerge")
                     dismiss()
                 }
                 }
