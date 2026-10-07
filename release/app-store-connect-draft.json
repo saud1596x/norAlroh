@@ -6,25 +6,28 @@
   "keywords": "قرآن,مصحف,أذكار,صلاة,حفظ,تسميع,السعودية,مراجعة",
   "version": "1.0",
   "supportEmail": "noralrohsupport@gmail.com",
-  "supportURL": null,
-  "privacyPolicyURL": null,
+  "supportURL": "https://noor-alruh-support.onrender.com/support.html",
+  "privacyPolicyURL": "https://noor-alruh-support.onrender.com/privacy.html",
   "copyright": "2026 سعود الكثيري",
   "reviewSignInRequired": false,
   "reviewContactPhone": null,
   "ageRatingQuestionnaire": "COMPLETE_CURRENT_APP_STORE_CONNECT_QUESTIONNAIRE",
-  "appPrivacyAnswers": "DRAFT_LOCAL_ONLY; verify actual Release and support disclosure criteria",
+  "appPrivacyAnswers": "DRAFT_APPLE_AND_GUEST_WITH_OPT_IN_FIREBASE_SYNC; verify signed Release SDK behavior and current account policy",
   "contentRights": "Third-party resources; see bundled notices and pending QCF permission",
   "priceAndTerritories": "PUBLISHER_CHOICE_REQUIRED",
   "EUTraderStatus": "PUBLISHER_DECLARATION_IF_APPLICABLE",
   "screenshotSource": "Actual final native iOS build only; not browser/mockup images",
   "featuresNotImplemented": [
-    "Tajweed/tashkil correction or Quran-specialized validated automatic scoring",
-    "Cloud account/sync",
-    "Reciter audio library",
+    "Validated tajweed/tashkil correction or comparative recitation-accuracy claim",
     "AI tafsir"
   ],
   "featuresRequiringNativeValidation": [
-    "Optional local WhisperKit transcription, verse tracking and potential word differences"
+    "Apple sign-in, opt-in automatic sync between two devices and account deletion",
+    "Optional on-device transcription, word tracking and probable word differences",
+    "Audio cancellation/retry/offline playback, permission and route interruptions",
+    "Prayer notifications after restart, location changes and Home/Lock Screen widgets",
+    "Full-page interactive Mushaf visual match and glyph hit-testing after zoom"
   ],
-  "reviewNotes": "No sign-in. Optional model download requires explicit confirmation; multilingual large-v3 model about 626 MB plus runtime files. Voice inference stays on device; manual assessment remains separate. Verify final native Release performance and microphone behavior before submission."
+  "reviewNotes": "Core local functions support guest use. Optional Apple sign-in and opt-in reading/memorization sync require completed production configuration and device acceptance before submission. No automatic audio upload. Model download is optional and runs recognition on device; no validated tajweed or accuracy claim. Account deletion is available in-app and may require recent Apple authentication. Keep the minimal UID deletion-security marker disclosure consistent with the deployed rules. This draft is not proof of TestFlight or App Store submission.",
+  "publicURLsValidation": "REQUIRES_LIVE_DEPLOYMENT_AND_ACCOUNT_POLICY_CHECK"
 }

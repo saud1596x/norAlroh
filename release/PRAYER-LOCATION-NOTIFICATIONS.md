@@ -31,3 +31,5 @@ Required real-iPhone evidence, not yet performed:
 5. Choose each salawat cadence, verify quiet hours/varied messages/daily maximum, independent disable and no Friday duplicate; exercise combined Friday/pending budget.
 6. Close app, reboot/unlock, receive pre-existing local prayer and salawat requests. Test Background App Refresh disabled and force quit; verify published finite-horizon warning and renewal after reopening.
 7. VoiceOver/Dynamic Type, battery while location tracking, app deletion/reset, real audio volume and speaker/headphone behavior. Provide real screenshots/video, not generated mockups.
+
+Later regression checkpoint: native run176 on e1fbe0292614b48f4122e8126239c01f9485ff3e completed successfully, including unit/UI/gallery gates and account/extension unsigned Release compilation. The earlier run167 simulator network failure is historical; it is not an unresolved failure automatically attributable to the current source. No physical-device notification, reboot, timetable, sound or visual acceptance is claimed.
