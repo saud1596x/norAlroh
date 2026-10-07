@@ -160,7 +160,7 @@ struct InteractiveMushafReader: View {
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
         .onDisappear { audio.stop(); audio.onVerse = nil }
         .onChange(of: number) { _, value in lastPage = value }
-        .sheet(item: $sheetVerse) { selection in
+        .sheet(item: $sheetVerse, onDismiss: { if audio.playing == nil { selected = nil } }) { selection in
             VerseTools(selection: selection, audio: audio, selected: $selected)
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
