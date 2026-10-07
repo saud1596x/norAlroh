@@ -196,8 +196,14 @@ final class NoorAllScreensTests: XCTestCase {
                 // an assumed safe-area margin. Ignore bars behind a sheet.
                 for bar in app.navigationBars.allElementsBoundByIndex + app.tabBars.allElementsBoundByIndex {
                     let bounds = bar.frame
+                    // The inset button starts exactly at the navigation bar's
+                    // bottom. XCTest's fractional coordinates can report a
+                    // microscopic intersection at that shared edge (CI203).
+                    // Reject actual coverage, then still require isHittable.
+                    let overlap = bounds.intersection(frame)
                     if bounds.width > 0, bounds.height > 0, app.frame.contains(bounds),
-                       bounds.intersects(frame), bar.isHittable { return false }
+                       !overlap.isNull, overlap.width > 0.5, overlap.height > 0.5,
+                       bar.isHittable { return false }
                 }
             }
             return element.isHittable
