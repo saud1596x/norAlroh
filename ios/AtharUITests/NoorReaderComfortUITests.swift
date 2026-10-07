@@ -39,7 +39,30 @@ final class NoorReaderComfortUITests: XCTestCase {
         requirePage(604, app: app)
         verse.press(forDuration: 0.6)
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
+        XCTAssertEqual(verse.frame, frame, "Selection must preserve the exact Quran ink position")
+        for id in ["verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
+            let action = app.buttons[id]
+            XCTAssertTrue(action.isHittable, id)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44, id)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, id)
+            XCTAssertFalse(action.frame.intersects(verse.frame), "Actions must not cover the selected verse: \(id)")
+        }
+        capture(app, "stage2-604-inline-verse-actions")
+        let bookmark = app.buttons["verse.bookmark"]
+        let originalBookmark = bookmark.label
+        bookmark.tap()
+        XCTAssertNotEqual(bookmark.label, originalBookmark)
+        bookmark.tap()
+        XCTAssertEqual(bookmark.label, originalBookmark, "Keep the user's original bookmark state")
+        app.buttons["verse.repeat"].tap()
+        XCTAssertTrue(app.buttons["verse.repeat.start"].waitForExistence(timeout: 5))
         app.buttons["verse.tools.close"].tap()
+        XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 5))
+        verse.press(forDuration: 0.6)
+        verse.tap()
+        XCTAssertFalse(app.buttons["verse.tafsir"].exists, "A normal tap cancels selection")
+        XCTAssertTrue(app.buttons["reader.jump"].exists)
+        XCTAssertEqual(verse.frame, frame)
         page.pinch(withScale: 1.6, velocity: 1)
         page.swipeLeft()
         requirePage(604, app: app)
@@ -58,6 +81,18 @@ final class NoorReaderComfortUITests: XCTestCase {
         requireTools(true, app: app)
         capture(app, "stage1-151-landscape")
         let landscapeFrame = page.frame
+        let landscapeVerse = app.buttons["reader.verse.7:1"]
+        let landscapeVerseFrame = landscapeVerse.frame
+        landscapeVerse.press(forDuration: 0.6)
+        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
+        XCTAssertEqual(landscapeVerse.frame, landscapeVerseFrame)
+        XCTAssertEqual(page.frame, landscapeFrame)
+        for id in ["verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
+            XCTAssertTrue(app.buttons[id].isHittable, id)
+            XCTAssertFalse(app.buttons[id].frame.intersects(landscapeVerse.frame), id)
+        }
+        capture(app, "stage2-151-landscape-verse-actions")
+        app.buttons["verse.tools.close"].tap()
         app.buttons["reader.verse.7:1"].tap()
         requireTools(false, app: app)
         XCTAssertEqual(page.frame, landscapeFrame)
