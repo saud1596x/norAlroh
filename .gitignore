@@ -17,3 +17,8 @@ release/native-build-report.json
 .env.*
 
 ios/Athar/king-fahd-standard39-2.pdf
+
+# Firebase configuration is supplied through secure build configuration.
+ios/Athar/GoogleService-Info.plist
+ios/Athar/Info.plist.before-firebase
+ios/Athar/Info.plist.pending
