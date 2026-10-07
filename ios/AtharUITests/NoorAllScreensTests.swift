@@ -198,8 +198,18 @@ final class NoorAllScreensTests: XCTestCase {
                 app.navigationBars.descendants(matching: .any).matching(identifier: identifier).firstMatch.exists
             let container = scrollingSurface()
             if !isNavigationControl && container != app && container.frame.intersects(frame) {
-                let viewport = container.frame.intersection(app.frame.insetBy(dx: 0, dy: 60))
+                // Use the actual scroll/window intersection. A fixed 60pt
+                // window inset rejected the fully visible last license row
+                // in CI150 (row bottom 902, window bottom 956, inset 896).
+                let viewport = container.frame.intersection(app.frame)
                 guard !viewport.isEmpty, viewport.contains(frame) else { return false }
+                // Visible navigation/tab chrome is a real obstruction, unlike
+                // an assumed safe-area margin. Ignore bars behind a sheet.
+                for bar in app.navigationBars.allElementsBoundByIndex + app.tabBars.allElementsBoundByIndex {
+                    let bounds = bar.frame
+                    if bounds.width > 0, bounds.height > 0, app.frame.contains(bounds),
+                       bounds.intersects(frame), bar.isHittable { return false }
+                }
             }
             return element.isHittable
         }
@@ -219,7 +229,7 @@ final class NoorAllScreensTests: XCTestCase {
             let description = app.debugDescription
             let hierarchy = XCTAttachment(string: description)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
-            print("NAVIGATION_TARGET_FAILURE \(element.identifier)\n\(description)")
+            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(element.frame) viewport=\(scrollingSurface().frame.intersection(app.frame))\n\(description)")
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
