@@ -2,7 +2,7 @@ name: Mushaf stage 1 native acceptance
 on:
   workflow_dispatch:
   push:
-    branches: [mushaf-ux-stage1-20261007]
+    branches: [mushaf-viewport-20261007]
     paths: ['.github/workflows/mushaf-reader.yml', 'ios/Athar/InteractiveMushaf*.swift', 'ios/AtharTests/MushafViewportTests.swift', 'ios/AtharUITests/NoorReaderComfortUITests.swift']
 permissions:
   contents: read
@@ -63,4 +63,11 @@ jobs:
           path: |
             release/stage1-${{ matrix.display }}.xcresult
             release/stage1-${{ matrix.display }}-screens
+          retention-days: 14
+      - name: Export small actual screenshot bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mushaf-stage1-screens-${{ matrix.display }}
+          path: release/stage1-${{ matrix.display }}-screens
           retention-days: 14
