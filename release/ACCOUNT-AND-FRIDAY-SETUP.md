@@ -1,15 +1,15 @@
 # Accounts and Friday release gates
 
-The source includes Apple and Google authentication through Firebase Auth and private, opt-in memorization backups through Firestore. Firebase project `noor-alruh` now exists and iOS bundle `com.saud1596x.nooralruh` is registered. Google and Apple providers remain disabled; the Google support-email selector only offers the owner’s personal email, which must not be exposed without changing the approved public support configuration. The default project does not enable account SDKs; `ios/project-accounts.yml` builds the complete Screen Time + account integration. Neither build may be described as offering working cloud accounts before the gates below pass.
+The current account release uses Apple authentication through Firebase Auth and private, opt-in reading and memorization synchronization through Firestore. On 2026-10-07 the live Firebase console showed Apple enabled; Google remains disabled. The iOS application is registered in `noor-alruh` as `com.saud1596x.nooralruh`. The default project does not enable account SDKs; `ios/project-accounts.yml` builds the Screen Time and account integration. Actual sign-in, two-device sync and deletion acceptance still require the signed build and real devices.
 
 ## Required configuration
 
 1. Register iOS bundle `com.saud1596x.nooralruh` in a Firebase project controlled by the app owner. Disable optional Analytics; no Analytics SDK is linked.
-2. Enable Google and Apple identity providers. Enable Sign in with Apple on the Apple App ID and regenerate provisioning profiles. Apple credentials belong in the provider console, never in the repository.
-3. Add the real `GoogleService-Info.plist` to `ios/Athar/` and its `REVERSED_CLIENT_ID` to the app's `CFBundleURLTypes`. Account UI stays unavailable without configuration.
-4. Deploy `backend/firestore.rules` before activating cloud backups. Only the authenticated UID can read/write its private memorization document. All other database paths are denied.
-5. Update the public privacy policy, the generated in-app policy, and App Store privacy answers for authentication identity and optional cloud memorization backups. Current policy still describes local-only operation and blocks account release.
-6. On real iPhones, test both identity providers, cancellation, provider outage, restored session, sign-out, identity separation, missing backup, offline backup, invalid backup, and account deletion with recent reauthentication. Do not automatically link Google and Apple identities by email.
+2. Apple provider setup is saved. Sign in with Apple must remain enabled on the Apple App ID and the distribution profile. Apple credentials belong in the provider console, never in the repository. Google is outside the current release.
+3. The original `GoogleService-Info.plist` is deferred by the owner. Store its base64 in protected Codemagic `noor_release` variable `NOOR_FIREBASE_IOS_PLIST_BASE64`; the installer verifies project, bundle and app IDs. Apple-only setup requires no Google OAuth client or reversed client ID.
+4. Current `backend/firestore.rules` were published in the live Firebase console on 2026-10-07. Only the authenticated owner can access private readingState and memorization documents. A deletion marker prevents stale sessions recreating a deleted account's data. This is not device acceptance.
+5. `prepare-publishing.py --accounts` generates the account policy and app-owned privacy declarations together; `--accounts --check` and the IPA gate reject a stale local manifest. Reconcile App Store privacy answers and the publicly served account policy with the final signed build and its SDK manifests before submission.
+6. On real iPhones, test Apple sign-in, cancellation, provider outage, restored session, sign-out, identity separation, missing backup, offline backup, invalid backup, and account deletion with recent reauthentication. Do not automatically link identities by email.
 7. Verify deletion removes the account and its cloud backup. Local guest data has an independent deletion control.
 
 ## Friday behavior
