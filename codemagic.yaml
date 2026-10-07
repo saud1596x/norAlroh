@@ -44,6 +44,10 @@ workflows:
       ios_signing:
         provisioning_profiles:
           - noor-alruh-appstore
+          - noor-alruh-widgets-appstore
+          - noor-alruh-focus-monitor-appstore
+          - noor-alruh-focus-shield-appstore
+          - noor-alruh-focus-action-appstore
         certificates:
           - noor-alruh-distribution
     scripts:
@@ -59,21 +63,31 @@ workflows:
           python3 scripts/prepare-mushaf-companion.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
-          cd ios && xcodegen generate && cd ..
+          python3 scripts/install-production-firebase.py
+          python3 scripts/prepare-publishing.py --accounts
+          cd ios && xcodegen generate --spec project-accounts.yml && cd ..
       - name: Audit local content
         script: |
-          python3 scripts/prepare-publishing.py --check
+          python3 scripts/prepare-publishing.py --accounts --check
           python3 scripts/check-source.py --swiftc "$(xcrun --find swiftc)"
           python3 scripts/audit-content.py
           python3 scripts/verify-quran-text.py
       - name: Create signed archive
         script: |
+          #!/bin/bash
+          set -euo pipefail
+          noor_latest_build=$(app-store-connect get-latest-testflight-build-number 6819365625 --platform=IOS)
+          if [[ ! "$noor_latest_build" =~ ^[0-9]+$ ]]; then
+            echo "Cannot assign release build: App Store Connect returned no valid build number."
+            exit 1
+          fi
+          noor_next_build=$((10#$noor_latest_build + 1))
+          (cd ios && agvtool new-version -all "$noor_next_build")
           xcode-project use-profiles --project ios/Athar.xcodeproj
           xcode-project build-ipa \
             --project ios/Athar.xcodeproj \
             --scheme Athar \
-            --config Release \
-            --archive-flags="CURRENT_PROJECT_VERSION=$((BUILD_NUMBER + 1))"
+            --config Release
       - name: Verify Quran resources inside signed IPA
         script: |
           python3 - <<'PY'
@@ -93,8 +107,12 @@ workflows:
                   assert hashlib.sha256(data).hexdigest() == entry['sha256'], 'Incorrect Quran font hash'
           print('SIGNED_IPA_QURAN_RESOURCES_VERIFIED: 604 fonts and manifest')
           PY
+      - name: Verify complete account and extension payload before upload
+        script: |
+          python3 scripts/verify-release-ipa.py
     artifacts:
       - build/ios/ipa/*.ipa
+      - release/release-payload-report.json
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
