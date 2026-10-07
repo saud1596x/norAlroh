@@ -145,24 +145,35 @@ final class NoorAllScreensTests: XCTestCase {
     }
 
     private func tap(_ element: XCUIElement, in app: XCUIApplication, performTap: Bool = true) {
+        let list = app.collectionViews.containing(.button, identifier: element.identifier).firstMatch
+        let scroll = app.scrollViews.containing(.button, identifier: element.identifier).firstMatch
+        let container = list.exists ? list : (scroll.exists ? scroll : app)
+        func ready() -> Bool {
+            guard element.exists && element.isHittable else { return false }
+            guard container != app else { return true }
+            // A partially clipped List row can report isHittable even though
+            // its synthesized tap lands in the sheet's bottom safe area.
+            let viewport = container.frame.intersection(app.frame.insetBy(dx: 0, dy: 60))
+            return !viewport.isEmpty && viewport.contains(element.frame)
+        }
         // Returning to a long List can restore its scroll position. Search both
         // directions instead of assuming every destination starts at its top.
-        if !(element.exists && element.isHittable) {
+        if !ready() {
             for _ in 0..<7 {
-                if element.exists && element.isHittable { break }
-                app.swipeDown()
+                if ready() { break }
+                container.swipeDown()
             }
         }
         for _ in 0..<14 {
-            if element.exists && element.isHittable { break }
-            app.swipeUp()
+            if ready() { break }
+            container.swipeUp()
         }
-        if !(element.exists && element.isHittable) {
+        if !ready() {
             let hierarchy = XCTAttachment(string: app.debugDescription)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
-        XCTAssertTrue(element.isHittable)
+        XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
         if performTap { element.tap() }
     }
     private func back(_ app: XCUIApplication) {
