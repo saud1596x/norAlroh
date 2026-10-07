@@ -1,0 +1,30 @@
+name: Firebase security checks
+on:
+  workflow_dispatch:
+  push:
+    paths: ['backend/**', 'scripts/configure-firebase.py', 'scripts/tests/test_firebase_config.py', '.github/workflows/firebase-security.yml']
+  pull_request:
+    paths: ['backend/**', 'scripts/configure-firebase.py', 'scripts/tests/test_firebase_config.py', '.github/workflows/firebase-security.yml']
+permissions:
+  contents: read
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify Firebase configuration tooling
+        run: python3 -m unittest discover -s scripts/tests -p test_firebase_config.py -v
+      - name: Install pinned emulator test dependencies
+        working-directory: backend
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test actual Firestore rules in isolated demo emulator
+        working-directory: backend
+        run: npm test
