@@ -77,7 +77,7 @@ import WhisperKit
                     guard free >= 1_500_000_000 else { throw CocoaError(.fileWriteOutOfSpace) }
                     let downloaded = try await WhisperKit.download(variant: Self.model, downloadBase: cache) { [weak self] progress in
                         let fraction = progress.fractionCompleted
-                        Task { @MainActor in guard let self, preparing else { return }; downloadProgress = min(1, max(0, fraction)) }
+                        Task { @MainActor in guard let self, self.preparing else { return }; self.downloadProgress = min(1, max(0, fraction)) }
                     }
                     try Task.checkCancellation(); selectedFolder = downloaded.path
                 }

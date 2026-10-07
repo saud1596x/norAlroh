@@ -128,15 +128,15 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
             active = key; received = 0; expected = 0; checking = false; message = nil; generation = UUID(); let token = generation
             persistPending()
             let delegate = NoorAudioTransfer(progress: { [weak self] bytes, total in Task { @MainActor in
-                guard let self, token == generation else { return }; received = bytes; expected = total
+                guard let self, token == self.generation else { return }; self.received = bytes; self.expected = total
             } }, finish: { [weak self] temporary, response in Task { @MainActor in
                 guard let self else { if let temporary { try? FileManager.default.removeItem(at: temporary) }; return }
-                await install(temporary, response: response, key: key, token: token)
+                await self.install(temporary, response: response, key: key, token: token)
             } }, failure: { [weak self] error in Task { @MainActor in
-                guard let self, token == generation else { return }
-                if let bytes = error.userInfo[NSURLSessionDownloadTaskResumeData] as? Data { try? bytes.write(to: resumeFile(key), options: .atomic) }
-                else { try? FileManager.default.removeItem(at: resumeFile(key)) }
-                fail("توقف التنزيل. تحقق من الاتصال والمساحة، ثم اختر إعادة المحاولة.")
+                guard let self, token == self.generation else { return }
+                if let bytes = error.userInfo[NSURLSessionDownloadTaskResumeData] as? Data { try? bytes.write(to: self.resumeFile(key), options: .atomic) }
+                else { try? FileManager.default.removeItem(at: self.resumeFile(key)) }
+                self.fail("توقف التنزيل. تحقق من الاتصال والمساحة، ثم اختر إعادة المحاولة.")
             } })
             let config = URLSessionConfiguration.ephemeral; config.timeoutIntervalForRequest = 45; config.timeoutIntervalForResource = 600
             let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil); self.session = session
@@ -180,10 +180,10 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         guard let key = active, !cancelling, let stopped = task else { return }
         generation = UUID(); let token = generation; cancelling = true
         stopped.cancel(byProducingResumeData: { [weak self] bytes in Task { @MainActor in
-            guard let self, generation == token else { return }
-            if let bytes { try? bytes.write(to: resumeFile(key), options: .atomic) }
-            cancelling = false
-            fail("أُوقف التنزيل. يمكنك استئنافه؛ يبدأ من جديد إذا لم يدعم الخادم الاستئناف.")
+            guard let self, self.generation == token else { return }
+            if let bytes { try? bytes.write(to: self.resumeFile(key), options: .atomic) }
+            self.cancelling = false
+            self.fail("أُوقف التنزيل. يمكنك استئنافه؛ يبدأ من جديد إذا لم يدعم الخادم الاستئناف.")
         } })
     }
     @discardableResult func erase() -> Bool {
