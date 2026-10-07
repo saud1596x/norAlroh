@@ -2,8 +2,8 @@
   "channel": "TESTFLIGHT_PREVIEW",
   "authorizedAt": "2026-10-07T00:11:20+03:00",
   "authorization": "User requested publishing the new TestFlight version after disclosure of unfinished visual review and service setup.",
-  "nativeRun": 37618599248,
-  "nativeSourceCommit": "05d28d6e860ac0e20c546ca7b0de9d29e92a3375",
+  "nativeRun": 37663422598,
+  "nativeSourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
   "nativeRunState": "success",
   "reviewedSourceHashes": {
     "ios/Athar/InteractiveMushafCanvas.swift": "71b005b5f736bec59152d210a5fa9e2cb8a5ec8a3767df7b4215db72af11ed61",
@@ -22,7 +22,7 @@
     "Family Controls distribution request submitted, awaiting Apple review"
   ],
   "submitToAppStore": false,
-  "nativeEvidenceScope": "CI189 verifies unchanged reader code, bounds and interaction with the original font manifest. The p245 cmap repair is separately reviewed below; fresh full native run211 remains pending. No actual-device, visual-reference or production-service acceptance.",
+  "nativeEvidenceScope": "CI211 passed with repaired p245 font: native Release unit and UI/navigation tests, plus unsigned account/four-extension Release compilation. No actual-device, visual-reference or production-service acceptance.",
   "fontRepairReview": {
     "appleRejection": "ITMS-90853: QCF2245 / p245.ttf truncated Macintosh format-6 cmap",
     "sourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
@@ -36,7 +36,7 @@
     },
     "freshNativeRun": {
       "id": 37663422598,
-      "state": "running"
+      "state": "success"
     },
     "appleAcceptance": "NOT_YET_VERIFIED"
   }
