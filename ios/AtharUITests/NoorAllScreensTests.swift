@@ -133,6 +133,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "31-support")
         back(app)
         tap(app.buttons["settings.sources"], in: app)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "licenses.list").firstMatch.waitForExistence(timeout: 5), "Wait for the actual destination before searching its contents")
         capture(app, "24-licenses")
         for (identifier, name) in [("tanzil", "26-tanzil-license"), ("qcf", "27-qcf-license"), ("amiri", "28-amiri-license"), ("adhan", "29-adhan-license"), ("whisperkit", "33-whisperkit-license"), ("whispermodel", "34-whisper-model-license"), ("whispercomponents", "35-whisper-components")] {
             tap(app.buttons["sources.\(identifier)"], in: app)
@@ -144,9 +145,21 @@ final class NoorAllScreensTests: XCTestCase {
     }
 
     private func tap(_ element: XCUIElement, in app: XCUIApplication, performTap: Bool = true) {
-        for _ in 0..<7 {
+        // Returning to a long List can restore its scroll position. Search both
+        // directions instead of assuming every destination starts at its top.
+        if !(element.exists && element.isHittable) {
+            for _ in 0..<7 {
+                if element.exists && element.isHittable { break }
+                app.swipeDown()
+            }
+        }
+        for _ in 0..<14 {
             if element.exists && element.isHittable { break }
             app.swipeUp()
+        }
+        if !(element.exists && element.isHittable) {
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         XCTAssertTrue(element.isHittable)
