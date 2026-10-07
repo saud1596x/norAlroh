@@ -161,6 +161,7 @@ struct LibraryView: View {
 struct SettingsView: View {
     @EnvironmentObject var store: AtharStore
     @EnvironmentObject var notifications: PrayerNotifications
+    @EnvironmentObject var prayerLocation: PrayerLocationController
     @EnvironmentObject var dhikrCounters: DhikrCounterStore
     @EnvironmentObject var memorization: MemorizationStore
     @EnvironmentObject var recitation: LocalRecitationRecorder
@@ -237,6 +238,7 @@ struct SettingsView: View {
                 guard recitation.erase() else { exportMessage = recitation.message; return }
                 if store.erase() {
                     notifications.erasePreferences()
+                    prayerLocation.erase()
                     dhikrCounters.erase()
                     memorization.erase()
                     speech.eraseSavedPosition()

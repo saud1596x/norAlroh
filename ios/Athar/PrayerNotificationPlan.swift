@@ -4,6 +4,8 @@ struct PrayerNotificationPreferences: Codable, Equatable {
     var prayers: [String: Bool] = ["fajr": true, "dhuhr": true, "asr": true, "maghrib": true, "isha": true]
     var advanceMinutes: Int = 0
     var soundEnabled: Bool = true
+    // Optional to decode existing v1 preferences without resetting any choice.
+    var soundStyle: String? = "adhan"
 }
 
 struct PlannedPrayerNotification: Identifiable {
@@ -22,7 +24,8 @@ struct PlannedPrayerNotification: Identifiable {
 enum PrayerNotificationPlan {
     static let prefix = "noor.prayer."
     static let horizonDays = 10
-    static let maximumRequests = 50
+    // Reserve 7 daily salawat slots and 14 Friday events below the 64-request budget.
+    static let maximumRequests = 42
 
     static func make(data: DeviceData, preferences: PrayerNotificationPreferences, now: Date = Date()) -> [PlannedPrayerNotification] {
         var calendar = Calendar(identifier: .gregorian)

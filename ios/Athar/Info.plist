@@ -3,7 +3,14 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleURLTypes</key>
-	<array><dict><key>CFBundleURLSchemes</key><array><string>nooralruh</string></array></dict></array>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nooralruh</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ar</string>
 	<key>CFBundleDisplayName</key>
@@ -56,6 +63,16 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نستخدم موقعك بإذنك لحساب مواقيت الصلاة حسب البلد والمنطقة. نحتفظ بآخر موقع صالح على جهازك عند تعذر التحديث.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.saud1596x.nooralruh.prayer-refresh</string>
 	</array>
 </dict>
 </plist>

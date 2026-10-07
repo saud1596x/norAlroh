@@ -47,7 +47,7 @@ enum FridayPlan {
         }
         for row in PrayerCalculator.rows(data: data, date: day) where !row.sunrise {
             let fire = row.id == "fajr" ? row.date.addingTimeInterval(-Double(p.wakeAdvance * 60)) : row.date
-            append(row.id, fire, row.id == "fajr" && p.wakeAdvance > 0 ? "استعد لصلاة الفجر" : "صلاة \(row.name)", "\(data.city.name) · مواقيت محسوبة حسب إعداداتك.", prayer: true)
+            append(row.id, fire, row.id == "fajr" && p.wakeAdvance > 0 ? "استعد لصلاة الفجر" : "صلاة \(row.name)", "\(data.city.name) · مواقيت محسوبة حسب موقعك المحفوظ.", prayer: true)
         }
         append("ghusl", time(p.ghuslMinutes), "الاستعداد للجمعة", "تذكير بالغسل والاستعداد لصلاة الجمعة.")
         append("early", time(max(0, p.mosqueMinutes - p.earlyMinutes)), "وقت التبكير", "استعد للخروج للمسجد؛ الموعد الذي اخترته أنت، وليس وقتًا مؤكّدًا للخطبة.")
@@ -56,7 +56,7 @@ enum FridayPlan {
             guard minutes < p.mosqueMinutes - 30 || minutes > p.mosqueMinutes + 90 else { continue }
             append("salawat.\(minutes)", time(minutes), "الصلاة على النبي ﷺ", "اللهم صل وسلم على نبينا محمد. أكمل هدفك الشخصي بهدوء.")
         }
-        // Leave room for the existing 50 prayer notifications under iOS's pending request budget.
+        // Leave room for the 42 prayer and 7 salawat notifications under iOS's pending request budget.
         return Array(result.sorted { $0.date < $1.date }.prefix(14))
     }
 }

@@ -64,6 +64,8 @@ import CryptoKit
             for event in events {
                 guard revision == generation else { return }
                 let suffix = event.id.split(separator: ".").last.map(String.init) ?? ""
+                let salawat = defaults.data(forKey: "noor.salawat.preferences.v1").flatMap { try? JSONDecoder().decode(SalawatPreferences.self, from: $0) }
+                if event.id.contains(".salawat."), salawat?.enabled == true { continue }
                 if event.prayer && prayersEnabled && existingPrayers.prayers[suffix] == true { continue }
                 let content = UNMutableNotificationContent(); content.title = "نور الروح · " + event.title; content.body = event.body; content.sound = .default
                 var components = FridayPlan.calendar(for: data.city).dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.date)

@@ -104,7 +104,12 @@ struct City: Codable, Identifiable, Hashable {
     }()
     static var defaultCity: City { all.first(where: { $0.id == "makkah" }) ?? fallback }
     static func normalized(_ value: City) -> City {
-        all.first(where: { $0.id == value.id }) ?? all.first(where: { $0.name == value.name }) ?? defaultCity
+        if value.id.hasPrefix("location."), value.latitude.isFinite, value.longitude.isFinite,
+           (-90...90).contains(value.latitude), (-180...180).contains(value.longitude),
+           let code = value.countryCode, code.count == 2,
+           code.allSatisfy({ $0.isASCII && $0.isUppercase }),
+           TimeZone(identifier: value.timeZone) != nil { return value }
+        return all.first(where: { $0.id == value.id }) ?? all.first(where: { $0.name == value.name }) ?? defaultCity
     }
 
 }
@@ -116,6 +121,7 @@ struct DeviceData: Codable {
     var city = City.defaultCity
     var method = "UmmAlQura"
     var hanafi = false
+    var locationUpdatedAt: Date?
     var lowMotion = false
     var largeQuran = false
 }

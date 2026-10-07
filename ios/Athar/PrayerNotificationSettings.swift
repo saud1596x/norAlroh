@@ -20,7 +20,7 @@ struct PrayerNotificationSettings: View {
                     }
                 }
             } footer: {
-                Text("نجدول مواقيت الأيام العشرة القادمة ونجدّدها عند فتح التطبيق. صوت التنبيه هو صوت النظام.")
+                Text("تنبيهات محلية للأيام القادمة تعمل بعد إغلاق التطبيق. نجددها عند الفتح وتغير الموقع، وعند السماح بالتحديث في الخلفية. افتح التطبيق دوريًا لتجديدها.")
             }
             Section("الصلوات") {
                 ForEach(rows, id: \.0) { id, name in
@@ -38,11 +38,32 @@ struct PrayerNotificationSettings: View {
                     Text("قبل الصلاة بـ١٠ دقائق").tag(10)
                     Text("قبل الصلاة بـ١٥ دقيقة").tag(15)
                 }
-                Toggle("صوت النظام", isOn: Binding(get: { notifications.preferences.soundEnabled }, set: { value in
-                    Task { await notifications.setSound(value, store: store) }
-                }))
+                Picker("صوت تنبيه الصلاة", selection: Binding(get: {
+                    notifications.preferences.soundEnabled ? notifications.preferences.soundStyle ?? "system" : "silent"
+                }, set: { value in Task { await notifications.setSoundStyle(value, store: store) } })) {
+                    Text("أذان قصير").tag("adhan")
+                    Text("صوت النظام").tag("system")
+                    Text("بدون صوت").tag("silent")
+                }
+                Text("مقطع الأذان ٢٤ ثانية. إذا تعذر تشغيله نستخدم صوت النظام. الصوت يخضع لإعدادات الصامت والتركيز في iPhone.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            Section("المدينة") {
+            Section("الصلاة على النبي ﷺ") {
+                Toggle("تذكير هادئ", isOn: Binding(get: { notifications.salawat.enabled }, set: { value in
+                    Task { await notifications.setSalawatEnabled(value, store: store) }
+                })).disabled(notifications.requestingPermission)
+                Picker("التكرار", selection: Binding(get: { notifications.salawat.intervalHours }, set: { value in
+                    Task { await notifications.setSalawatInterval(value, store: store) }
+                })) {
+                    Text("كل ساعتين").tag(2)
+                    Text("كل ٤ ساعات").tag(4)
+                    Text("كل ٦ ساعات").tag(6)
+                    Text("مرة يوميًا").tag(12)
+                }
+                Text("تذكيرات صامتة بين ٩ صباحًا و٩ مساءً، بحد أقصى ٧ يوميًا. لا نكرر تذكيرات الجمعة عند تفعيل هذا الخيار.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("الموقع المحفوظ") {
                 Label(store.data.city.name, systemImage: "mappin.and.ellipse")
                 if notifications.enabled { Text("\(notifications.scheduledCount) تنبيه مجدول").foregroundStyle(.secondary) }
             }
