@@ -1,6 +1,8 @@
 import XCTest
+import UIKit
 
 final class NoorReaderComfortUITests: XCTestCase {
+    private var screenshotBackground: UInt32?
     override func setUpWithError() throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
@@ -113,7 +115,37 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 20), .completed)
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
+        // Capture the physical screen, not an application's cropped coordinate
+        // region after rotation. Keep the original screenshot bytes as evidence.
+        let screen = XCUIScreen.main.screenshot()
+        let shot = XCTAttachment(screenshot: screen)
         shot.name = name; shot.lifetime = .keepAlways; add(shot)
+        requireCompleteScreenshot(screen, name: name)
+    }
+    private func requireCompleteScreenshot(_ screenshot: XCUIScreenshot, name: String) {
+        guard let image = screenshot.image.cgImage else { XCTFail("Missing screenshot bitmap: \(name)"); return }
+        let width = image.width, height = image.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        var colors: [UInt32: Int] = [:]
+        bytes.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+            let pixels = buffer.bindMemory(to: UInt8.self)
+            for y in stride(from: 0, to: height, by: 8) { for x in stride(from: 0, to: width, by: 8) {
+                let offset = (y * width + x) * 4
+                let color = UInt32(pixels[offset]) << 16 | UInt32(pixels[offset + 1]) << 8 | UInt32(pixels[offset + 2])
+                colors[color, default: 0] += 1
+            } }
+        }
+        guard let dominant = colors.max(by: { $0.value < $1.value })?.key else { XCTFail("Unreadable screenshot: \(name)"); return }
+        // Use the first reader's actual background, including dark appearance.
+        // A large black region or cropped off-screen window must fail acceptance.
+        let reference = screenshotBackground ?? dominant
+        screenshotBackground = reference
+        let samples = colors.values.reduce(0, +)
+        let fraction = Double(colors[reference, default: 0]) / Double(samples)
+        XCTAssertGreaterThan(fraction, 0.75, "Incomplete screen capture \(name): reader background occupies only \(fraction)")
     }
 }
