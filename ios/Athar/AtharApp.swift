@@ -13,7 +13,7 @@ struct AtharApp: App {
     @StateObject private var friday = FridayStore()
     @StateObject private var fridayAlarms = FridayAlarms()
     @StateObject private var account = NoorAccountStore()
-    @StateObject private var widgetRouter = NoorWidgetRouter()
+    @StateObject private var widgetRouter = NoorWidgetRouter.shared
     @AppStorage("noor.mushaf.lastPage") private var widgetPage = 1
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reducedMotion

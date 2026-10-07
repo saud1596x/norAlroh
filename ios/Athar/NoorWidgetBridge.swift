@@ -32,8 +32,14 @@ import WidgetKit
 }
 
 @MainActor final class NoorWidgetRouter: ObservableObject {
+    static let shared = NoorWidgetRouter()
     struct Destination: Identifiable { let id = UUID(); let host: String; let page: Int? }
     @Published var destination: Destination?
+    @discardableResult func openNotification(destination host: String) -> Bool {
+        guard ["prayers", "dhikr"].contains(host) else { return false }
+        destination = .init(host: host, page: nil)
+        return true
+    }
     @discardableResult func open(_ url: URL) -> Bool {
         guard url.scheme == "nooralruh", let host = url.host,
               ["reading", "prayers", "dhikr", "ward", "review"].contains(host),

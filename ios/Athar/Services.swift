@@ -20,6 +20,11 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         notification.request.content.sound == nil ? [.banner] : [.banner, .sound]
     }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              let destination = response.notification.request.content.userInfo["destination"] as? String else { return }
+        await MainActor.run { _ = NoorWidgetRouter.shared.openNotification(destination: destination) }
+    }
 }
 
 @MainActor protocol PrayerNotificationClient {
