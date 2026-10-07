@@ -1,5 +1,6 @@
 """Generate consistent offline legal content and unpublished static support pages."""
-import argparse, hashlib, html, json, re, sys
+import argparse, hashlib, html, json, plistlib, re, sys
+from account_privacy import configure as configure_privacy
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
@@ -27,6 +28,8 @@ legal = {'version': content['version'], 'updatedAt': content['updatedAt'],
          'appName': config['displayName'], 'publisherName': config['publisherName'],
          'accountMode': 'firebase-opt-in' if args.accounts else 'local-only', 'contact': contact, 'documents': content['documents']}
 outputs = {'ios/Athar/app-legal.json': json.dumps(legal, ensure_ascii=False, indent=2) + '\n'}
+privacy_path = ROOT / 'ios/Athar/PrivacyInfo.xcprivacy'
+privacy = configure_privacy(plistlib.loads(privacy_path.read_bytes()), args.accounts)
 draft = not email
 escape = html.escape
 navigation = '<nav aria-label="صفحات المساعدة">' + ' · '.join(
@@ -47,10 +50,16 @@ for name, text in outputs.items():
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
+if args.check:
+    if plistlib.loads(privacy_path.read_bytes()) != privacy:
+        raise SystemExit('Privacy manifest does not match the selected account mode')
+else:
+    privacy_path.write_bytes(plistlib.dumps(privacy, sort_keys=False))
 report = {'status': 'GENERATED_CONTENT_CURRENT', 'publicWebsite': 'NOT_DEPLOYED_BY_THIS_SCRIPT',
           'accountMode': legal['accountMode'], 'supportEmailConfigured': bool(email), 'draftWithoutSupportEmail': draft,
           'publicPrivacyURLConfigured': bool(config.get('privacyURL')), 'publicSupportURLConfigured': bool(config.get('supportURL')),
           'files': {name: hashlib.sha256(text.encode()).hexdigest() for name, text in outputs.items()}}
+report['files']['ios/Athar/PrivacyInfo.xcprivacy'] = hashlib.sha256(privacy_path.read_bytes()).hexdigest()
 if not args.check:
     (ROOT / 'release/publishing-content-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
 print(json.dumps(report, ensure_ascii=False, indent=2))

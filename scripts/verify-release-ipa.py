@@ -7,6 +7,7 @@ import json
 import plistlib
 from pathlib import Path
 import zipfile
+from account_privacy import validate_accounts
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = 'com.saud1596x.nooralruh'
@@ -37,6 +38,7 @@ def verify(path):
         configuration = plistlib.loads(ipa.read(root + 'GoogleService-Info.plist'))
         module.validate(configuration)
         legal = json.loads(ipa.read(root + 'app-legal.json'))
+        validate_accounts(plistlib.loads(ipa.read(root + 'PrivacyInfo.xcprivacy')))
         if legal.get('accountMode') != 'firebase-opt-in':
             raise ValueError('Bundled privacy policy still describes local-only use; review and publish the actual account policy first')
         if legal.get('contact', {}).get('supportEmail') != 'noralrohsupport@gmail.com':
