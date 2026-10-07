@@ -243,7 +243,8 @@ final class PrayerNotifications: ObservableObject {
                     content.threadIdentifier = "noor.salawat"; content.sound = nil
                     content.userInfo = ["destination": "dhikr"]
                     var components = DateComponents(); components.hour = slot.hour; components.minute = 0
-                    components.timeZone = calendar.timeZone
+                    // Keep quiet reminders on the phone's local clock during
+                    // travel, even before the saved prayer location updates.
                     try await client.add(.init(identifier: slot.id, content: content,
                         trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)))
                     guard generation == revision else { break }
