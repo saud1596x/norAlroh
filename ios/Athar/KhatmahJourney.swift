@@ -163,6 +163,7 @@ enum KhatmahCalculator {
     private var unreadable = false
     private var reminderTask: Task<Void, Never>?
     var active: KhatmahPlan? { archive.plans.first { $0.id == archive.activeID } }
+    var exportBytes: Data? { try? Data(contentsOf: file) }
     init(file: URL? = nil) {
         self.file = file ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("noor-khatmah-v1.json")
         if FileManager.default.fileExists(atPath: self.file.path) {
@@ -192,6 +193,16 @@ enum KhatmahCalculator {
             guard let plan = active else { throw KhatmahFailure.invalid }
             return adopt(try KhatmahCalculator.confirm(plan, first: first, last: last, date: date))
         } catch { self.error = error.localizedDescription; return false }
+    }
+    // Called only by the existing explicit "delete all my data" confirmation.
+    @discardableResult func erase() async -> Bool {
+        if let reminderTask { await reminderTask.value }
+        do {
+            if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
+            archive = Archive(); unreadable = false; error = nil
+            await refreshReminders()
+            return true
+        } catch { self.error = "تعذر حذف سجل الختمة؛ بقي محفوظًا على الجهاز."; return false }
     }
     private func persist(_ value: Archive) -> Bool {
         guard !unreadable else { error = "السجل يحتاج إصلاحًا؛ لم تتغير البيانات القديمة."; return false }
