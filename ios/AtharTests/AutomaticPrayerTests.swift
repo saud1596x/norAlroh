@@ -4,6 +4,15 @@ import CoreLocation
 
 final class AutomaticPrayerTests: XCTestCase {
     private let date = ISO8601DateFormatter().date(from: "2026-10-04T10:00:00Z")!
+    func testPrayerClockAlwaysUsesTwentyFourHoursAndDestinationTimeZone() {
+        let midnight = ISO8601DateFormatter().date(from: "2026-10-04T21:05:00Z")!
+        let afternoon = ISO8601DateFormatter().date(from: "2026-10-04T12:07:00Z")!
+        let riyadh = PrayerLocation(name: "الرياض", latitude: 24.7, longitude: 46.7, timeZone: "Asia/Riyadh")
+        let dubai = PrayerLocation(name: "دبي", latitude: 25.2, longitude: 55.3, timeZone: "Asia/Dubai")
+        XCTAssertEqual(PrayerCalculator.time(midnight, city: riyadh), "٠٠:٠٥")
+        XCTAssertEqual(PrayerCalculator.time(afternoon, city: riyadh), "١٥:٠٧")
+        XCTAssertEqual(PrayerCalculator.time(afternoon, city: dubai), "١٦:٠٧")
+    }
     func testRegionalDefaultsReplaceLegacyChoicesInApplicationAndWidgetInputs() {
         var data = DeviceData(); data.method = "UmmAlQuraRamadan"; data.hanafi = true
         let inputs = PrayerCalculator.inputs(data)

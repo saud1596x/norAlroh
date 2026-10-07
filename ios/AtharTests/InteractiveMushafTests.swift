@@ -41,6 +41,21 @@ import UIKit
                 }
                 let attachment = XCTAttachment(image: image); attachment.name = String(format: "QCF-V2-shaped-page-%03d", number); attachment.lifetime = .keepAlways; add(attachment)
                 if number == 604, let firstVerse = page.words.first?.verse {
+                    let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+                    viewport.canvas.configure(page: page, corpus: corpus)
+                    viewport.onTurn = { _ in }
+                    viewport.layoutIfNeeded()
+                    XCTAssertTrue(viewport.canTurnPages, "Fitted page supports swiping")
+                    viewport.setZoomScale(viewport.minimumZoomScale * 2, animated: false)
+                    XCTAssertFalse(viewport.canTurnPages, "Zoomed swipes must pan instead of flipping pages")
+                    let region = try XCTUnwrap(viewport.canvas.regions.first)
+                    let point = CGPoint(x: region.rect.midX, y: region.rect.midY)
+                    viewport.setContentOffset(CGPoint(x: 30, y: 50), animated: false)
+                    let screen = viewport.canvas.convert(point, to: viewport)
+                    XCTAssertEqual(viewport.canvas.verse(at: viewport.convert(screen, to: viewport.canvas)), region.verse,
+                        "Hit testing uses the same zoom and pan transformation as text")
+                    viewport.setZoomScale(viewport.minimumZoomScale, animated: false)
+                    XCTAssertTrue(viewport.canTurnPages)
                     let originalRegions = canvas.regions.map(\.rect)
                     let originalPNG = try XCTUnwrap(image.pngData())
                     canvas.hiddenWordIDs = Set(page.words.filter { $0.verse == firstVerse }.map(\.id))
