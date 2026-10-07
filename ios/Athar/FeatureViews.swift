@@ -304,7 +304,7 @@ struct SourcesView: View {
                 NavigationLink("تراخيص المكونات التابعة") { BundledLicenseView(title: "مكونات WhisperKit", resource: "WHISPERKIT-THIRD-PARTY", extension: "txt") }
                     .accessibilityIdentifier("sources.whispercomponents")
             }
-        }.navigationTitle("التراخيص")
+        }.navigationTitle("التراخيص").accessibilityIdentifier("licenses.list")
     }
 }
 
