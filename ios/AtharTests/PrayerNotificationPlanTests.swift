@@ -6,7 +6,7 @@ final class PrayerNotificationPlanTests: XCTestCase {
         let now = ISO8601DateFormatter().date(from: "2026-10-04T10:00:00Z")!
         let plan = PrayerNotificationPlan.make(data: DeviceData(), preferences: .init(), now: now)
         XCTAssertFalse(plan.isEmpty)
-        XCTAssertLessThanOrEqual(plan.count, 50)
+        XCTAssertLessThanOrEqual(plan.count, PrayerNotificationPlan.maximumRequests)
         XCTAssertTrue(plan.allSatisfy { !$0.prayer.sunrise && $0.fireDate > now })
         XCTAssertEqual(Set(plan.map(\.id)).count, plan.count)
         XCTAssertEqual(plan.map(\.fireDate), plan.map(\.fireDate).sorted())
@@ -26,8 +26,13 @@ final class PrayerNotificationPlanTests: XCTestCase {
         let now = ISO8601DateFormatter().date(from: "2026-10-24T21:30:00Z")!
         var data = DeviceData()
         data.city = City.defaultCity
-        let plan = PrayerNotificationPlan.make(data: data, preferences: .init(), now: now)
+        // Isolate the local-day boundary from the combined prayer queue cap.
+        // The five-prayer plan deliberately reserves capacity for other reminders.
+        var preferences = PrayerNotificationPreferences()
+        preferences.prayers = ["fajr": true]
+        let plan = PrayerNotificationPlan.make(data: data, preferences: preferences, now: now)
         XCTAssertEqual(plan.filter { $0.prayer.id == "fajr" }.count, 10)
+        XCTAssertEqual(plan.first?.id, "noor.prayer.2026-10-25.fajr")
         XCTAssertTrue(plan.allSatisfy { $0.cityName == "مكة المكرمة" && $0.fireDate > now })
     }
     @MainActor
