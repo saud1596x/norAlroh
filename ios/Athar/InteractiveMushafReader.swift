@@ -218,7 +218,7 @@ struct InteractiveMushafReader: View {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
             verseAction("حفظ", symbol: "mic", identifier: "verse.hifz") { openTools(selection, action: .hifz) }
-        }.accessibilityIdentifier("verse.actions")
+        }
     }
     private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
