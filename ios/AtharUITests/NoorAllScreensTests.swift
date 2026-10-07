@@ -144,6 +144,20 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(pageRendered, "The fixed-layout Quran did not render. This recording cannot certify its typography.")
     }
 
+    func testPrayerSettingsExposeIndependentSalawatAndNoCalculationPicker() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
+        selectNoorTab("الصلاة", in: app)
+        XCTAssertFalse(app.staticTexts["طريقة الحساب"].exists)
+        capture(app, "41-automatic-prayers")
+        tap(app.buttons["اختر الصلوات ووقت التنبيه"], in: app)
+        XCTAssertTrue(app.navigationBars["تنبيهات الصلاة"].waitForExistence(timeout: 5))
+        capture(app, "42-prayer-alert-settings")
+        tap(app.switches["تذكير هادئ"], in: app, performTap: false)
+        capture(app, "43-salawat-settings")
+        XCTAssertFalse(app.staticTexts["طريقة الحساب"].exists)
+    }
+
     /// Isolate destination/accessibility failures from the long walkthrough.
     /// Still enters through the actual Settings UI, never an overridden route.
     func testLicenseNavigationAndOfflineNotices() {
