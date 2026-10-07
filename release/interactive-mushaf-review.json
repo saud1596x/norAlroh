@@ -51,10 +51,10 @@
     "nativeVisualAcceptance": false
   },
   "currentNativeRun": {
-    "id": 37528605680,
-    "sourceCommit": "1d50ac206a1daa5b3c78101be6f0a52e12db4cdd",
+    "id": 37618599248,
+    "sourceCommit": "05d28d6e860ac0e20c546ca7b0de9d29e92a3375",
     "state": "success",
-    "url": "https://github.com/saud1596x/norAlroh/actions/runs/37528605680"
+    "url": "https://github.com/saud1596x/norAlroh/actions/runs/37618599248"
   },
   "nativeFindings": {
     "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
@@ -65,7 +65,8 @@
     ],
     "actualAppArtifactAccess": "Successful native run produced preview11.5MB and video88.1MB. Preview download timed out; artifacts not extracted or visually reviewed.",
     "run37523178310": "All604 native audit passed. UI opened604 and first verse tools; title assertion failed before subsequent interaction checks.",
-    "run37528605680": "Native review successful. Two UI tests passed161.625s and101.276s. Two unit tests passed52.159s, zero failures."
+    "run37528605680": "Native review successful. Two UI tests passed161.625s and101.276s. Two unit tests passed52.159s, zero failures.",
+    "run37618599248": "Native iOS checks189 succeeded in37m6s: native36m31s, account/four-extension Release build5m16s. All604 native bounds and hit-region test passed45.390s. Unit summary:102 executed,1 skipped,0 failures. Every-verse tools/zoom UI test passed111.834s. Actual-device and visual reference acceptance remain pending."
   },
   "crossPageAyahsInPinnedSnapshot": 0,
   "all604DataValidated": true,
