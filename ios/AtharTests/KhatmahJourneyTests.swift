@@ -57,6 +57,31 @@ final class KhatmahJourneyTests: XCTestCase {
         XCTAssertEqual(ahead.due(on: start)?.last, 40)
         XCTAssertEqual(ahead.completed.count, 25)
     }
+    func testRemindersExcludeExpiredDaysBeforeBudgetAndResumeUnconfirmedPage() throws {
+        let plan = try KhatmahCalculator.make(first: 1, date: start, weekdays: Set(1...7), daily: 1, deadline: nil, reminder: 18 * 60, calendar: calendar)
+        let later = calendar.date(byAdding: .day, value: 40, to: start)!
+        let reminders = KhatmahReminderPlan.make(plan, now: later, otherPending: 56)
+        XCTAssertEqual(reminders.count, 4)
+        XCTAssertTrue(reminders.allSatisfy { $0.fire > later && $0.first == 1 && $0.url == "nooralruh://reading/1" })
+        XCTAssertEqual(Set(reminders.map(\.id)).count, reminders.count)
+        XCTAssertEqual(reminders, KhatmahReminderPlan.make(plan, now: later, otherPending: 56))
+        XCTAssertTrue(KhatmahReminderPlan.make(plan, now: later, otherPending: 64).isEmpty)
+        var paused = plan; paused.paused = true
+        XCTAssertTrue(KhatmahReminderPlan.make(paused, now: later, otherPending: 0).isEmpty)
+        let read = try KhatmahCalculator.confirm(plan, first: 1, last: 45, date: later)
+        XCTAssertEqual(KhatmahReminderPlan.make(read, now: later, otherPending: 0).first?.first, 46)
+        let finished = try KhatmahCalculator.confirm(read, first: 46, last: 604, date: later)
+        XCTAssertTrue(KhatmahReminderPlan.make(finished, now: later, otherPending: 0).isEmpty)
+    }
+    func testRemindersUsePlanCalendarAcrossDaylightSavingTransition() throws {
+        var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "America/New_York")!
+        let date = c.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 10))!
+        let plan = try KhatmahCalculator.make(first: 600, date: date, weekdays: Set(1...7), daily: 1, deadline: nil, reminder: 18 * 60 + 35, calendar: c)
+        let reminders = KhatmahReminderPlan.make(plan, now: date, otherPending: 0)
+        XCTAssertEqual(reminders.count, 5)
+        XCTAssertTrue(reminders.allSatisfy { c.component(.hour, from: $0.fire) == 18 && c.component(.minute, from: $0.fire) == 35 })
+        XCTAssertEqual(reminders[1].fire.timeIntervalSince(reminders[0].fire), 25 * 3600)
+    }
     @MainActor func testPauseEditEarlyCompletionAndPersistence() throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("journey.json")
         defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
