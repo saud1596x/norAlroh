@@ -72,7 +72,7 @@ struct NoorMyJourneyView: View {
     private var planCard: some View {
         Card {
             if let plan = journey.active {
-                Text(plan.finished != nil ? "اكتملت الختمة" : plan.paused ? "رحلتك متوقفة مؤقتًا" : "رحلة الختمة").font(.headline)
+                Text(plan.finished != nil ? (plan.firstPage == 1 ? "اكتملت الختمة" : "اكتملت رحلتك") : plan.paused ? "رحلتك متوقفة مؤقتًا" : "رحلة الختمة").font(.headline)
                 Text(verbatim: "\(plan.completed.count) من \(605 - plan.firstPage) صفحة").font(.title2.bold())
                 NoorProgressBar(value: plan.progress, label: "تقدم الختمة")
                 if let due = plan.due(on: .now) {
@@ -84,7 +84,7 @@ struct NoorMyJourneyView: View {
                 NavigationLink("إدارة رحلة الختمة") { KhatmahJourneyView() }.frame(minHeight: 44)
             } else {
                 Text("ابدأ رحلة تناسب يومك").font(.title2.bold())
-                Text("اختر وردًا صغيرًا أو موعدًا للإتمام. لا توجد بيانات تجريبية في سجلك.").foregroundStyle(.secondary)
+                Text("اختر وردًا صغيرًا أو موعدًا للإتمام. تُحفظ جلساتك بعد تأكيد القراءة.").foregroundStyle(.secondary)
                 NavigationLink("إعداد رحلة الختمة") { KhatmahJourneyView() }.frame(minHeight: 44)
             }
         }
