@@ -95,6 +95,7 @@ struct InteractiveMushafReader: View {
     @State private var selected: String?
     @State private var sheetVerse: VerseSelection?
     @State private var tools = true
+    @State private var controlHeights: [String: CGFloat] = [:]
     @State private var picker = false
     @State private var input = ""
     @State private var error: String?
@@ -116,10 +117,11 @@ struct InteractiveMushafReader: View {
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { tools.toggle() } }
                         }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) },
                         onToggleTools: { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { tools.toggle() } })
-                        // Reserve identical toolbar lanes even when chrome is hidden.
+                        // Retain the measured toolbar lanes even when chrome is hidden.
                         // GeometryReader already excludes the system safe area.
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 50)
+                        .padding(.top, (controlHeights["header"] ?? 44) + 8)
+                        .padding(.bottom, (controlHeights["footer"] ?? 44) + 8)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
                     VStack(spacing: 18) { Text(message); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -135,16 +137,21 @@ struct InteractiveMushafReader: View {
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else { Color.clear.frame(width: 44, height: 44) }
-                }
+                }.background { measureControl("header") }
                 Spacer()
                 HStack {
                     Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
-                    Button("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤") { input = ""; picker = true }.accessibilityIdentifier("reader.jump")
+                    Button("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤") { input = ""; picker = true }.frame(minHeight: 44).accessibilityIdentifier("reader.jump")
                     Spacer()
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
-                }
+                }.background { measureControl("footer") }
             }.padding(.horizontal, 10).transition(.opacity) }
+        }
+        .onPreferenceChange(MushafControlHeight.self) { heights in
+            for (key, height) in heights where height.isFinite && height > 0 {
+                if abs((controlHeights[key] ?? 0) - height) > 0.5 { controlHeights[key] = height }
+            }
         }
         .transaction { transaction in
             if reduced || store.data.lowMotion { transaction.disablesAnimations = true }
@@ -165,12 +172,18 @@ struct InteractiveMushafReader: View {
         }
         .alert("التلاوة", isPresented: Binding(get: { audio.error != nil }, set: { if !$0 { audio.error = nil } })) { Button("حسنًا") { audio.error = nil } } message: { Text(audio.error ?? "") }
     }
+    private func measureControl(_ key: String) -> some View {
+        GeometryReader { geometry in
+            Color.clear.preference(key: MushafControlHeight.self, value: [key: geometry.size.height])
+        }
+    }
     private var title: String {
         guard let key = selected ?? page?.words.first?.verse, let n = Int(key.split(separator: ":")[0]), store.quran.indices.contains(n - 1) else { return "المصحف" }
         return store.quran[n - 1].name
     }
     private func turn(_ amount: Int) {
         guard (1...604).contains(number + amount) else { return }
+        lastPage = number + amount
         number += amount; selected = nil
     }
     private func load() async {
@@ -213,6 +226,12 @@ struct InteractiveMushafReader: View {
         } catch {
             guard !Task.isCancelled else { return }
             self.error = "تعذّر التحقق من بيانات المصحف أو خطوطه. اتصل بالإنترنت للتنزيل الأول؛ تبقى النسخة المحفوظة متاحة دون اتصال بعد اكتماله." }
+    }
+}
+private struct MushafControlHeight: PreferenceKey {
+    static let defaultValue: [String: CGFloat] = [:]
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }
 struct VerseSelection: Identifiable { let key: String; var id: String { key }; var chapter: Int { Int(key.split(separator: ":")[0])! }; var ayah: Int { Int(key.split(separator: ":")[1])! } }

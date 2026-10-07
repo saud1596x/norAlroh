@@ -350,7 +350,7 @@ struct OriginalPageData {
     override init(frame: CGRect) {
         super.init(frame: frame); delegate = self
         showsVerticalScrollIndicator = false; showsHorizontalScrollIndicator = false
-        bouncesZoom = true; backgroundColor = .clear; addSubview(canvas)
+        bounces = false; bouncesZoom = false; backgroundColor = .clear; addSubview(canvas)
         contentInsetAdjustmentBehavior = .never
         accessibilityIdentifier = "reader.page.loading"
         contentSize = OriginalMushafCanvas.pageSize
@@ -393,15 +393,20 @@ struct OriginalPageData {
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0 else { return }
         let fit = min(bounds.width / OriginalMushafCanvas.pageSize.width, bounds.height / OriginalMushafCanvas.pageSize.height)
-        let refit = abs(fitted - fit) > 0.001
+        let refit = abs(fitted - fit) > 0.00001
         if refit {
-            fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4; zoomScale = fit
+            let relativeZoom = fitted > 0 ? zoomScale / fitted : 1
+            fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4
+            zoomScale = fit * min(4, max(1, relativeZoom))
         }
         let vertical = max(0, (bounds.height - canvas.frame.height) / 2)
         let horizontal = max(0, (bounds.width - canvas.frame.width) / 2)
         let inset = UIEdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
         if contentInset != inset { contentInset = inset }
-        if refit { setContentOffset(CGPoint(x: -horizontal, y: -vertical), animated: false) }
+        if zoomScale <= minimumZoomScale * 1.0001, !isDragging, !isDecelerating {
+            let origin = CGPoint(x: -horizontal, y: -vertical)
+            if contentOffset != origin { setContentOffset(origin, animated: false) }
+        }
     }
     func resetToFittedPage() {
         setZoomScale(minimumZoomScale, animated: false)
