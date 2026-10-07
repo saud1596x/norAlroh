@@ -88,14 +88,24 @@ final class NotificationReconciliationTests: XCTestCase {
         XCTAssertTrue(client.pending.values.filter { $0.identifier.hasPrefix(SalawatNotificationPlan.prefix) }.allSatisfy {
             $0.content.sound == nil && ($0.trigger as? UNCalendarNotificationTrigger)?.repeats == true
         })
-        let oldTimes = client.pending.values.filter { $0.identifier.hasPrefix(PrayerNotificationPlan.prefix) }.compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
+        func scheduledTimes() -> [String: Date] {
+            client.pending.values.filter { $0.identifier.hasPrefix(PrayerNotificationPlan.prefix) }
+                .reduce(into: [String: Date]()) { result, request in
+                    guard let trigger = request.trigger as? UNCalendarNotificationTrigger else { return }
+                    var calendar = Calendar(identifier: .gregorian)
+                    calendar.timeZone = trigger.dateComponents.timeZone ?? .current
+                    result[request.identifier] = calendar.date(from: trigger.dateComponents)
+                }
+        }
+        let oldTimes = scheduledTimes()
         let city = City(id: "location.current", name: "دبي", latitude: 25.2048, longitude: 55.2708,
             timeZone: "Asia/Dubai", region: "دبي", countryCode: "AE", sourceID: nil)
         XCTAssertTrue(store.update { $0.city = city })
         await notifications.refresh(store: store)
         let prayers = client.pending.values.filter { $0.identifier.hasPrefix(PrayerNotificationPlan.prefix) }
         XCTAssertTrue(prayers.allSatisfy { $0.content.body.contains("دبي") })
-        XCTAssertNotEqual(oldTimes, prayers.compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() })
+        XCTAssertFalse(oldTimes.isEmpty)
+        XCTAssertNotEqual(oldTimes, scheduledTimes())
         let restored = PrayerNotifications(client: client, defaults: defaults, now: { now })
         await restored.refresh(store: store)
         XCTAssertTrue(restored.salawat.enabled); XCTAssertEqual(restored.salawatCount, 7)
@@ -104,6 +114,27 @@ final class NotificationReconciliationTests: XCTestCase {
         XCTAssertFalse(client.pending.keys.contains { $0.hasPrefix(SalawatNotificationPlan.prefix) })
         XCTAssertEqual(client.pending.keys.filter { $0.hasPrefix("foreign.") }.count, 14)
         XCTAssertLessThanOrEqual(client.pending.count, 64)
+    }
+
+    @MainActor func testDeliveredPrayerIsNotScheduledAgainAfterClockOrLocationChange() async throws {
+        let suite = "NoorNotifications." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-04T10:00:00Z"))
+        let client = TestNotificationClient()
+        let store = AtharStore(directory: folder)
+        let event = try XCTUnwrap(PrayerNotificationPlan.make(data: store.data, preferences: .init(), now: now).first)
+        client.delivered = [event.id]
+        let notifications = PrayerNotifications(client: client, defaults: defaults, now: { now })
+        await notifications.enable(store: store)
+        XCTAssertTrue(notifications.enabled)
+        XCTAssertNil(client.pending[event.id])
+        XCTAssertGreaterThan(notifications.scheduledCount, 0)
+        await notifications.refresh(store: store)
+        XCTAssertNil(client.pending[event.id])
+        XCTAssertEqual(Set(client.pending.keys).count, notifications.scheduledCount)
+        XCTAssertEqual(client.delivered, [event.id])
     }
 
 }
