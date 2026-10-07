@@ -2,6 +2,48 @@ import XCTest
 @testable import Athar
 
 final class LocalDataRecoveryTests: XCTestCase {
+    func testStaleUploadRetainsNewerRemoteProgressAndIsIdempotent() throws {
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let old = MemorizationResult(date: Date(timeIntervalSince1970: 1_700_000_000), chapter: 1,
+            answers: [.init(ayah: 1, assessment: "review", revealed: false, hints: 0)])
+        let newer = MemorizationResult(date: old.date.addingTimeInterval(172800), chapter: 1,
+            answers: [.init(ayah: 1, assessment: "remembered", revealed: false, hints: 0)])
+        var oldProgress = MemorizationProgress(); oldProgress.record(old)
+        var newProgress = oldProgress; newProgress.record(newer)
+        let stale = MemorizationCloudBackup(version: 1, plan: .init(),
+            archive: .init(version: 1, history: [old], progress: oldProgress))
+        let current = MemorizationCloudBackup(version: 1, plan: .init(),
+            archive: .init(version: 1, history: [newer, old], progress: newProgress))
+        let merged = try MemorizationCloudMerge.merge(local: stale, remote: current, corpus: corpus)
+        let retried = try MemorizationCloudMerge.merge(local: stale, remote: merged, corpus: corpus)
+        XCTAssertEqual(retried.archive.history.map(\.id), [newer.id, old.id])
+        let state = try XCTUnwrap(retried.archive.progress.verses["1:1"])
+        XCTAssertEqual(state.lastPracticed, newer.date)
+        XCTAssertEqual(state.attempts, 2)
+        XCTAssertEqual(state.lapses, 1)
+        XCTAssertFalse(state.needsHelp)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        XCTAssertEqual(try encoder.encode(merged), try encoder.encode(retried))
+        XCTAssertEqual(stale.archive.history.count, 1)
+    }
+    func testUploadMergeRejectsConflictingEventAndInvalidRemoteArchive() throws {
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let result = MemorizationResult(chapter: 1,
+            answers: [.init(ayah: 1, assessment: "remembered", revealed: false, hints: 0)])
+        var progress = MemorizationProgress(); progress.record(result)
+        let local = MemorizationCloudBackup(version: 1, plan: .init(),
+            archive: .init(version: 1, history: [result], progress: progress))
+        let conflict = MemorizationResult(id: result.id, date: result.date, chapter: 1,
+            answers: [.init(ayah: 1, assessment: "review", revealed: false, hints: 0)])
+        let remote = MemorizationCloudBackup(version: 1, plan: .init(),
+            archive: .init(version: 1, history: [conflict], progress: progress))
+        XCTAssertThrowsError(try MemorizationCloudMerge.merge(local: local, remote: remote, corpus: corpus))
+        let invalid = MemorizationCloudBackup(version: 2, plan: .init(), archive: local.archive)
+        XCTAssertThrowsError(try MemorizationCloudMerge.merge(local: local, remote: invalid, corpus: corpus))
+        let duplicate = MemorizationCloudBackup(version: 1, plan: .init(),
+            archive: .init(version: 1, history: [result, result], progress: progress))
+        XCTAssertThrowsError(try MemorizationCloudMerge.merge(local: duplicate, remote: local, corpus: corpus))
+    }
     func testSpeechPositionRestoresTrustedRangeAndAssistanceWithoutSavingTranscript() throws {
         let suite = "NoorSpeechPosition." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
