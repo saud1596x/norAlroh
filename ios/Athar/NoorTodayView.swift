@@ -58,7 +58,7 @@ struct NoorTodayView: View {
                     }
                     Text(resumeTitle).font(.largeTitle.bold())
                     HStack {
-                        Text("آخر قراءة · الصفحة \(page)").font(.subheadline)
+                        Text("آخر قراءة · الصفحة \(ArabicSearch.digits(page))").font(.subheadline)
                         Spacer()
                         Image(systemName: "bookmark.fill").font(.caption)
                     }

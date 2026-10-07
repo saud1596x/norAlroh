@@ -339,6 +339,13 @@ struct OriginalPageData {
 @MainActor final class OriginalMushafViewport: UIScrollView, UIScrollViewDelegate {
     let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
     private var fitted: CGFloat = 0
+    var onTurn: ((Int) -> Void)?
+    private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
+    var canTurnPages: Bool {
+        onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
+            && zoomScale <= minimumZoomScale * 1.01
+            && pinchGestureRecognizer?.state != .began && pinchGestureRecognizer?.state != .changed
+    }
     override init(frame: CGRect) {
         super.init(frame: frame); delegate = self
         showsVerticalScrollIndicator = false; showsHorizontalScrollIndicator = false
@@ -346,10 +353,23 @@ struct OriginalPageData {
         accessibilityIdentifier = "reader.page.loading"
         contentSize = OriginalMushafCanvas.pageSize
         let tap = UITapGestureRecognizer(target: self, action: #selector(tappedOnViewport(_:)))
+        for direction in [UISwipeGestureRecognizer.Direction.right, .left] {
+            let swipe = UISwipeGestureRecognizer(target: self, action: #selector(turnPage(_:)))
+            swipe.direction = direction; swipe.numberOfTouchesRequired = 1
+            swipe.delegate = pagingDelegate
+            addGestureRecognizer(swipe)
+            tap.require(toFail: swipe)
+            panGestureRecognizer.require(toFail: swipe)
+        }
         tap.require(toFail: panGestureRecognizer)
         addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
+    @objc private func turnPage(_ gesture: UISwipeGestureRecognizer) {
+        guard gesture.state == .ended, canTurnPages else { return }
+        // RTL: swipe right advances; zoomed swipes only pan the current page.
+        onTurn?(gesture.direction == .right ? 1 : -1)
+    }
     @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
         // UIKit applies zoom and offset when converting into the fixed canvas.
         // A margin tap stays blank; it never chooses a nearby verse.
@@ -367,17 +387,39 @@ struct OriginalPageData {
         contentInset = UIEdgeInsets(top: max(0, (bounds.height - canvas.frame.height) / 2), left: max(0, (bounds.width - canvas.frame.width) / 2), bottom: 0, right: 0)
     }
 }
+@MainActor private final class MushafPagingGestureDelegate: NSObject, UIGestureRecognizerDelegate {
+    weak var viewport: OriginalMushafViewport?
+    init(viewport: OriginalMushafViewport) { self.viewport = viewport }
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        viewport?.canTurnPages == true
+    }
+}
 struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
     let onVerse: (String?) -> Void; let onFailure: () -> Void
+    var onTurn: ((Int) -> Void)? = nil
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
+        view.onTurn = onTurn
         if context.coordinator.page != page.number || !view.canvas.renderedSuccessfully {
+            let animate = context.coordinator.page != nil && context.coordinator.page != page.number
+                && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
             context.coordinator.page = page.number
-            view.canvas.configure(page: page, corpus: corpus)
-            view.setZoomScale(view.minimumZoomScale, animated: false)
+            let change = {
+                view.canvas.configure(page: page, corpus: corpus)
+                view.canvas.selected = selected
+                view.canvas.hiddenWordIDs = hiddenWordIDs
+                view.setZoomScale(view.minimumZoomScale, animated: false)
+                view.setContentOffset(.zero, animated: false)
+                view.canvas.setNeedsDisplay(); view.canvas.layoutIfNeeded()
+            }
+            if animate {
+                // Fade the whole authored page, never reshape, stretch or move words.
+                UIView.transition(with: view, duration: 0.2,
+                    options: [.transitionCrossDissolve, .allowUserInteraction, .beginFromCurrentState], animations: change, completion: nil)
+            } else { UIView.performWithoutAnimation(change) }
         }
         view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
         view.canvas.selected = selected

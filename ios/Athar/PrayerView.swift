@@ -33,6 +33,7 @@ struct PrayerView: View {
                                     .font(.system(.largeTitle, design: .rounded).monospacedDigit())
                                 Text(timerInterval: context.date...next.date, countsDown: true)
                                     .font(.title3.monospacedDigit()).accessibilityLabel("الوقت المتبقي للصلاة")
+                                Text("بتوقيت \(store.data.city.name) · نظام ٢٤ ساعة").font(.caption)
                             }.frame(maxWidth: .infinity).padding(26)
                                 .foregroundStyle(Theme.buttonInk)
                                 .background(Theme.gold, in: RoundedRectangle(cornerRadius: 28))
@@ -41,6 +42,7 @@ struct PrayerView: View {
                         }
                         Card {
                             Label("مواقيت اليوم", systemImage: "sun.horizon").font(.title3.bold())
+                            Text("التوقيت المحلي · ٢٤ ساعة").font(.caption).foregroundStyle(.secondary)
                             ForEach(rows) { row in
                                 HStack(spacing: 14) {
                                     Image(systemName: symbol(row.id)).foregroundStyle(Theme.gold).frame(width: 28)
@@ -52,6 +54,7 @@ struct PrayerView: View {
                                     Text(PrayerCalculator.time(row.date, city: store.data.city)).font(.title3.monospacedDigit())
                                 }.padding(12).frame(minHeight: 48)
                                     .background(next.map { $0.id == row.id && PrayerCalculator.isSameDay($0.date, context.date, city: PrayerCalculator.location(store.data.city)) } == true ? Theme.gold.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
+                                if row.id != rows.last?.id { Divider().padding(.leading, 54) }
                             }
                             if rows.isEmpty { Text("تعذر حساب المواقيت. اختر مدينة أخرى.").foregroundStyle(.secondary) }
                         }
@@ -78,7 +81,7 @@ struct PrayerView: View {
                     }
                     if let message = location.message { Text(message).font(.caption).foregroundStyle(.secondary) }
                     if let date = store.data.locationUpdatedAt, store.data.city.id.hasPrefix("location.") {
-                        Text("آخر تحديث للموقع: " + date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                        Text("آخر تحديث للموقع: " + date.formatted(date: .abbreviated, time: .omitted) + " · " + PrayerCalculator.time(date, city: store.data.city)).font(.caption).foregroundStyle(.secondary)
                     }
                     Text("تُضبط المواقيت تلقائيًا حسب البلد والمنطقة. عند تعذر الموقع نستخدم آخر موقع صالح أو المدينة المختارة. قد يختلف وقت المسجد المحلي عن الحساب.")
                         .font(.caption).foregroundStyle(.secondary)

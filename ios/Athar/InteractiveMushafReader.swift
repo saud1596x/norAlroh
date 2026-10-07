@@ -114,7 +114,7 @@ struct InteractiveMushafReader: View {
                         onVerse: { key in
                             if let key { selected = key; sheetVerse = VerseSelection(key: key) }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.2)) { tools.toggle() } }
-                        }, onFailure: { DispatchQueue.main.async { renderingFailed = true } })
+                        }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) })
                         .padding(.horizontal, 5)
                         .padding(.top, 50).padding(.bottom, 54)
                         .frame(width: geometry.size.width, height: geometry.size.height)
@@ -127,7 +127,7 @@ struct InteractiveMushafReader: View {
             VStack {
                 HStack {
                     Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
-                    Spacer(); Text(title).font(.headline); Spacer()
+                    Spacer(); Text(title).font(.headline).lineLimit(1); Spacer()
                     if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
@@ -135,11 +135,11 @@ struct InteractiveMushafReader: View {
                 }
                 Spacer()
                 HStack {
-                    Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية")
+                    Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
                     Button("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤") { input = ""; picker = true }.accessibilityIdentifier("reader.jump")
                     Spacer()
-                    Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة")
+                    Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                 }
             }.padding(.horizontal, 10).opacity(tools ? 1 : 0).allowsHitTesting(tools).accessibilityHidden(!tools)
         }
