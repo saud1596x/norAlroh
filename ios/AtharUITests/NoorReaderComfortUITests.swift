@@ -1,7 +1,11 @@
 import XCTest
 
 final class NoorReaderComfortUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+    }
+    override func tearDownWithError() throws { XCUIDevice.shared.orientation = .portrait }
     func testPageToolsGesturesAndRelaunchPreservePosition() {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
@@ -46,10 +50,45 @@ final class NoorReaderComfortUITests: XCTestCase {
         requirePage(151, app: app)
         capture(app, "stage1-151-restored-after-relaunch")
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(page.waitForExistence(timeout: 10))
+        requireStableReadingLayout(app, page: page, landscape: true)
+        requirePage(151, app: app)
         capture(app, "stage1-151-landscape")
+        let landscapeFrame = page.frame
+        app.buttons["reader.verse.7:1"].tap()
+        requireTools(false, app: app)
+        XCTAssertEqual(page.frame, landscapeFrame)
+        capture(app, "stage1-151-landscape-tools-hidden")
+        app.buttons["reader.verse.7:1"].tap()
+        requireTools(true, app: app)
         XCUIDevice.shared.orientation = .portrait
+        requireStableReadingLayout(app, page: page, landscape: false)
+        requirePage(151, app: app)
         capture(app, "stage1-151-portrait-restored")
+    }
+    private func requireTools(_ visible: Bool, app: XCUIApplication) {
+        let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.buttons["reader.jump"].isHittable == visible
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 5), .completed)
+    }
+    private func requireStableReadingLayout(_ app: XCUIApplication, page: XCUIElement, landscape: Bool) {
+        var previous: CGRect?
+        var stableSince = Date()
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let screen = app.frame
+            guard screen.width > 0, screen.height > 0,
+                  (screen.width > screen.height) == landscape, page.exists else {
+                previous = nil; stableSince = Date(); return false
+            }
+            let frame = page.frame
+            guard frame.width > 0, frame.height > 0, screen.contains(frame) else {
+                previous = nil; stableSince = Date(); return false
+            }
+            if previous != frame { previous = frame; stableSince = Date(); return false }
+            return Date().timeIntervalSince(stableSince) >= 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 15), .completed,
+                       "Wait for the final reading geometry, not merely an existing view during rotation")
     }
     private func jump(_ number: Int, app: XCUIApplication) {
         app.buttons["reader.jump"].tap()
