@@ -133,7 +133,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "31-support")
         back(app)
         tap(app.buttons["settings.sources"], in: app)
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "licenses.list").firstMatch.waitForExistence(timeout: 5), "Wait for the actual destination before searching its contents")
+        assertLicensesDestination(app)
         capture(app, "24-licenses")
         for (identifier, name) in [("tanzil", "26-tanzil-license"), ("qcf", "27-qcf-license"), ("amiri", "28-amiri-license"), ("adhan", "29-adhan-license"), ("whisperkit", "33-whisperkit-license"), ("whispermodel", "34-whisper-model-license"), ("whispercomponents", "35-whisper-components")] {
             tap(app.buttons["sources.\(identifier)"], in: app)
@@ -144,36 +144,55 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(pageRendered, "The fixed-layout Quran did not render. This recording cannot certify its typography.")
     }
 
-    private func tap(_ element: XCUIElement, in app: XCUIApplication, performTap: Bool = true) {
-        let list = app.collectionViews.containing(.button, identifier: element.identifier).firstMatch
-        let scroll = app.scrollViews.containing(.button, identifier: element.identifier).firstMatch
-        let container = list.exists ? list : (scroll.exists ? scroll : app)
-        func ready() -> Bool {
-            guard element.exists && element.isHittable else { return false }
-            guard container != app else { return true }
-            // A partially clipped List row can report isHittable even though
-            // its synthesized tap lands in the sheet's bottom safe area.
-            let viewport = container.frame.intersection(app.frame.insetBy(dx: 0, dy: 60))
-            return !viewport.isEmpty && viewport.contains(element.frame)
+    /// Isolate destination/accessibility failures from the long walkthrough.
+    /// Still enters through the actual Settings UI, never an overridden route.
+    func testLicenseNavigationAndOfflineNotices() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
+        tap(app.buttons["app.settings"], in: app)
+        tap(app.buttons["settings.sources"], in: app)
+        assertLicensesDestination(app)
+        for identifier in ["tanzil", "qcf", "amiri", "adhan", "whisperkit", "whispermodel", "whispercomponents"] {
+            tap(app.buttons["sources.\(identifier)"], in: app)
+            XCTAssertTrue(app.staticTexts["license.notice"].waitForExistence(timeout: 5))
+            back(app)
+            XCTAssertTrue(app.navigationBars["التراخيص"].waitForExistence(timeout: 5))
         }
+    }
+
+    private func assertLicensesDestination(_ app: XCUIApplication) {
+        let arrived = app.navigationBars["التراخيص"].waitForExistence(timeout: 5)
+        if !arrived {
+            capture(app, "failed-licenses-destination")
+            let hierarchy = app.debugDescription
+            let attachment = XCTAttachment(string: hierarchy)
+            attachment.name = "failed-licenses-destination-hierarchy"
+            attachment.lifetime = .keepAlways; add(attachment)
+            print("LICENSE_DESTINATION_FAILURE\n\(hierarchy)")
+        }
+        XCTAssertTrue(arrived, "The actual license destination must be open, not merely its parent accessibility identifier.")
+        XCTAssertTrue(app.staticTexts["licenses.introduction"].waitForExistence(timeout: 5))
+    }
+
+    private func tap(_ element: XCUIElement, in app: XCUIApplication, performTap: Bool = true) {
         // Returning to a long List can restore its scroll position. Search both
         // directions instead of assuming every destination starts at its top.
-        if !ready() {
+        if !(element.exists && element.isHittable) {
             for _ in 0..<7 {
-                if ready() { break }
-                container.swipeDown()
+                if element.exists && element.isHittable { break }
+                app.swipeDown()
             }
         }
         for _ in 0..<14 {
-            if ready() { break }
-            container.swipeUp()
+            if element.exists && element.isHittable { break }
+            app.swipeUp()
         }
-        if !ready() {
+        if !(element.exists && element.isHittable) {
             let hierarchy = XCTAttachment(string: app.debugDescription)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
-        XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
+        XCTAssertTrue(element.isHittable)
         if performTap { element.tap() }
     }
     private func back(_ app: XCUIApplication) {
