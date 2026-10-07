@@ -1720,7 +1720,9 @@
       "file": "p245.ttf",
       "postScriptName": "QCF2245",
       "bytes": 395164,
-      "sha256": "3aa219eb172861eee4915f284f4c2cc11c9ee8caa21fda7c3c8bbcb517773d68"
+      "sha256": "207e1a71c5d34b3b0d39885686eabfd25396a5444f1659a0ce7712a34c906e2d",
+      "upstreamSha256": "3aa219eb172861eee4915f284f4c2cc11c9ee8caa21fda7c3c8bbcb517773d68",
+      "repair": "Remove truncated Macintosh format-6 cmap; preserve Unicode mappings and all glyph tables"
     },
     {
       "page": 246,
