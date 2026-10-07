@@ -75,6 +75,7 @@ struct OriginalPageData {
         }
     }
     private var decorationPaths: [CGPath] = []
+    var ornamentBounds: [CGRect] { decorationPaths.map(\.boundingBoxOfPath) }
     struct RowGeometry { let line: Int; let kind: String; var ink: CGRect }
     private(set) var rowGeometry: [RowGeometry] = []
     private(set) var headerClearances: [CGFloat] = []
