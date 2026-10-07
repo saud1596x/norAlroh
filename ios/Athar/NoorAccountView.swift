@@ -288,7 +288,7 @@ import FirebaseFirestore
         request.nonce = SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
     }
     func completeApple(_ result: Result<ASAuthorization, Error>) async {
-        guard available, !busy, let rawNonce = nonce else { return }; nonce = nil; busy = true; defer { busy = false }
+        guard available, !busy, let rawNonce = nonce else { return }; nonce = nil; busy = true; defer { busy = false; scheduleSync() }
         do {
             let authorization = try result.get()
             guard let apple = authorization.credential as? ASAuthorizationAppleIDCredential,
@@ -330,7 +330,7 @@ import FirebaseFirestore
         if NoorReadingSyncJournal.shared.enabled { await syncNow(); return }
         guard available, !busy, let user = Auth.auth().currentUser, memorization.unreadableHistory == nil else { return }
         guard bindLocalData(owner: user.uid) else { return }
-        busy = true; defer { busy = false }
+        busy = true; defer { busy = false; scheduleSync() }
         do {
             guard let corpus = QuranResources.corpus else { throw CocoaError(.fileReadCorruptFile) }
             let local = MemorizationCloudBackup(version: 1, plan: memorization.plan,
@@ -366,7 +366,7 @@ import FirebaseFirestore
         if NoorReadingSyncJournal.shared.enabled { await syncNow(); return }
         guard available, !busy, let user = Auth.auth().currentUser else { return }
         guard bindLocalData(owner: user.uid) else { return }
-        busy = true; defer { busy = false }
+        busy = true; defer { busy = false; scheduleSync() }
         do {
             let document = try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").getDocument(source: .server)
             guard document.data()?["version"] as? Int == 1,
