@@ -6,9 +6,10 @@ from urllib.parse import quote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--check', action='store_true', help='Fail if generated files differ; do not rewrite them.')
+parser.add_argument('--accounts', action='store_true', help='Prepare the separately reviewed optional-account policy for the account-enabled build.')
 args = parser.parse_args()
 config = json.loads((ROOT / 'release/config.json').read_text())
-content = json.loads((ROOT / 'release/legal-content.json').read_text())
+content = json.loads((ROOT / ('release/legal-content-accounts.json' if args.accounts else 'release/legal-content.json')).read_text())
 if config.get('userAccountMode', 'local-only') != 'local-only':
     raise SystemExit('Account-backed authentication and server deletion are not implemented. Update privacy and implementation before enabling accounts.')
 email = config.get('supportEmail')
@@ -24,7 +25,7 @@ for key in ['privacyURL', 'supportURL', 'termsURL']:
 contact = {key: config.get(key) for key in ['supportEmail', 'privacyURL', 'supportURL', 'termsURL']}
 legal = {'version': content['version'], 'updatedAt': content['updatedAt'],
          'appName': config['displayName'], 'publisherName': config['publisherName'],
-         'accountMode': 'local-only', 'contact': contact, 'documents': content['documents']}
+         'accountMode': 'firebase-opt-in' if args.accounts else 'local-only', 'contact': contact, 'documents': content['documents']}
 outputs = {'ios/Athar/app-legal.json': json.dumps(legal, ensure_ascii=False, indent=2) + '\n'}
 draft = not email
 escape = html.escape
@@ -47,7 +48,7 @@ for name, text in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
 report = {'status': 'GENERATED_CONTENT_CURRENT', 'publicWebsite': 'NOT_DEPLOYED_BY_THIS_SCRIPT',
-          'accountMode': 'local-only', 'supportEmailConfigured': bool(email), 'draftWithoutSupportEmail': draft,
+          'accountMode': legal['accountMode'], 'supportEmailConfigured': bool(email), 'draftWithoutSupportEmail': draft,
           'publicPrivacyURLConfigured': bool(config.get('privacyURL')), 'publicSupportURLConfigured': bool(config.get('supportURL')),
           'files': {name: hashlib.sha256(text.encode()).hexdigest() for name, text in outputs.items()}}
 if not args.check:

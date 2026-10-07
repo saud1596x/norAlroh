@@ -4,7 +4,6 @@ This installs files only. It does not enable providers, deploy rules, or certify
 import argparse
 import plistlib
 from pathlib import Path
-import re
 import shutil
 
 PROJECT = 'noor-alruh'
@@ -16,25 +15,14 @@ def validate(config):
     for field, expected in [('PROJECT_ID', PROJECT), ('BUNDLE_ID', BUNDLE), ('GOOGLE_APP_ID', APP)]:
         if config.get(field) != expected:
             raise ValueError(f'{field}: configuration does not belong to the registered Noor iOS app')
-    client = config.get('CLIENT_ID', '')
-    reversed_client = config.get('REVERSED_CLIENT_ID', '')
-    if not re.fullmatch(r'[A-Za-z0-9-]+\.apps\.googleusercontent\.com', client):
-        raise ValueError('CLIENT_ID missing/invalid; enable Google in Firebase Authentication and download the refreshed plist')
-    if reversed_client != '.'.join(reversed(client.split('.'))):
-        raise ValueError('REVERSED_CLIENT_ID does not match CLIENT_ID')
     if not isinstance(config.get('API_KEY'), str) or not config['API_KEY']:
         raise ValueError('API_KEY missing; download the original configuration')
-    return reversed_client
 
 def install(source, root=ROOT):
     config = plistlib.loads(source.read_bytes())
-    scheme = validate(config)
+    validate(config)
     info_path = root / 'ios/Athar/Info.plist'
     info = plistlib.loads(info_path.read_bytes())
-    types = info.setdefault('CFBundleURLTypes', [])
-    existing = {s for entry in types for s in entry.get('CFBundleURLSchemes', [])}
-    if scheme not in existing:
-        types.append({'CFBundleURLSchemes': [scheme]})
     # Preserve the pre-configuration metadata so the operation is reversible.
     backup = info_path.with_suffix('.plist.before-firebase')
     if not backup.exists():
