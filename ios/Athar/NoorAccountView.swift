@@ -79,8 +79,9 @@ import FirebaseFirestore
         busy = true; defer { busy = false }
         do {
             let data = try JSONEncoder().encode(MemorizationCloudBackup(version: 1, plan: memorization.plan, archive: .init(version: 1, history: memorization.history, progress: memorization.progress)))
+            guard data.count <= NoorCloudPayload.decodedLimit else { throw CocoaError(.fileWriteOutOfSpace) }
             let compressed = try (data as NSData).compressed(using: .zlib) as Data
-            guard compressed.count <= 750_000 else { throw CocoaError(.fileWriteOutOfSpace) }
+            guard compressed.count <= NoorCloudPayload.compressedLimit else { throw CocoaError(.fileWriteOutOfSpace) }
             try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").setData(["version": 1, "data": compressed, "updatedAt": FieldValue.serverTimestamp()])
             message = "حُفظت نسخة تقدم الحفظ في حسابك. لا تتضمن صوتك أو تأملاتك."
         } catch { message = "لم تُحفظ النسخة السحابية. تحقق من الاتصال وحاول مجددًا؛ تقدمك المحلي محفوظ." }
@@ -90,9 +91,9 @@ import FirebaseFirestore
         busy = true; defer { busy = false }
         do {
             let document = try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").getDocument(source: .server)
-            guard let compressed = document.data()?["data"] as? Data, compressed.count <= 750_000 else { throw CocoaError(.fileReadCorruptFile) }
-            let data = try (compressed as NSData).decompressed(using: .zlib) as Data
-            guard data.count <= 10_000_000 else { throw CocoaError(.fileReadCorruptFile) }
+            guard document.data()?["version"] as? Int == 1,
+                  let compressed = document.data()?["data"] as? Data else { throw CocoaError(.fileReadCorruptFile) }
+            let data = try NoorCloudPayload.decode(compressed)
             let backup = try JSONDecoder().decode(MemorizationCloudBackup.self, from: data)
             guard Auth.auth().currentUser?.uid == user.uid else { message = "تغيّر الحساب أثناء الاستعادة. لم تتغير بيانات جهازك."; return }
             guard memorization.restore(backup) else { message = memorization.error; return }
