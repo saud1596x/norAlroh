@@ -42,7 +42,8 @@ struct KhatmahPlan: Codable, Identifiable {
         guard !paused, finished == nil, nextPage <= 604 else { return nil }
         let endOfToday = calendar.startOfDay(for: now)
         guard let slot = days.last(where: { calendar.startOfDay(for: $0.date) <= endOfToday && $0.last >= nextPage }) else {
-            return days.first(where: { $0.last >= nextPage })
+            guard let future = days.first(where: { $0.last >= nextPage }) else { return nil }
+            return KhatmahDay(date: future.date, first: nextPage, last: future.last)
         }
         return KhatmahDay(date: slot.date, first: nextPage, last: slot.last)
     }
