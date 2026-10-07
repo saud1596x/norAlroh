@@ -408,9 +408,9 @@ struct OriginalMushafDrawing: UIViewRepresentable {
                 && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
             context.coordinator.page = page.number
             let change = {
-                view.canvas.configure(page: page, corpus: corpus)
-                view.canvas.selected = selected
-                view.canvas.hiddenWordIDs = hiddenWordIDs
+                view.canvas.configure(page: self.page, corpus: self.corpus)
+                view.canvas.selected = self.selected
+                view.canvas.hiddenWordIDs = self.hiddenWordIDs
                 view.setZoomScale(view.minimumZoomScale, animated: false)
                 view.setContentOffset(.zero, animated: false)
                 view.canvas.setNeedsDisplay(); view.canvas.layoutIfNeeded()
