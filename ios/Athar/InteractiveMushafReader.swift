@@ -135,6 +135,7 @@ struct InteractiveMushafReader: View {
                     Spacer()
                     Text(manualSelection.map { "\(title) · الآية \(ArabicSearch.digits($0.ayah))" } ?? (audio.waitingKey == nil ? title : "مهلة التكرار · \(title)"))
                         .font(.headline).lineLimit(1).accessibilityIdentifier(manualSelection == nil ? "reader.title" : "verse.tools.title")
+                        .accessibilityValue(manualSelection?.key ?? "")
                     Spacer()
                     if let selection = manualSelection {
                         Button { openTools(selection, action: .details) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
