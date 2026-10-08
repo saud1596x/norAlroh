@@ -42,7 +42,7 @@ struct InteractiveMushafReader: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @StateObject private var fonts = MushafFonts()
     @StateObject private var audio: MushafVerseAudio = {
-        #if DEBUG
+        #if DEBUG || NOOR_ACCEPTANCE_TESTING
         if ProcessInfo.processInfo.arguments.contains("-NoorAcceptanceUnavailableVerseAudio") {
             // Exercise real AVPlayer failure, never a staged successful result.
             let unavailable = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp3")
