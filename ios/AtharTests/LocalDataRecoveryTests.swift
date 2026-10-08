@@ -2,6 +2,53 @@ import XCTest
 @testable import Athar
 
 final class LocalDataRecoveryTests: XCTestCase {
+    @MainActor func testLegacyArchiveOpeningKeepsPositionPreviousRangeAndModelBytesWithoutAnalysis() throws {
+        let suite = "Noor.LegacySpeech." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = root.appendingPathComponent("retained-model.bin"); let modelBytes = Data([1, 9, 7]); try modelBytes.write(to: model)
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let words = RecitationComparison.words(chapter: corpus[111], from: 1, to: 4)
+        let next = try XCTUnwrap(words.firstIndex { $0.ayah == 2 })
+        let position = try XCTUnwrap(SpeechSessionPosition.make(words: words, nextWord: next, usedHelp: true))
+        XCTAssertTrue(SpeechPositionStore(defaults: defaults).save(position))
+        let bytes = try XCTUnwrap(defaults.data(forKey: "noor.speech.position.v1"))
+        let previous = Data([255, 0, 2]); defaults.set(previous, forKey: "noor.speech.previousPosition.v1")
+        defaults.set(model.path, forKey: "noor.speechModelFolder.v1")
+        let archive = LegacySpeechArchive(defaults: defaults, modelFolder: root)
+        XCTAssertEqual(archive.savedPosition?.nextWord, next); XCTAssertTrue(archive.savedPosition?.usedHelp == true)
+        let start = archive.readerPosition(corpus: corpus, plan: .init(chapter: 67, from: 1, to: 5, daily: 2), pending: nil)
+        XCTAssertEqual(start.chapter, 112); XCTAssertEqual(start.ayah, 2)
+        var pending = MushafStudySession(keys: ["113:1", "113:2"], scope: .range)
+        XCTAssertTrue(pending.answer("review"))
+        let resumed = archive.readerPosition(corpus: corpus, plan: .init(), pending: pending)
+        XCTAssertEqual(resumed.chapter, 113); XCTAssertEqual(resumed.ayah, 2)
+        XCTAssertEqual(defaults.data(forKey: "noor.speech.position.v1"), bytes)
+        XCTAssertEqual(archive.previousPosition, previous); XCTAssertEqual(try Data(contentsOf: model), modelBytes)
+        XCTAssertEqual(defaults.string(forKey: "noor.speechModelFolder.v1"), model.path)
+    }
+    @MainActor func testLegacyDamagedPositionAndNeighborRecordingSurviveOpeningAndExplicitModelErase() async throws {
+        let suite = "Noor.LegacySpeechDamaged." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let model = root.appendingPathComponent("NoorSpeech")
+        try FileManager.default.createDirectory(at: model, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let recording = root.appendingPathComponent("latest-recitation.m4a")
+        let bytes = Data([3, 4, 5]); try bytes.write(to: recording)
+        try bytes.write(to: model.appendingPathComponent("model.bin"))
+        let damaged = Data([0, 255, 10]); defaults.set(damaged, forKey: "noor.speech.position.v1")
+        let archive = LegacySpeechArchive(defaults: defaults, modelFolder: model)
+        XCTAssertEqual(archive.unreadablePosition, damaged); XCTAssertNil(archive.savedPosition)
+        let start = archive.readerPosition(corpus: try XCTUnwrap(QuranResources.corpus), plan: .init(), pending: nil)
+        XCTAssertEqual(start.chapter, 1); XCTAssertEqual(start.ayah, 1)
+        let erased = await archive.eraseModel(); XCTAssertTrue(erased)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: model.path))
+        XCTAssertEqual(try Data(contentsOf: recording), bytes)
+        XCTAssertEqual(defaults.data(forKey: "noor.speech.position.v1"), damaged)
+    }
     func testStaleUploadRetainsNewerRemoteProgressAndIsIdempotent() throws {
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let old = MemorizationResult(date: Date(timeIntervalSince1970: 1_700_000_000), chapter: 1,
