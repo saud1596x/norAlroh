@@ -97,11 +97,17 @@ struct MushafStudyGoalSection: View {
     var body: some View {
         Section {
             if let goal = memorization.mushafStudy.goal {
-                let completed = MushafStudyGoal.completed(history: memorization.history, corpus: store.quran)
-                Text("هدف اليوم: \(completed) من \(goal.dailyAyahs) آية")
-                    .accessibilityIdentifier("study.goal.progress")
-                ProgressView(value: Double(min(completed, goal.dailyAyahs)), total: Double(goal.dailyAyahs))
-                    .accessibilityLabel("تقدم هدف الحفظ").accessibilityValue("\(completed) من \(goal.dailyAyahs)")
+                if memorization.unreadableHistory != nil {
+                    Text("هدفك: \(goal.dailyAyahs) آية في اليوم")
+                    Text("تعذّر قراءة سجل التقدم السابق. احتُفظ ببياناته الأصلية ويمكن تصديرها من الإعدادات؛ لن نعرض تقدمًا غير مؤكد.")
+                        .font(.footnote).accessibilityIdentifier("study.goal.unavailable")
+                } else {
+                    let completed = MushafStudyGoal.completed(history: memorization.history, corpus: store.quran)
+                    Text("هدف اليوم: \(completed) من \(goal.dailyAyahs) آية")
+                        .accessibilityIdentifier("study.goal.progress")
+                    ProgressView(value: Double(min(completed, goal.dailyAyahs)), total: Double(goal.dailyAyahs))
+                        .accessibilityLabel("تقدم هدف الحفظ").accessibilityValue("\(completed) من \(goal.dailyAyahs)")
+                }
             }
             NavigationLink {
                 MushafStudyGoalSettings()
