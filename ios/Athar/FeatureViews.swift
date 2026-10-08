@@ -223,7 +223,8 @@ struct SettingsView: View {
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
             }
             Section("عن نور الروح") {
-                Text("مصحف كامل، أذكار موثّقة ومواقيت الصلاة. للحفظ تسجيل محلي ومتابعة صوتية اختيارية تقارن الكلمات وتعرض فروقًا محتملة تحتاج مراجعتك.")
+                Text("مصحف كامل، وأذكار ومواقيت الصلاة. الحفظ والتسميع داخل المصحف بتقييم ذاتي، مع تسجيل محلي اختياري للاستماع إلى قراءتك. لا يوجد تصحيح صوتي آلي مفعّل.")
+                    .accessibilityIdentifier("settings.studyCapability")
                 Text("النص القرآني مضمّن في التطبيق. مواقيت الصلاة محسوبة محليًا. لا يقدم نور الروح فتاوى أو تفسيرًا مولدًا.")
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · البناء \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
                     .font(.subheadline).foregroundStyle(.secondary)
