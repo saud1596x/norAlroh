@@ -87,16 +87,23 @@ struct InteractiveMushafReader: View {
         guard let snapshot, let rows else { return nil }
         return OriginalPageData.page(number, snapshot: snapshot, rows: rows, keys: keys)
     }
+    // The visible selection owns both the toolbar and canvas. A playback
+    // callback must never silently replace the verse whose tools are open.
+    private var visibleSelection: String? {
+        let key = manualSelection?.key ?? selected
+        return page?.words.contains(where: { $0.verse == key }) == true ? key : nil
+    }
     var body: some View {
         ZStack {
             Theme.panel.ignoresSafeArea()
             GeometryReader { geometry in
                 if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
-                    OriginalMushafDrawing(page: page, corpus: store.quran, selected: selected, reduceMotion: reduced || store.data.lowMotion,
+                    OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
                         onVerse: { key in
                             guard !studyOpen else { return }
                             if let key {
+                                audio.stop()
                                 selected = key; manualSelection = VerseSelection(key: key)
                                 withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools = true }
                             }
@@ -182,7 +189,7 @@ struct InteractiveMushafReader: View {
             VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
                 studyStartKey = key; studyRequestFromSheet = true
             })
-                .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
         .sheet(isPresented: $studySetup, onDismiss: {
@@ -348,7 +355,9 @@ struct InteractiveMushafReader: View {
     }
     private func clearManualSelection() {
         manualSelection = nil
-        selected = audio.playing
+        selected = audio.playing.flatMap { key in
+            page?.words.contains(where: { $0.verse == key }) == true ? key : nil
+        }
     }
     private func openTools(_ selection: VerseSelection, action: VerseToolAction) {
         sheetAction = action; sheetVerse = selection
@@ -376,7 +385,7 @@ struct InteractiveMushafReader: View {
         }.accessibilityLabel(label).accessibilityIdentifier(identifier)
     }
     private var title: String {
-        guard let key = selected ?? page?.words.first?.verse, let n = Int(key.split(separator: ":")[0]), store.quran.indices.contains(n - 1) else { return "المصحف" }
+        guard let key = visibleSelection ?? page?.words.first?.verse, let n = Int(key.split(separator: ":")[0]), store.quran.indices.contains(n - 1) else { return "المصحف" }
         return store.quran[n - 1].name
     }
     private func turn(_ amount: Int) {
@@ -429,7 +438,7 @@ struct InteractiveMushafReader: View {
                     }
                     return
                 }
-                manualSelection = nil
+                guard manualSelection == nil, sheetVerse == nil else { return }
                 selected = key
                 if page?.words.contains(where: { $0.verse == key }) != true,
                    let target = versePages[key] { lastPage = target; number = target }
@@ -462,6 +471,7 @@ private struct VerseTools: View {
     @State private var repeatEnd = 1
     @State private var repeatDelay = 0
     @State private var notice: String?
+    @State private var tafsirHeight: CGFloat = 220
     let initialAction: VerseToolAction
     let onStudy: (String) -> Void
     init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>, initialAction: VerseToolAction = .details, onStudy: @escaping (String) -> Void) {
@@ -545,16 +555,37 @@ private struct VerseTools: View {
                     .navigationTitle("التفسير · \(surah.name) \(selection.ayah)")
                     .toolbar { Button("إغلاق") { showTafsir = false }.accessibilityIdentifier("verse.tafsir.close") }
                 }
+                .presentationDetents([.height(tafsirHeight), .large])
+                .presentationDragIndicator(.visible)
             }
 
         }
+        .presentationDetents(initialAction == .tafsir ? [.height(tafsirHeight), .large] : [.medium, .large])
     }
     private var tafsirContent: some View {
         ScrollView { VStack(alignment: .leading, spacing: 18) {
-            if let text = tafsir.text { Text(text).font(.title3).accessibilityIdentifier("verse.tafsir.text") }
+            Text(QuranText.verse(chapter: selection.chapter, ayah: verse))
+                .font(.body).foregroundStyle(.secondary)
+                .accessibilityIdentifier("verse.tafsir.ayah")
+            Divider()
+            if let text = tafsir.text { Text(text).font(.body).lineSpacing(6).accessibilityIdentifier("verse.tafsir.text") }
             else if let error = tafsir.error { Text(error); Button("إعادة المحاولة") { Task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) } } }
             else { ProgressView("تحميل التفسير الميسر…") }
-        }.padding().frame(maxWidth: .infinity, alignment: .leading) }
+        }.padding().frame(maxWidth: .infinity, alignment: .leading)
+            .background { GeometryReader { proxy in
+                Color.clear.preference(key: TafsirContentHeight.self, value: proxy.size.height)
+            } }
+        }
+            .onPreferenceChange(TafsirContentHeight.self) { height in
+                guard height.isFinite, height > 0 else { return }
+                // Includes the actual text and a navigation/drag-handle lane.
+                // Long explanations scroll; the reader can expand to full height.
+                tafsirHeight = min(480, max(220, height + 80))
+            }
             .task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) }
     }
+}
+private struct TafsirContentHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
