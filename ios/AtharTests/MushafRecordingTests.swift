@@ -87,6 +87,35 @@ final class MushafRecordingTests: XCTestCase {
         XCTAssertNil(recorder.playing); XCTAssertNil(recorder.message)
         XCTAssertEqual(try Data(contentsOf: url), bytes)
     }
+    @MainActor func testFailedRealDecodeReleasesOnlyOwnedAudioSessionWithoutDeletingBytes() throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent(UUID().uuidString + ".m4a")
+        let bytes = Data([0, 255, 1]); try bytes.write(to: url)
+        var activations: [Bool] = []
+        let recorder = MushafSessionRecorder(base: root, permission: { false }, isActive: { true },
+            setSessionActive: { activations.append($0) })
+        recorder.stop(); XCTAssertTrue(activations.isEmpty, "An idle recorder must not deactivate another audio owner")
+        recorder.play(.init(id: UUID(), session: UUID(), url: url, date: Date(), duration: 1))
+        XCTAssertEqual(activations, [true, false], "Release activation even when actual AVAudioPlayer initialization throws")
+        XCTAssertNil(recorder.playing); XCTAssertFalse(recorder.recording); XCTAssertNotNil(recorder.message)
+        recorder.stop(); XCTAssertEqual(activations, [true, false])
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
+    @MainActor func testFailedDeactivationCanRetryWithoutReactivatingOrReplacingAudio() throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent(UUID().uuidString + ".m4a")
+        let bytes = Data([0, 255, 1]); try bytes.write(to: url)
+        var activations: [Bool] = []; var rejectedOnce = false
+        let recorder = MushafSessionRecorder(base: root, permission: { false }, isActive: { true }, setSessionActive: { active in
+            activations.append(active)
+            if !active && !rejectedOnce { rejectedOnce = true; throw CocoaError(.fileReadUnknown) }
+        })
+        recorder.play(.init(id: UUID(), session: UUID(), url: url, date: Date(), duration: 1))
+        XCTAssertEqual(activations, [true, false])
+        recorder.stop(); XCTAssertEqual(activations, [true, false, false])
+        recorder.stop(); XCTAssertEqual(activations, [true, false, false])
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
     func testUnreadableMetadataAndAudioArePreservedAndConflictingHeaderCannotReplaceSession() throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let value = session(); let directory = try MushafRecordingArchive.register(value, base: root)
