@@ -38,11 +38,13 @@ Latest instruction: 2026-10-08 Asia/Riyadh. Keep interim reports, files, screens
    - [x] Implement main khatmah/next-portion/finish card, daily confirmed-reading timeline, tappable monthly reading calendar and session detail.
    - [x] Implement concise reading/memorization summary with actual history link, finished journeys with start/end, truthful empty states.
    - [x] Reuse short calm transitions/progress updates and reduced motion.
-   - [ ] Native calendar/rereading/history tests, compact/large UI and visual review accepted.
+   - [x] Native calendar/rereading/history tests passed on the large iPhone at 0d8f230 (three My Journey tests, all 13 selected unit tests passed).
+   - [x] Compact/large native UI timeline/detail/month/day interactions accepted at 4dcedbc.
+   - [ ] Current screenshots visually reviewed; download restriction remains.
 6. Dates and time
-   - [ ] Prayer viewed day/day name, Gregorian and region-suitable documented Hijri calendar.
+   - [x] Implemented prayer viewed day/day name, Gregorian and documented Umm al-Qura Hijri calendar.
    - [ ] User/viewed timezone drives date and prayer day; rollover/location/timezone changes tested.
-   - [ ] English 0–9, 24h HH:mm, isolated numeric direction consistently on home/prayer/reminders/widgets.
+   - [x] Implemented shared English 0–9, 24h HH:mm and isolated numeric direction on home/prayer/reminder controls/widgets. Native acceptance pending.
 7. Remove requested features
    - [ ] Remove compare-verses and verse-reflection UI/routes/search/shortcuts/unused logic; old links/notifications safely redirect to reader.
    - [ ] Remove Friday settings/options/scheduling and cancel old requests without deleting Kahf or salawat content.
@@ -80,6 +82,11 @@ Latest instruction: 2026-10-08 Asia/Riyadh. Keep interim reports, files, screens
 - Standard Intel macOS native acceptance is enabled for the journey matrix after observed arm64 runner-capacity queues. This changes runner allocation only; real Xcode/simulator tests and original screenshot export remain. Superseded jobs in this branch cancel through scoped concurrency; other branch workflows are untouched.
 - Reader run 37693116607 failed an orientation assertion after settled landscape layout. The assertion compared raw CGImage dimensions without UIImage orientation metadata. Fix 5bb6b3c captures the original full screen before asserting and checks displayed dimensions with quarter-turn metadata; native validation remains pending. No rotation/cropping/reconstruction of original image bytes and no visual acceptance claimed.
 - My Journey uses only actual confirmed sessions, groups by user-local days, preserves old plans, and never converts generic wellness journeys or opening a page into completed Quran reading. Added leap-year/DST/local-midnight/unique-progress tests. UI verifies saved timeline/detail/month/day interactions. None claimed passed until native result.
+- Run 37699564422 large: all 13 selected unit tests passed. UI passed the existing khatmah sequence and relaunch, then failed at line 38 waiting for the offscreen Home lazy-grid link before scrolling. Fixture 4dcedbc scrolls with bounded attempts until the link actually exists and is hittable; it still asserts real navigation, saved count, timeline, session detail and calendar day. New acceptance 37701506009 is pending. Superseded run 17 was canceled by scoped concurrency; no UI or visual acceptance claimed.
 - 17 local Python script tests passed. These do not substitute for native behavior tests.
 - Actual khatmah screenshot artifacts cannot be downloaded through the current browser due to an explicit protocol restriction; do not retry via indirect routes. No khatmah images have been visually accepted. User-provided screenshot ZIPs can be inspected normally.
 - User cannot supply screenshots while sleeping; continue independent implementation/native verification and defer visual acceptance. Do not route around the explicit download restriction. No final review or publication. Existing App Store build 15 untouched.
+
+- Run 37701506009 at 4dcedbc succeeded on compact and large (25m26s): selected native unit tests and actual khatmah/My Journey UI navigation, persistence, timeline, detail and calendar interactions. Original screenshots retained as artifacts; visual review is still blocked by the explicit browser download restriction. Dates/clocks is now the next sequential feature.
+
+- Prayer dates/clocks implementation checkpoint 14c4644: shared city-local Gregorian and Umm al-Qura header, English HH:mm, LTR numeric isolation, live Latin countdowns, same widget formatter, next-day prayer date, local location-update date, 24-hour reminder picker in the existing plan timezone. Existing data models and stored user settings are unchanged. Added real midnight/timezone/DST model tests and native city-change/relaunch UI checks. Native acceptance 37706547129 at 1cc6240 is running; no result or visual acceptance claimed. All 17 local script tests pass.
