@@ -41,6 +41,45 @@ final class NoorMushafStudyUITests: XCTestCase {
         capture(app, "repeat-options-restored-after-relaunch")
         app.buttons["verse.sheet.close"].tap()
     }
+    func testDailyGoalPersistsAndCompletedPracticeCountsOnce() {
+        let app = XCUIApplication(); application = app; app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        app.buttons["reader.study"].tap()
+        let goal = app.buttons["study.goal.open"]
+        for _ in 0..<3 { if goal.exists && goal.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(goal.isHittable); goal.tap()
+        let enabled = app.switches["study.goal.enabled"]
+        XCTAssertTrue(enabled.waitForExistence(timeout: 10)); enabled.tap()
+        XCTAssertTrue(numbers(app.staticTexts["study.goal.target"].label).contains(7))
+        XCTAssertGreaterThanOrEqual(app.buttons["study.goal.increase"].frame.height, 44)
+        XCTAssertGreaterThanOrEqual(app.buttons["study.goal.decrease"].frame.height, 44)
+        capture(app, "study-goal-configured-with-real-controls")
+        app.buttons["study.goal.save"].tap()
+        let progress = app.staticTexts["study.goal.progress"]
+        XCTAssertTrue(progress.waitForExistence(timeout: 10)); XCTAssertTrue(progress.isHittable); XCTAssertEqual(numbers(progress.label), [0, 7])
+        app.buttons["study.setup.close"].tap(); app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120)); app.buttons["reader.study"].tap()
+        for _ in 0..<3 { if progress.exists && progress.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(progress.waitForExistence(timeout: 10)); XCTAssertTrue(progress.isHittable); XCTAssertEqual(numbers(progress.label), [0, 7])
+        capture(app, "study-goal-restored-after-relaunch")
+        app.swipeDown(); app.buttons["study.scope"].tap(); app.buttons["نطاق آيات"].tap()
+        app.buttons["study.start"].tap()
+        XCTAssertTrue(app.buttons["study.remembered"].waitForExistence(timeout: 10)); app.buttons["study.remembered"].tap()
+        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 10))
+        app.buttons["study.result.close"].tap(); app.buttons["reader.study"].tap()
+        for _ in 0..<3 { if progress.exists && progress.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(progress.waitForExistence(timeout: 10)); XCTAssertTrue(progress.isHittable); XCTAssertEqual(numbers(progress.label), [1, 7])
+        capture(app, "study-goal-counts-completed-self-session")
+        app.buttons["study.setup.close"].tap(); app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120)); app.buttons["reader.study"].tap()
+        for _ in 0..<3 { if progress.exists && progress.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(progress.waitForExistence(timeout: 10)); XCTAssertTrue(progress.isHittable); XCTAssertEqual(numbers(progress.label), [1, 7])
+        capture(app, "study-goal-progress-restored-after-relaunch")
+        app.buttons["study.setup.close"].tap()
+    }
     func testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount() {
         let app = XCUIApplication(); application = app; app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
