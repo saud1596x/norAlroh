@@ -323,6 +323,12 @@ enum MushafRecordingArchive {
             guard player.play() else { throw CocoaError(.fileReadUnknown) }
             playbackPaused = false; message = nil
         } catch {
+            // Keep the paused player and its position for an explicit retry,
+            // but do not retain system audio ownership after failed playback.
+            if ownsAudioSession {
+                do { try setSessionActive(false); ownsAudioSession = false }
+                catch { /* A subsequent pause/stop can retry deactivation. */ }
+            }
             message = "تعذّر استئناف الصوت. بقي التسجيل محفوظًا؛ أعد المحاولة."
         }
     }
