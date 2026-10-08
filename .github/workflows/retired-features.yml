@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [mushaf-viewport-20261007]
-    paths: ['.github/workflows/retired-features.yml', 'ios/Athar/NoorWidgetBridge.swift', 'ios/Athar/NoorReflectionView.swift', 'ios/Athar/MemorizationViews.swift', 'ios/Athar/NoorTodayView.swift', 'ios/Athar/HomeJourney.swift', 'ios/AtharTests/WidgetTests.swift', 'ios/AtharTests/NoorRemovedFeatureRetentionTests.swift', 'ios/AtharUITests/NoorRemovedFeaturesUITests.swift']
+    paths: ['.github/workflows/retired-features.yml', 'ios/Athar/NoorWidgetBridge.swift', 'ios/Athar/NoorReflectionView.swift', 'ios/Athar/MemorizationViews.swift', 'ios/Athar/NoorTodayView.swift', 'ios/Athar/HomeJourney.swift', 'ios/AtharTests/WidgetTests.swift', 'ios/AtharTests/NoorRemovedFeatureRetentionTests.swift', 'ios/AtharUITests/NoorRemovedFeaturesUITests.swift', 'ios/Athar/NoorRetiredFridayCleanup.swift', 'ios/Athar/Friday*.swift', 'ios/Athar/AtharApp.swift', 'ios/Athar/FeatureViews.swift', 'ios/Athar/PrayerNotificationSettings.swift', 'ios/AtharTests/NoorRetiredFridayCleanupTests.swift', 'ios/AtharTests/FridayTests.swift', 'ios/AtharUITests/NoorFridayRetirementUITests.swift']
 permissions:
   contents: read
 concurrency:
@@ -14,7 +14,7 @@ jobs:
     # Standard Intel runner avoids the current arm64 capacity queue. Keep real
     # Xcode/simulator acceptance; never substitute a build-only check.
     runs-on: macos-15-intel
-    timeout-minutes: 35
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +45,13 @@ jobs:
           print('NOOR_STAGE1_DEVICE='+selected['udid'])
           print('NOOR_STAGE1_DEVICE_NAME='+selected['name'])
           PY
+      - name: Boot selected iPhone with bounded readiness check
+        timeout-minutes: 5
+        run: |
+          python3 - <<'PYBOOT'
+          import os, subprocess
+          subprocess.run(['xcrun', 'simctl', 'bootstatus', os.environ['NOOR_STAGE1_DEVICE'], '-b'], check=True, timeout=240)
+          PYBOOT
       - name: Native retired routes data retention and surviving Quran actions acceptance
         run: |
           echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
@@ -53,7 +60,10 @@ jobs:
             -only-testing:AtharTests/WidgetTests \
             -only-testing:AtharTests/QuranAccuracyTests \
             -only-testing:AtharTests/NoorRemovedFeatureRetentionTests \
+            -only-testing:AtharTests/NoorRetiredFridayCleanupTests \
+            -only-testing:AtharTests/FridayTests \
             -only-testing:AtharUITests/NoorRemovedFeaturesUITests \
+            -only-testing:AtharUITests/NoorFridayRetirementUITests \
             -only-testing:AtharUITests/NoorNavigationTests/testArabicSurahSearchAndInteractiveTextReader \
             -parallel-testing-enabled NO -resultBundlePath release/retired-features-${{ matrix.display }}.xcresult \
             CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
