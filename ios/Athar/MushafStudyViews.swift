@@ -60,7 +60,7 @@ struct MushafStudySetup: View {
                         }.accessibilityIdentifier("study.scope")
                         if scope == .page {
                             Text("الصفحة \(page) · \(pageKeys.count) آية")
-                            Text("تشمل الآيات كاملة، بما فيها الآية التي تبدأ أو تنتهي في الصفحة المجاورة.").font(.footnote)
+                            Text("تُسمّع كل آية كاملة، وتُحفظ نتيجتها على حدة، حتى عندما تضم الصفحة أكثر من سورة.").font(.footnote)
                         } else {
                             Picker("السورة", selection: $chapter) {
                                 ForEach(store.quran) { surah in Text(surah.name).tag(surah.number) }
