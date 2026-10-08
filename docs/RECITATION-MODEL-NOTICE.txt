@@ -1,0 +1,19 @@
+Noor Alruh offline Quran recognition resources
+
+Original Quran ASR model: tarteel-ai/whisper-base-ar-quran
+https://huggingface.co/tarteel-ai/whisper-base-ar-quran
+Published license: Apache License, Version 2.0.
+
+Core ML conversion: fazalshaikh123/ultra-fast-tarteel-coreml
+Revision: 0338074ac8d662f6f52c5d66b433cac74202158e
+https://huggingface.co/fazalshaikh123/ultra-fast-tarteel-coreml
+The converter credits OdyAsh/faster-whisper-base-ar-quran and the original Tarteel AI model.
+Noor Alruh uses these existing model bytes without training or modifying weights.
+
+Whisper base architecture/tokenizer: OpenAI, MIT license.
+WhisperKit runtime: Argmax OSS, pinned source revision
+1e2a163736dfa5a198e637ae44c114e1c6d5cc2d.
+
+These resources transcribe audio. They do not establish pronunciation or
+Tajweed correctness. Noor Alruh applies independent acoustic, timing and
+exact Quran-position checks before using transcription for text reveal.
