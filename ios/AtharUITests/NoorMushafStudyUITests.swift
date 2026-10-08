@@ -8,7 +8,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
     func testActualRepeatControlsPersistAndGapCancels() {
-        let app = XCUIApplication(); application = app; app.launch()
+        let app = XCUIApplication(); application = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         app.buttons["reader.jump"].tap()
@@ -33,7 +33,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
         let cancelled = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: stop)
         wait(for: [cancelled], timeout: 5)
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(verse.waitForExistence(timeout: 120)); verse.press(forDuration: 0.6); app.buttons["verse.repeat"].tap()
         XCTAssertTrue(count.waitForExistence(timeout: 10))
@@ -42,7 +42,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["verse.sheet.close"].tap()
     }
     func testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount() {
-        let app = XCUIApplication(); application = app; app.launch()
+        let app = XCUIApplication(); application = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         selectNoorTab("الحفظ", in: app)
         let entry = app.buttons["hifz.speech"]
@@ -67,7 +67,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["hifz.speech"].waitForExistence(timeout: 10), "Leaving returns to the same navigation context")
     }
     func testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch() {
-        let app = XCUIApplication(); application = app; app.launch()
+        let app = XCUIApplication(); application = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 120))
@@ -114,7 +114,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.verse.112:2").firstMatch.label.contains("مخفي"))
         app.buttons["study.review"].tap()
         capture(app, "study-604-two-answers")
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(page.waitForExistence(timeout: 120)); app.buttons["reader.study"].tap()
         XCTAssertTrue(app.buttons["study.resume"].waitForExistence(timeout: 5)); app.buttons["study.resume"].tap()
@@ -127,7 +127,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertEqual(numbers(app.staticTexts["study.result.answered"].label), [2, 15])
         XCTAssertEqual(numbers(app.staticTexts["study.result.helped"].label), [1, 1])
         capture(app, "study-partial-result-persisted")
-        app.buttons["study.result.close"].tap(); app.terminate(); app.launch()
+        app.buttons["study.result.close"].tap(); app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(page.waitForExistence(timeout: 120)); app.buttons["reader.study"].tap()
         XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 5))
@@ -158,7 +158,7 @@ final class NoorMushafStudyUITests: XCTestCase {
     func testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable() {
         // CI grants the simulator's actual OS microphone permission before this
         // separate journey. No app test mode or invented recording is injected.
-        let app = XCUIApplication(); application = app; app.launch()
+        let app = XCUIApplication(); application = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         app.buttons["reader.jump"].tap()
@@ -180,7 +180,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCUIDevice.shared.press(.home); app.activate()
         XCTAssertFalse(app.buttons["study.remembered"].isEnabled, "Background must pause and finalize the recording")
         capture(app, "study-background-paused-with-durable-take")
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         app.buttons["reader.study"].tap()

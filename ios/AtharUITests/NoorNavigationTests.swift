@@ -4,7 +4,7 @@ import XCTest
 final class NoorNavigationTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     func testNativeHomeSaudiCitySelectionAndAdhkarSearch() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         attach(app, name: "الرئيسية")
         selectNoorTab("الصلاة", in: app)
@@ -31,7 +31,7 @@ final class NoorNavigationTests: XCTestCase {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
     func testArabicSurahSearchAndInteractiveTextReader() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         selectNoorTab("المصحف", in: app)
         let search = app.searchFields.firstMatch
@@ -49,6 +49,12 @@ final class NoorNavigationTests: XCTestCase {
 
 
 extension XCTestCase {
+    func launchNoorApp(_ app: XCUIApplication) {
+        app.launch()
+        let guest = app.buttons["welcome.continue"]
+        if guest.waitForExistence(timeout: 4) { guest.tap() }
+    }
+
     func selectNoorTab(_ title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         // iPadOS exposes the floating top tabs outside XCUIElementTypeTabBar.
         let matches = app.buttons.matching(NSPredicate(format: "label == %@", title))

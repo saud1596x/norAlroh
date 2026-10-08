@@ -15,7 +15,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
     func testPageToolsGesturesAndRelaunchPreservePosition() {
-        let app = XCUIApplication(); acceptanceApp = app; app.launch()
+        let app = XCUIApplication(); acceptanceApp = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
@@ -91,7 +91,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         capture(app, "stage1-604-zoom-pan")
         jump(151, app: app)
         capture(app, "stage1-151-centered")
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         XCTAssertTrue(page.waitForExistence(timeout: 120))

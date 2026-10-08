@@ -3,7 +3,7 @@ import XCTest
 final class NoorRemovedFeaturesUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testRetiredActionsAreAbsentAndJourneyRemainsReachable() {
-        let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 30))
         let footer = app.descendants(matching: .any).matching(identifier: "home.footer").firstMatch
         for _ in 0..<6 {

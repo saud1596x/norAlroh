@@ -5,7 +5,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
     func testPersistedReferenceRecordingTransportRemovalAndRelaunch() {
         // A native test writes authentic reference audio through the production
         // archive; seed-recording-ui.py verifies it. No live capture/ASR claim.
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         let session = "A1662B68-55BB-4A4B-9441-761EF83DCF54"
         let take = "50CC9A34-A7A3-44B5-A7A7-39671AC60968"
         func open() {
@@ -47,7 +47,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         app.buttons["study.recordings.deleted"].tap()
         XCTAssertTrue(app.buttons["study.recording.restore.\(take)"].waitForExistence(timeout: 5))
         capture(app, "reference-recording-recoverable-removal")
-        app.terminate(); app.launch(); open()
+        app.terminate(); launchNoorApp(app); open()
         XCTAssertFalse(app.buttons["study.recording.play.\(take)"].exists)
         app.buttons["study.recordings.deleted"].tap()
         let restore = app.buttons["study.recording.restore.\(take)"]
@@ -60,7 +60,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         app.buttons["study.recordings.close"].tap()
     }
     func test604ActualReaderEveryVerseToolsAndZoom() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         selectNoorTab("المصحف", in: app)
         let search = app.searchFields.firstMatch
@@ -83,7 +83,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.verse.109:1"].waitForExistence(timeout: 30), "Fitted swipe opens page 603")
         capture(app, "text-reader-603-swiped")
         app.buttons["إغلاق المصحف"].tap()
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         XCTAssertTrue(app.buttons["reader.verse.109:1"].waitForExistence(timeout: 120),
@@ -160,7 +160,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         capture(app, "text-reader-604-zoom-reselection")
     }
     func testMicrophoneDenialKeepsReaderAvailableAndStationary() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
@@ -180,7 +180,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         capture(app, "recitation-reading-after-denial")
     }
     func testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
@@ -209,7 +209,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
     func testActualVersePlaybackFailureShowsNoticeAndRestoresReader() {
         let app = XCUIApplication()
         app.launchArguments = ["-NoorAcceptanceUnavailableVerseAudio"]
-        app.launch()
+        launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch

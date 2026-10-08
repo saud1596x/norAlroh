@@ -3,7 +3,7 @@ import XCTest
 final class NoorPrayerDisplayUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testPrayerDatesClocksAndCityPersistAcrossRestart() {
-        let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 30))
         selectNoorTab("الصلاة", in: app)
         assertDatesAndClock(app)
@@ -19,7 +19,7 @@ final class NoorPrayerDisplayUITests: XCTestCase {
         XCTAssertTrue(fajr.waitForExistence(timeout: 10))
         assertClock(fajr.label)
         capture(app, "prayer-city-changed")
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         selectNoorTab("الصلاة", in: app)
         XCTAssertTrue(app.buttons["prayer.city"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons["prayer.city"].value as? String, "جدة")

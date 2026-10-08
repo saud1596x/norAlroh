@@ -5,7 +5,7 @@ final class NoorMushafPageNavigationUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     func testText604NavigationAndToolsDoNotMoveCanvas() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         selectNoorTab("المصحف", in: app)
         let search = app.searchFields.firstMatch

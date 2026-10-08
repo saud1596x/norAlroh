@@ -5,7 +5,7 @@ final class NoorAllScreensTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     func testAllScreensWalkthrough() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         capture(app, "01-home")
         tap(app.buttons["home.myJourney"], in: app)
@@ -136,7 +136,7 @@ final class NoorAllScreensTests: XCTestCase {
     }
 
     func testPrayerSettingsExposeIndependentSalawatAndNoCalculationPicker() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         selectNoorTab("الصلاة", in: app)
         XCTAssertFalse(app.staticTexts["طريقة الحساب"].exists)

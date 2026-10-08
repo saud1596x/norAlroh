@@ -3,7 +3,7 @@ import XCTest
 final class NoorFridayRetirementUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     func testSettingsRetiredWhileKahfAndSalawatRemainUsableAfterRelaunch() {
-        let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 30))
         inspectSettings(app)
         selectNoorTab("المصحف", in: app)
@@ -29,7 +29,7 @@ final class NoorFridayRetirementUITests: XCTestCase {
         XCTAssertTrue(start.exists && start.isHittable); start.tap()
         XCTAssertTrue(app.buttons["زيادة عداد الذكر"].waitForExistence(timeout: 10))
         capture(app, "salawat-content-and-counter-preserved")
-        app.terminate(); app.launch()
+        app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 30))
         inspectSettings(app)
     }
