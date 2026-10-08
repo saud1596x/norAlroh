@@ -72,6 +72,8 @@ struct InteractiveMushafReader: View {
     @State private var studyRequestFromSheet = false
     @State private var studyIndex: MushafStudyWordIndex?
     @State private var studySummary = false
+    @State private var scopeOpen = false
+    @State private var requestedScope: [String]?
     @Environment(\.scenePhase) private var scenePhase
     private var studyOpen: Bool { recitation.hasSession || recitation.state == .permission || recitation.state == .preparing }
     private var hiddenStudyWords: Set<Int> { recitation.hiddenIDs }
@@ -96,6 +98,7 @@ struct InteractiveMushafReader: View {
                 } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
+                        hiddenTextAccessibilityHint: "نص الآية مخفي للتسميع؛ يظهر عندما يتعرف النظام على تلاوتك.",
                         onVerse: { key in
                             guard !studyOpen else { return }
                             if let key {
@@ -146,6 +149,8 @@ struct InteractiveMushafReader: View {
                                 .background(Theme.gold.opacity(0.12), in: Circle())
                         }
                             .accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
+                            .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
+                            .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
                         Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
@@ -190,6 +195,12 @@ struct InteractiveMushafReader: View {
                 studyStartKey = key; studyRequestFromSheet = true
             })
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $scopeOpen, onDismiss: {
+            if let scope = requestedScope { requestedScope = nil; startRecitation(keys: scope) }
+        }) {
+            QuranRecitationScope(page: number, pageKeys: visiblePageKeys,
+                initialKey: visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
         }
         .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
         .sheet(isPresented: $recordingsOpen) {
@@ -239,14 +250,15 @@ struct InteractiveMushafReader: View {
         } message: { Text(recitation.message ?? "") }
     }
     private func showStudySetup(_ key: String? = nil) {
+        startRecitation(keys: key.map { [$0] } ?? visiblePageKeys)
+    }
+    private var visiblePageKeys: [String] {
+        let visible = Set(page?.words.map(\.verse) ?? [])
+        return keys.filter { visible.contains($0) }
+    }
+    private func startRecitation(keys scope: [String]) {
         guard let snapshot, !recitation.hasSession else { return }
         audio.stop(); studyRecorder.stop(); legacyRecorder.stop(); clearManualSelection()
-        let scope: [String]
-        if let key { scope = [key] }
-        else {
-            let visible = Set(page?.words.map(\.verse) ?? [])
-            scope = keys.filter { visible.contains($0) }
-        }
         tools = true
         Task { await recitation.start(keys: scope, page: number, snapshot: snapshot, corpus: store.quran) }
     }

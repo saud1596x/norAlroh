@@ -89,6 +89,9 @@ struct OriginalPageData {
             refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
         }
     }
+    var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة." {
+        didSet { if oldValue != hiddenTextAccessibilityHint { refreshAccessibilityLabels() } }
+    }
     var allowsVerseSelection = true {
         didSet { if oldValue != allowsVerseSelection { refreshAccessibilityLabels() } }
     }
@@ -238,7 +241,7 @@ struct OriginalPageData {
             element.accessibilityTraits = allowsVerseSelection ? .button : .staticText
             element.action = allowsVerseSelection ? { [weak self] in self?.onVerse?(key) } : nil
             element.accessibilityLabel = element.heading + ". " + (hiddenVerses.contains(element.verseKey)
-                ? "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة." : element.fullText)
+                ? hiddenTextAccessibilityHint : element.fullText)
         }
     }
     /// A title and its separate basmala share the space between actual body ink.
@@ -516,12 +519,14 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
     var allowsVerseSelection = true
+    var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة."
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     var onTurn: ((Int) -> Void)? = nil
     var onToggleTools: (() -> Void)? = nil
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
         view.allowsVerseSelection = allowsVerseSelection
+        view.canvas.hiddenTextAccessibilityHint = hiddenTextAccessibilityHint
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
         view.onToggleTools = onToggleTools
