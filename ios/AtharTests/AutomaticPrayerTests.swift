@@ -9,9 +9,42 @@ final class AutomaticPrayerTests: XCTestCase {
         let afternoon = ISO8601DateFormatter().date(from: "2026-10-04T12:07:00Z")!
         let riyadh = PrayerLocation(name: "الرياض", latitude: 24.7, longitude: 46.7, timeZone: "Asia/Riyadh")
         let dubai = PrayerLocation(name: "دبي", latitude: 25.2, longitude: 55.3, timeZone: "Asia/Dubai")
-        XCTAssertEqual(PrayerCalculator.time(midnight, city: riyadh), "٠٠:٠٥")
-        XCTAssertEqual(PrayerCalculator.time(afternoon, city: riyadh), "١٥:٠٧")
-        XCTAssertEqual(PrayerCalculator.time(afternoon, city: dubai), "١٦:٠٧")
+        XCTAssertEqual(PrayerCalculator.time(midnight, city: riyadh), "00:05")
+        XCTAssertEqual(PrayerCalculator.time(afternoon, city: riyadh), "15:07")
+        XCTAssertEqual(PrayerCalculator.time(afternoon, city: dubai), "16:07")
+    }
+    func testPrayerDatesFollowCityMidnightAndHijriCalendarAcrossTimeZones() {
+        let utc = PrayerLocation(name: "UTC", latitude: 0, longitude: 0, timeZone: "Etc/UTC")
+        let riyadh = PrayerLocation(name: "الرياض", latitude: 24.7, longitude: 46.7, timeZone: "Asia/Riyadh")
+        let before = ISO8601DateFormatter().date(from: "2026-10-04T20:59:59Z")!
+        let after = before.addingTimeInterval(1)
+        for identifier in [Calendar.Identifier.gregorian, .islamicUmmAlQura] {
+            let format = "yyyy-MM-dd"
+            XCTAssertNotEqual(PrayerDisplay.date(before, city: riyadh, identifier: identifier, format: format),
+                              PrayerDisplay.date(after, city: riyadh, identifier: identifier, format: format))
+            XCTAssertEqual(PrayerDisplay.date(before, city: utc, identifier: identifier, format: format),
+                           PrayerDisplay.date(after, city: utc, identifier: identifier, format: format))
+        }
+        XCTAssertEqual(PrayerDisplay.date(after, city: riyadh, format: "yyyy-MM-dd"), "2026-10-05")
+        XCTAssertEqual(PrayerDisplay.date(after, city: utc, format: "yyyy-MM-dd"), "2026-10-04")
+        XCTAssertEqual(PrayerDisplay.calendar(city: riyadh, identifier: .islamicUmmAlQura).identifier, .islamicUmmAlQura)
+        XCTAssertEqual(PrayerDisplay.isolatedClock(after, city: riyadh), "\u{2066}00:00\u{2069}")
+        for value in [PrayerDisplay.gregorian(after, city: riyadh), PrayerDisplay.hijri(after, city: riyadh)] {
+            XCTAssertFalse(value.isEmpty)
+            XCTAssertTrue(value.allSatisfy { $0.wholeNumberValue == nil || "0123456789".contains($0) })
+        }
+    }
+    func testClockHandlesDSTRepeatedAndMissingHoursWithoutChangingPrayerInstants() {
+        let newYork = PrayerLocation(name: "نيويورك", latitude: 40.7, longitude: -74, timeZone: "America/New_York")
+        let cases = [("2026-03-08T06:59:00Z", "01:59"), ("2026-03-08T07:00:00Z", "03:00"),
+                     ("2026-11-01T05:30:00Z", "01:30"), ("2026-11-01T06:30:00Z", "01:30")]
+        for (instant, expected) in cases {
+            let date = ISO8601DateFormatter().date(from: instant)!
+            XCTAssertEqual(PrayerCalculator.time(date, city: newYork), expected)
+            let rows = PrayerCalculator.rows(data: .init(city: newYork, method: "Moonsighting", hanafi: false), date: date)
+            XCTAssertEqual(rows.count, 6)
+            XCTAssertTrue(rows.allSatisfy { PrayerCalculator.isSameDay($0.date, date, city: newYork) })
+        }
     }
     func testRegionalDefaultsReplaceLegacyChoicesInApplicationAndWidgetInputs() {
         var data = DeviceData(); data.method = "UmmAlQuraRamadan"; data.hanafi = true
