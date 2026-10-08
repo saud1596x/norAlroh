@@ -33,17 +33,29 @@ import WidgetKit
 
 @MainActor final class NoorWidgetRouter: ObservableObject {
     static let shared = NoorWidgetRouter()
+    private let defaults: UserDefaults
+    private static let retiredHosts: Set<String> = ["compare", "compare-verses", "similarities", "reflection", "daily-verse"]
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    private var savedPage: Int { max(1, min(604, defaults.integer(forKey: "noor.mushaf.lastPage"))) }
     struct Destination: Identifiable { let id = UUID(); let host: String; let page: Int? }
     @Published var destination: Destination?
     @discardableResult func openNotification(destination host: String) -> Bool {
+        if Self.retiredHosts.contains(host) {
+            destination = .init(host: "reading", page: savedPage); return true
+        }
         guard ["prayers", "dhikr"].contains(host) else { return false }
         destination = .init(host: host, page: nil)
         return true
     }
     @discardableResult func open(_ url: URL) -> Bool {
         guard url.scheme == "nooralruh", let host = url.host,
-              ["reading", "prayers", "dhikr", "ward", "review"].contains(host),
               url.user == nil, url.password == nil else { return false }
+        // Old shortcuts open the saved Quran page; never resurrect retired UI
+        // or erase its independently stored personal notes.
+        if Self.retiredHosts.contains(host) {
+            destination = .init(host: "reading", page: savedPage); return true
+        }
+        guard ["reading", "prayers", "dhikr", "ward", "review"].contains(host) else { return false }
         let page = Int(url.lastPathComponent)
         if host == "reading", let page, !(1...604).contains(page) { return false }
         destination = .init(host: host, page: page); return true

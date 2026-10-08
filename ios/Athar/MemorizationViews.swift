@@ -406,7 +406,6 @@ struct MemorizationView: View {
                     }
                     NavigationLink("خريطة الإتقان") { MemorizationInsightsView() }.accessibilityIdentifier("hifz.insights")
                     NavigationLink("سجل المراجعة") { MemorizationHistoryView() }.accessibilityIdentifier("hifz.history")
-                    NavigationLink("الآيات المتشابهة") { LexicalSimilaritiesView() }.accessibilityIdentifier("hifz.similarities")
                     NavigationLink("حماية وقت الورد") { NoorFocusView() }.accessibilityIdentifier("hifz.focus")
                 }
             }.padding(20)
@@ -730,45 +729,5 @@ struct MemorizationHistoryView: View {
                 }
             }
         }.navigationTitle("سجل المراجعة")
-    }
-}
-struct LexicalSimilaritiesView: View {
-    @EnvironmentObject var store: AtharStore
-    @State private var chapter = 1
-    @State private var number = 1
-    private var surah: Surah? { store.quran.first { $0.number == chapter } }
-    private func normalized(_ text: String) -> String {
-        text.replacingOccurrences(of: "[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED\\u0640]", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "[أإآٱ]", with: "ا", options: .regularExpression)
-            .replacingOccurrences(of: "[^\\u0621-\\u064A\\s]", with: "", options: .regularExpression)
-            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
-    }
-    private var matches: [(surah: Surah, ayah: Ayah)] {
-        guard let original = surah?.ayahs.first(where: { $0.number == number }) else { return [] }
-        let tokens = normalized(QuranText.verse(chapter: chapter, ayah: original)).split(separator: " ").prefix(4)
-        guard tokens.count >= 3 else { return [] }
-        let phrase = tokens.joined(separator: " ")
-        return store.quran.flatMap { s in s.ayahs.filter { !(s.number == chapter && $0.number == number) && normalized(QuranText.verse(chapter: s.number, ayah: $0)).contains(phrase) }.map { (s, $0) } }
-    }
-    var body: some View {
-        List {
-            Section {
-                Picker("السورة", selection: $chapter) { ForEach(store.quran) { Text($0.name).tag($0.number) } }
-                Stepper("الآية \(number)", value: $number, in: 1...(surah?.ayahs.count ?? 1))
-                if let ayah = surah?.ayahs.first(where: { $0.number == number }) { QuranVerseText(QuranText.verse(chapter: chapter, ayah: ayah)) }
-            }
-            Section("\(matches.count) نتائج تشابه لفظي") {
-                ForEach(Array(matches.prefix(30).enumerated()), id: \.offset) { _, match in
-                    NavigationLink { MushafReader(chapter: match.surah.number, ayah: match.ayah.number) } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("\(match.surah.name) · \(match.ayah.number)").font(.caption).foregroundStyle(.secondary)
-                            QuranVerseText(QuranText.verse(chapter: match.surah.number, ayah: match.ayah), size: 24)
-                        }
-                    }
-                }
-                if matches.isEmpty { Text("لم نجد العبارة الافتتاحية نفسها في آية أخرى.") }
-            }
-            Text("مطابقة أول أربع كلمات بعد إزالة التشكيل. لا تصنيف تفسيري ولا قائمة شاملة للمتشابهات.").font(.caption).foregroundStyle(.secondary)
-        }.navigationTitle("التشابه اللفظي").onChange(of: chapter) { _, _ in number = 1 }
     }
 }
