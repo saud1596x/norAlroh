@@ -8,6 +8,8 @@ on:
       - ios/Athar/MushafSessionRecorder.swift
       - ios/Athar/QCFV2Content.swift
       - ios/Athar/QuranSessionResult.swift
+      - ios/Athar/QuranRecitationScope.swift
+      - ios/Athar/InteractiveMushafCanvas.swift
       - ios/AtharUITests/NoorInteractiveMushafUITests.swift
       - tools/RecitationEngineProbe/Sources/RecitationAlignment/**
       - content-sources/recitation-word-script.json
