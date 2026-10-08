@@ -1,5 +1,6 @@
 import Foundation
 import WhisperKit
+import Darwin
 
 struct ProbeFixture: Codable {
     let name: String
@@ -28,7 +29,17 @@ struct ProbeReport: Codable {
 }
 
 @main struct RecitationEngineProbe {
-    static func main() async throws {
+    static func main() async {
+        do { try await run() }
+        catch {
+            FileHandle.standardError.write(Data("Native engine investigation failed: \(error)\n".utf8))
+            // A thrown async-main error traps and loses buffered diagnostic
+            // stdout. A regular failed exit retains all already-written evidence.
+            exit(EXIT_FAILURE)
+        }
+    }
+
+    private static func run() async throws {
         let arguments = CommandLine.arguments
         guard arguments.count == 5 else {
             throw ProbeFailure("Usage: probe MODEL_FOLDER TOKENIZER_FOLDER FIXTURES_FOLDER REPORT_JSON")
