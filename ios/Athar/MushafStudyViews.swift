@@ -49,7 +49,7 @@ struct MushafStudySetup: View {
                         }.accessibilityIdentifier("study.resume")
                         Text("يمكنك إنهاء الجلسة من المصحف قبل بدء جلسة أخرى؛ لن تُستبدل خطة الحفظ السابقة.").font(.footnote)
                     }
-                } else if memorization.unreadableMushafStudyData != nil {
+                } else if memorization.unreadableMushafStudy != nil {
                     Section { Text("تعذّر قراءة الجلسة المحفوظة. احتُفظ بالبيانات الأصلية، ويمكن تصديرها من الإعدادات؛ لن نستبدلها بجلسة جديدة.") }
                 } else {
                     Section("اختر المقطع") {
