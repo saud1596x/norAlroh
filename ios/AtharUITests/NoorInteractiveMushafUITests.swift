@@ -149,6 +149,27 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertEqual(page.frame, frame)
         XCTAssertFalse(app.buttons["study.finish"].exists, "Scope selection cannot start capture before its explicit start button")
     }
+    func testActualVersePlaybackFailureShowsNoticeAndRestoresReader() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-NoorAcceptanceUnavailableVerseAudio"]
+        app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120), app.debugDescription)
+        let frame = page.frame
+        let verse = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reader.verse.")).firstMatch
+        XCTAssertTrue(verse.waitForExistence(timeout: 5)); verse.press(forDuration: 0.6)
+        app.buttons["verse.play"].tap()
+        let notice = app.alerts["التلاوة"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 25), app.debugDescription)
+        capture(app, "recitation-reader-actual-audio-failure")
+        notice.buttons["حسنًا"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["إلغاء تحميل التلاوة"].exists)
+        XCTAssertEqual(page.frame, frame)
+        capture(app, "recitation-reader-restored-after-audio-failure")
+    }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
