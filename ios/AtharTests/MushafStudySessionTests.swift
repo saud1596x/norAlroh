@@ -2,6 +2,34 @@ import XCTest
 @testable import Athar
 
 final class MushafStudySessionTests: XCTestCase {
+    func testTrustedWordMaskKeepsVerseEndMarkersAndSpansEveryAuthoredPage() async throws {
+        let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
+        let (data, response) = try await URLSession.shared.data(from: url)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
+        let Quran = try corpus()
+        let keys = Quran.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let index = MushafStudyWordIndex(snapshot: snapshot, keys: keys)
+        let crossing = try XCTUnwrap(keys.dropLast().first { (index.pages[$0]?.count ?? 0) > 1 })
+        let position = try XCTUnwrap(keys.firstIndex(of: crossing))
+        let next = keys[position + 1]
+        let words = try XCTUnwrap(index.words[crossing])
+        XCTAssertGreaterThan(words.count, 1)
+        var session = MushafStudySession(keys: [crossing, next], scope: .range)
+        XCTAssertTrue(session.valid(corpus: Quran))
+        let allIDs = Set(words + (index.words[next] ?? []))
+        XCTAssertEqual(index.hiddenIDs(session: session), allIDs)
+        let endIDs = Set(snapshot.records.filter { $0.char_type_name == "end" }.map(\.id))
+        XCTAssertTrue(index.hiddenIDs(session: session).isDisjoint(with: endIDs), "Do not erase verse numbers or stop markers")
+        XCTAssertTrue(session.reveal(wordCount: words.count, all: false))
+        XCTAssertEqual(index.hiddenIDs(session: session), allIDs.subtracting([words[0]]))
+        XCTAssertTrue(session.reveal(wordCount: words.count, all: true))
+        XCTAssertEqual(index.hiddenIDs(session: session), Set(index.words[next] ?? []))
+        XCTAssertTrue(session.answer("review"))
+        XCTAssertEqual(index.hiddenIDs(session: session), Set(index.words[next] ?? []))
+        let actualPages = Set(snapshot.records.filter { $0.verse_id == position + 1 }.compactMap(\.page_number))
+        XCTAssertEqual(Set(index.pages[crossing] ?? []), actualPages)
+    }
     private func corpus() throws -> [Surah] { try XCTUnwrap(QuranResources.corpus) }
     private func isolated() throws -> (String, UserDefaults) {
         let suite = "Noor.InlineStudy." + UUID().uuidString
