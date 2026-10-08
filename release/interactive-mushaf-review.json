@@ -1,7 +1,7 @@
 {
   "status": "NATIVE_TESTS_PASSED_AWAITING_VISUAL_AND_RIGHTS_REVIEW",
   "supersedes": "Rejected printed PDF reader, including prior successful PDF tests",
-  "renderer": "Whole-page Core Text, fixed 540x940 coordinates, 32pt page font, 61pt line grid, no justification or per-line resizing",
+  "renderer": "Shared authored Core Text page, 560x940 canvas, glyph-bounds-derived surah-frame sizing and balanced gaps, preserved verse baselines and authentic line mappings; no per-page offsets or per-line justification.",
   "font": {
     "edition": "QCF V2 candidate",
     "bodyManifest": "release/qcf-v2-manifest.json",
@@ -51,10 +51,10 @@
     "nativeVisualAcceptance": false
   },
   "currentNativeRun": {
-    "id": 37663422598,
-    "sourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
+    "id": 37836235673,
+    "sourceCommit": "24cd6afde24731e90389e0efad755998416d896c",
     "state": "success",
-    "url": "https://github.com/saud1596x/norAlroh/actions/runs/37663422598"
+    "url": "https://github.com/saud1596x/norAlroh/actions/runs/37836235673"
   },
   "nativeFindings": {
     "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
@@ -67,7 +67,9 @@
     "run37523178310": "All604 native audit passed. UI opened604 and first verse tools; title assertion failed before subsequent interaction checks.",
     "run37528605680": "Native review successful. Two UI tests passed161.625s and101.276s. Two unit tests passed52.159s, zero failures.",
     "run37618599248": "Native iOS checks189 succeeded in37m6s: native36m31s, account/four-extension Release build5m16s. All604 native bounds and hit-region test passed45.390s. Unit summary:102 executed,1 skipped,0 failures. Every-verse tools/zoom UI test passed111.834s. Actual-device and visual reference acceptance remain pending.",
-    "run37663422598": "Native iOS checks211 succeeded: native Release unit/UI checks19m33s, unsigned accounts/four-extension Release build4m22s; repaired p245 cmap and merged adhkar search included. Artifact11503735890 (787MB) sha256946bedc7cb8326162b2c1873aa4f3353b48ccefec91c8af7fb709a90d89a4737 produced; not downloaded or visually reviewed. Actual-device, reference and rights flags unchanged."
+    "run37663422598": "Native iOS checks211 succeeded: native Release unit/UI checks19m33s, unsigned accounts/four-extension Release build4m22s; repaired p245 cmap and merged adhkar search included. Artifact11503735890 (787MB) sha256946bedc7cb8326162b2c1873aa4f3353b48ccefec91c8af7fb709a90d89a4737 produced; not downloaded or visually reviewed. Actual-device, reference and rights flags unchanged.",
+    "run37814355192": "Whole-604 native bounds and authored header/line audit, full reader interactions and two iPhone viewports passed, source56159fa9; exact visual-reference approval remains pending.",
+    "run37836235673": "13 native recording tests, 8 actual reference-recognition integration tests and 3 reader UI journeys passed. Reference recognition does not prove live microphone or pronunciation/tajweed evaluation."
   },
   "crossPageAyahsInPinnedSnapshot": 0,
   "all604DataValidated": true,

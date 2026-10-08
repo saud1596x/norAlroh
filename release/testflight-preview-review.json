@@ -1,28 +1,28 @@
 {
   "channel": "TESTFLIGHT_PREVIEW",
-  "authorizedAt": "2026-10-07T00:11:20+03:00",
-  "authorization": "User requested publishing the new TestFlight version after disclosure of unfinished visual review and service setup.",
-  "nativeRun": 37663422598,
-  "nativeSourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
+  "authorizedAt": "2026-10-08T23:51:31+03:00",
+  "authorization": "User explicitly requested uploading the last passing iOS revision to TestFlight now. Newer recording-history UI verification continues separately; this is a beta preview, not final App Store acceptance.",
+  "nativeRun": 37836235673,
+  "nativeSourceCommit": "24cd6afde24731e90389e0efad755998416d896c",
   "nativeRunState": "success",
   "reviewedSourceHashes": {
-    "ios/Athar/InteractiveMushafCanvas.swift": "71b005b5f736bec59152d210a5fa9e2cb8a5ec8a3767df7b4215db72af11ed61",
-    "ios/Athar/InteractiveMushafReader.swift": "cc2412bd60f66b754d8e0a3d7d4f459c132cae608e3ccc7ebb858ee1f969c6b4",
-    "ios/Athar/MushafReader.swift": "e9accc94c43183e61af67aa5f40c1302eea13448e35f7f1acdcf4e585e5d0a88",
-    "ios/Athar/QCFV2Content.swift": "db40ad7db84f0be98261d441dabfa43fdbe22930e56f85deb972a8c93c56d002",
+    "ios/Athar/InteractiveMushafCanvas.swift": "171765038c905e12f29e075043ec5a910dc3015219561e2c58bcf28e9f0fa85c",
+    "ios/Athar/InteractiveMushafReader.swift": "58e975c42afd739301a9a077f7f806e901044751248060ca98a02bda2d1335c8",
+    "ios/Athar/MushafReader.swift": "e069b411ce51fa5efc8e748f4d129834f6eec5c2da8831c51735ee313f85f66c",
+    "ios/Athar/QCFV2Content.swift": "3c41d8e5bc9f15d92cae5ea9b8864ddf588e7f77771e2228766ab3ceb335ab06",
     "ios/Athar/qpc-v2-line-layout.json": "51b0ecce36ea708b974756348f25ec0031ed002871249a884c3386eeed5ca828",
     "release/qcf-v2-manifest.json": "72a50837bbd8d0719e023cd8c6b65ed7876f977a3f35db41feb0f1a4a6c92fad",
-    "ios/project.yml": "a9dbaa12aa762aaa1e42f550c88a1eb9f30d8474fde5ad9b3ac773c33d106ff1"
+    "ios/project.yml": "abdb9dc0c68c10a04f98941b5ac085a8556fad8aac47cdc44af0de527faf6cb3"
   },
   "limitations": [
-    "Exact reference visual match is not yet verified",
-    "Actual-device offline reading pending",
-    "Common font and row metadata distribution terms verification pending",
-    "Google account provider disabled",
-    "Family Controls distribution request submitted, awaiting Apple review"
+    "Physical microphone accuracy, interruptions and audible notification sound not yet verified",
+    "Whole-app design, goals, widgets and onboarding upgrade remains incomplete",
+    "Newer recording history UI is still being verified on the review branch",
+    "Exact visual-reference and distribution-rights review remains pending",
+    "Apple-only production account flow and server synchronization require end-to-end verification"
   ],
   "submitToAppStore": false,
-  "nativeEvidenceScope": "CI211 passed with repaired p245 font: native Release unit and UI/navigation tests, plus unsigned account/four-extension Release compilation. No actual-device, visual-reference or production-service acceptance.",
+  "nativeEvidenceScope": "Actions 37836235673 passed: 13 actual AVAudioPlayer/file persistence tests, 8 native reference-recognition integration tests, and 3 actual reader permission/scope/audio-failure UI journeys. Whole-604 layout gate 37814355192 and stable hidden geometry gate 37830571667 passed separately. This is not live physical microphone, final visual, notification sound, or complete-app acceptance.",
   "fontRepairReview": {
     "appleRejection": "ITMS-90853: QCF2245 / p245.ttf truncated Macintosh format-6 cmap",
     "sourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
