@@ -62,11 +62,26 @@ struct OriginalPageData {
 /// artificial kashida, per-line fitting, or font substitution.
 @MainActor final class OriginalMushafCanvas: UIView {
     static let pageSize = CGSize(width: 560, height: 940)
+    /// The edition has one reference grid; the viewport scales the entire page.
+    /// Companion glyphs use a different em from page fonts. Their point sizes
+    /// cannot express the intended visual proportion without measuring the ink.
+    private enum Metrics {
+        static let bodyPointSize: CGFloat = 32
+        static let horizontalMargin: CGFloat = 15
+        static let verticalMargin: CGFloat = 7
+        static let baselineInterval: CGFloat = 61
+        static let baselineOffset: CGFloat = 48
+        static let openingTop: CGFloat = 214
+        static let headingGap = baselineInterval / 20
+        static let titleHeightFraction: CGFloat = 0.64
+        static let titleWidthFraction: CGFloat = 0.46
+    }
     struct Hit { let word: Int; let verse: String; let rect: CGRect; let paths: [CGPath] }
     private(set) var regions: [Hit] = []
     private(set) var renderedSuccessfully = false
     private(set) var failureReason: String?
     private var lines: [(CTLine, CGPoint)] = []
+    private var shapedTexts: [NSAttributedString] = []
     private var lineWordRanges: [[(NSRange, Int)]] = []
     var hiddenWordIDs: Set<Int> = [] {
         didSet {
@@ -101,17 +116,17 @@ struct OriginalPageData {
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
-        lines = []; lineWordRanges = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
-        guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: 32),
-              let companion = UIFont(name: OriginalMushafCompanion.name, size: 32) else { fail("Missing page or companion font"); return }
+        lines = []; shapedTexts = []; lineWordRanges = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
+        guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: Metrics.bodyPointSize),
+              let companion = UIFont(name: OriginalMushafCompanion.name, size: Metrics.bodyPointSize) else { fail("Missing page or companion font"); return }
         // Content Sync contains ASCII separators both between logical words and
         // inside multi-glyph words. Some page fonts omit FB50 entirely. Keep
         // their codes intact and use the explicit companion blank (81 units),
         // converted from its 2048-unit em to the body's 2500-unit em.
         // No Qur'anic glyph is permitted to use this separator font.
-        let space = companion.withSize(32 * 2048 / 2500)
-        let rowHeight: CGFloat = 61
-        let top: CGFloat = page.number <= 2 ? 214 : 7
+        let space = companion.withSize(Metrics.bodyPointSize * 2048 / 2500)
+        let rowHeight = Metrics.baselineInterval
+        let top = page.number <= 2 ? Metrics.openingTop : Metrics.verticalMargin
         for row in page.rows {
             var ranges: [(NSRange, OriginalPageWord)] = []
             var text = ""
@@ -147,14 +162,15 @@ struct OriginalPageData {
             // basmala baselines retain the immutable authored row grid.
             let baseline = row.type == "surah_name"
                 ? rowTop + 30.5 + ink.midY
-                : rowTop + 48
-            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - 15 - ink.maxX, y: baseline)
+                : rowTop + Metrics.baselineOffset
+            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX, y: baseline)
             let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
             guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
                   pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
                 fail("Authored row \(row.line) exceeds page canvas: \(pageInk)"); return
             }
             lines.append((line, origin))
+            shapedTexts.append(attributed.copy() as! NSAttributedString)
             lineWordRanges.append(ranges.map { ($0.0, $0.1.id) })
             rowGeometry.append(.init(line: row.line, kind: row.type, ink: pageInk))
             var wordRects: [Int: CGRect] = [:]
@@ -229,22 +245,31 @@ struct OriginalPageData {
     /// Body baselines, line breaks and glyph advances are never moved or resized.
     /// The same rule covers every header, including page-edge/opening groups.
     private func arrangeHeadingGroups(top: CGFloat) -> Bool {
-        let font = CTFontCreateWithName(OriginalMushafCompanion.name as CFString, 32, nil)
+        let font = CTFontCreateWithName(OriginalMushafCompanion.name as CFString, Metrics.bodyPointSize, nil)
         var scalar: UniChar = 0xFC20; var glyph: CGGlyph = 0
         guard CTFontGetGlyphsForCharacters(font, &scalar, &glyph, 1), glyph != 0,
               let frame = CTFontCreatePathForGlyph(font, glyph, nil) else {
             fail("Missing original FC20 vector ornament"); return false
         }
         let box = frame.boundingBoxOfPath
-        let scale = min(532 / box.width, 57 / box.height)
-        let frameHeight = box.height * scale
+        let preferredScale = (Self.pageSize.width - 2 * Metrics.horizontalMargin) / box.width
         var index = 0
         while index < rowGeometry.count {
             if rowGeometry[index].kind == "ayah" { index += 1; continue }
             let start = index
             while index < rowGeometry.count && rowGeometry[index].kind != "ayah" { index += 1 }
             let lower = start == 0 ? top : rowGeometry[start - 1].ink.maxY
-            let upper = index == rowGeometry.count ? Self.pageSize.height - 7 : rowGeometry[index].ink.minY
+            let upper = index == rowGeometry.count ? Self.pageSize.height - Metrics.verticalMargin : rowGeometry[index].ink.minY
+            let titleCount = (start..<index).filter { rowGeometry[$0].kind == "surah_name" }.count
+            let otherHeight = (start..<index).filter { rowGeometry[$0].kind != "surah_name" }.reduce(CGFloat.zero) { $0 + rowGeometry[$1].ink.height }
+            let freeHeight = upper - lower - otherHeight - Metrics.headingGap * CGFloat(index - start + 1)
+            // Preserve the original ornament aspect ratio. When authored body
+            // ink leaves less room, fit the whole heading group, never the ayahs.
+            let scale = titleCount > 0
+                ? min(preferredScale, freeHeight / CGFloat(titleCount) / box.height)
+                : preferredScale
+            guard scale > 0 else { fail("No space for authored heading group"); return false }
+            let frameHeight = box.height * scale
             let heights = (start..<index).map { rowGeometry[$0].kind == "surah_name" ? frameHeight : rowGeometry[$0].ink.height }
             let gap = (upper - lower - heights.reduce(0, +)) / CGFloat(heights.count + 1)
             guard gap >= 3 else { fail("Insufficient heading clearance at row \(rowGeometry[start].line): \(gap)"); return false }
@@ -252,17 +277,37 @@ struct OriginalPageData {
             var cursor = lower + gap
             for (offset, rowIndex) in (start..<index).enumerated() {
                 let center = cursor + heights[offset] / 2
-                let delta = center - rowGeometry[rowIndex].ink.midY
-                lines[rowIndex].1.y += delta
-                rowGeometry[rowIndex].ink = rowGeometry[rowIndex].ink.offsetBy(dx: 0, dy: delta)
                 if rowGeometry[rowIndex].kind == "surah_name" {
-                    guard rowGeometry[rowIndex].ink.height < frameHeight - 6 else {
-                        fail("Title does not fit original ornament"); return false
+                    // Re-shape the title at one uniformly scaled font size to
+                    // fit the ornament's central opening. No horizontal stretch.
+                    let original = lines[rowIndex].0
+                    let text = NSMutableAttributedString(attributedString: shapedTexts[rowIndex])
+                    let originalInk = CTLineGetBoundsWithOptions(original, .useGlyphPathBounds)
+                    let titleScale = min(frameHeight * Metrics.titleHeightFraction / originalInk.height,
+                                         box.width * scale * Metrics.titleWidthFraction / originalInk.width)
+                    let titleFont = CTFontCreateCopyWithAttributes(font, Metrics.bodyPointSize * titleScale, nil, nil)
+                    text.addAttribute(NSAttributedString.Key(kCTFontAttributeName as String), value: titleFont,
+                                      range: NSRange(location: 0, length: text.length))
+                    let title = CTLineCreateWithAttributedString(text as CFAttributedString)
+                    let titleInk = CTLineGetBoundsWithOptions(title, .useGlyphPathBounds)
+                    guard MushafTypesetter.usesExpectedFont(title, postScriptName: OriginalMushafCompanion.name),
+                          titleInk.height <= frameHeight * Metrics.titleHeightFraction + 0.01,
+                          titleInk.width <= box.width * scale * Metrics.titleWidthFraction + 0.01 else {
+                        fail("Title exceeds ornament opening"); return false
                     }
+                    lines[rowIndex] = (title, CGPoint(x: Self.pageSize.width / 2 - titleInk.midX,
+                                                      y: center + titleInk.midY))
+                    rowGeometry[rowIndex].ink = CGRect(x: Self.pageSize.width / 2 - titleInk.width / 2,
+                                                       y: center - titleInk.height / 2,
+                                                       width: titleInk.width, height: titleInk.height)
                     var transform = CGAffineTransform(a: scale, b: 0, c: 0, d: -scale,
                         tx: Self.pageSize.width / 2 - box.midX * scale, ty: center + box.midY * scale)
                     guard let placed = frame.copy(using: &transform) else { fail("Invalid ornament path"); return false }
                     decorationPaths.append(placed)
+                } else {
+                    let delta = center - rowGeometry[rowIndex].ink.midY
+                    lines[rowIndex].1.y += delta
+                    rowGeometry[rowIndex].ink = rowGeometry[rowIndex].ink.offsetBy(dx: 0, dy: delta)
                 }
                 cursor += heights[offset] + gap
             }
