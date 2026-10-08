@@ -18,7 +18,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
             }
             XCTAssertTrue(recordings.waitForExistence(timeout: 5)); recordings.tap()
             let row = app.buttons["study.recording.session.\(session)"]
-            XCTAssertTrue(row.waitForExistence(timeout: 10)); capture(app, "reference-recording-session-history")
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "Persisted reference absent: \(app.debugDescription)"); capture(app, "reference-recording-session-history")
             row.tap()
         }
         open()
