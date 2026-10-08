@@ -29,7 +29,8 @@ final class NoorInteractiveMushafUITests: XCTestCase {
             row.tap()
         }
         open()
-        XCTAssertTrue(app.staticTexts["study.recordings.range"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["study.recordings.range"].waitForExistence(timeout: 5),
+            "Session detail did not load: \(app.debugDescription)")
         let play = app.buttons["study.recording.play.\(take)"]
         XCTAssertTrue(play.waitForExistence(timeout: 5)); play.tap()
         let seek = app.sliders["study.recording.seek"]
