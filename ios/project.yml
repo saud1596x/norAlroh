@@ -5,9 +5,6 @@ options:
     iOS: "17.0"
   developmentLanguage: ar
 packages:
-  WhisperKit:
-    url: https://github.com/argmaxinc/argmax-oss-swift.git
-    exactVersion: 1.1.0
   Adhan:
     url: https://github.com/batoulapps/adhan-swift.git
     exactVersion: 1.5.0
@@ -39,8 +36,6 @@ targets:
     dependencies:
       - target: NoorWidgets
         embed: true
-      - package: WhisperKit
-        product: WhisperKit
       - package: Adhan
         product: Adhan
   NoorWidgets:
