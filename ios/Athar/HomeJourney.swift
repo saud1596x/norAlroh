@@ -90,6 +90,7 @@ struct HomeView: View {
                                 Text(next.name).font(.title2.bold())
                                 Spacer()
                                 Text(PrayerCalculator.time(next.date, city: store.data.city)).font(.title2.monospacedDigit())
+                                    .environment(\.layoutDirection, .leftToRight)
                             }.foregroundStyle(Theme.mint)
                             Text("\(store.data.city.name) · غيّر المدينة في قسم الصلاة لتناسب موقعك.")
                                 .font(.subheadline).foregroundStyle(.secondary)

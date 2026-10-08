@@ -6,6 +6,7 @@ struct PrayerView: View {
     @EnvironmentObject private var notifications: PrayerNotifications
     @EnvironmentObject private var location: PrayerLocationController
     @State private var choosingCity = false
+    private var city: PrayerLocation { PrayerCalculator.location(store.data.city) }
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
@@ -20,20 +21,34 @@ struct PrayerView: View {
                     }.padding(18).foregroundStyle(Theme.gold)
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
                 }.buttonStyle(NoorPressStyle()).accessibilityLabel("تغيير مدينة مواقيت الصلاة")
+                    .accessibilityValue(store.data.city.name)
                     .accessibilityIdentifier("prayer.city")
                 TimelineView(.periodic(from: .now, by: 30)) { context in
                     let rows = PrayerCalculator.rows(data: store.data, date: context.date)
                     let next = PrayerCalculator.next(data: store.data, now: context.date)
                     VStack(spacing: 18) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(PrayerDisplay.gregorian(context.date, city: city))
+                                .font(.headline).accessibilityIdentifier("prayer.gregorian")
+                            Text(PrayerDisplay.hijri(context.date, city: city))
+                                .font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("prayer.hijri")
+                            Text("التاريخ الهجري حسب تقويم أم القرى")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
                         if let next {
                             VStack(spacing: 12) {
                                 Text("الصلاة القادمة").font(.subheadline)
                                 Text(next.name).font(.largeTitle.bold())
                                 Text(PrayerCalculator.time(next.date, city: store.data.city))
                                     .font(.system(.largeTitle, design: .rounded).monospacedDigit())
+                                    .environment(\.layoutDirection, .leftToRight).accessibilityIdentifier("prayer.nextTime")
                                 Text(timerInterval: context.date...next.date, countsDown: true)
-                                    .font(.title3.monospacedDigit()).accessibilityLabel("الوقت المتبقي للصلاة")
-                                Text("بتوقيت \(store.data.city.name) · نظام ٢٤ ساعة").font(.caption)
+                                    .font(.title3.monospacedDigit()).environment(\.locale, Locale(identifier: "en_US_POSIX"))
+                                    .environment(\.layoutDirection, .leftToRight).accessibilityLabel("الوقت المتبقي للصلاة")
+                                Text("بتوقيت \(store.data.city.name) · نظام 24 ساعة").font(.caption)
+                                if !PrayerCalculator.isSameDay(next.date, context.date, city: city) {
+                                    Text(PrayerDisplay.gregorian(next.date, city: city)).font(.caption)
+                                }
                             }.frame(maxWidth: .infinity).padding(26)
                                 .foregroundStyle(Theme.buttonInk)
                                 .background(Theme.gold, in: RoundedRectangle(cornerRadius: 28))
@@ -42,7 +57,7 @@ struct PrayerView: View {
                         }
                         Card {
                             Label("مواقيت اليوم", systemImage: "sun.horizon").font(.title3.bold())
-                            Text("التوقيت المحلي · ٢٤ ساعة").font(.caption).foregroundStyle(.secondary)
+                            Text("التوقيت المحلي · 24 ساعة").font(.caption).foregroundStyle(.secondary)
                             ForEach(rows) { row in
                                 HStack(spacing: 14) {
                                     Image(systemName: symbol(row.id)).foregroundStyle(Theme.gold).frame(width: 28)
@@ -52,6 +67,7 @@ struct PrayerView: View {
                                     }
                                     Spacer()
                                     Text(PrayerCalculator.time(row.date, city: store.data.city)).font(.title3.monospacedDigit())
+                                        .environment(\.layoutDirection, .leftToRight).accessibilityIdentifier("prayer.time.\(row.id)")
                                 }.padding(12).frame(minHeight: 48)
                                     .background(next.map { $0.id == row.id && PrayerCalculator.isSameDay($0.date, context.date, city: PrayerCalculator.location(store.data.city)) } == true ? Theme.gold.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
                                 if row.id != rows.last?.id { Divider().padding(.leading, 54) }
@@ -81,7 +97,7 @@ struct PrayerView: View {
                     }
                     if let message = location.message { Text(message).font(.caption).foregroundStyle(.secondary) }
                     if let date = store.data.locationUpdatedAt, store.data.city.id.hasPrefix("location.") {
-                        Text("آخر تحديث للموقع: " + date.formatted(date: .abbreviated, time: .omitted) + " · " + PrayerCalculator.time(date, city: store.data.city)).font(.caption).foregroundStyle(.secondary)
+                        Text("آخر تحديث للموقع: " + PrayerDisplay.gregorian(date, city: city) + " · " + PrayerDisplay.isolatedClock(date, city: city)).font(.caption).foregroundStyle(.secondary)
                     }
                     Text("تُضبط المواقيت تلقائيًا حسب البلد والمنطقة. عند تعذر الموقع نستخدم آخر موقع صالح أو المدينة المختارة. قد يختلف وقت المسجد المحلي عن الحساب.")
                         .font(.caption).foregroundStyle(.secondary)

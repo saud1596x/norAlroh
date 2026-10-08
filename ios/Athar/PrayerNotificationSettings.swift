@@ -34,9 +34,9 @@ struct PrayerNotificationSettings: View {
                     Task { await notifications.setAdvance(value, store: store) }
                 })) {
                     Text("عند دخول الوقت").tag(0)
-                    Text("قبل الصلاة بـ٥ دقائق").tag(5)
-                    Text("قبل الصلاة بـ١٠ دقائق").tag(10)
-                    Text("قبل الصلاة بـ١٥ دقيقة").tag(15)
+                    Text("قبل الصلاة بـ5 دقائق").tag(5)
+                    Text("قبل الصلاة بـ10 دقائق").tag(10)
+                    Text("قبل الصلاة بـ15 دقيقة").tag(15)
                 }
                 Picker("صوت تنبيه الصلاة", selection: Binding(get: {
                     notifications.preferences.soundEnabled ? notifications.preferences.soundStyle ?? "system" : "silent"
@@ -45,7 +45,7 @@ struct PrayerNotificationSettings: View {
                     Text("صوت النظام").tag("system")
                     Text("بدون صوت").tag("silent")
                 }
-                Text("مقطع الأذان ٢٤ ثانية. إذا تعذر تشغيله نستخدم صوت النظام. الصوت يخضع لإعدادات الصامت والتركيز في iPhone.")
+                Text("مقطع الأذان 24 ثانية. إذا تعذر تشغيله نستخدم صوت النظام. الصوت يخضع لإعدادات الصامت والتركيز في iPhone.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("الصلاة على النبي ﷺ") {
@@ -56,11 +56,11 @@ struct PrayerNotificationSettings: View {
                     Task { await notifications.setSalawatInterval(value, store: store) }
                 })) {
                     Text("كل ساعتين").tag(2)
-                    Text("كل ٤ ساعات").tag(4)
-                    Text("كل ٦ ساعات").tag(6)
+                    Text("كل 4 ساعات").tag(4)
+                    Text("كل 6 ساعات").tag(6)
                     Text("مرة يوميًا").tag(12)
                 }
-                Text("تذكيرات صامتة بين ٩ صباحًا و٩ مساءً، بحد أقصى ٧ يوميًا. لا نكرر تذكيرات الجمعة عند تفعيل هذا الخيار.")
+                Text("تذكيرات صامتة بين 09:00 و21:00، بحد أقصى 7 يوميًا. لا نكرر تذكيرات الجمعة عند تفعيل هذا الخيار.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("الموقع المحفوظ") {

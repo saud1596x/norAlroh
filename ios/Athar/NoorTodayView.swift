@@ -7,7 +7,8 @@ struct NoorTodayView: View {
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     private var page: Int { max(1, min(lastPage, 604)) }
     private var reduced: Bool { systemReduce || store.data.lowMotion }
-    private var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Riyadh")!; return c }
+    private var city: PrayerLocation { PrayerCalculator.location(store.data.city) }
+    private var calendar: Calendar { PrayerDisplay.calendar(city: city) }
     private var reviewed: Int {
         memorization.completedToday()
     }
@@ -26,7 +27,8 @@ struct NoorTodayView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("نور الروح").font(.largeTitle.bold()).foregroundStyle(Theme.gold)
                                 Text(greeting(context.date)).font(.headline)
-                                Text(hijriDate(context.date)).font(.caption).foregroundStyle(.secondary)
+                                Text(PrayerDisplay.gregorian(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
+                                Text(PrayerDisplay.hijri(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             NoorAmbientOrnament().frame(width: 64, height: 64)
@@ -36,13 +38,15 @@ struct NoorTodayView: View {
                                 HStack(spacing: 12) {
                                     NoorAnimatedSymbol(name: "sun.horizon").font(.title2).foregroundStyle(Theme.gold)
                                     VStack(alignment: .leading, spacing: 5) {
-                                        Text("\(next.name) · \(PrayerCalculator.time(next.date, city: store.data.city))").font(.headline)
+                                        Text("\(next.name) · \(PrayerDisplay.isolatedClock(next.date, city: city))").font(.headline)
                                         Text(store.data.city.name).font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     VStack(alignment: .trailing, spacing: 4) {
                                         Text("متبقي").font(.caption).foregroundStyle(.secondary)
                                         Text(timerInterval: context.date...next.date, countsDown: true).font(.subheadline.monospacedDigit())
+                                            .environment(\.locale, Locale(identifier: "en_US_POSIX"))
+                                            .environment(\.layoutDirection, .leftToRight)
                                     }.frame(maxWidth: 95)
                                 }.padding(18).foregroundStyle(.primary).background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
                             }.buttonStyle(NoorPressStyle()).noorEntrance(delay: 0.04)
@@ -151,11 +155,6 @@ struct NoorTodayView: View {
     }
     private func greeting(_ date: Date) -> String {
         switch calendar.component(.hour, from: date) { case 5..<12: "صباحك نور وسكينة"; case 12..<18: "السلام عليكم، حيّاك الله"; default: "مساؤك ذكر وطمأنينة" }
-    }
-    private func hijriDate(_ date: Date) -> String {
-        let formatter = DateFormatter(); formatter.locale = Locale(identifier: "ar_SA")
-        formatter.calendar = Calendar(identifier: .islamicUmmAlQura); formatter.timeZone = TimeZone(identifier: "Asia/Riyadh")
-        formatter.dateFormat = "EEEE، d MMMM yyyy هـ"; return formatter.string(from: date)
     }
 }
 struct NoorRosette: Shape {
