@@ -83,6 +83,7 @@ jobs:
             -only-testing:AtharTests/MushafMemorizationTests \
             -only-testing:AtharTests/ReadingSyncTests \
             -only-testing:AtharTests/LocalDataRecoveryTests \
+            -only-testing:AtharTests/PublishingContentTests \
             -only-testing:AtharUITests/NoorMushafStudyUITests/testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch \
             -only-testing:AtharUITests/NoorMushafStudyUITests/testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount \
             -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
