@@ -21,6 +21,16 @@ text, glyph IDs, reading position, bookmarks, settings, plans and session data.
 
 ## 2. Recognized recitation
 
+Native investigation checkpoint: runs `37776925812` and `37777735599`
+compiled the pinned WhisperKit probe and executed the real Quran Core ML model
+on an Apple runner. The first rejected invalid silence timing. The second
+retained the raw report and rejected two control windows. This is a failed
+engine acceptance gate, not a working inline recognition feature. Report loss
+on async-main trapping has been corrected without removing either rejection.
+The live microphone, whole-corpus word correspondence and iPhone validation
+remain outstanding. QUL's official word-script download requires sign-in;
+do not scrape previews or use guessed compound boundaries to bypass that gate.
+
 - [x] Current source inspected: independent local audio recording exists; no
       functioning recognition engine is connected to the inline study session.
 - [ ] Validate the selected Quran-specific engine on native Apple execution,
