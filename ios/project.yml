@@ -1,10 +1,14 @@
 name: Athar
 options:
+  preGenCommand: python3 ../scripts/prepare-recitation-model.py
   bundleIdPrefix: com.saud1596x.nooralruh
   deploymentTarget:
     iOS: "17.0"
   developmentLanguage: ar
 packages:
+  WhisperKit:
+    url: https://github.com/argmaxinc/argmax-oss-swift.git
+    revision: 1e2a163736dfa5a198e637ae44c114e1c6d5cc2d
   Adhan:
     url: https://github.com/batoulapps/adhan-swift.git
     exactVersion: 1.5.0
@@ -25,6 +29,15 @@ targets:
       - path: Athar
       - path: NoorFocusShared
       - path: NoorWidgetShared
+      - path: ../tools/RecitationEngineProbe/Sources/RecitationAlignment
+      - path: ../tools/RecitationEngineProbe/Sources/RecitationCapture
+      - path: ../tools/RecitationEngineProbe/Sources/RecitationSessions
+      - path: ../tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift
+      - path: ../content-sources/recitation-word-script.json
+        buildPhase: resources
+      - path: RecitationModel
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.saud1596x.nooralruh
@@ -38,6 +51,8 @@ targets:
         embed: true
       - package: Adhan
         product: Adhan
+      - package: WhisperKit
+        product: WhisperKit
   NoorWidgets:
     type: app-extension
     platform: iOS
