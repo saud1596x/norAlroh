@@ -14,9 +14,10 @@ import Combine
     var previousPosition: Data? { defaults.data(forKey: "noor.speech.previousPosition.v1") }
     init(defaults: UserDefaults = .standard, modelFolder: URL? = nil) {
         self.defaults = defaults
-        positions = SpeechPositionStore(defaults: defaults)
-        savedPosition = positions.value
+        let retained = SpeechPositionStore(defaults: defaults)
+        self.positions = retained
         self.modelFolder = modelFolder ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.appendingPathComponent("NoorSpeech", isDirectory: true)
+        savedPosition = retained.value
     }
     func readerPosition(corpus: [Surah], plan: MemorizationPlan, pending: MushafStudySession?) -> (chapter: Int, ayah: Int) {
         if let key = pending?.currentKey ?? pending?.keys.last {
