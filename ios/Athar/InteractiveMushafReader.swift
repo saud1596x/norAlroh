@@ -3,65 +3,6 @@ import UIKit
 import AVFoundation
 import Combine
 
-@MainActor final class MushafVerseAudio: ObservableObject {
-    @Published var playing: String?
-    @Published var error: String?
-    @Published var loadingKey: String?
-    private var playbackObservation: NSKeyValueObservation?
-    private var player: AVPlayer?
-    private var observation: NSKeyValueObservation?
-    private var end: NSObjectProtocol?
-    private var failure: NSObjectProtocol?
-    private var queue: [String] = []
-    var onVerse: ((String) -> Void)?
-    func play(_ keys: [String]) {
-        stop(); queue = keys; advance()
-    }
-    private func advance() {
-        guard !queue.isEmpty else { stop(); return }
-        let key = queue.removeFirst(); let parts = key.split(separator: ":").compactMap { Int($0) }
-        guard parts.count == 2, let corpus = QuranResources.corpus,
-              corpus.indices.contains(parts[0] - 1), corpus[parts[0] - 1].ayahs.indices.contains(parts[1] - 1),
-              let url = URL(string: String(format: "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1])) else { stop(); return }
-        do { try AVAudioSession.sharedInstance().setCategory(.playback); try AVAudioSession.sharedInstance().setActive(true) }
-        catch { self.error = "تعذّر تشغيل الصوت على الجهاز."; stop(); return }
-        let item = AVPlayerItem(url: NoorAudioDownloads.shared.localURL(key) ?? url); let playback = AVPlayer(playerItem: item); player = playback
-        playing = nil; loadingKey = key
-        playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
-            let started = player.timeControlStatus == .playing
-            Task { @MainActor in
-                guard let self, self.player === player else { return }
-                if started { self.playing = key; self.loadingKey = nil; self.onVerse?(key) }
-            }
-        }
-        observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            guard item.status == .failed else { return }
-            Task { @MainActor in
-                guard let self, self.player?.currentItem === item else { return }
-                self.error = "تعذّر تشغيل الآية. أعد تنزيلها من التنزيلات، أو تحقق من اتصال الإنترنت."; self.stop()
-            }
-        }
-        if let end { NotificationCenter.default.removeObserver(end) }
-        end = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in Task { @MainActor in
-            guard let self, self.player?.currentItem === item else { return }; self.advance()
-        } }
-        if let failure { NotificationCenter.default.removeObserver(failure) }
-        failure = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] _ in
-            Task { @MainActor in
-                guard let self, self.player?.currentItem === item else { return }
-                self.error = "انقطع تحميل التلاوة. تحقق من الاتصال وأعد المحاولة."; self.stop()
-            }
-        }
-        error = nil; player?.play()
-    }
-    func stop() {
-        player?.pause(); player = nil; observation = nil; playbackObservation = nil; playing = nil; loadingKey = nil; queue = []
-        if let end { NotificationCenter.default.removeObserver(end) }; end = nil
-        if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
-    }
-    deinit { if let end { NotificationCenter.default.removeObserver(end) }; if let failure { NotificationCenter.default.removeObserver(failure) } }
-}
-
 @MainActor final class MushafTafsir: ObservableObject {
     struct Envelope: Decodable { let result: Result }
     struct Result: Codable { let sura: String; let aya: String; let translation: String }
@@ -184,13 +125,13 @@ struct InteractiveMushafReader: View {
                         Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
                     }
                     Spacer()
-                    Text(manualSelection.map { "\(title) · الآية \(ArabicSearch.digits($0.ayah))" } ?? title)
+                    Text(manualSelection.map { "\(title) · الآية \(ArabicSearch.digits($0.ayah))" } ?? (audio.waitingKey == nil ? title : "مهلة التكرار · \(title)"))
                         .font(.headline).lineLimit(1).accessibilityIdentifier(manualSelection == nil ? "reader.title" : "verse.tools.title")
                     Spacer()
                     if let selection = manualSelection {
                         Button { openTools(selection, action: .details) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                             .accessibilityLabel("المزيد من أدوات الآية").accessibilityIdentifier("verse.more")
-                    } else if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
+                    } else if audio.playing != nil || audio.waitingKey != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel(audio.waitingKey == nil ? "إيقاف التلاوة" : "إيقاف التكرار أثناء المهلة").accessibilityIdentifier("reader.audio.stop") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else {
@@ -515,6 +456,7 @@ private struct VerseTools: View {
     @State private var showTafsir = false
     @State private var repeatCount = 3
     @State private var repeatEnd = 1
+    @State private var repeatDelay = 0
     @State private var notice: String?
     let initialAction: VerseToolAction
     let onStudy: (String) -> Void
@@ -541,9 +483,18 @@ private struct VerseTools: View {
                 }
                 }
                 Section("التكرار") {
-                    Stepper("عدد التكرارات: \(repeatCount)", value: $repeatCount, in: 1...20)
+                    Stepper("عدد التكرارات: \(repeatCount)", value: $repeatCount, in: 1...20).accessibilityIdentifier("verse.repeat.count")
                     Stepper("إلى الآية: \(repeatEnd)", value: $repeatEnd, in: selection.ayah...surah.ayahs.count)
-                    Button("تشغيل التكرار") { audio.play((0..<repeatCount).flatMap { _ in (selection.ayah...repeatEnd).map { "\(selection.chapter):\($0)" } }); dismiss() }.accessibilityIdentifier("verse.repeat.start")
+                    Stepper("مهلة بين التلاوات: \(repeatDelay) ثانية", value: $repeatDelay, in: 0...30).accessibilityIdentifier("verse.repeat.delay")
+                    Text("يتكرر نطاق الآيات كاملًا بالترتيب. تبدأ المهلة بعد انتهاء كل تلاوة، ويمكن إيقافها من شريط المصحف.").font(.footnote)
+                    Button("تشغيل التكرار") {
+                        var next = memorization.mushafStudy
+                        next.repetition = MushafRepeatPreferences(count: repeatCount, delaySeconds: repeatDelay)
+                        guard memorization.saveMushafStudy(next) else { notice = "تعذّر حفظ خيارات التكرار. بياناتك السابقة محفوظة؛ صدّرها من الإعدادات."; return }
+                        audio.play((selection.ayah...repeatEnd).map { "\(selection.chapter):\($0)" }, repetitions: repeatCount, delaySeconds: repeatDelay)
+                        dismiss()
+                    }.accessibilityIdentifier("verse.repeat.start")
+                    if initialAction == .repeatRange, let notice { Text(notice).accessibilityIdentifier("verse.repeat.error") }
                 }
                 if initialAction == .details {
                 Section("الحفظ والمشاركة") {
@@ -566,7 +517,11 @@ private struct VerseTools: View {
                     Button("إغلاق") { dismiss() }.accessibilityIdentifier(initialAction == .tafsir ? "verse.tafsir.close" : "verse.sheet.close")
                 }
             }
-            .onAppear { repeatEnd = selection.ayah }
+            .onAppear {
+                repeatEnd = selection.ayah
+                let saved = memorization.mushafStudy.repetition ?? MushafRepeatPreferences()
+                repeatCount = saved.count; repeatDelay = saved.delaySeconds
+            }
             .sheet(isPresented: $showTafsir) {
                 NavigationStack {
                     tafsirContent

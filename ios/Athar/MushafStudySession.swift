@@ -112,12 +112,19 @@ struct MushafStudySummary: Codable, Equatable {
     }
 }
 
+struct MushafRepeatPreferences: Codable, Equatable {
+    var count = 3
+    var delaySeconds = 0
+    var valid: Bool { (1...20).contains(count) && (0...30).contains(delaySeconds) }
+}
+
 struct MushafStudyArchive: Codable, Equatable {
     var version = 1
     var pending: MushafStudySession?
     var summary: MushafStudySummary?
+    var repetition: MushafRepeatPreferences?
     func valid(corpus: [Surah]) -> Bool {
-        version == 1 && (pending?.valid(corpus: corpus) ?? true)
+        version == 1 && (repetition?.valid ?? true) && (pending?.valid(corpus: corpus) ?? true)
             && (summary.map { $0.session.phase == .finishing && $0.session.valid(corpus: corpus) } ?? true)
     }
 }
