@@ -1,0 +1,32 @@
+name: Offline Quran recitation app integration
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/recitation-app-integration.yml
+      - ios/Athar/QuranMicrophoneCapture.swift
+      - ios/Athar/QuranRecognitionWorker.swift
+      - ios/Athar/QuranRecitationController.swift
+      - ios/AtharTests/QuranRecognitionIntegrationTests.swift
+      - scripts/test-recitation-app.sh
+permissions:
+  contents: read
+concurrency:
+  group: recitation-app-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Verify actual bundled model and independent audio persistence
+        run: bash scripts/test-recitation-app.sh
+      - name: Retain actual iOS test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recitation-app-integration
+          path: release/recitation-app
