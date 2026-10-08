@@ -27,13 +27,24 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Debug -derived
 xcrun simctl boot "$NOOR_BALANCE_COMPACT" || true
 xcrun simctl bootstatus "$NOOR_BALANCE_COMPACT" -b
 xcodebuild build-for-testing "${common[@]}" -destination "platform=iOS Simulator,id=$NOOR_BALANCE_COMPACT"
+layout_exit=0
 xcodebuild test-without-building "${common[@]}" -destination "platform=iOS Simulator,id=$NOOR_BALANCE_COMPACT" \
   -only-testing:AtharTests/InteractiveMushafTests -only-testing:AtharTests/MushafViewportTests \
   -only-testing:AtharTests/QCFV2ContentTests -parallel-testing-enabled NO \
-  -resultBundlePath release/mushaf-balance/all-604-pages.xcresult
+  -resultBundlePath release/mushaf-balance/all-604-pages.xcresult || layout_exit=$?
+# Export failed native pages as well; diagnostic capture must never turn a
+# failed layout gate green. A crash may leave only a partial result bundle.
+if [[ ! -d release/mushaf-balance/all-604-pages.xcresult ]]; then
+  [[ "$layout_exit" != 0 ]] || layout_exit=1
+  exit "$layout_exit"
+fi
 xcrun xcresulttool export attachments --path release/mushaf-balance/all-604-pages.xcresult --output-path release/mushaf-balance/native-pages
 python3 -m venv release/balance-python
 release/balance-python/bin/pip install Pillow
+if [[ "$layout_exit" != 0 ]]; then
+  release/balance-python/bin/python scripts/export-mushaf-contact-sheets.py release/mushaf-balance/native-pages release/mushaf-balance/contact-sheets || true
+  exit "$layout_exit"
+fi
 release/balance-python/bin/python scripts/export-mushaf-contact-sheets.py release/mushaf-balance/native-pages release/mushaf-balance/contact-sheets
 for noor_class in compact large; do
   if [[ "$noor_class" == compact ]]; then noor_device="$NOOR_BALANCE_COMPACT"; else noor_device="$NOOR_BALANCE_LARGE"; fi
