@@ -255,3 +255,30 @@ The stale queued Codemagic build 2 was canceled before a machine was allocated.
 Build 3 `6ac7ff13546ce6236cecb1ae` uses source `9bccaaf` (the same app code
 as `56476f0`, plus verification notes), and remains queued. Its pending gate
 still includes the identified reference-fixture failure; no artifact is ready.
+
+### Final-version request and current recording verification
+
+The user's latest instruction requires a version meeting every requirement.
+The temporary signed TestFlight preview build `6ac80470546ce6236cecb38b`
+(Codemagic index 22) was canceled, and its page confirms **canceled** before
+checkout/signing/upload. Previous queued recitation builds 2 and 3 were also
+canceled. No new Apple binary was uploaded in this session. Existing Apple
+version 1.0 build 15 is not evidence of acceptance of these corrections.
+
+Actions `37841634686` finished failed. Fourteen native recording tests and
+eight reference-recognition integration tests passed. The actual AVAudioFile
+fixture was reopened by production archive code and its exact app-container
+path was validated. The failing UI hierarchy still shows Settings: the
+recordings link spans y=843...887 on an 874-point screen, so its default tap
+point is beneath the sheet's usable bottom area. This is not evidence that
+the persisted audio was lost. The test now scrolls the actual Form until the
+entire target clears the bottom safe area before tapping; the strict player,
+seek, removal, relaunch, restore and replay assertions remain in place.
+
+Audio resume failure now releases owned system audio while retaining the
+paused player and position for retry. A new native test exercises rejected
+activation, recovery, and byte-identical audio retention. Latest source
+`1ae7a12bf8e56fcdcd1d72a14e5eb8b754b886f6` is under Actions
+`37845024359`; it has not passed yet. This stage is not complete. Final
+goals/results, widgets, Apple onboarding and full journeys remain pending;
+live microphone accuracy and audible notifications require a physical iPhone.
