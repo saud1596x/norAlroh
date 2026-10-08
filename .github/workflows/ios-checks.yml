@@ -2,6 +2,9 @@ name: Native iOS checks
 on:
   workflow_dispatch:
   push:
+    # This staged branch has complete-source, two-phone behavioral gates.
+    # Keep full Release checks for pull requests and the final manual gate.
+    branches-ignore: [mushaf-ux-stage1-20261007]
     paths: ['ios/**', 'scripts/**', 'content-sources/**', 'release/config.json', 'release/legal-content.json', 'support-site/**', '.github/workflows/ios-checks.yml']
   pull_request:
     paths: ['ios/**', 'scripts/**', 'content-sources/**', 'release/config.json', 'release/legal-content.json', 'support-site/**', '.github/workflows/ios-checks.yml']
