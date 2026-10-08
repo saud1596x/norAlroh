@@ -498,20 +498,33 @@ private struct VerseTools: View {
                         audio.play((selection.ayah...repeatEnd).map { "\(selection.chapter):\($0)" }, repetitions: repeatCount, delaySeconds: repeatDelay)
                         dismiss()
                     }.accessibilityIdentifier("verse.repeat.start")
-                    if initialAction == .repeatRange, let notice { Text(notice).accessibilityIdentifier("verse.repeat.error") }
                 }
                 if initialAction == .details {
                 Section("الحفظ والمشاركة") {
                     Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { onStudy(selection.key); dismiss() }
                     Button("نسخ نص الآية", systemImage: "doc.on.doc") { UIPasteboard.general.string = copyText; notice = "نُسخ نص الآية مع اسم السورة ورقمها." }.accessibilityIdentifier("verse.copy")
                     ShareLink(item: copyText) { Label("مشاركة الآية", systemImage: "square.and.arrow.up") }
-                    if let notice { Text(notice).accessibilityIdentifier("verse.notice") }
                 }
                 }
                 } }
             }
             .navigationTitle("\(surah.name) · الآية \(selection.ayah)")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                // List rows below the viewport are created lazily. A result
+                // placed after ShareLink can remain invisible on smaller phones
+                // even after Copy has succeeded. Keep action feedback outside
+                // the scrolling list so it is visible and accessible immediately.
+                if let notice {
+                    Text(notice)
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.regularMaterial)
+                        .accessibilityIdentifier(initialAction == .repeatRange ? "verse.repeat.error" : "verse.notice")
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("\(surah.name) · الآية \(selection.ayah)").font(.headline)
