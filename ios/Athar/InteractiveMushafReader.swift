@@ -275,17 +275,22 @@ struct InteractiveMushafReader: View {
                     Spacer()
                     Text("تسميع ذاتي · \(session.answers.count + 1) / \(session.keys.count)").font(.headline).lineLimit(1)
                     Spacer()
-                    Button("إنهاء") { finishStudy() }.frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("study.finish")
+                    Button { finishStudy() } label: {
+                        Text("إنهاء").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                    }.accessibilityIdentifier("study.finish")
                 }
                 HStack {
                     Text("\(title) · الآية \(session.currentKey?.split(separator: ":").last.map(String.init) ?? "—")").lineLimit(1)
                     Spacer()
-                    Button(session.phase == .paused ? "استئناف" : "إيقاف مؤقت") {
+                    Button {
                         if session.phase == .active { pauseStudy() }
                         else if session.phase == .paused {
                             _ = memorization.updateMushafStudy { $0.phase = .active; return true }
                         }
-                    }.frame(minHeight: 44).accessibilityIdentifier("study.pause")
+                    } label: {
+                        Text(session.phase == .paused ? "استئناف" : "إيقاف مؤقت")
+                            .frame(minWidth: 80, minHeight: 44).contentShape(Rectangle())
+                    }.accessibilityIdentifier("study.pause")
                 }.font(.caption)
             }.frame(height: 88)
             Spacer(minLength: 0)
