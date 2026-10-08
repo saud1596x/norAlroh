@@ -120,3 +120,27 @@ struct MushafStudyArchive: Codable, Equatable {
             && (summary.map { $0.session.phase == .finishing && $0.session.valid(corpus: corpus) } ?? true)
     }
 }
+
+/// Word masks use the validated edition's IDs and ordering, never text guesses.
+struct MushafStudyWordIndex {
+    let words: [String: [Int]]
+    let pages: [String: [Int]]
+    init(snapshot: QCFV2Snapshot, keys: [String]) {
+        let records = snapshot.records.filter { $0.record_type == "mushaf_word" }
+        let grouped = Dictionary(grouping: records) { keys[$0.verse_id! - 1] }
+        words = grouped.mapValues { values in
+            values.filter { $0.char_type_name == "word" }
+                .sorted { $0.position_in_verse! < $1.position_in_verse! }.map(\.id)
+        }
+        pages = grouped.mapValues { Array(Set($0.compactMap(\.page_number))).sorted() }
+    }
+    func hiddenIDs(session: MushafStudySession) -> Set<Int> {
+        var result = Set<Int>()
+        for key in session.keys.dropFirst(session.answers.count) {
+            let ids = words[key] ?? []
+            let visible = key == session.currentKey ? session.assistance.visibleWords : 0
+            result.formUnion(ids.dropFirst(visible))
+        }
+        return result
+    }
+}

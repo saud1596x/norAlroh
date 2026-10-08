@@ -35,17 +35,29 @@ import AVFoundation
         }
         observation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             guard item.status == .failed else { return }
-            Task { @MainActor in self?.error = "تعذّر تشغيل الآية. أعد تنزيلها من التنزيلات، أو تحقق من اتصال الإنترنت."; self?.stop() }
+            Task { @MainActor in
+                guard let self, self.player?.currentItem === item else { return }
+                self.error = "تعذّر تشغيل الآية. أعد تنزيلها من التنزيلات، أو تحقق من اتصال الإنترنت."; self.stop()
+            }
         }
         if let end { NotificationCenter.default.removeObserver(end) }
-        end = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in Task { @MainActor in self?.advance() } }
+        end = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in Task { @MainActor in
+            guard let self, self.player?.currentItem === item else { return }; self.advance()
+        } }
         if let failure { NotificationCenter.default.removeObserver(failure) }
         failure = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.error = "انقطع تحميل التلاوة. تحقق من الاتصال وأعد المحاولة."; self?.stop() }
+            Task { @MainActor in
+                guard let self, self.player?.currentItem === item else { return }
+                self.error = "انقطع تحميل التلاوة. تحقق من الاتصال وأعد المحاولة."; self.stop()
+            }
         }
         error = nil; player?.play()
     }
-    func stop() { player?.pause(); player = nil; observation = nil; playbackObservation = nil; playing = nil; loadingKey = nil; queue = [] }
+    func stop() {
+        player?.pause(); player = nil; observation = nil; playbackObservation = nil; playing = nil; loadingKey = nil; queue = []
+        if let end { NotificationCenter.default.removeObserver(end) }; end = nil
+        if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
+    }
     deinit { if let end { NotificationCenter.default.removeObserver(end) }; if let failure { NotificationCenter.default.removeObserver(failure) } }
 }
 
@@ -102,6 +114,19 @@ struct InteractiveMushafReader: View {
     @State private var input = ""
     @State private var error: String?
     @State private var renderingFailed = false
+    @State private var studyOpen = false
+    @State private var studySetup = false
+    @State private var studyStartKey: String?
+    @State private var studyRequestFromSheet = false
+    @State private var studyIndex: MushafStudyWordIndex?
+    @State private var audioHelpRequest: String?
+    @State private var studySummary = false
+    @Environment(\.scenePhase) private var scenePhase
+    private var study: MushafStudySession? { studyOpen ? memorization.mushafStudy.pending : nil }
+    private var hiddenStudyWords: Set<Int> {
+        guard let study, let studyIndex else { return [] }
+        return studyIndex.hiddenIDs(session: study)
+    }
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     private var keys: [String] { store.quran.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } } }
     private var page: OriginalPageData? {
@@ -114,19 +139,22 @@ struct InteractiveMushafReader: View {
             GeometryReader { geometry in
                 if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: selected, reduceMotion: reduced || store.data.lowMotion,
+                        hiddenWordIDs: hiddenStudyWords,
                         onVerse: { key in
+                            guard !studyOpen else { return }
                             if let key {
                                 selected = key; manualSelection = VerseSelection(key: key)
                                 withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools = true }
                             }
                         }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) },
                         onToggleTools: {
+                            if studyOpen { return }
                             if manualSelection != nil { clearManualSelection() }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() } }
                         })
                         .padding(.horizontal, 12)
-                        .padding(.top, (controlHeights["header"] ?? 44) + 8)
-                        .padding(.bottom, (controlHeights["footer"] ?? 44) + 8)
+                        .padding(.top, (studyOpen ? 88 : (controlHeights["header"] ?? 44)) + 8)
+                        .padding(.bottom, (studyOpen ? 176 : (controlHeights["footer"] ?? 44)) + 8)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
                     VStack(spacing: 18) { Text(message).accessibilityIdentifier("reader.load.error"); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -134,7 +162,8 @@ struct InteractiveMushafReader: View {
                     ContentUnavailableView("تعذّر فتح الصفحة", systemImage: "book.closed", description: Text("حاول الانتقال إلى صفحة أخرى ثم العودة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة."))
                 } else { ProgressView("تنزيل بيانات المصحف والتحقق من الخط…").frame(maxWidth: .infinity, maxHeight: .infinity) }
             }
-            if tools { VStack {
+            if studyOpen, let study { studyControls(study) }
+            else if tools { VStack {
                 HStack {
                     if manualSelection != nil {
                         Button { clearManualSelection() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
@@ -152,7 +181,10 @@ struct InteractiveMushafReader: View {
                     } else if audio.playing != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel("إيقاف التلاوة") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
-                    } else { Color.clear.frame(width: 44, height: 44) }
+                    } else {
+                        Button { showStudySetup() } label: { Image(systemName: "mic").frame(width: 44, height: 44) }
+                            .accessibilityLabel("الحفظ والتسميع").accessibilityIdentifier("reader.study")
+                    }
                 }.background { readerControlMeasurement("header") }
                 Spacer()
                 Group {
@@ -178,11 +210,21 @@ struct InteractiveMushafReader: View {
         }
         .task { await load() }
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
-        .onDisappear { audio.stop(); audio.onVerse = nil }
+        .onDisappear { pauseStudy(); audio.stop(); audio.onVerse = nil }
+        .onChange(of: scenePhase) { _, value in if value != .active { pauseStudy() } }
         .onChange(of: number) { _, value in lastPage = value }
-        .sheet(item: $sheetVerse, onDismiss: { clearManualSelection() }) { selection in
-            VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction)
+        .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; studySetup = true } }) { selection in
+            VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
+                studyStartKey = key; studyRequestFromSheet = true
+            })
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $studySetup) {
+            MushafStudySetup(page: number, pageKeys: Array(Set(page?.words.map(\.verse) ?? [])).sorted { keys.firstIndex(of: $0)! < keys.firstIndex(of: $1)! },
+                initialKey: studyStartKey ?? page?.words.first?.verse ?? "1:1", onOpen: openStudy)
+        }
+        .sheet(isPresented: $studySummary) {
+            MushafStudyResultView().environmentObject(memorization)
         }
         .sheet(isPresented: $picker) {
             NavigationStack { Form {
@@ -191,6 +233,92 @@ struct InteractiveMushafReader: View {
             }.navigationTitle("الانتقال في المصحف").toolbar { Button("إغلاق") { picker = false } } }
         }
         .alert("التلاوة", isPresented: Binding(get: { audio.error != nil }, set: { if !$0 { audio.error = nil } })) { Button("حسنًا") { audio.error = nil } } message: { Text(audio.error ?? "") }
+    }
+    private func showStudySetup(_ key: String? = nil) {
+        audio.stop(); audioHelpRequest = nil; clearManualSelection()
+        studyStartKey = key; studySetup = true
+    }
+    private func openStudy() {
+        guard let session = memorization.mushafStudy.pending, studyIndex != nil else { return }
+        studyOpen = true; tools = true; studySetup = false; followStudy(session)
+    }
+    private func followStudy(_ session: MushafStudySession) {
+        audio.stop(); audioHelpRequest = nil; manualSelection = nil
+        selected = session.currentKey
+        if let key = session.currentKey, let target = studyIndex?.pages[key]?.first {
+            number = target; lastPage = target
+        }
+    }
+    private func pauseStudy() {
+        guard studyOpen else { return }
+        audio.stop(); audioHelpRequest = nil
+        _ = memorization.updateMushafStudy { session in
+            guard session.phase == .active else { return false }; session.phase = .paused; return true
+        }
+    }
+    private func finishStudy() {
+        audio.stop(); audioHelpRequest = nil
+        if memorization.finishMushafStudy() { studyOpen = false; selected = nil; studySummary = true }
+    }
+    private func answerStudy(_ assessment: String) {
+        audio.stop(); audioHelpRequest = nil
+        if memorization.updateMushafStudy({ $0.answer(assessment) }), let updated = memorization.mushafStudy.pending {
+            if updated.currentKey == nil { finishStudy() } else { followStudy(updated) }
+        }
+    }
+    private func studyControls(_ session: MushafStudySession) -> some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                HStack {
+                    Button { pauseStudy(); studyOpen = false; selected = nil } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
+                        .accessibilityLabel("العودة للقراءة وحفظ الجلسة").accessibilityIdentifier("study.leave")
+                    Spacer()
+                    Text("تسميع ذاتي · \(session.answers.count + 1) / \(session.keys.count)").font(.headline).lineLimit(1)
+                    Spacer()
+                    Button("إنهاء") { finishStudy() }.frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("study.finish")
+                }
+                HStack {
+                    Text("\(title) · الآية \(session.currentKey?.split(separator: ":").last.map(String.init) ?? "—")").lineLimit(1)
+                    Spacer()
+                    Button(session.phase == .paused ? "استئناف" : "إيقاف مؤقت") {
+                        if session.phase == .active { pauseStudy() }
+                        else if session.phase == .paused {
+                            _ = memorization.updateMushafStudy { $0.phase = .active; return true }
+                        }
+                    }.frame(minHeight: 44).accessibilityIdentifier("study.pause")
+                }.font(.caption)
+            }.frame(height: 88)
+            Spacer(minLength: 0)
+            VStack(spacing: 0) {
+                Text(session.phase == .paused ? "الجلسة متوقفة · تقدمك محفوظ" : "تقييم ذاتي؛ التحليل الصوتي غير متاح")
+                    .font(.caption).frame(height: 44).accessibilityIdentifier("study.status")
+                HStack(spacing: 4) {
+                    Button("كشف كلمة") { revealStudy(all: false) }.accessibilityIdentifier("study.revealWord").disabled(session.assistance.revealAll || session.assistance.visibleWords >= (session.currentKey.flatMap { studyIndex?.words[$0]?.count } ?? 0))
+                    Button("كشف الآية") { revealStudy(all: true) }.accessibilityIdentifier("study.revealAll").disabled(session.assistance.revealAll || session.assistance.visibleWords >= (session.currentKey.flatMap { studyIndex?.words[$0]?.count } ?? 0))
+                    Button(audio.loadingKey != nil || audio.playing != nil ? "إيقاف الصوت" : "استماع") {
+                        if audio.loadingKey != nil || audio.playing != nil { audio.stop(); audioHelpRequest = nil }
+                        else if let key = session.currentKey { audioHelpRequest = key; audio.play([key]) }
+                    }.accessibilityIdentifier("study.listen")
+                }.buttonStyle(MushafStudyButtonStyle()).disabled(session.phase != .active)
+                HStack(spacing: 4) {
+                    Button("تذكّرتها") { answerStudy("remembered") }.accessibilityIdentifier("study.remembered")
+                    Button("أحتاج مراجعة") { answerStudy("review") }.accessibilityIdentifier("study.review")
+                    Button("تجاوز") { answerStudy("skip") }.accessibilityIdentifier("study.skip")
+                }.buttonStyle(MushafStudyButtonStyle()).disabled(session.phase != .active)
+                HStack {
+                    let pages = session.currentKey.flatMap { studyIndex?.pages[$0] } ?? []
+                    Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
+                        .disabled(!pages.contains(number - 1)).accessibilityLabel("الجزء السابق من الآية")
+                    Spacer(); Text("الصفحة \(number) · المساعدة تُحفظ مع النتيجة").font(.caption).lineLimit(1); Spacer()
+                    Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
+                        .disabled(!pages.contains(number + 1)).accessibilityLabel("تكملة الآية")
+                }
+            }.frame(height: 176)
+        }.padding(.horizontal, 10)
+    }
+    private func revealStudy(all: Bool) {
+        guard let session = study, let key = session.currentKey, let count = studyIndex?.words[key]?.count else { return }
+        _ = memorization.updateMushafStudy { $0.reveal(wordCount: count, all: all) }
     }
     private func readerControlMeasurement(_ key: String) -> some View {
         GeometryReader { geometry in
@@ -217,7 +345,7 @@ struct InteractiveMushafReader: View {
             verseAction(bookmarked ? "محفوظة" : "علامة", symbol: bookmarked ? "bookmark.fill" : "bookmark", identifier: "verse.bookmark") {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
-            verseAction("حفظ", symbol: "mic", identifier: "verse.hifz") { openTools(selection, action: .hifz) }
+            verseAction("حفظ", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) }
         }
     }
     private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
@@ -232,10 +360,12 @@ struct InteractiveMushafReader: View {
     }
     private func turn(_ amount: Int) {
         guard (1...604).contains(number + amount) else { return }
+        if let study, let current = study.currentKey,
+           studyIndex?.pages[current]?.contains(number + amount) != true { return }
         let destination = number + amount
         // Persist before publishing the new page, including a quick close/background.
         lastPage = destination
-        number = destination; selected = nil; manualSelection = nil
+        number = destination; selected = study?.currentKey; manualSelection = nil
     }
     private func load() async {
         error = nil
@@ -263,12 +393,19 @@ struct InteractiveMushafReader: View {
             let versePages = pagesByVerse
             try Task.checkCancellation()
             let first = snapshot == nil; snapshot = data; rows = metadata
+            studyIndex = MushafStudyWordIndex(snapshot: data, keys: corpusKeys)
             if first {
                 number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil }
                     ?? versePages["\(chapter):\(ayah)"] ?? 1
                 lastPage = number
             }
             audio.onVerse = { key in
+                if studyOpen {
+                    guard audioHelpRequest == key else { return }
+                    audioHelpRequest = nil
+                    _ = memorization.updateMushafStudy { $0.recordAudioHelp(for: key) }
+                    return
+                }
                 manualSelection = nil
                 selected = key
                 if page?.words.contains(where: { $0.verse == key }) != true,
@@ -288,7 +425,7 @@ private struct ReaderControlHeight: PreferenceKey {
 }
 struct VerseSelection: Identifiable { let key: String; var id: String { key }; var chapter: Int { Int(key.split(separator: ":")[0])! }; var ayah: Int { Int(key.split(separator: ":")[1])! } }
 
-private enum VerseToolAction: Equatable { case details, tafsir, repeatRange, hifz }
+private enum VerseToolAction: Equatable { case details, tafsir, repeatRange }
 private struct VerseTools: View {
     let selection: VerseSelection
     @ObservedObject var audio: MushafVerseAudio
@@ -298,14 +435,14 @@ private struct VerseTools: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var tafsir = MushafTafsir()
     @State private var showTafsir = false
-    @State private var showHifz = false
     @State private var repeatCount = 3
     @State private var repeatEnd = 1
     @State private var notice: String?
     let initialAction: VerseToolAction
-    init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>, initialAction: VerseToolAction = .details) {
+    let onStudy: (String) -> Void
+    init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>, initialAction: VerseToolAction = .details, onStudy: @escaping (String) -> Void) {
         self.selection = selection; self.audio = audio; self._selected = selected
-        self.initialAction = initialAction
+        self.initialAction = initialAction; self.onStudy = onStudy
         self._repeatEnd = State(initialValue: selection.ayah)
     }
     private var surah: Surah { store.quran[selection.chapter - 1] }
@@ -315,7 +452,6 @@ private struct VerseTools: View {
         NavigationStack {
             Group {
                 if initialAction == .tafsir { tafsirContent }
-                else if initialAction == .hifz { hifzContent }
                 else { List {
                 if initialAction == .details {
                 Section {
@@ -333,7 +469,7 @@ private struct VerseTools: View {
                 }
                 if initialAction == .details {
                 Section("الحفظ والمشاركة") {
-                    Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { showHifz = true }
+                    Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { onStudy(selection.key); dismiss() }
                     Button("نسخ نص الآية", systemImage: "doc.on.doc") { UIPasteboard.general.string = copyText; notice = "نُسخ نص الآية مع اسم السورة ورقمها." }.accessibilityIdentifier("verse.copy")
                     ShareLink(item: copyText) { Label("مشاركة الآية", systemImage: "square.and.arrow.up") }
                     if let notice { Text(notice).accessibilityIdentifier("verse.notice") }
@@ -360,11 +496,7 @@ private struct VerseTools: View {
                     .toolbar { Button("إغلاق") { showTafsir = false }.accessibilityIdentifier("verse.tafsir.close") }
                 }
             }
-            .sheet(isPresented: $showHifz) {
-                NavigationStack {
-                    hifzContent.navigationTitle("الحفظ والمراجعة").toolbar { Button("إغلاق") { showHifz = false } }
-                }
-            }
+
         }
     }
     private var tafsirContent: some View {
@@ -374,15 +506,5 @@ private struct VerseTools: View {
             else { ProgressView("تحميل التفسير الميسر…") }
         }.padding().frame(maxWidth: .infinity, alignment: .leading) }
             .task { await tafsir.load(chapter: selection.chapter, ayah: selection.ayah) }
-    }
-    private var hifzContent: some View {
-        Form {
-            Text("ابدأ بالآية \(selection.ayah) من \(surah.name). تُحفظ نتائج المراجعة السابقة؛ البدء يستبدل خطة الحفظ والجلسة الحالية.")
-            Button("بدء جلسة هذه الآية") {
-                let plan = MemorizationPlan(chapter: selection.chapter, from: selection.ayah, to: selection.ayah, daily: 1)
-                if memorization.configure(plan, corpus: store.quran), memorization.saveSession(MemorizationSession(chapter: selection.chapter, keys: [selection.ayah])) { notice = "أُضيفت الآية إلى جلسة الحفظ. افتح قسم الحفظ للمتابعة."; showHifz = false }
-            }
-            if let notice { Text(notice).accessibilityIdentifier("verse.notice") }
-        }
     }
 }
