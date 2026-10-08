@@ -199,7 +199,12 @@ public struct QuranRecitationTracker {
                             .allSatisfy({ $1.start - $0.end <= 2 }) else { break }
                     bounds.append((word, token, end)); word += 1; token = end
                 }
-                let minimumAnchor = (lower..<upper).contains(first) ? 2 : 3
+                // A complete one-group scope cannot supply a two-group anchor.
+                // Require the entire authentic spoken form and stronger token
+                // confidence; ordinary/multi-group scopes keep their anchors.
+                let singleScope = expected.count == 1 && bounds.count == 1
+                    && heard[bounds[0].1..<bounds[0].2].allSatisfy { $0.probability >= 0.95 }
+                let minimumAnchor = singleScope ? 1 : (lower..<upper).contains(first) ? 2 : 3
                 if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
             }
         }
