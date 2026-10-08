@@ -165,7 +165,7 @@ struct SettingsView: View {
     @EnvironmentObject var dhikrCounters: DhikrCounterStore
     @EnvironmentObject var memorization: MemorizationStore
     @EnvironmentObject var recitation: LocalRecitationRecorder
-    @EnvironmentObject var speech: LocalSpeechRecitation
+    @EnvironmentObject var speech: LegacySpeechArchive
     @EnvironmentObject var friday: FridayStore
     @EnvironmentObject var fridayAlarms: FridayAlarms
     @EnvironmentObject var account: NoorAccountStore
