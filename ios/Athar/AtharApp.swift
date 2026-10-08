@@ -10,7 +10,7 @@ struct AtharApp: App {
     @StateObject private var dhikrCounters = DhikrCounterStore()
     @StateObject private var memorization = MemorizationStore()
     @StateObject private var recitation = LocalRecitationRecorder()
-    @StateObject private var speech = LocalSpeechRecitation()
+    @StateObject private var speech = LegacySpeechArchive()
     @StateObject private var retiredFriday = NoorRetiredFridayCleanup()
     @StateObject private var account = NoorAccountStore()
     @StateObject private var widgetRouter = NoorWidgetRouter.shared
@@ -75,7 +75,6 @@ struct AtharApp: App {
                         dhikrCounters.refreshDay()
                         Task { await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                     } else {
-                        if speech.listening || phase == .background { speech.stop() }
                         if phase == .background { account.enterBackground(); recitation.stop(); prayerLocation.deactivate(); PrayerBackgroundRefresh.submit() }
                     }
                 }

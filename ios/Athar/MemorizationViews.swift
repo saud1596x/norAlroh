@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct MemorizationPlan: Codable { var chapter = 1; var from = 1; var to = 7; var daily = 3 }
-struct MemorizationAnswer: Codable { let ayah: Int; let assessment: String; let revealed: Bool; let hints: Int }
-struct MemorizationResult: Codable, Identifiable {
+struct MemorizationAnswer: Codable, Equatable { let ayah: Int; let assessment: String; let revealed: Bool; let hints: Int }
+struct MemorizationResult: Codable, Identifiable, Equatable {
     var id = UUID(); var date = Date(); let chapter: Int; let answers: [MemorizationAnswer]
 }
 struct MemorizationSession: Codable {
@@ -125,6 +125,8 @@ struct MemorizationArchive: Codable {
     @Published var error: String?
     @Published private(set) var unreadableHistory: Data?
     @Published private(set) var progress = MemorizationProgress()
+    @Published private(set) var mushafStudy = MushafStudyArchive()
+    private(set) var unreadableMushafStudy: Data?
     private let defaults: UserDefaults
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -166,6 +168,11 @@ struct MemorizationArchive: Codable {
             if let value = try? JSONDecoder().decode(MemorizationPracticeSession.self, from: data),
                let corpus = QuranResources.corpus, value.valid(corpus: corpus) { practice = value }
             else { unreadablePractice = data }
+        }
+        if let data = defaults.data(forKey: "noor.mushaf.study") {
+            if let value = try? JSONDecoder().decode(MushafStudyArchive.self, from: data),
+               let corpus = QuranResources.corpus, value.valid(corpus: corpus) { mushafStudy = value }
+            else { unreadableMushafStudy = data }
         }
     }
     @discardableResult func savePractice(_ value: MemorizationPracticeSession) -> Bool {
@@ -309,7 +316,7 @@ struct MemorizationArchive: Codable {
             // practice actually completed here, rather than clearing it on restore.
             let today = MemorizationProgress.dayKey(Date())
             restored.practiceDays[today] = progress.practiceDays[today]
-            let selectedPlan = history.isEmpty && session == nil && practice == nil ? backup.plan : plan
+            let selectedPlan = history.isEmpty && session == nil && practice == nil && mushafStudy.pending == nil && unreadableMushafStudy == nil ? backup.plan : plan
             guard restored.valid(corpus: corpus) else { throw CocoaError(.fileReadCorruptFile) }
             let archive = try encoder.encode(MemorizationArchive(version: 1, history: combined, progress: restored, plan: selectedPlan))
             let savedPlan = try encoder.encode(selectedPlan)
@@ -346,8 +353,56 @@ struct MemorizationArchive: Codable {
         }
         catch { self.error = "تعذر حفظ نتيجة المراجعة."; return false }
     }
+    @discardableResult func saveMushafStudy(_ value: MushafStudyArchive) -> Bool {
+        guard unreadableMushafStudy == nil, let corpus = QuranResources.corpus,
+              value.valid(corpus: corpus) else {
+            error = "تعذّر حفظ جلسة المصحف. بيانات الجلسة السابقة محفوظة؛ صدّرها من الإعدادات."; return false
+        }
+        do {
+            defaults.set(try JSONEncoder().encode(value), forKey: "noor.mushaf.study")
+            mushafStudy = value; return true
+        } catch { self.error = "تعذّر حفظ جلسة التسميع."; return false }
+    }
+    @discardableResult func startMushafStudy(keys: [String], scope: MushafStudySession.Scope, page: Int? = nil) -> Bool {
+        guard mushafStudy.pending == nil, unreadableHistory == nil else { return false }
+        var next = mushafStudy; next.pending = MushafStudySession(keys: keys, scope: scope, page: page)
+        return saveMushafStudy(next)
+    }
+    @discardableResult func updateMushafStudy(_ change: (inout MushafStudySession) -> Bool) -> Bool {
+        guard var pending = mushafStudy.pending, change(&pending) else { return false }
+        var next = mushafStudy; next.pending = pending; return saveMushafStudy(next)
+    }
+    @discardableResult func finishMushafStudy(at date: Date = Date()) -> Bool {
+        guard unreadableHistory == nil, let corpus = QuranResources.corpus,
+              var pending = mushafStudy.pending, pending.valid(corpus: corpus) else { return false }
+        if pending.finishedAt == nil {
+            pending.finishedAt = max(date, pending.startedAt); pending.phase = .finishing
+            var next = mushafStudy; next.pending = pending
+            guard saveMushafStudy(next) else { return false }
+        }
+        guard let results = pending.results(), results.allSatisfy({ Self.valid($0, corpus: corpus) }) else { return false }
+        var nextHistory = history; var nextProgress = progress
+        for result in results {
+            if let prior = nextHistory.first(where: { $0.id == result.id }) {
+                guard prior == result else {
+                    error = "تعذّر إنهاء الجلسة بسبب تعارض في سجل سابق. بياناتك محفوظة."; return false
+                }
+            } else { nextHistory.insert(result, at: 0); nextProgress.record(result) }
+        }
+        do {
+            // One archive write publishes all surah results and progress together.
+            // If interrupted before clearing the session, identical IDs make the
+            // next finish a retry, not another practice attempt.
+            let archive = MemorizationArchive(version: 1, history: nextHistory, progress: nextProgress, plan: plan)
+            defaults.set(try JSONEncoder().encode(archive), forKey: "noor.memorization.archive")
+            history = nextHistory; progress = nextProgress
+            var next = mushafStudy; next.pending = nil; next.summary = .init(session: pending)
+            guard saveMushafStudy(next) else { return false }
+            NoorFocusController.shared.sync(progress: progress); return true
+        } catch { self.error = "تعذّر حفظ نتيجة جلسة المصحف. يمكنك إعادة محاولة إنهائها."; return false }
+    }
     @discardableResult func applySyncedPlan(_ candidate: MemorizationPlan) -> Bool {
-        guard session == nil, practice == nil, unreadableHistory == nil, let corpus = QuranResources.corpus,
+        guard session == nil, practice == nil, mushafStudy.pending == nil, unreadableMushafStudy == nil, unreadableHistory == nil, let corpus = QuranResources.corpus,
               Self.validPlan(candidate, corpus: corpus) else { return false }
         if plan.chapter == candidate.chapter && plan.from == candidate.from && plan.to == candidate.to && plan.daily == candidate.daily { return true }
         do {
@@ -365,6 +420,8 @@ struct MemorizationArchive: Codable {
         defaults.removeObject(forKey: "noor.memorization.preRetentionFix")
         defaults.removeObject(forKey: "noor.memorization.preCloudMerge")
         defaults.removeObject(forKey: "noor.memorization.practice")
+        defaults.removeObject(forKey: "noor.mushaf.study")
+        mushafStudy = .init(); unreadableMushafStudy = nil
         practice = nil; unreadablePractice = nil
         clearSession(); history = []; progress = MemorizationProgress(); plan = MemorizationPlan(); unreadableHistory = nil; error = nil
     }
@@ -391,7 +448,7 @@ struct MemorizationView: View {
                     action("احفظ آية جديدة", detail: "اقرأ الآية، أخفها، ثم اكشف كلماتها بالتدرج", icon: "book.closed", number: "١")
                 }.accessibilityIdentifier("hifz.practice")
                 NavigationLink { SpeechRecitationView() } label: {
-                    action("سمّع بصوتك", detail: "نطاق تختاره، مع حفظ موضع المتابعة", icon: "mic", number: "٢")
+                    action("سمّع داخل المصحف", detail: "اختر مقطعك، وأخفِ الآيات وسجّل صوتك اختياريًا", icon: "mic", number: "٢")
                 }.accessibilityIdentifier("hifz.speech")
                 NavigationLink { MemorizationTestView() } label: {
                     action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")

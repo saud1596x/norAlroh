@@ -165,7 +165,7 @@ struct SettingsView: View {
     @EnvironmentObject var dhikrCounters: DhikrCounterStore
     @EnvironmentObject var memorization: MemorizationStore
     @EnvironmentObject var recitation: LocalRecitationRecorder
-    @EnvironmentObject var speech: LocalSpeechRecitation
+    @EnvironmentObject var speech: LegacySpeechArchive
     @EnvironmentObject var retiredFriday: NoorRetiredFridayCleanup
     @EnvironmentObject var account: NoorAccountStore
     @Environment(\.dismiss) private var dismiss
@@ -205,19 +205,20 @@ struct SettingsView: View {
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes)
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: try MushafRecordingArchive.exportMetadata())
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
                     }
                     catch { exportMessage = "تعذر تجهيز ملف التصدير." }
                 }
-                Text("ملف التصدير غير مشفر. احفظه في مكان خاص.").font(.subheadline).foregroundStyle(.secondary)
+                Text("ملف التصدير غير مشفر. احفظه في مكان خاص. يتضمن معلومات تسجيلات التسميع؛ احفظ ملفات الصوت نفسها من قائمة التسجيلات.").font(.subheadline).foregroundStyle(.secondary)
                 Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing)
                 if erasing { ProgressView("حذف البيانات والنموذج المحلي…") }
                 NavigationLink("سياسة الخصوصية") { PrivacyView() }.accessibilityIdentifier("settings.privacy")
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
+                NavigationLink("تسجيلات التسميع") { MushafRecordingBrowser() }.accessibilityIdentifier("settings.recordings")
                 NavigationLink("التنزيلات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
             }
@@ -245,6 +246,8 @@ struct SettingsView: View {
                 guard NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
                 guard recitation.erase() else { exportMessage = recitation.message; return }
                 guard await KhatmahStore.shared.erase() else { exportMessage = KhatmahStore.shared.error; return }
+                do { try MushafRecordingArchive.erase() }
+                catch { exportMessage = "تعذّر حذف تسجيلات التسميع. حاول بعد فتح قفل الجهاز."; return }
                 if store.erase() {
                     notifications.erasePreferences()
                     prayerLocation.erase()

@@ -71,10 +71,14 @@ struct OriginalPageData {
     var hiddenWordIDs: Set<Int> = [] {
         didSet {
             guard oldValue != hiddenWordIDs else { return }
-            refreshAccessibilityLabels(); ink.setNeedsDisplay()
+            refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
         }
     }
+    var allowsVerseSelection = true {
+        didSet { if oldValue != allowsVerseSelection { refreshAccessibilityLabels() } }
+    }
     private var decorationPaths: [CGPath] = []
+    var ornamentBounds: [CGRect] { decorationPaths.map(\.boundingBoxOfPath) }
     struct RowGeometry { let line: Int; let kind: String; var ink: CGRect }
     private(set) var rowGeometry: [RowGeometry] = []
     private(set) var headerClearances: [CGFloat] = []
@@ -87,7 +91,7 @@ struct OriginalPageData {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear; isOpaque = false
-        highlight.fillColor = UIColor.systemYellow.withAlphaComponent(0.22).cgColor
+        highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
         layer.addSublayer(highlight)
         ink = OriginalMushafInk(frame: CGRect(origin: .zero, size: Self.pageSize))
         ink.owner = self; ink.isUserInteractionEnabled = false; ink.backgroundColor = .clear
@@ -214,8 +218,11 @@ struct OriginalPageData {
     private func refreshAccessibilityLabels() {
         let hiddenVerses = Set(regions.filter { hiddenWordIDs.contains($0.word) }.map(\.verse))
         for element in accessibilityElements as? [MushafVerseAccessibility] ?? [] {
+            let key = element.verseKey
+            element.accessibilityTraits = allowsVerseSelection ? .button : .staticText
+            element.action = allowsVerseSelection ? { [weak self] in self?.onVerse?(key) } : nil
             element.accessibilityLabel = element.heading + ". " + (hiddenVerses.contains(element.verseKey)
-                ? "نص الآية مخفي للتدريب. استخدم كشف الكلمات للمساعدة." : element.fullText)
+                ? "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة." : element.fullText)
         }
     }
     /// A title and its separate basmala share the space between actual body ink.
@@ -280,10 +287,42 @@ struct OriginalPageData {
         let actual = Set(candidates.filter { $0.paths.contains { $0.contains(point) } }.map(\.verse))
         return actual.count == 1 ? actual.first : nil
     }
+    private var selectionColor: UIColor {
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.86, green: 0.71, blue: 0.49, alpha: 0.28)
+                : UIColor(red: 0.45, green: 0.30, blue: 0.13, alpha: 0.16)
+        }
+    }
+    /// Use the same shaped outlines as the ink, including vowels and every line.
+    /// Never paint word rectangles or the space between separate verse lines.
+    func selectionPath(for key: String?) -> CGPath? {
+        guard let key else { return nil }
+        let chosen = regions.filter { $0.verse == key && !hiddenWordIDs.contains($0.word) }
+        guard !chosen.isEmpty else { return nil }
+        let glyphs = CGMutablePath()
+        for region in chosen { for path in region.paths { glyphs.addPath(path) } }
+        let halo = glyphs.union(glyphs.copy(strokingWithWidth: 4, lineCap: .round, lineJoin: .round, miterLimit: 1))
+        let neighbors = CGMutablePath()
+        for region in regions where region.verse != key && !hiddenWordIDs.contains(region.word)
+            && region.rect.insetBy(dx: -2, dy: -2).intersects(halo.boundingBoxOfPath) {
+            for path in region.paths {
+                neighbors.addPath(path)
+                neighbors.addPath(path.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1))
+            }
+        }
+        return neighbors.isEmpty ? halo : halo.subtracting(neighbors)
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
+        }
+    }
     private func updateHighlight() {
-        let path = UIBezierPath()
-        for region in regions where region.verse == selected { path.append(UIBezierPath(roundedRect: region.rect.insetBy(dx: -0.8, dy: -0.8), cornerRadius: 2)) }
-        CATransaction.begin(); CATransaction.setDisableActions(true); highlight.path = path.cgPath; CATransaction.commit()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        highlight.path = selectionPath(for: selected)
+        CATransaction.commit()
         if !reduceMotion && !UIAccessibility.isReduceMotionEnabled { let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1; fade.duration = 0.16; highlight.add(fade, forKey: "select") }
     }
     func drawInk() {
@@ -333,7 +372,7 @@ struct OriginalPageData {
     var heading = ""
     var fullText = ""
     var action: (() -> Void)?
-    override func accessibilityActivate() -> Bool { action?(); return true }
+    override func accessibilityActivate() -> Bool { guard let action else { return false }; action(); return true }
 }
 
 @MainActor final class OriginalMushafViewport: UIScrollView, UIScrollViewDelegate {
@@ -341,6 +380,10 @@ struct OriginalPageData {
     private var fitted: CGFloat = 0
     var onTurn: ((Int) -> Void)?
     var onToggleTools: (() -> Void)?
+    private var selectionGesture: UILongPressGestureRecognizer?
+    var allowsVerseSelection = true {
+        didSet { canvas.allowsVerseSelection = allowsVerseSelection; selectionGesture?.isEnabled = allowsVerseSelection }
+    }
     private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
     var canTurnPages: Bool {
         onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
@@ -350,15 +393,19 @@ struct OriginalPageData {
     override init(frame: CGRect) {
         super.init(frame: frame); delegate = self
         showsVerticalScrollIndicator = false; showsHorizontalScrollIndicator = false
-        bounces = false; bouncesZoom = false; backgroundColor = .clear; addSubview(canvas)
+        // SwiftUI has already removed the system safe area and reader controls.
+        // Applying automatic UIKit insets again shifts the authored page.
         contentInsetAdjustmentBehavior = .never
+        bounces = false; bouncesZoom = false; backgroundColor = .clear; addSubview(canvas)
         accessibilityIdentifier = "reader.page.loading"
         contentSize = OriginalMushafCanvas.pageSize
         let tap = UITapGestureRecognizer(target: self, action: #selector(tappedOnViewport(_:)))
-        let hold = UILongPressGestureRecognizer(target: self, action: #selector(heldOnViewport(_:)))
-        hold.minimumPressDuration = 0.4
-        addGestureRecognizer(hold)
-        tap.require(toFail: hold)
+        let selection = UILongPressGestureRecognizer(target: self, action: #selector(selectedOnViewport(_:)))
+        selectionGesture = selection
+        selection.minimumPressDuration = 0.4
+        selection.allowableMovement = 10
+        tap.require(toFail: selection)
+        addGestureRecognizer(selection)
         for direction in [UISwipeGestureRecognizer.Direction.right, .left] {
             let swipe = UISwipeGestureRecognizer(target: self, action: #selector(turnPage(_:)))
             swipe.direction = direction; swipe.numberOfTouchesRequired = 1
@@ -382,9 +429,9 @@ struct OriginalPageData {
         // A margin tap stays blank; it never chooses a nearby verse.
         canvas.onVerse?(canvas.verse(at: tap.location(in: canvas)))
     }
-    @objc private func heldOnViewport(_ hold: UILongPressGestureRecognizer) {
-        guard hold.state == .began, onToggleTools != nil,
-              let key = canvas.verse(at: hold.location(in: canvas)) else { return }
+    @objc private func selectedOnViewport(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began,
+              let key = canvas.verse(at: gesture.location(in: canvas)) else { return }
         canvas.onVerse?(key)
     }
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { canvas }
@@ -393,16 +440,15 @@ struct OriginalPageData {
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0 else { return }
         let fit = min(bounds.width / OriginalMushafCanvas.pageSize.width, bounds.height / OriginalMushafCanvas.pageSize.height)
-        let refit = abs(fitted - fit) > 0.00001
-        if refit {
+        if abs(fitted - fit) > 0.00001 {
             let relativeZoom = fitted > 0 ? zoomScale / fitted : 1
             fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4
             zoomScale = fit * min(4, max(1, relativeZoom))
         }
         let vertical = max(0, (bounds.height - canvas.frame.height) / 2)
         let horizontal = max(0, (bounds.width - canvas.frame.width) / 2)
-        let inset = UIEdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
-        if contentInset != inset { contentInset = inset }
+        let centered = UIEdgeInsets(top: vertical, left: horizontal, bottom: vertical, right: horizontal)
+        if contentInset != centered { contentInset = centered }
         if zoomScale <= minimumZoomScale * 1.0001, !isDragging, !isDecelerating {
             let origin = CGPoint(x: -horizontal, y: -vertical)
             if contentOffset != origin { setContentOffset(origin, animated: false) }
@@ -424,11 +470,13 @@ struct OriginalPageData {
 struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
+    var allowsVerseSelection = true
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     var onTurn: ((Int) -> Void)? = nil
     var onToggleTools: (() -> Void)? = nil
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
+        view.allowsVerseSelection = allowsVerseSelection
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
         view.onToggleTools = onToggleTools

@@ -281,5 +281,8 @@ struct NoorPrivacyExport: Codable {
     var preReadingMerge: Data? = nil
     // Raw archive also preserves an unreadable record for support/recovery.
     var khatmahArchive: Data? = nil
+    var mushafStudy: MushafStudyArchive? = nil
+    var unreadableMushafStudy: Data? = nil
+    var mushafRecordings: [MushafRecordingExport]? = nil
 
 }
