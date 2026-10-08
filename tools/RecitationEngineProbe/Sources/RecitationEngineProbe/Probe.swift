@@ -1,5 +1,6 @@
 import Foundation
 import RecitationEvidence
+import RecitationAlignment
 import WhisperKit
 import Darwin
 
@@ -18,6 +19,8 @@ struct ProbeWindow: Codable {
     let text: String
     let words: [WordTiming]
     let gatedWords: [WordTiming]
+    let alignedEvidence: [QuranWordEvidence]
+    let unresolvedNativeIDs: [Int]
     let gateRejections: [String]
     let rawValidationIssues: [String]
     let noSpeechProbabilities: [Float]
@@ -52,6 +55,7 @@ struct ProbeReport: Codable {
         let fixtures = try JSONDecoder().decode([ProbeFixture].self,
             from: Data(contentsOf: fixtureFolder.appendingPathComponent("fixtures.json")))
         guard !fixtures.isEmpty else { throw ProbeFailure("No real audio fixtures supplied") }
+        let bound = try await loadAuthoredWords()
         let engine = try await WhisperKit(WhisperKitConfig(
             modelFolder: arguments[1],
             tokenizerFolder: URL(fileURLWithPath: arguments[2], isDirectory: true),
@@ -61,6 +65,14 @@ struct ProbeReport: Codable {
             suppressBlank: true, concurrentWorkerCount: 1)
         var windows: [ProbeWindow] = []
         for fixture in fixtures {
+            let keys: Set<String>
+            switch fixture.kind {
+            case "professional-reference": keys = [fixture.name]
+            case "return": keys = ["114:1", "114:2", "114:3"]
+            default: keys = ["112:1", "112:2", "112:3", "112:4"]
+            }
+            var tracker = QuranRecitationTracker(expected: bound.filter { keys.contains($0.verse) })
+            let takeID = UUID()
             // Loading, resampling and inference are the real Apple runtime APIs.
             let samples = try AudioProcessor.loadAudioAsFloatArray(
                 fromPath: fixtureFolder.appendingPathComponent(fixture.file).path)
@@ -97,17 +109,28 @@ struct ProbeReport: Codable {
                     rawIssues.append("Model emitted words for a digital-silence control")
                 }
                 var gatedWords: [WordTiming] = []
+                var runs: [[QuranHeardWord]] = [[]]
                 var rejections: [String] = []
                 for (index, word) in words.enumerated() {
                     let evidence = AudioEvidenceGate.Evidence(start: word.start, end: word.end,
                                                               probability: word.probability)
                     if let reason = AudioEvidenceGate.rejection(evidence, samples: windowSamples) {
                         rejections.append("Word \(index): \(reason.rawValue)")
-                    } else { gatedWords.append(word) }
+                        runs.append([])
+                    } else {
+                        gatedWords.append(word)
+                        // An ASR word containing multiple space-delimited tokens
+                        // has no separate timings. Wait rather than fabricate them.
+                        if QuranAlignedWord.tokens([word.word]).count == 1 {
+                            runs[runs.count - 1].append(.init(text: word.word,
+                                start: Double(word.start), end: Double(word.end), probability: Double(word.probability)))
+                        } else { runs.append([]) }
+                    }
                 }
-                // Neither confidence nor acoustic energy proves that an Arabic
-                // word is Quran text. Exact corpus alignment remains a separate
-                // acceptance gate; these words cannot update reader progress.
+                var aligned: [QuranWordEvidence] = []
+                for run in runs where !run.isEmpty {
+                    aligned += try tracker.consume(run, takeID: takeID, offset: Double(start) / 16_000)
+                }
                 var issues: [String] = []
                 if ["silence", "noise"].contains(fixture.kind), !gatedWords.isEmpty {
                     issues.append("Acoustic/timing gate accepted a no-speech control")
@@ -115,10 +138,16 @@ struct ProbeReport: Codable {
                 if fixture.kind == "professional-reference", gatedWords.isEmpty {
                     issues.append("Acoustic/timing gate rejected all reference words")
                 }
+                if ["silence", "noise"].contains(fixture.kind), !aligned.isEmpty {
+                    issues.append("A no-speech control created authored word progress")
+                }
                 windows.append(.init(fixture: fixture.name, kind: fixture.kind,
                     audioStart: Double(start) / 16_000, audioEnd: Double(end) / 16_000,
                     inferenceSeconds: elapsed, text: output.map(\.text).joined(separator: " "),
-                    words: words, gatedWords: gatedWords, gateRejections: rejections,
+                    words: words, gatedWords: gatedWords,
+                    alignedEvidence: aligned,
+                    unresolvedNativeIDs: tracker.expected.map(\.id).filter { !tracker.revealedIDs.contains($0) },
+                    gateRejections: rejections,
                     rawValidationIssues: rawIssues,
                     noSpeechProbabilities: output.flatMap(\.segments).map(\.noSpeechProb),
                     validationIssues: issues))
@@ -126,7 +155,8 @@ struct ProbeReport: Codable {
                 // failure must not destroy earlier real model evidence.
                 try write(windows, to: arguments[4])
                 print("\(fixture.name) [\(Double(start) / 16_000)...\(Double(end) / 16_000)] \(words.count) words, \(elapsed)s inference: \(output.map(\.text).joined(separator: " ").prefix(180))")
-                print("ACOUSTIC GATE: \(gatedWords.count)/\(words.count) retained; not corpus-aligned")
+                print("ACOUSTIC GATE: \(gatedWords.count)/\(words.count) retained")
+                print("CORPUS ANCHOR: \(aligned.count) new timed events; \(tracker.revealedIDs.count)/\(tracker.expected.count) authored groups supported; unresolved groups are not reader errors")
                 for issue in rawIssues { print("RAW MODEL DIAGNOSTIC: \(issue)") }
                 for rejection in rejections { print("REJECTED RAW WORD: \(rejection)") }
                 for issue in issues { print("REJECTED WINDOW: \(issue)") }
@@ -137,7 +167,36 @@ struct ProbeReport: Codable {
         guard invalid.isEmpty else {
             throw ProbeFailure("Native model failed \(invalid.count) window controls; raw evidence saved. Do not connect raw output to reader progress.")
         }
-        print("Saved \(windows.count) actual Core ML decoding windows. Acoustic controls passed; raw model failures remain in the report. Accuracy, exact alignment and live iPhone capture are not approved.")
+        print("Saved \(windows.count) actual Core ML decoding windows and exact timed corpus anchors. Acoustic controls passed; raw model failures and unresolved positions remain in the report. Live iPhone accuracy and pronunciation grading are not approved.")
+    }
+
+    private static func loadAuthoredWords() async throws -> [QuranAlignedWord] {
+        struct Chapter: Decodable { struct Verse: Decodable { let number: Int }; let number: Int; let ayahs: [Verse] }
+        struct Snapshot: Decodable {
+            struct Record: Decodable {
+                let id: Int; let record_type: String; let char_type_name: String?
+                let verse_id: Int?; let position_in_verse: Int?; let page_number: Int?; let text: String?
+            }
+            let resource_group: String; let resource_id: Int; let resource_content_id: Int
+            let records: [Record]
+        }
+        let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        let corpus = try JSONDecoder().decode([Chapter].self, from: Data(contentsOf: root.appendingPathComponent("ios/Athar/quran.json")))
+        let keys = corpus.flatMap { chapter in chapter.ayahs.map { "\(chapter.number):\($0.number)" } }
+        let (data, response) = try await URLSession.shared.data(from: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw ProbeFailure("Native word edition unavailable") }
+        let snapshot = try JSONDecoder().decode(Snapshot.self, from: data)
+        guard snapshot.resource_group == "mushafs", snapshot.resource_id == 1,
+              snapshot.resource_content_id == 382 else { throw QuranAlignmentFailure.invalidEdition }
+        let native = try snapshot.records.filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }.map { word -> QuranNativeWord in
+            guard let verse = word.verse_id, keys.indices.contains(verse - 1),
+                  let position = word.position_in_verse, let page = word.page_number, let glyph = word.text else {
+                throw QuranAlignmentFailure.invalidEdition
+            }
+            return .init(id: word.id, verse: keys[verse - 1], position: position, page: page, glyph: glyph)
+        }
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: root.appendingPathComponent("content-sources/recitation-word-script.json")))
+        return try script.bind(native: native, verseKeys: keys)
     }
 
     private static func write(_ windows: [ProbeWindow], to path: String) throws {
