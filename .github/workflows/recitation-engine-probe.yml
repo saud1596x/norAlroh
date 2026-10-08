@@ -1,0 +1,25 @@
+name: Quran Core ML engine investigation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  coreml:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare reference audio decoder
+        run: brew install ffmpeg
+      - name: Execute real pinned Quran model on Apple Core ML
+        run: bash scripts/test-recitation-engine.sh
+      - name: Keep actual engine diagnostics, not a reader grade
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-coreml-investigation
+          path: |
+            release/recitation-engine-probe/coreml-investigation.json
+            release/recitation-engine-probe/data/data-provenance.json
+            release/recitation-engine-probe/data/fixtures/fixtures.json
+          if-no-files-found: error
