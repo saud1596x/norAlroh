@@ -101,7 +101,8 @@ enum PrayerDisplay {
     static func latinDigits(_ text: String) -> String {
         let digits = Array("0123456789")
         return String(text.map { character in
-            character.wholeNumberValue.map { digits[$0] } ?? character
+            guard let value = character.wholeNumberValue, (0...9).contains(value) else { return character }
+            return digits[value]
         })
     }
     static func date(_ date: Date, city: PrayerLocation, identifier: Calendar.Identifier = .gregorian, format: String) -> String {
