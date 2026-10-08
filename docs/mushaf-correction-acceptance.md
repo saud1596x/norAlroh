@@ -207,3 +207,28 @@ New native tests exercise real AAC transport and a newly created player's
 reopening, plus byte-identical removal/restoration and unchanged session metadata.
 These additions are pending native execution; they are not UI relaunch, audible
 physical-device output, or full-session video acceptance.
+
+Recording transport source `24cd6afde24731e90389e0efad755998416d896c`
+passed Actions `37836235673` (10m 32s overall / 10m 23s native job):
+13 recording tests, eight reference-recognition integration tests and three
+actual reader UI tests. This proves native transport/recovery, not the new
+recording screen's interactions or physical-device audible playback.
+
+The next focused UI gate uses repeated authentic `112001.mp3` reference audio
+in a simulator-only persisted session, with no microphone or ASR result
+fabrication. Its artifact `recording-ui-fixture.json` identifies that limitation.
+It exercises the actual app's history, player, seek/pause/replay, recoverable
+removal, relaunch, restoration and playback. Exported video is named
+`reader-and-recording-ui.mp4`, not a claimed live recitation walkthrough.
+
+Recording-history source `25d9e3b048966762778cd1ba1569dd63184eed3f`
+failed Actions `37838479112` in 5m 58s before tests: the catch's implicit
+immutable `error` shadowed the recording browser's message state at
+MushafStudyViews.swift:302. The concrete fix uses `self.error`; source
+`56476f0c37eb33b5046351c48883af17a82df120` is under native Actions
+`37839688034`. New UI screenshots/video are not yet verified or delivered.
+
+Codemagic recitation build `6ac7f19a546ce6236cecace5`, source `7c9ee97`,
+remains queued without machine provisioning or checkout logs. Billing shows
+402 / 500 free macOS minutes used; no subscription was enabled. This is not
+a claim that the branch or YAML is failing to load.
