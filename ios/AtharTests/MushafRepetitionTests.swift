@@ -43,14 +43,23 @@ final class MushafRepetitionTests: XCTestCase {
         let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 16000))
         buffer.frameLength = 16000
         memset(try XCTUnwrap(buffer.floatChannelData)[0], 0, 16000 * MemoryLayout<Float>.size)
-        let file = try AVAudioFile(forWriting: url, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVSampleRateKey: 16000, AVNumberOfChannelsKey: 1])
-        try file.write(from: buffer); return url
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 16000, AVNumberOfChannelsKey: 1])
+            try file.write(from: buffer)
+        } // Close the encoder before validating or giving the file to AVPlayer.
+        let decoded = try AVAudioFile(forReading: url)
+        let check = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: decoded.processingFormat,
+            frameCapacity: AVAudioFrameCount(decoded.length)))
+        try decoded.read(into: check)
+        XCTAssertGreaterThan(check.frameLength, 0, "AAC must actually decode before playback")
+        XCTAssertEqual(Double(check.frameLength) / decoded.processingFormat.sampleRate, 1, accuracy: 0.15)
+        return url
     }
     @MainActor func testRealPlayerRepeatsWholeRangeWithGapAfterEachEndAndNoTrailingGap() async throws {
         let url = try fixture(); defer { try? FileManager.default.removeItem(at: url) }
         let sound = MushafVerseAudio(source: { _ in url })
-        defer { sound.stop() }
+        defer { print("REPETITION_DIAGNOSTIC: \(sound.playbackDiagnostic)"); sound.stop() }
         var starts: [(String, Date)] = []
         let ended = expectation(description: "Four real AAC items reach final EOS")
         var fulfilled = false
@@ -72,7 +81,7 @@ final class MushafRepetitionTests: XCTestCase {
     }
     @MainActor func testStoppingRealInterVerseGapPreventsDelayedRestart() async throws {
         let url = try fixture(); defer { try? FileManager.default.removeItem(at: url) }
-        let sound = MushafVerseAudio(source: { _ in url }); defer { sound.stop() }
+        let sound = MushafVerseAudio(source: { _ in url }); defer { print("REPETITION_DIAGNOSTIC: \(sound.playbackDiagnostic)"); sound.stop() }
         var starts: [String] = []; sound.onVerse = { starts.append($0) }
         let gap = expectation(description: "Real EOS enters cancellable gap")
         let observation = sound.$waitingKey.compactMap { $0 }.prefix(1).sink { _ in gap.fulfill() }
@@ -86,7 +95,7 @@ final class MushafRepetitionTests: XCTestCase {
     }
     @MainActor func testReplacementDuringRealGapCannotResumeOldRange() async throws {
         let url = try fixture(); defer { try? FileManager.default.removeItem(at: url) }
-        let sound = MushafVerseAudio(source: { _ in url }); defer { sound.stop() }
+        let sound = MushafVerseAudio(source: { _ in url }); defer { print("REPETITION_DIAGNOSTIC: \(sound.playbackDiagnostic)"); sound.stop() }
         var starts: [String] = []
         let gap = expectation(description: "Original player actually finished")
         let replacement = expectation(description: "Replacement actually starts")
