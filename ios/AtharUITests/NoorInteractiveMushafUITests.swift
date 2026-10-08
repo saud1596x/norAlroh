@@ -122,6 +122,33 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertFalse(app.buttons["study.finish"].exists, "No false recording session after denied permission")
         capture(app, "recitation-reading-after-denial")
     }
+    func testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120), app.debugDescription)
+        let frame = page.frame
+        app.buttons["reader.study"].press(forDuration: 1)
+        let choose = app.buttons["اختيار مقطع التسميع"]
+        XCTAssertTrue(choose.waitForExistence(timeout: 5)); choose.tap()
+        let kind = app.segmentedControls["recitation.scope.kind"]
+        XCTAssertTrue(kind.waitForExistence(timeout: 5))
+        capture(app, "recitation-scope-page")
+        kind.buttons["سورة"].tap()
+        XCTAssertTrue(app.buttons["recitation.scope.chapter"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["recitation.scope.count"].exists)
+        capture(app, "recitation-scope-surah")
+        kind.buttons["آيات"].tap()
+        XCTAssertTrue(app.steppers["recitation.scope.from"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.steppers["recitation.scope.to"].exists)
+        XCTAssertTrue(app.buttons["recitation.scope.start"].isEnabled)
+        capture(app, "recitation-scope-range")
+        app.buttons["recitation.scope.close"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
+        XCTAssertEqual(page.frame, frame)
+        XCTAssertFalse(app.buttons["study.finish"].exists, "Scope selection cannot start capture before its explicit start button")
+    }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
