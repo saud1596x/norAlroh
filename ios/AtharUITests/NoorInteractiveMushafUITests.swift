@@ -3,8 +3,8 @@ import XCTest
 final class NoorInteractiveMushafUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     func testPersistedReferenceRecordingTransportRemovalAndRelaunch() {
-        // seed-recording-ui.py installs repeated authentic reference audio,
-        // explicitly identified as a fixture. No live capture/ASR claim.
+        // A native test writes authentic reference audio through the production
+        // archive; seed-recording-ui.py verifies it. No live capture/ASR claim.
         let app = XCUIApplication(); app.launch()
         let session = "A1662B68-55BB-4A4B-9441-761EF83DCF54"
         let take = "50CC9A34-A7A3-44B5-A7A7-39671AC60968"
@@ -13,10 +13,17 @@ final class NoorInteractiveMushafUITests: XCTestCase {
             app.buttons["app.settings"].tap()
             let recordings = app.buttons["settings.recordings"]
             for _ in 0..<8 {
-                if recordings.exists && recordings.isHittable { break }
-                app.swipeUp()
+                // A partly visible Form row can report isHittable while its
+                // default tap point sits under the sheet's bottom safe area.
+                // Scroll the actual settings list until the full row is clear.
+                if recordings.exists && recordings.isHittable &&
+                    recordings.frame.maxY < app.frame.maxY - 44 { break }
+                app.collectionViews.firstMatch.swipeUp()
             }
-            XCTAssertTrue(recordings.waitForExistence(timeout: 5)); recordings.tap()
+            XCTAssertTrue(recordings.waitForExistence(timeout: 5))
+            XCTAssertTrue(recordings.isHittable)
+            XCTAssertLessThan(recordings.frame.maxY, app.frame.maxY - 44)
+            recordings.tap()
             let row = app.buttons["study.recording.session.\(session)"]
             XCTAssertTrue(row.waitForExistence(timeout: 10), "Persisted reference absent: \(app.debugDescription)"); capture(app, "reference-recording-session-history")
             row.tap()
