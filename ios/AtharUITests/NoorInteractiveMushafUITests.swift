@@ -45,9 +45,13 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                 XCTAssertTrue(actualTitle.waitForExistence(timeout: 10), key)
                 let titleDigits = actualTitle.label.compactMap { $0.wholeNumberValue }
                 XCTAssertEqual(titleDigits.reduce(0) { $0 * 10 + $1 }, number, "Correct ayah title \(key)")
-                let normalizedTitle = actualTitle.label.folding(options: .diacriticInsensitive, locale: Locale(identifier: "ar"))
-                XCTAssertTrue(normalizedTitle.contains(chapter == 112 ? "الإخلاص".folding(options: .diacriticInsensitive, locale: Locale(identifier: "ar")) : chapter == 113 ? "الفلق" : "الناس"),
-                    "The surah and ayah must belong to the same selected word: \(key)")
+                // Match the actual verified corpus spelling, including Quranic
+                // combining marks which Foundation's diacritic folding need
+                // not remove (for example U+06E1 in the name of Al-Ikhlas).
+                let surahNames = [112: "سُورَةُ الإِخۡلَاصِ", 113: "سُورَةُ الفَلَقِ", 114: "سُورَةُ النَّاسِ"]
+                XCTAssertEqual(actualTitle.value as? String, key, "Selected reference: \(actualTitle.label)")
+                XCTAssertTrue(actualTitle.label.contains(surahNames[chapter]!),
+                    "Expected surah \(chapter) for \(key); actual toolbar: \(actualTitle.label)")
                 XCTAssertEqual(page.frame, originalFrame, "Selection must retain the reading viewport")
                 if key == "114:1" {
                     capture(app, "text-reader-604-highlight-tools")
