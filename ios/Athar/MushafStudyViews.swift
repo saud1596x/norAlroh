@@ -44,8 +44,7 @@ struct MushafStudySetup: View {
                     Section("جلسة محفوظة") {
                         Text("\(pending.answers.count) من \(pending.keys.count) آية · المساعدة والإجابات محفوظة على هذا الجهاز.")
                         Button(pending.phase == .finishing ? "استكمال حفظ النتيجة" : "متابعة الجلسة") {
-                            if pending.phase == .finishing { _ = memorization.finishMushafStudy() }
-                            else { onOpen(); dismiss() }
+                            onOpen(); dismiss()
                         }.accessibilityIdentifier("study.resume")
                         Text("يمكنك إنهاء الجلسة من المصحف قبل بدء جلسة أخرى؛ لن تُستبدل خطة الحفظ السابقة.").font(.footnote)
                     }
@@ -57,14 +56,14 @@ struct MushafStudySetup: View {
                             Text("صفحة").tag(MushafStudySession.Scope.page)
                             Text("سورة").tag(MushafStudySession.Scope.surah)
                             Text("نطاق آيات").tag(MushafStudySession.Scope.range)
-                        }.accessibilityIdentifier("study.scope")
+                        }.pickerStyle(.menu).accessibilityIdentifier("study.scope")
                         if scope == .page {
                             Text("الصفحة \(page) · \(pageKeys.count) آية")
                             Text("تُسمّع كل آية كاملة، وتُحفظ نتيجتها على حدة، حتى عندما تضم الصفحة أكثر من سورة.").font(.footnote)
                         } else {
                             Picker("السورة", selection: $chapter) {
                                 ForEach(store.quran) { surah in Text(surah.name).tag(surah.number) }
-                            }.accessibilityIdentifier("study.chapter")
+                            }.pickerStyle(.menu).accessibilityIdentifier("study.chapter")
                             if scope == .range {
                                 Stepper("من الآية \(from)", value: $from, in: 1...max(1, count))
                                 Stepper("إلى الآية \(to)", value: $to, in: from...max(from, count))
@@ -99,6 +98,9 @@ struct MushafStudySummaryContent: View {
                 Text("تم حفظ الجلسة").font(.headline).accessibilityIdentifier("study.result.saved")
                 Text("أجبت عن \(summary.answered) من \(summary.session.keys.count) آية.")
                     .accessibilityIdentifier("study.result.answered")
+                if summary.skipped > 0 {
+                    Text("تجاوزت \(summary.skipped) آية دون تقييمها.").accessibilityIdentifier("study.result.skipped")
+                }
                 Text("تذكّرتها بتقييمك: \(summary.remembered) · استعنت بمساعدة: \(summary.helped)")
                     .accessibilityIdentifier("study.result.helped")
                 Text(summary.reviewKeys.isEmpty ? "واصل المراجعة وفق خطتك؛ النتيجة تقييم ذاتي." : "الخطوة التالية: راجع \(summary.reviewKeys.count) آية احتاجت إلى مساعدة أو تثبيت. أُضيفت إلى سجل المراجعة.")
@@ -116,5 +118,97 @@ struct MushafStudyResultView: View {
                 .navigationTitle("نتيجة التسميع")
                 .toolbar { Button("متابعة القراءة") { dismiss() }.accessibilityIdentifier("study.result.close") }
         }
+    }
+}
+
+struct MushafRecordingList: View {
+    let session: UUID
+    @ObservedObject var recorder: MushafSessionRecorder
+    @Environment(\.dismiss) private var dismiss
+    @State private var takes: [MushafRecordingTake] = []
+    @State private var loadError: String?
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("التسجيلات على هذا الجهاز. يمكنك الاستماع إلى المقاطع وحفظ نسخة منها؛ نتيجة التسميع تقييم ذاتي.").font(.footnote)
+                    if takes.isEmpty { Text(loadError ?? "لا يوجد تسجيل قابل للتشغيل لهذه الجلسة.") }
+                }
+                ForEach(takes) { take in
+                    Section {
+                        Text(take.date, style: .date).font(.headline)
+                        Text("المدة: \(MushafAudioTime.text(take.duration))").environment(\.layoutDirection, .leftToRight)
+                        Button {
+                            if recorder.playing == take.id { recorder.stop() } else { recorder.play(take) }
+                        } label: {
+                            Label(recorder.playing == take.id ? "إيقاف المقطع" : "استماع إلى المقطع", systemImage: recorder.playing == take.id ? "stop.fill" : "play.fill")
+                                .frame(minHeight: 44).contentShape(Rectangle())
+                        }.accessibilityIdentifier("study.recording.play.\(take.id.uuidString)")
+                        ShareLink(item: take.url) {
+                            Label("حفظ أو مشاركة ملف الصوت", systemImage: "square.and.arrow.up").frame(minHeight: 44)
+                        }
+                    }
+                }
+                Section {
+                    Text("المقاطع التي انقطعت قبل اكتمالها تبقى محفوظة على الجهاز. تعرض هذه القائمة الملفات التي يمكن تشغيلها فقط.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("تسجيلات الجلسة")
+            .toolbar { Button("العودة للمصحف") { recorder.stop(); dismiss() }.accessibilityIdentifier("study.recordings.close") }
+            .task {
+                do { takes = try MushafRecordingArchive.takes(session: session) }
+                catch { loadError = "تعذّر قراءة قائمة التسجيلات. احتُفظ بالملفات الأصلية؛ أعد المحاولة بعد فتح قفل الجهاز." }
+            }
+            .onDisappear { recorder.stop() }
+            .alert("تشغيل التسجيل", isPresented: Binding(get: { recorder.message != nil }, set: { if !$0 { recorder.message = nil } })) {
+                Button("حسنًا") { recorder.message = nil }
+            } message: { Text(recorder.message ?? "") }
+        }
+    }
+}
+
+enum MushafAudioTime {
+    static func text(_ seconds: TimeInterval) -> String {
+        let whole = seconds.isFinite ? Int(max(0, min(seconds, Double(Int.max / 2)))) : 0
+        return "\(whole / 60):" + String(format: "%02d", whole % 60)
+    }
+}
+
+/// Durable access to finished sessions, independent of the latest summary.
+struct MushafRecordingBrowser: View {
+    @StateObject private var recorder = MushafSessionRecorder()
+    @State private var sessions: [MushafRecordingSessionRow] = []
+    @State private var selected: UUID?
+    @State private var opened = false
+    @State private var error: String?
+    var body: some View {
+        List {
+            Section {
+                Text("تسجيلات التسميع المحلية؛ لا تُرفع للحساب ولا تُستخدم لتقييم النطق أو التجويد.").font(.footnote)
+                if sessions.isEmpty { Text(error ?? "لم تُحفظ تسجيلات تسميع بعد.") }
+            }
+            ForEach(sessions) { session in
+                Button {
+                    selected = session.id; opened = true
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(session.date, style: .date)
+                        if let metadata = session.metadata {
+                            Text("من \(metadata.keys.first ?? "") إلى \(metadata.keys.last ?? "") · \(metadata.keys.count) آية")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        } else { Text("تسجيل محفوظ · تعذّر قراءة معلومات الجلسة").font(.footnote) }
+                    }.frame(minHeight: 44).contentShape(Rectangle())
+                }.accessibilityIdentifier("study.recording.session.\(session.id.uuidString)")
+            }
+        }
+        .navigationTitle("تسجيلات التسميع")
+        .task {
+            do { sessions = try MushafRecordingArchive.sessions() }
+            catch { error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
+        }
+        .sheet(isPresented: $opened) {
+            if let selected { MushafRecordingList(session: selected, recorder: recorder) }
+        }
+        .onDisappear { recorder.stop() }
     }
 }
