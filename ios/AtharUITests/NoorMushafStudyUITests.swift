@@ -20,14 +20,23 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["study.start"].waitForExistence(timeout: 5)); app.buttons["study.start"].tap()
         XCTAssertTrue(app.buttons["study.revealWord"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["reader.jump"].exists, "Session stays in the Mushaf and replaces only its tools")
-        let first = app.buttons["reader.verse.112:1"]
+        let first = app.descendants(matching: .any).matching(identifier: "reader.verse.112:1").firstMatch
+        XCTAssertFalse(app.buttons["reader.verse.112:1"].exists, "Locked study text must not pretend to be an actionable verse button")
         XCTAssertTrue(first.label.contains("مخفي"), "Hidden Quran must not leak through VoiceOver")
         let originalFrame = first.frame
-        for id in ["study.revealWord", "study.revealAll", "study.listen", "study.remembered", "study.review", "study.skip", "study.pause", "study.finish"] {
+        for id in ["study.revealWord", "study.revealAll", "study.listen", "study.remembered", "study.review", "study.skip", "study.pause", "study.finish", "study.mic", "study.recordings"] {
             let action = app.buttons[id]; XCTAssertTrue(action.isHittable, id)
             XCTAssertGreaterThanOrEqual(action.frame.width, 44, id); XCTAssertGreaterThanOrEqual(action.frame.height, 44, id)
             XCTAssertFalse(action.frame.intersects(first.frame), id)
         }
+        app.buttons["study.mic"].tap()
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let deny = system.buttons["Don’t Allow"].exists ? system.buttons["Don’t Allow"] : system.buttons["Don't Allow"].exists ? system.buttons["Don't Allow"] : system.buttons["عدم السماح"]
+        XCTAssertTrue(deny.waitForExistence(timeout: 10), "Exercise actual iOS microphone denial")
+        deny.tap()
+        XCTAssertTrue(app.buttons["متابعة التسميع"].waitForExistence(timeout: 10))
+        app.buttons["متابعة التسميع"].tap()
+        XCTAssertTrue(app.buttons["study.remembered"].isEnabled, "Microphone denial must not block self recitation")
         capture(app, "study-604-hidden-controls")
         app.buttons["study.revealWord"].tap()
         XCTAssertEqual(first.frame, originalFrame, "Revealing a word must not reflow Quran")
@@ -40,7 +49,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["study.pause"].tap(); app.buttons["study.revealAll"].tap()
         XCTAssertFalse(first.label.contains("مخفي")); XCTAssertEqual(first.frame, originalFrame)
         app.buttons["study.remembered"].tap()
-        XCTAssertTrue(app.buttons["reader.verse.112:2"].label.contains("مخفي"))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.verse.112:2").firstMatch.label.contains("مخفي"))
         app.buttons["study.review"].tap()
         capture(app, "study-604-two-answers")
         app.terminate(); app.launch()
@@ -48,8 +57,8 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(page.waitForExistence(timeout: 120)); app.buttons["reader.study"].tap()
         XCTAssertTrue(app.buttons["study.resume"].waitForExistence(timeout: 5)); app.buttons["study.resume"].tap()
         XCTAssertTrue(app.buttons["study.finish"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["reader.verse.112:3"].label.contains("مخفي"))
-        XCTAssertFalse(app.buttons["reader.verse.112:1"].label.contains("مخفي"))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.verse.112:3").firstMatch.label.contains("مخفي"))
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "reader.verse.112:1").firstMatch.label.contains("مخفي"))
         capture(app, "study-604-restored")
         app.buttons["study.finish"].tap()
         XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 10))
@@ -62,6 +71,27 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 5))
         XCTAssertEqual(numbers(app.staticTexts["study.result.answered"].label), [2, 15])
         capture(app, "study-result-restored-after-second-relaunch")
+        app.buttons["study.scope"].tap(); app.buttons["سورة"].tap()
+        app.buttons["study.start"].tap()
+        for ayah in 1...4 {
+            let verse = app.descendants(matching: .any).matching(identifier: "reader.verse.112:\(ayah)").firstMatch
+            XCTAssertTrue(verse.waitForExistence(timeout: 10))
+            XCTAssertTrue(verse.label.contains("مخفي"))
+            app.buttons["study.remembered"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 10))
+        XCTAssertEqual(numbers(app.staticTexts["study.result.answered"].label), [4, 4])
+        capture(app, "study-full-surah-completed")
+        app.buttons["study.result.close"].tap(); app.buttons["reader.study"].tap()
+        app.buttons["study.scope"].tap(); app.buttons["نطاق آيات"].tap()
+        app.buttons["study.start"].tap()
+        XCTAssertTrue(app.buttons["study.skip"].waitForExistence(timeout: 10)); app.buttons["study.skip"].tap()
+        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 10))
+        XCTAssertEqual(numbers(app.staticTexts["study.result.answered"].label), [0, 1])
+        XCTAssertEqual(numbers(app.staticTexts["study.result.skipped"].label), [1])
+        XCTAssertEqual(numbers(app.staticTexts["study.result.helped"].label), [0, 0])
+        capture(app, "study-range-skip-without-false-assessment")
+
     }
     private func numbers(_ text: String) -> [Int] {
         text.split { $0.wholeNumberValue == nil }.map { $0.reduce(0) { $0 * 10 + ($1.wholeNumberValue ?? 0) } }
