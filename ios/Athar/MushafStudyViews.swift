@@ -204,7 +204,7 @@ struct MushafRecordingBrowser: View {
         .navigationTitle("تسجيلات التسميع")
         .task {
             do { sessions = try MushafRecordingArchive.sessions() }
-            catch { error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
+            catch { self.error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
         }
         .sheet(isPresented: $opened) {
             if let selected { MushafRecordingList(session: selected, recorder: recorder) }
