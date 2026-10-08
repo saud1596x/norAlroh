@@ -16,6 +16,9 @@ struct ProbeWindow: Codable {
     let inferenceSeconds: Double
     let text: String
     let words: [WordTiming]
+    let gatedWords: [WordTiming]
+    let gateRejections: [String]
+    let rawValidationIssues: [String]
     let noSpeechProbabilities: [Float]
     let validationIssues: [String]
 }
@@ -78,28 +81,53 @@ struct ProbeReport: Codable {
                 let elapsed = Date().timeIntervalSince(began)
                 let words = output.flatMap(\.allWords)
                 let duration = Float(end - start) / 16_000
-                var issues: [String] = []
+                let windowSamples = Array(samples[start..<end])
+                var rawIssues: [String] = []
                 for (index, word) in words.enumerated() {
                     if !word.start.isFinite || !word.end.isFinite || !word.probability.isFinite {
-                        issues.append("Word \(index): non-finite timing or confidence")
+                        rawIssues.append("Word \(index): non-finite timing or confidence")
                     } else if word.start < 0 || word.end < word.start || word.end > duration + 0.1 {
-                        issues.append("Word \(index): \(word.start)...\(word.end) outside audio 0...\(duration)")
+                        rawIssues.append("Word \(index): \(word.start)...\(word.end) outside audio 0...\(duration)")
                     } else if !(0...1).contains(word.probability) {
-                        issues.append("Word \(index): confidence outside 0...1")
+                        rawIssues.append("Word \(index): confidence outside 0...1")
                     }
                 }
                 if fixture.kind == "silence" && !words.isEmpty {
-                    issues.append("Model emitted words for a digital-silence control")
+                    rawIssues.append("Model emitted words for a digital-silence control")
+                }
+                var gatedWords: [WordTiming] = []
+                var rejections: [String] = []
+                for (index, word) in words.enumerated() {
+                    let evidence = AudioEvidenceGate.Evidence(start: word.start, end: word.end,
+                                                              probability: word.probability)
+                    if let reason = AudioEvidenceGate.rejection(evidence, samples: windowSamples) {
+                        rejections.append("Word \(index): \(reason.rawValue)")
+                    } else { gatedWords.append(word) }
+                }
+                // Neither confidence nor acoustic energy proves that an Arabic
+                // word is Quran text. Exact corpus alignment remains a separate
+                // acceptance gate; these words cannot update reader progress.
+                var issues: [String] = []
+                if ["silence", "noise"].contains(fixture.kind), !gatedWords.isEmpty {
+                    issues.append("Acoustic/timing gate accepted a no-speech control")
+                }
+                if fixture.kind == "professional-reference", gatedWords.isEmpty {
+                    issues.append("Acoustic/timing gate rejected all reference words")
                 }
                 windows.append(.init(fixture: fixture.name, kind: fixture.kind,
                     audioStart: Double(start) / 16_000, audioEnd: Double(end) / 16_000,
                     inferenceSeconds: elapsed, text: output.map(\.text).joined(separator: " "),
-                    words: words, noSpeechProbabilities: output.flatMap(\.segments).map(\.noSpeechProb),
+                    words: words, gatedWords: gatedWords, gateRejections: rejections,
+                    rawValidationIssues: rawIssues,
+                    noSpeechProbabilities: output.flatMap(\.segments).map(\.noSpeechProb),
                     validationIssues: issues))
                 // Keep every decoded window, including failures. A late control
                 // failure must not destroy earlier real model evidence.
                 try write(windows, to: arguments[4])
                 print("\(fixture.name) [\(Double(start) / 16_000)...\(Double(end) / 16_000)] \(words.count) words, \(elapsed)s inference: \(output.map(\.text).joined(separator: " ").prefix(180))")
+                print("ACOUSTIC GATE: \(gatedWords.count)/\(words.count) retained; not corpus-aligned")
+                for issue in rawIssues { print("RAW MODEL DIAGNOSTIC: \(issue)") }
+                for rejection in rejections { print("REJECTED RAW WORD: \(rejection)") }
                 for issue in issues { print("REJECTED WINDOW: \(issue)") }
             }
         }
@@ -108,7 +136,7 @@ struct ProbeReport: Codable {
         guard invalid.isEmpty else {
             throw ProbeFailure("Native model failed \(invalid.count) window controls; raw evidence saved. Do not connect raw output to reader progress.")
         }
-        print("Saved \(windows.count) actual Core ML decoding windows. Accuracy requires reviewing the report; execution success is not feature acceptance.")
+        print("Saved \(windows.count) actual Core ML decoding windows. Acoustic controls passed; raw model failures remain in the report. Accuracy, exact alignment and live iPhone capture are not approved.")
     }
 
     private static func write(_ windows: [ProbeWindow], to path: String) throws {
