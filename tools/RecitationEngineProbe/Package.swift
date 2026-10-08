@@ -11,6 +11,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "RecitationAlignment"),
+        .target(name: "RecitationCapture"),
         .target(name: "RecitationEvidence", path: "Sources/RecitationEngineProbe",
                 exclude: ["Probe.swift"], sources: ["AudioEvidenceGate.swift"]),
         .executableTarget(name: "RecitationEngineProbe", dependencies: [
@@ -18,6 +19,6 @@ let package = Package(
             "RecitationAlignment",
             .product(name: "WhisperKit", package: "argmax-oss-swift")
         ], exclude: ["AudioEvidenceGate.swift"], sources: ["Probe.swift"]),
-        .testTarget(name: "RecitationEngineProbeTests", dependencies: ["RecitationEvidence", "RecitationAlignment"])
+        .testTarget(name: "RecitationEngineProbeTests", dependencies: ["RecitationEvidence", "RecitationAlignment", "RecitationCapture", .product(name: "WhisperKit", package: "argmax-oss-swift")])
     ]
 )
