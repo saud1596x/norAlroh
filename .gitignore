@@ -28,3 +28,5 @@ ios/Athar/Info.plist.pending
 # Isolated backend test dependencies and emulator logs
 backend/node_modules/
 backend/*debug.log
+
+ios/RecitationModel/
