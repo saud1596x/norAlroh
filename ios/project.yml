@@ -1,6 +1,6 @@
 name: Athar
 options:
-  preGenCommand: python3 ../scripts/prepare-recitation-model.py
+  preGenCommand: bash ../scripts/prepare-native-quran-resources.sh
   bundleIdPrefix: com.saud1596x.nooralruh
   deploymentTarget:
     iOS: "17.0"
