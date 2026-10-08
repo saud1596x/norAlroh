@@ -3,13 +3,19 @@ import UIKit
 
 final class NoorReaderComfortUITests: XCTestCase {
     private var screenshotBackground: UInt32?
+    private var acceptanceApp: XCUIApplication?
     override func setUpWithError() throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
     }
-    override func tearDownWithError() throws { XCUIDevice.shared.orientation = .portrait }
+    override func tearDownWithError() throws {
+        if let run = testRun, run.failureCount > 0, let app = acceptanceApp {
+            print("READER_ACCEPTANCE_FAILURE_HIERARCHY\n" + app.debugDescription)
+        }
+        XCUIDevice.shared.orientation = .portrait
+    }
     func testPageToolsGesturesAndRelaunchPreservePosition() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); acceptanceApp = app; app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
