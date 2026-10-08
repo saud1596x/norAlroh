@@ -23,35 +23,55 @@ text, glyph IDs, reading position, bookmarks, settings, plans and session data.
 - [ ] Inspect actual reader captures on two iPhone display classes, tools
       visible/hidden, selection and zoom; no cropped marks or layout movement.
 
-Codemagic build 2 passed all seven selected native tests: all 604 page/word
-regions, centering, four viewport tests and atomic snapshot/offline recovery.
-Its compact-phone UI journey failed at `verse.notice` after Copy (line 58).
-The failure hierarchy contained Copy and Share rows but no instantiated notice.
-The List placed feedback after the Share row outside the smaller viewport;
-lazy row creation is the suspected cause, pending verification of the action.
-Action feedback has been moved to a non-scrolling safe-area inset in `0350ab2`.
-That fix still requires a passing native UI rerun. The first failure prevented
-the script from running the larger phone; do not mark both display classes done.
-Rerun build `6ac796f4546ce6236cec8b61` (Codemagic index 3) was created from
-`0350ab2`; its last observed status was queued, not successful.
+The Copy feedback fix in `0350ab2` is verified. GitHub Actions run
+`37786291016` / source `3d762c6` passed all seven native layout tests and both
+complete reader UI journeys on iPhone 16 Pro and iPhone 16 Pro Max (Xcode 26.3).
+The source renderer is unchanged from the reviewed 604-page atlas. Downloading
+GitHub artifacts is policy-blocked; do not bypass that restriction.
+
+Codemagic build 3 `6ac796f4546ce6236cec8b61` / source `0350ab2` passed all seven
+native checks (118.496 seconds, zero failures), Copy feedback, all page-604 verse
+selections, tafsir, RTL page turning and restored reading after relaunch on
+an iPhone 17 Pro. Reviewed its actual fresh page, highlighting and Copy captures.
+The complete canvas pixel crop is identical with tools shown and hidden.
+Its reader journey failed at line 71 while remote AVPlayer was still waiting
+for EveryAyah media; there was no load deadline. The larger phone did not run.
+
+`MushafVerseAudio` now cancels an initial or stalled stream after 15 seconds,
+releases audio ownership and presents a retry/offline-download message.
+A real local nonresponding HTTP source tests the deadline, plus existing real
+AAC repetition/end/replacement tests. The UI requires actual playback or a
+visible bounded connection failure, then continues zoom/reselection; failure
+captures are explicitly named as failures, never successful playback.
+Codemagic build 4 `6ac7ad0c546ce6236cec93be` / source `1d46f7d` is queued.
+The deadline and updated two-phone journey are not yet verified.
 
 ## 2. Recognized recitation
 
-Native investigation checkpoint: runs `37776925812` and `37777735599`
-compiled the pinned WhisperKit probe and executed the real Quran Core ML model
-on an Apple runner. The first rejected invalid silence timing. The second
-retained the raw report and rejected two control windows. This is a failed
-engine acceptance gate, not a working inline recognition feature. Report loss
-on async-main trapping has been corrected without removing either rejection.
-The live microphone, whole-corpus word correspondence and iPhone validation
-remain outstanding. QUL's official word-script download requires sign-in;
-do not scrape previews or use guessed compound boundaries to bypass that gate.
+The supplied original `imlaei-simple.json.zip` is validated against its
+pinned JSON hash. All 6236 verses / 77,429 authored word groups now bind by
+verse and position, never cross-database numeric IDs. Three explicitly reviewed
+بعد ما compounds (2:181, 8:6, 13:37) retain one original glyph group and require
+both spoken tokens. Actual native page captures and the QUL source test verified
+these boundaries. Canonical Tanzil aliases also retain the single 37:130
+ال ياسين group. Any unexpected boundary, page or glyph change rejects binding.
+The script is lexical-only; Quran display text, lines and geometry are untouched.
 
-QUL sign-in was positively verified on 2026-10-08 (signed-in CMS dashboard and
-account menu). The official resource-60 JSON download did not complete; opening
-its visible download link was explicitly rejected by the cloud browser URL
-security policy. Do not retry through other clients, routes or indirect calls.
-An original JSON file supplied by the user is a legitimate continuation input.
+Native run `37794809248` / source `1d46f7d` passed four acoustic-evidence tests
+and six alignment tests, including actual all-6236-verse binding, edition
+corruption rejection, repetition/return, ambiguous anchors and low confidence.
+It executed 32 real Core ML windows and retained both raw words and exact timed
+Quran anchors. Silence/noise created zero accepted progress. Raw model output
+still hallucinated an out-of-clip word, which was rejected rather than hidden
+from the diagnostics. This is a conservative tracking pipeline, not a validated
+pronunciation/Tajweed grader or live iPhone acceptance.
+
+The first actual anchoring run exposed a missing ordinary spelling of dagger
+alif in الرحمن and إله. The binder now accepts both authoritative imlaei and
+literal/expanded canonical forms, without deleting written long vowels or fuzzy
+letter substitutions. The follow-up native run must confirm the correction.
+Live microphone integration, durable timed session storage and iPhone behavior
+remain outstanding; diagnostic passes do not complete the shipping feature.
 
 - [x] Current source inspected: independent local audio recording exists; no
       functioning recognition engine is connected to the inline study session.
@@ -59,7 +79,7 @@ An original JSON file supplied by the user is a legitimate continuation input.
       including real phone recitation and recognition failure.
 - [ ] Record audio independently of recognition/alignment; bounded inference,
       accurate take-relative timestamps and durable recovery.
-- [ ] Validate Unicode-word to exact QCF-word identity across the entire corpus.
+- [x] Validate Unicode-word to exact QCF-word identity across the entire corpus.
       Standalone pause marks and compound written words cannot be mapped by a
       naive space split.
 - [ ] Reveal only actually recognized, adequately supported words. Handle
@@ -110,7 +130,8 @@ Investigated model revisions:
   `8578bafd427d122f671b187706650e76edf6f86f` (CPU investigation only).
 - `fazalshaikh123/ultra-fast-tarteel-coreml`:
   `0338074ac8d662f6f52c5d66b433cac74202158e` (executed on a native Apple runner;
-  failed silence/noise control acceptance, not integrated into the app).
+  raw silence/noise hallucinations retained and rejected by independent
+  acoustic/timing gates; not integrated into the app).
 
 Reference audio investigation uses existing-app EveryAyah URLs. Professional
 recordings and assembled repeat/silence/noise signals are not a live session or
