@@ -37,7 +37,7 @@ Path('release/recitation-app/acceptance-context.json').write_text(json.dumps({
     'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
     'configuration':configuration,'simulator':phone['name'],'udid':udid,
     'acceptanceOnlyUnavailableAudioHook':True,
-    'evidenceScope':'Simulator recognition, reference-recording transport and reader interaction; not physical-device voice or notification-sound acceptance'
+    'evidenceScope':'Simulator recognition, reference-recording transport, reader interaction and first-use guest continuation; not Apple authentication, physical-device voice or notification-sound acceptance'
 },indent=2)+'\n')
 PYEVIDENCE
 common=(-project ios/Athar.xcodeproj -scheme Athar -configuration "$noor_configuration"
@@ -60,6 +60,7 @@ noor_video_pid=$!
 stop_video() { kill -INT "$noor_video_pid" 2>/dev/null || true; wait "$noor_video_pid" || true; }
 trap stop_video EXIT
 xcodebuild test-without-building "${common[@]}" \
+  -only-testing:AtharUITests/NoorLaunchTests \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
