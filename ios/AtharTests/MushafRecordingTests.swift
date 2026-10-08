@@ -166,6 +166,7 @@ final class MushafRecordingTests: XCTestCase {
         XCTAssertTrue(try MushafRecordingArchive.takes(session: value.id, base: root).isEmpty)
         let exported = try XCTUnwrap(MushafRecordingArchive.exportMetadata(base: root).first)
         XCTAssertEqual(exported.unreadableMetadata, damaged)
+        XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).first?.recoverableDeleted, false)
         XCTAssertEqual(try Data(contentsOf: metadata), damaged); XCTAssertEqual(try Data(contentsOf: audioURL), damaged)
     }
     func testRecoverableDeletionSurvivesArchiveReopeningAndRestoresIdenticalAudio() throws {
@@ -181,6 +182,7 @@ final class MushafRecordingTests: XCTestCase {
         XCTAssertTrue(try MushafRecordingArchive.takes(session: value.id, base: root).isEmpty)
         XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).map(\.id), [value.id], "Keep a route to restore sessions with no live takes")
         XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).first?.takeCount, 0)
+        XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).first?.recoverableDeleted, true)
         let removed = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: value.id, base: root).first)
         XCTAssertEqual(try Data(contentsOf: removed.url), audioBytes)
         XCTAssertEqual(try Data(contentsOf: headerURL), headerBytes)
@@ -190,6 +192,7 @@ final class MushafRecordingTests: XCTestCase {
         XCTAssertTrue(try MushafRecordingArchive.deletedTakes(session: value.id, base: root).isEmpty)
         XCTAssertEqual(try MushafRecordingArchive.takes(session: value.id, base: root).first?.id, take.id)
         XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).first?.takeCount, 1)
+        XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).first?.recoverableDeleted, false)
         XCTAssertEqual(try Data(contentsOf: file), audioBytes)
         XCTAssertEqual(try Data(contentsOf: headerURL), headerBytes)
         XCTAssertThrowsError(try MushafRecordingArchive.moveAudio(removed, toDeleted: false, base: root))
