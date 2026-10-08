@@ -2,6 +2,9 @@ name: Native iOS checks
 on:
   workflow_dispatch:
   push:
+    # This review branch runs selective complete-source gates in Codemagic.
+    # Retain manual and PR Release acceptance without partial-upload rebuilds.
+    branches-ignore: [mushaf-recitation-correction-20261008]
     paths: ['ios/**', 'scripts/**', 'content-sources/**', 'release/config.json', 'release/legal-content.json', 'support-site/**', '.github/workflows/ios-checks.yml']
   pull_request:
     paths: ['ios/**', 'scripts/**', 'content-sources/**', 'release/config.json', 'release/legal-content.json', 'support-site/**', '.github/workflows/ios-checks.yml']
