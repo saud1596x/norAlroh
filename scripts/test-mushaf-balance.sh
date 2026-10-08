@@ -66,5 +66,8 @@ for noor_class in compact large; do
     noor_overall_exit=1
   fi
   [[ "$noor_exit" == 0 ]] || noor_overall_exit="$noor_exit"
+  # Keep one simulator resident at a time on CI. The completed device's
+  # captures/results have already been exported before releasing its runtime.
+  xcrun simctl shutdown "$noor_device" || true
 done
 exit "$noor_overall_exit"
