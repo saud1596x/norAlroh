@@ -205,7 +205,7 @@ struct MushafRecordingList: View {
                 }.padding(20)
             }
             .navigationTitle("تسجيلات الجلسة")
-            .toolbar { Button("العودة للمصحف") { recorder.stop(); dismiss() }.accessibilityIdentifier("study.recordings.close") }
+            .toolbar { Button("إغلاق") { recorder.stop(); dismiss() }.accessibilityIdentifier("study.recordings.close") }
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
                     Button(showingDeleted ? "عرض التسجيلات" : "المقاطع المحذوفة") {
@@ -277,7 +277,9 @@ struct MushafRecordingBrowser: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(verbatim: session.metadata?.title ?? "تسجيل محفوظ · معلومات الجلسة غير متاحة").font(.headline)
                             Text(verbatim: MushafAudioTime.date(session.date)).font(.caption).foregroundStyle(.secondary)
-                            Text(verbatim: session.takeCount == 0 ? "مقاطع محذوفة قابلة للاستعادة" : "\(session.takeCount) مقاطع · \(MushafAudioTime.text(session.duration))")
+                            Text(verbatim: session.takeCount == 0
+                                ? (session.recoverableDeleted ? "مقاطع محذوفة قابلة للاستعادة" : "لا يوجد صوت قابل للتشغيل")
+                                : "\(session.takeCount) مقاطع · \(MushafAudioTime.text(session.duration))")
                                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)

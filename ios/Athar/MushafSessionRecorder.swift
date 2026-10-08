@@ -17,6 +17,7 @@ struct MushafRecordingSessionRow: Identifiable {
     let metadata: MushafRecordingSessionMetadata?
     let duration: TimeInterval
     let takeCount: Int
+    let recoverableDeleted: Bool
 }
 
 struct MushafRecordingFileMetadata: Codable {
@@ -165,8 +166,10 @@ enum MushafRecordingArchive {
             if !hasLiveAudio, try deletedTakes(session: id, base: base).isEmpty { continue }
             let header = try? metadata(session: id, base: base)
             let available = try takes(session: id, base: base)
+            let removed = try deletedTakes(session: id, base: base)
             rows.append(.init(id: id, date: header?.startedAt ?? values.creationDate ?? .distantPast,
-                metadata: header, duration: available.reduce(0) { $0 + $1.duration }, takeCount: available.count))
+                metadata: header, duration: available.reduce(0) { $0 + $1.duration }, takeCount: available.count,
+                recoverableDeleted: !removed.isEmpty))
         }
         return rows.sorted { $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date > $1.date }
     }
