@@ -129,6 +129,24 @@ public struct QuranRecitationTracker {
     public var revealedIDs: Set<Int> { Set(evidence.map(\.nativeID)) }
     public init(expected: [QuranAlignedWord]) { self.expected = expected }
 
+    /// Reopen only evidence tied to this exact native corpus and scope. No
+    /// inferred words are added when restoring a paused or interrupted session.
+    public init(expected: [QuranAlignedWord], restoring evidence: [QuranWordEvidence]) throws {
+        self.expected = expected
+        let ids = Set(expected.map(\.id))
+        guard ids.count == expected.count else { throw QuranAlignmentFailure.invalidEdition }
+        let known = Dictionary(uniqueKeysWithValues: expected.map { ($0.id, $0.verse) })
+        guard evidence.allSatisfy({ known[$0.nativeID] == $0.verse && $0.start.isFinite
+            && $0.end.isFinite && $0.start >= 0 && $0.end > $0.start
+            && $0.minimumConfidence.isFinite && (0.75...1).contains($0.minimumConfidence) }) else {
+            throw QuranAlignmentFailure.invalidEvidence
+        }
+        self.evidence = evidence
+        if let last = evidence.last, let index = expected.firstIndex(where: { $0.id == last.nativeID }) {
+            cursor = index + 1
+        }
+    }
+
     /// Exact, local, multi-group anchoring. Ambiguous phrases wait for context.
     /// A skipped/uncertain word is never inferred from a later match or elapsed
     /// time. A compound is revealed only when its complete spoken form matches.
