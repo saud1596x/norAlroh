@@ -47,6 +47,29 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration "$noor_configu
   'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
 xcodebuild build-for-testing "${common[@]}"
 noor_gate=0
+# Run first-use navigation first so a broken entry screen cannot consume an
+# entire recognition run before being detected. Record the real Simulator UI.
+noor_video_pid=''
+stop_video() {
+  if [[ -n "$noor_video_pid" ]]; then
+    kill -INT "$noor_video_pid" 2>/dev/null || true
+    wait "$noor_video_pid" || true
+    noor_video_pid=''
+  fi
+}
+trap stop_video EXIT
+xcrun simctl io "$noor_recitation_device" recordVideo --codec=h264 --force release/recitation-app/welcome-ui.mp4 &
+noor_video_pid=$!
+xcodebuild test-without-building "${common[@]}" \
+  -only-testing:AtharUITests/NoorLaunchTests \
+  -resultBundlePath release/recitation-app/welcome.xcresult || noor_gate=$?
+stop_video
+if [[ -d release/recitation-app/welcome.xcresult ]]; then
+  xcrun xcresulttool export attachments --path release/recitation-app/welcome.xcresult --output-path release/recitation-app/welcome-screens || noor_gate=1
+else
+  noor_gate=1
+fi
+[[ "$noor_gate" == 0 ]] || exit "$noor_gate"
 native_tests=(-only-testing:AtharTests/QuranRecognitionIntegrationTests -only-testing:AtharTests/MushafRecordingTests)
 if [[ "${NOOR_ALL_NATIVE_TESTS:-0}" == 1 ]]; then native_tests=(-only-testing:AtharTests); fi
 xcodebuild test-without-building "${common[@]}" \
@@ -57,10 +80,7 @@ python3 scripts/seed-recording-ui.py "$noor_recitation_device"
 xcrun simctl privacy "$noor_recitation_device" reset microphone com.saud1596x.nooralruh || true
 xcrun simctl io "$noor_recitation_device" recordVideo --codec=h264 --force release/recitation-app/reader-and-recording-ui.mp4 &
 noor_video_pid=$!
-stop_video() { kill -INT "$noor_video_pid" 2>/dev/null || true; wait "$noor_video_pid" || true; }
-trap stop_video EXIT
 xcodebuild test-without-building "${common[@]}" \
-  -only-testing:AtharUITests/NoorLaunchTests \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
