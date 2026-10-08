@@ -36,13 +36,15 @@ phone=next(x for rows in devices['devices'].values() for x in rows if x['udid']=
 Path('release/recitation-app/acceptance-context.json').write_text(json.dumps({
     'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
     'configuration':configuration,'simulator':phone['name'],'udid':udid,
+    'acceptanceOnlyUnavailableAudioHook':True,
     'evidenceScope':'Simulator recognition, reference-recording transport and reader interaction; not physical-device voice or notification-sound acceptance'
 },indent=2)+'\n')
 PYEVIDENCE
 common=(-project ios/Athar.xcodeproj -scheme Athar -configuration "$noor_configuration"
   -destination "platform=iOS Simulator,id=$noor_recitation_device"
   -derivedDataPath release/recitation-app-derived-data CODE_SIGNING_ALLOWED=NO
-  ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO)
+  ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO
+  'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
 xcodebuild build-for-testing "${common[@]}"
 noor_gate=0
 native_tests=(-only-testing:AtharTests/QuranRecognitionIntegrationTests -only-testing:AtharTests/MushafRecordingTests)
