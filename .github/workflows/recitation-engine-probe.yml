@@ -5,6 +5,7 @@ on:
     paths:
       - tools/RecitationEngineProbe/Package.swift
       - tools/RecitationEngineProbe/Sources/**
+      - tools/RecitationEngineProbe/Tests/**
       - tools/RecitationEngineProbe/fixtures/sources.json
       - scripts/prepare-recitation-probe.py
       - scripts/test-recitation-engine.sh
