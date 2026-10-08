@@ -73,8 +73,9 @@ letter substitutions. The follow-up native run must confirm the correction.
 Live microphone integration, durable timed session storage and iPhone behavior
 remain outstanding; diagnostic passes do not complete the shipping feature.
 
-- [x] Current source inspected: independent local audio recording exists; no
-      functioning recognition engine is connected to the inline study session.
+- [x] Offline native recognition, independent PCM capture, exact alignment and
+      durable journals are connected to the inline reader. This is implemented
+      source, not acceptance of live microphone accuracy.
 - [ ] Validate the selected Quran-specific engine on native Apple execution,
       including real phone recitation and recognition failure.
 - [ ] Record audio independently of recognition/alignment; bounded inference,
@@ -131,8 +132,62 @@ Investigated model revisions:
 - `fazalshaikh123/ultra-fast-tarteel-coreml`:
   `0338074ac8d662f6f52c5d66b433cac74202158e` (executed on a native Apple runner;
   raw silence/noise hallucinations retained and rejected by independent
-  acoustic/timing gates; not integrated into the app).
+  acoustic/timing gates; the pinned model is now integrated into the app).
 
 Reference audio investigation uses existing-app EveryAyah URLs. Professional
 recordings and assembled repeat/silence/noise signals are not a live session or
 an independent beginner-recitation benchmark.
+
+## Current verification checkpoint — 2026-10-08
+
+The earlier investigation notes above describe their original revisions. Use
+this checkpoint for the latest status; no failed test is relabelled as a pass.
+
+| Gate | Exact source and run | Observed result |
+| --- | --- | --- |
+| All 604 native pages and two complete reader UI journeys | `56159fa9b8fd455e4906642e451ca9d534be4b72`, Actions `37814355192` | Passed, 37m 47s. Includes authentic selection, heading, tafsir, copy, playback-or-visible-failure, zoom, RTL turn and reading restoration. |
+| Acoustic and exact alignment investigation | `1d6ddc6`, Actions `37818345557` | 16 tests, zero failures; real 32-window professional-audio inference and silence rejection. |
+| Single complete authored group | `14a85dc5622a8b5b56cf29738e7f31184d6f61e8`, Actions `37830443451` | Passed. Strong-confidence exact matching is tested; no claim about live one-word recognition accuracy. |
+| Native bundled resources, CAF reopen/export, genuine model/silence, denied capture | `05475278436f1c27fcebc0b948d2ae9cba90b4ec`, Actions `37828351851` | Passed, including actual OS microphone refusal and restored reader controls. |
+| Stable actual page/reveal accessibility, compact scope selection, OS denial | `e1d691838d44c5147198b232df805ec023d0301e`, Actions `37830571667` | Passed, 13m 29s. Page/surah/range scope and actual native canvas are exercised. |
+| Controller start/pause/reopen/resume/end, retained actual reference PCM; startup failure; late permission cancellation; real invalid AVPlayer input | `7c9ee97373d1f624b7fbcd7fb778ad775ed3840e`, Actions `37832540906` | Pending. Reference audio is explicitly a fixture, not live microphone acceptance. |
+| Codemagic all-pages and two phones | `4eb34290a120d9f05b016f0c4bc13171ab001347`, build `6ac7d435546ce6236ceca23d` | Failed. All-page shape/viewport and atomic offline recovery passed. Real AAC repetition had 7 assertions fail with HAL proxy 268451843/268435460 and zero advancing player time. Compact UI did not expose playback or failure within its deadline; large UI exposed `reader.load.error`. Actual artifacts retained and inspected. |
+
+Codemagic's old source predates shared mandatory font/manifest staging and the
+unified reader alert. Its audio-route failure is not proof of correct playback.
+A newly injected real missing-file playback UI test must verify the alert path;
+no successful status or manual word disclosure is substituted for AVFoundation
+or recognition. Codemagic artifacts are accessible by ordinary UI download;
+GitHub artifact and raw-log download restrictions must not be bypassed.
+
+Implementation completed so far includes exact partial-ayah coverage, a concise
+page/surah/range chooser, a direct microphone action, stable hidden glyphs and
+honest uncertainty. Results omit playback when no nonempty take was retained.
+Real physical microphone, interruption, Bluetooth, audible playback and
+beginner-recitation behavior remain unverified. The current engine tracks
+positions and never labels pronunciation or tajweed errors.
+
+## Remaining latest-request gates
+
+Proceed one stage at a time; existing user progress and old session bytes remain
+intact. Never replace legacy self-assessment with purported automatic evidence.
+
+- [ ] Finish recording transport: actual seek, pause/resume, replay, share,
+      recoverable deletion, timestamp review and reopen persistence.
+- [ ] Connect concise memorization goals, daily amount/review days, preview,
+      session start and evidence-based history/review; retain legacy access.
+- [ ] Location-aware five-prayer notifications, no duplicates, timezone/date
+      rescheduling, pinned valid short adhan and full in-app playback.
+      Verify real notification sound on a physical iPhone.
+- [ ] Actual home/lock WidgetKit layouts, shared timelines/deep links, next
+      prayer, reading target and khatmah progress, stale/location-denied states.
+- [ ] First-launch Apple-only sign in/create-profile, guest reading, onboarding
+      persistence, profile restore, sign-out, deletion and only real sync.
+- [ ] Inventory and review every screen/route; preserve Friday-setting removal,
+      Compare verses removal and Pause with an ayah removal. Keep Quran content.
+- [ ] English digits/24-hour clocks throughout app and widgets, Arabic RTL,
+      VoiceOver, Reduce Motion, dark appearance and minimum touch areas.
+- [ ] Verified final source/build with actual screenshots of every updated
+      screen and a real full-session walkthrough including recording playback.
+- [ ] Resolve existing release-rights gate for original common font/layout.
+- [ ] Present verified result to the user before App Store publication.
