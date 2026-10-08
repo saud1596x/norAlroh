@@ -2,19 +2,22 @@ import Foundation
 
 /// A necessary acoustic/timing gate, not a speech classifier or Quran grader.
 /// Low-volume input stays unresolved; it must never become a reader error.
-enum AudioEvidenceGate {
-    struct Evidence {
-        let start: Float
-        let end: Float
-        let probability: Float
+public enum AudioEvidenceGate {
+    public struct Evidence {
+        public let start: Float
+        public let end: Float
+        public let probability: Float
+        public init(start: Float, end: Float, probability: Float) {
+            self.start = start; self.end = end; self.probability = probability
+        }
     }
-    enum Rejection: String, Codable {
+    public enum Rejection: String, Codable {
         case invalidAudio, invalidTiming, lowConfidence, insufficientAudio
     }
     static let sampleRate = 16_000
     static let minimumRMS: Double = 0.02
 
-    static func rejection(_ word: Evidence, samples: [Float]) -> Rejection? {
+    public static func rejection(_ word: Evidence, samples: [Float]) -> Rejection? {
         guard !samples.isEmpty, samples.allSatisfy(\.isFinite) else { return .invalidAudio }
         let duration = Double(samples.count) / Double(sampleRate)
         guard word.start.isFinite, word.end.isFinite,
