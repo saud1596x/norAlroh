@@ -54,10 +54,28 @@ No App Store publication before the user's final review.
 - Reader run 13 (`37814355192`, source `56159fa`) completed successfully on
   both iPhone simulator sizes, including the 604-page layout gate and actual
   selection/tafsir/navigation/reading restoration journeys. Current Codemagic
-  build 6 (`6ac7d435546ce6236ceca23d`, source `4eb3429`) remains queued.
+  build 6 (`6ac7d435546ce6236ceca23d`, source `4eb3429`) started on a Mac mini M2 after the queue; its result is pending.
 - Codemagic build 4 had real AAC playback test failures. Build 6 retains actual
   AVPlayer diagnostics and captures both phone UI journeys even if an audio
   gate fails. It does not turn failed assertions into success.
+
+- Native engine runs 26 (`37818345557`, source `1d6ddc6`) and 27
+  (`37825342112`, source `0531d99`) succeeded. Run 26 has 16 tests with no
+  failures, including long unique anchors for distant returns without revealing
+  skipped text, and the full authentic 77,429-word correspondence.
+- App integration run 5 (`37822551351`, source `c8663cd`) compiled the new reader
+  and passed three native tests: real model/silence, independent CAF persistence
+  and archive/export reopening, and permission refusal before session creation.
+  The actual UI test failed waiting for the reader, before its microphone step.
+  This build lacked the 604 page fonts and the font manifest.
+- Every native project generation now stages all verified Quran resources in
+  one shared command. A fourth native test checks all 604 bundled font URLs
+  plus actual registration of the first and last page fonts. App integration
+  run 11 (`37828351851`, source `0547527`) succeeded, including the actual OS
+  microphone-refusal interaction and stationary return to the reader. This is
+  permission-denial evidence, not a complete live recitation journey.
+- Codemagic recitation integration build 1 (`6ac7e8cf546ce6236ceca8ef`, source
+  `0547527`) was queued for the same focused tests, without publication.
 
 ## Remaining evidence boundaries
 
@@ -66,9 +84,10 @@ No App Store publication before the user's final review.
   outstanding and cannot be substituted by simulator results.
 - No complete current live-recitation walkthrough video has been captured.
 - The current source replaces the old inline manual-disclosure/self-evaluation
-  panel with real recognition controls and stable reader insets. Native compile,
-  microphone-denial interaction and new archive/export tests are running; source
-  integration alone is not completion. Complete live session proof is pending.
+  panel with real recognition controls and stable reader insets. Native compilation and the three original integration tests passed at
+  `c8663cd`. The resource-fixed UI run, compact scope chooser, VoiceOver
+  correction and single-group alignment acceptance still need native checks.
+  Complete live session proof is pending.
 - Final screenshots must come from the implemented app at the final tested
   revision; old screenshots and generated illustrations are not acceptance.
 - QCF companion publication rights remain subject to the existing release gate.
