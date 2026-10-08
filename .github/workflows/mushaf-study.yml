@@ -1,0 +1,105 @@
+name: Mushaf study data acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches: [mushaf-ux-stage1-20261007]
+    paths: ['.github/workflows/mushaf-study.yml', 'ios/Athar/MushafStudy*.swift', 'ios/AtharTests/MushafStudySessionTests.swift']
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    runs-on: macos-15
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        display: [compact]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Restore pinned Quran fonts
+        id: quran-font-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ios/Athar/Fonts
+          key: noor-qcf-v2-${{ runner.os }}-${{ hashFiles('release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py') }}
+      - name: Prepare original Quran resources
+        run: |
+          brew install xcodegen
+          python3 scripts/prepare-mushaf-companion.py
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Save validated Quran fonts
+        if: steps.quran-font-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios/Athar/Fonts
+          key: ${{ steps.quran-font-cache.outputs.cache-primary-key }}
+      - name: Select actual iPhone simulator
+        env:
+          DISPLAY_CLASS: ${{ matrix.display }}
+        run: |
+          xcrun simctl list devices available --json > /tmp/noor-stage1-devices.json
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json,os
+          devices=[d for r,rows in json.load(open('/tmp/noor-stage1-devices.json'))['devices'].items() if 'SimRuntime.iOS' in r for d in rows if d.get('isAvailable') and d['name'].startswith('iPhone')]
+          large=os.environ['DISPLAY_CLASS']=='large'
+          candidates=[d for d in devices if ('Pro Max' in d['name'])==large]
+          assert candidates, 'Requested iPhone display is unavailable'
+          selected=candidates[0]
+          print('NOOR_STAGE1_DEVICE='+selected['udid'])
+          print('NOOR_STAGE1_DEVICE_NAME='+selected['name'])
+          PY
+      - name: Native geometry and actual reader acceptance
+        run: |
+          set -o pipefail
+          echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+            -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
+            -only-testing:AtharTests/MushafStudySessionTests \
+            -only-testing:AtharTests/MushafMemorizationTests \
+            -only-testing:AtharTests/ReadingSyncTests \
+            -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES 2>&1 | tee release/reader-acceptance.log
+      - name: Report native acceptance failures
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os,re,sqlite3
+          from pathlib import Path
+          log=Path('release/reader-acceptance.log')
+          lines=log.read_text(errors='replace').splitlines() if log.exists() else []
+          failures=[line for line in lines if re.search(r'error:|failed|TEST FAILED|Executed .*tests|Test Suite .*passed',line,re.I)]
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+              summary.write('### Native reader acceptance — ${{ matrix.display }}\n\n')
+              summary.write('Actual simulator: '+os.environ.get('NOOR_STAGE1_DEVICE_NAME','not selected')+'\n\n')
+              summary.write('```text\n'+'\n'.join(failures[-100:])+'\n```\n')
+              database=Path('release/stage1-${{ matrix.display }}.xcresult/database.sqlite3')
+              if database.exists():
+                  connection=sqlite3.connect(database.resolve().as_uri()+'?mode=ro',uri=True)
+                  rows=connection.execute('select c.identifier,r.result,r.duration from TestCaseRuns r join TestCases c on c.rowid=r.testCase_fk').fetchall()
+                  summary.write('\n```text\n'+'\n'.join(f'{name}: {result} ({duration:.1f}s)' for name,result,duration in rows)+'\n```\n')
+                  issues=connection.execute('select compactDescription,detailedDescription from TestIssues').fetchall()
+                  summary.write('\n```text\n'+'\n'.join((compact or '')+' '+(detail or '') for compact,detail in issues)+'\n```\n')
+                  connection.close()
+          PY
+      - name: Export actual application screenshots
+        if: always()
+        run: |
+          if [ -d release/stage1-${{ matrix.display }}.xcresult ]; then
+            xcrun xcresulttool export attachments --path release/stage1-${{ matrix.display }}.xcresult \
+              --output-path release/stage1-${{ matrix.display }}-screens
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mushaf-study-data-${{ matrix.display }}
+          path: |
+            release/stage1-${{ matrix.display }}.xcresult
+            release/stage1-${{ matrix.display }}-screens
+          retention-days: 14
