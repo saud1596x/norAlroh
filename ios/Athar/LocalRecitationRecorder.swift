@@ -137,7 +137,6 @@ enum RecitationArchive {
 
 struct RecitationRecordingControls: View {
     @EnvironmentObject var audio: LocalRecitationRecorder
-    @EnvironmentObject var speech: LocalSpeechRecitation
     var recordingAllowed = true
     @State private var replaceConfirmation = false
     @State private var deleteConfirmation = false
@@ -151,7 +150,7 @@ struct RecitationRecordingControls: View {
                 Button {
                     if audio.recording { audio.stop() }
                     else if audio.hasRecording { replaceConfirmation = true }
-                    else { speech.stop(); Task { await audio.start() } }
+                    else { Task { await audio.start() } }
                 } label: {
                     Label(audio.recording ? "إيقاف وحفظ" : audio.requestingPermission ? "طلب إذن الميكروفون…" : "ابدأ التسميع", systemImage: audio.recording ? "stop.circle.fill" : "mic")
                 }.frame(minHeight: 44).disabled(audio.requestingPermission || (!recordingAllowed && !audio.recording))
@@ -193,7 +192,7 @@ struct RecitationRecordingControls: View {
                 .font(.caption).foregroundStyle(.secondary)
         }.onDisappear { audio.stop() }
         .confirmationDialog("بدء تسجيل جديد؟ يبقى التسجيل السابق حتى ينجح حفظ الجديد.", isPresented: $replaceConfirmation, titleVisibility: .visible) {
-            Button("بدء تسجيل جديد") { speech.stop(); Task { await audio.start() } }
+            Button("بدء تسجيل جديد") { Task { await audio.start() } }
             Button("إلغاء", role: .cancel) {}
         }
         .confirmationDialog("حذف تسميعك المحفوظ نهائيًا؟", isPresented: $deleteConfirmation, titleVisibility: .visible) {
