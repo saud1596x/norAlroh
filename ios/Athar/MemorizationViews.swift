@@ -361,7 +361,7 @@ struct MemorizationArchive: Codable {
         do {
             defaults.set(try JSONEncoder().encode(value), forKey: "noor.mushaf.study")
             mushafStudy = value; return true
-        } catch { error = "تعذّر حفظ جلسة التسميع."; return false }
+        } catch { self.error = "تعذّر حفظ جلسة التسميع."; return false }
     }
     @discardableResult func startMushafStudy(keys: [String], scope: MushafStudySession.Scope, page: Int? = nil) -> Bool {
         guard mushafStudy.pending == nil, unreadableHistory == nil else { return false }
@@ -399,7 +399,7 @@ struct MemorizationArchive: Codable {
             var next = mushafStudy; next.pending = nil; next.summary = .init(session: pending)
             guard saveMushafStudy(next) else { return false }
             NoorFocusController.shared.sync(progress: progress); return true
-        } catch { error = "تعذّر حفظ نتيجة جلسة المصحف. يمكنك إعادة محاولة إنهائها."; return false }
+        } catch { self.error = "تعذّر حفظ نتيجة جلسة المصحف. يمكنك إعادة محاولة إنهائها."; return false }
     }
     @discardableResult func applySyncedPlan(_ candidate: MemorizationPlan) -> Bool {
         guard session == nil, practice == nil, mushafStudy.pending == nil, unreadableMushafStudy == nil, unreadableHistory == nil, let corpus = QuranResources.corpus,
