@@ -153,6 +153,26 @@ final class MushafRecordingTests: XCTestCase {
         fresh.stop()
         XCTAssertEqual(try Data(contentsOf: url), bytes)
     }
+    @MainActor func testResumeActivationFailurePreservesPausedPositionAndAllowsRetry() throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let value = session(); let directory = try MushafRecordingArchive.register(value, base: root)
+        let url = directory.appendingPathComponent(UUID().uuidString + ".m4a")
+        try audio(url, seconds: 12); let bytes = try Data(contentsOf: url)
+        let take = try XCTUnwrap(MushafRecordingArchive.takes(session: value.id, base: root).first)
+        var rejectActivation = false
+        let transport = MushafSessionRecorder(base: root, setSessionActive: { active in
+            if active && rejectActivation { throw CocoaError(.fileReadUnknown) }
+        })
+        transport.play(take, at: 4); XCTAssertEqual(transport.playing, take.id)
+        transport.pausePlayback(); rejectActivation = true
+        transport.resumePlayback()
+        XCTAssertTrue(transport.playbackPaused); XCTAssertNotNil(transport.message)
+        XCTAssertEqual(transport.playing, take.id)
+        XCTAssertEqual(transport.playbackPosition, 4, accuracy: 0.5)
+        rejectActivation = false; transport.resumePlayback()
+        XCTAssertFalse(transport.playbackPaused); XCTAssertNil(transport.message)
+        transport.stop(); XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
     @MainActor func testFailedRealDecodeReleasesOnlyOwnedAudioSessionWithoutDeletingBytes() throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent(UUID().uuidString + ".m4a")
