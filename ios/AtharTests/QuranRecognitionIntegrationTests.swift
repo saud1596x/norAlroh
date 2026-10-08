@@ -6,6 +6,21 @@ import WhisperKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testDeniedMicrophoneDoesNotCreateOrHideSession() async throws {
+        let controller = QuranRecitationController(requestPermission: { false })
+        // Denial must stop before binding fonts, loading the model, or creating
+        // any recording. An empty snapshot verifies that boundary.
+        let unused = QCFV2Snapshot(resource_group: "mushafs", resource_id: 1,
+            resource_content_id: 382, schema_version: 1, sync_sequence: 0, records: [])
+        await controller.start(keys: ["112:1"], page: 604, snapshot: unused, corpus: [])
+        XCTAssertEqual(controller.state, .idle)
+        XCTAssertTrue(controller.permissionDenied)
+        XCTAssertNil(controller.record)
+        XCTAssertFalse(controller.hasSession)
+        XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertNotNil(controller.message)
+    }
+
     func testBundledOfflineModelProducesTimedQuranAnchorsAndRejectsSilence() async throws {
         let bundle = Bundle(for: Self.self)
         let url = try XCTUnwrap(bundle.url(forResource: "112001", withExtension: "mp3"))
@@ -53,5 +68,15 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         let player = try AVAudioPlayer(contentsOf: file)
         XCTAssertTrue(player.prepareToPlay())
         XCTAssertEqual(player.duration, Double(samples.count) / 16_000, accuracy: 0.02)
+        let archived = try MushafRecordingArchive.takes(session: record.id, base: root)
+        XCTAssertEqual(archived.map(\.id), [take.id])
+        XCTAssertEqual(archived.first?.duration ?? 0, player.duration, accuracy: 0.02)
+        let metadata = try XCTUnwrap(MushafRecordingArchive.metadata(session: record.id, base: root))
+        XCTAssertEqual(metadata.keys, record.keys)
+        let export = try XCTUnwrap(MushafRecordingArchive.exportMetadata(base: root).first)
+        XCTAssertEqual(export.files.map(\.id), [take.id])
+        let rawSession = try XCTUnwrap(export.recognizedSession)
+        let recovered = try JSONDecoder().decode(QuranRecitationRecord.self, from: rawSession)
+        XCTAssertEqual(recovered.takes, record.takes)
     }
 }
