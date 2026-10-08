@@ -66,7 +66,7 @@ jobs:
             -only-testing:AtharUITests/NoorFridayRetirementUITests \
             -only-testing:AtharUITests/NoorNavigationTests/testArabicSurahSearchAndInteractiveTextReader \
             -parallel-testing-enabled NO -resultBundlePath release/retired-features-${{ matrix.display }}.xcresult \
-            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental
       - name: Export actual application screenshots
         if: always()
         run: |

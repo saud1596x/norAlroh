@@ -1,13 +1,13 @@
-name: Mushaf stage 1 native acceptance
+name: Reader compact failure diagnosis
 on:
   workflow_dispatch:
   push:
-    branches: [mushaf-viewport-20261007]
-    paths: ['.github/workflows/mushaf-reader.yml', 'ios/Athar/InteractiveMushaf*.swift', 'ios/AtharTests/MushafViewportTests.swift', 'ios/AtharUITests/NoorReaderComfortUITests.swift']
+    branches: [mushaf-ux-stage1-20261007]
+    paths: ['.github/workflows/reader-compact-diagnosis.yml']
 permissions:
   contents: read
 concurrency:
-  group: mushaf-reader-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   reading:
@@ -16,17 +16,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        display: [compact, large]
+        display: [compact]
     steps:
       - uses: actions/checkout@v4
       - name: Choose Xcode
         run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
       - name: Restore pinned Quran fonts
-        uses: actions/cache@v4
+        id: quran-font-cache
+        uses: actions/cache/restore@v4
         with:
           path: ios/Athar/Fonts
-          key: qcf-v2-reviewed-${{ hashFiles('release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py', 'scripts/prepare-mushaf-companion.py') }}
-      # Preparation still validates each restored font against its pinned hash.
+          key: noor-qcf-v2-${{ runner.os }}-${{ hashFiles('release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py') }}
       - name: Prepare original Quran resources
         run: |
           brew install xcodegen
@@ -34,6 +34,12 @@ jobs:
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
           cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
           xcodegen generate --spec ios/project.yml --project ios
+      - name: Save validated Quran fonts
+        if: steps.quran-font-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios/Athar/Fonts
+          key: ${{ steps.quran-font-cache.outputs.cache-primary-key }}
       - name: Select actual iPhone simulator
         env:
           DISPLAY_CLASS: ${{ matrix.display }}
@@ -49,24 +55,38 @@ jobs:
           print('NOOR_STAGE1_DEVICE='+selected['udid'])
           print('NOOR_STAGE1_DEVICE_NAME='+selected['name'])
           PY
-      - name: Boot selected iPhone with bounded readiness check
-        timeout-minutes: 5
-        run: |
-          python3 - <<'PYBOOT'
-          import os, subprocess
-          # The same native boot command used by scripts/test-ios.sh, with a
-          # deadline so an unresponsive simulator cannot consume the test job.
-          subprocess.run(['xcrun', 'simctl', 'bootstatus', os.environ['NOOR_STAGE1_DEVICE'], '-b'], check=True, timeout=240)
-          PYBOOT
       - name: Native geometry and actual reader acceptance
         run: |
+          set -o pipefail
           echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
           xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
-            -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" -destination-timeout 60 \
+            -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
             -only-testing:AtharTests/MushafViewportTests \
             -only-testing:AtharUITests/NoorReaderComfortUITests \
             -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
-            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES 2>&1 | tee release/reader-acceptance.log
+      - name: Report native acceptance failures
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os,re,sqlite3
+          from pathlib import Path
+          log=Path('release/reader-acceptance.log')
+          lines=log.read_text(errors='replace').splitlines() if log.exists() else []
+          failures=[line for line in lines if re.search(r'error:|failed|TEST FAILED|Executed .*tests|Test Suite .*passed',line,re.I)]
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+              summary.write('### Native reader acceptance — ${{ matrix.display }}\n\n')
+              summary.write('Actual simulator: '+os.environ.get('NOOR_STAGE1_DEVICE_NAME','not selected')+'\n\n')
+              summary.write('```text\n'+'\n'.join(failures[-100:])+'\n```\n')
+              database=Path('release/stage1-${{ matrix.display }}.xcresult/database.sqlite3')
+              if database.exists():
+                  connection=sqlite3.connect(database.resolve().as_uri()+'?mode=ro',uri=True)
+                  rows=connection.execute('select c.identifier,r.result,r.duration from TestCaseRuns r join TestCases c on c.rowid=r.testCase_fk').fetchall()
+                  summary.write('\n```text\n'+'\n'.join(f'{name}: {result} ({duration:.1f}s)' for name,result,duration in rows)+'\n```\n')
+                  issues=connection.execute('select compactDescription,detailedDescription from TestIssues').fetchall()
+                  summary.write('\n```text\n'+'\n'.join((compact or '')+' '+(detail or '') for compact,detail in issues)+'\n```\n')
+                  connection.close()
+          PY
       - name: Export actual application screenshots
         if: always()
         run: |
@@ -77,15 +97,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mushaf-stage1-${{ matrix.display }}
+          name: reader-diagnosis-${{ matrix.display }}
           path: |
             release/stage1-${{ matrix.display }}.xcresult
             release/stage1-${{ matrix.display }}-screens
-          retention-days: 14
-      - name: Export small actual screenshot bundle
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mushaf-stage1-screens-${{ matrix.display }}
-          path: release/stage1-${{ matrix.display }}-screens
           retention-days: 14

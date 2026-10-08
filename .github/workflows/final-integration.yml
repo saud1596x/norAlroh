@@ -1,24 +1,34 @@
-name: Mushaf stage 1 native acceptance
+name: Noor combined Release acceptance
 on:
   workflow_dispatch:
   push:
-    branches: [mushaf-viewport-20261007]
-    paths: ['.github/workflows/mushaf-reader.yml', 'ios/Athar/InteractiveMushaf*.swift', 'ios/AtharTests/MushafViewportTests.swift', 'ios/AtharUITests/NoorReaderComfortUITests.swift']
+    branches: [noor-final-integration-20261008]
+    paths: ['release/final-integration-ready.json']
 permissions:
   contents: read
 concurrency:
-  group: mushaf-reader-${{ github.ref }}
+  group: noor-final-integration-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   reading:
     runs-on: macos-15-intel
-    timeout-minutes: 35
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         display: [compact, large]
     steps:
       - uses: actions/checkout@v4
+      - name: Verify complete integration batch
+        run: |
+          python3 - <<'PYBATCH'
+          import hashlib,json
+          from pathlib import Path
+          marker=json.loads(Path('release/final-integration-ready.json').read_text())
+          for name,expected in marker['sha256'].items():
+              assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==expected, 'Integration mismatch: '+name
+          print('Complete integration source verified')
+          PYBATCH
       - name: Choose Xcode
         run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
       - name: Restore pinned Quran fonts
@@ -65,7 +75,37 @@ jobs:
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" -destination-timeout 60 \
             -only-testing:AtharTests/MushafViewportTests \
             -only-testing:AtharUITests/NoorReaderComfortUITests \
+            -only-testing:AtharTests/KhatmahJourneyTests \
+            -only-testing:AtharTests/NoorJourneyIndexTests \
+            -only-testing:AtharTests/AutomaticPrayerTests \
+            -only-testing:AtharTests/NoorRetiredFridayCleanupTests \
+            -only-testing:AtharTests/FridayTests \
+            -only-testing:AtharTests/NoorRemovedFeatureRetentionTests \
+            -only-testing:AtharTests/WidgetTests \
+            -only-testing:AtharTests/QuranAccuracyTests \
+            -only-testing:AtharTests/MushafStudySessionTests \
+            -only-testing:AtharTests/MushafRecordingTests \
+            -only-testing:AtharTests/MushafRepetitionTests \
+            -only-testing:AtharTests/MushafMemorizationTests \
+            -only-testing:AtharTests/ReadingSyncTests \
+            -only-testing:AtharTests/LocalDataRecoveryTests \
+            -only-testing:AtharTests/PublishingContentTests \
+            -only-testing:AtharUITests/NoorKhatmahUITests \
+            -only-testing:AtharUITests/NoorPrayerDisplayUITests \
+            -only-testing:AtharUITests/NoorFridayRetirementUITests \
+            -only-testing:AtharUITests/NoorInteractiveMushafUITests \
+            -only-testing:AtharUITests/NoorMushafStudyUITests/testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch \
+            -only-testing:AtharUITests/NoorMushafStudyUITests/testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount \
+            -only-testing:AtharUITests/NoorMushafStudyUITests/testActualRepeatControlsPersistAndGapCancels \
             -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental
+      - name: Actual microphone background resume and playback in Release
+        run: |
+          xcrun simctl privacy "$NOOR_STAGE1_DEVICE" grant microphone com.saud1596x.nooralruh
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+            -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" -destination-timeout 60 \
+            -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable \
+            -parallel-testing-enabled NO -resultBundlePath release/recording-${{ matrix.display }}.xcresult \
             CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental
       - name: Export actual application screenshots
         if: always()
