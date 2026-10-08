@@ -232,3 +232,26 @@ Codemagic recitation build `6ac7f19a546ce6236cecace5`, source `7c9ee97`,
 remains queued without machine provisioning or checkout logs. Billing shows
 402 / 500 free macOS minutes used; no subscription was enabled. This is not
 a claim that the branch or YAML is failing to load.
+
+
+### Actual recording UI gate — current status
+
+Actions `37839688034`, source `56476f0`, finished **failed** after 13m 40s:
+all 13 native recording tests and eight recognition integration tests passed;
+three reader UI journeys passed, but the persisted reference session was absent
+from the recording history. Transport/relaunch UI acceptance is therefore open.
+No new screenshot or video is represented as final application acceptance.
+
+The next source creates the identified reference CAF using AVAudioFile in the
+native hosted test and production MushafRecordingArchive.root(), verifies it
+can be reopened through production archive code, and writes the exact resolved
+container path for the script to validate. The UI assertion now reports the
+actual accessibility tree if the reference remains absent. This removes manual
+storage-path assumptions and preserves the UI gate rather than skipping it.
+Source `1f7a2b2de110200950c764ce5a56f47b7f3784b5` is under Actions
+`37841634686`; it is not yet passed.
+
+The stale queued Codemagic build 2 was canceled before a machine was allocated.
+Build 3 `6ac7ff13546ce6236cecb1ae` uses source `9bccaaf` (the same app code
+as `56476f0`, plus verification notes), and remains queued. Its pending gate
+still includes the identified reference-fixture failure; no artifact is ready.
