@@ -9,6 +9,7 @@ import Combine
     @Published private(set) var revealed = Set<Int>()
     @Published private(set) var currentVerse: String?
     @Published private(set) var uncertain = false
+    @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
     @Published var message: String?
     private let worker = QuranRecognitionWorker()
@@ -43,7 +44,7 @@ import Combine
         case .permission: return "إذن الميكروفون"
         case .preparing: return "تهيئة التسميع"
         case .listening:
-            if record?.recognitionUnavailable == true { return "التسجيل مستمر · التتبع متعذر" }
+            if !recognitionAvailable { return "التسجيل مستمر · التتبع متعذر" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
         case .paused: return "متوقف مؤقتًا"
         case .processing: return "حفظ الجلسة ومعالجة التلاوة"
@@ -53,7 +54,7 @@ import Combine
     func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
         let token = UUID(); revision = token; message = nil; permissionDenied = false
-        record = nil; tracker = nil; revealed = []; currentVerse = nil
+        record = nil; tracker = nil; revealed = []; currentVerse = nil; recognitionAvailable = true
         state = .permission
         guard await requestPermission() else {
             guard revision == token else { return }
@@ -173,7 +174,7 @@ import Combine
                 }
             })
             capture = microphone; self.mailbox = mailbox; capturing = true
-            try microphone.start(); started = true; state = .listening
+            try microphone.start(); started = true; recognitionAvailable = true; state = .listening
             pump = Task { [weak self] in await self?.processWindows(mailbox, take: take.id, token: token) }
         } catch {
             capturing = false
@@ -206,7 +207,7 @@ import Combine
             catch is CancellationError { return }
             catch {
                 guard revision == token, var current = record else { return }
-                current.recognitionUnavailable = true; record = current; uncertain = true
+                current.recognitionUnavailable = true; record = current; uncertain = true; recognitionAvailable = false
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
                 continue // Recording remains independent of model failure.
@@ -217,7 +218,7 @@ import Combine
                 for run in recognized.runs {
                     additions += try updatedTracker.consume(run, takeID: take, offset: window.offset)
                 }
-                current.evidence += additions; current.recognitionUnavailable = false
+                current.evidence += additions; recognitionAvailable = true
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
                 record = current; tracker = updatedTracker

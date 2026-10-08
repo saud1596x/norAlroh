@@ -4,12 +4,21 @@ import SwiftUI
 /// become confirmed errors or an invented success percentage.
 struct QuranSessionResult: View {
     let record: QuranRecitationRecord
+    let wordIDs: [String: [Int]]
     let onRecordings: () -> Void
     let onReview: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: AtharStore
-    private var covered: Set<String> { Set(record.evidence.map(\.verse)) }
-    private var unresolved: [String] { record.keys.filter { !covered.contains($0) } }
+    private func coverage(_ key: String) -> Int {
+        let expected = Set(wordIDs[key] ?? [])
+        return Set(record.evidence.filter { $0.verse == key }.map(\.nativeID)).intersection(expected).count
+    }
+    private func complete(_ key: String) -> Bool {
+        let count = wordIDs[key]?.count ?? 0
+        return count > 0 && coverage(key) == count
+    }
+    private var unresolved: [String] { record.keys.filter { !complete($0) } }
+    private var trackedCount: Int { record.keys.reduce(0) { $0 + coverage($1) } }
     private func reference(_ key: String) -> String {
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, store.quran.indices.contains(parts[0] - 1) else { return key }
@@ -28,7 +37,7 @@ struct QuranSessionResult: View {
                     }
                     HStack(spacing: 24) {
                         metric("مدة التسجيل", value: MushafAudioTime.text(record.duration))
-                        metric("كلمات متتبّعة", value: String(Set(record.evidence.map(\.nativeID)).count))
+                        metric("كلمات متتبّعة", value: String(trackedCount))
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     Button(action: onRecordings) {
                         Label("استمع إلى تسجيلك", systemImage: "play.fill").frame(maxWidth: .infinity, minHeight: 48)
@@ -47,7 +56,7 @@ struct QuranSessionResult: View {
                                     HStack {
                                         Text(reference(key))
                                         Spacer()
-                                        Text(covered.contains(key) ? "تتبع جزئي أو كامل" : "غير محسوم").font(.caption).foregroundStyle(.secondary)
+                                        Text(complete(key) ? "تتبع كامل" : coverage(key) > 0 ? "تتبع جزئي" : "غير محسوم").font(.caption).foregroundStyle(.secondary)
                                     }.frame(minHeight: 44)
                                 }
                             }

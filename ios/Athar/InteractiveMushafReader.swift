@@ -140,8 +140,12 @@ struct InteractiveMushafReader: View {
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else {
-                        Button { showStudySetup() } label: { Image(systemName: "mic").frame(width: 44, height: 44) }
-                            .accessibilityLabel("الحفظ والتسميع").accessibilityIdentifier("reader.study")
+                        Button { showStudySetup() } label: {
+                            Image(systemName: "mic.fill").font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(Theme.gold).frame(width: 44, height: 44)
+                                .background(Theme.gold.opacity(0.12), in: Circle())
+                        }
+                            .accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
                         Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
@@ -195,7 +199,7 @@ struct InteractiveMushafReader: View {
             if recordingsAfterResult { recordingsAfterResult = false; recordingsOpen = true }
         }) {
             if let record = recitation.record {
-                QuranSessionResult(record: record, onRecordings: {
+                QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onRecordings: {
                     recordingSession = record.id; recordingsAfterResult = true; studySummary = false
                 }, onReview: { key in
                     studySummary = false; selected = key; manualSelection = VerseSelection(key: key)
