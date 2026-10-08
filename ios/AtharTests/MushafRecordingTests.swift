@@ -9,6 +9,17 @@ final class MushafRecordingTests: XCTestCase {
         return root
     }
     private func session() -> MushafStudySession { .init(keys: ["112:1", "112:2"], scope: .range, page: 604) }
+    @MainActor func testActualCaptureCategoryAndModeAreCompatibleWithoutActivatingMicrophone() throws {
+        let sound = AVAudioSession.sharedInstance()
+        let category = sound.category; let mode = sound.mode; let options = sound.categoryOptions
+        defer { try? sound.setCategory(category, mode: mode, options: options) }
+        try MushafCaptureAudio.configure(sound)
+        XCTAssertEqual(sound.category, .playAndRecord)
+        XCTAssertEqual(sound.mode, .measurement)
+        XCTAssertTrue(sound.categoryOptions.contains(.defaultToSpeaker))
+        // No setActive/record call: this verifies real OS configuration, not
+        // microphone signal, permission consent or recitation accuracy.
+    }
     @MainActor func testDeniedPermissionLeavesSelfSessionAndFilesUntouched() async throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let value = session()
