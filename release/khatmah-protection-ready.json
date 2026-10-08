@@ -1,0 +1,14 @@
+{
+  "sha256": {
+    "ios/Athar/AtharApp.swift": "371c44ea62dc6bcd6f1c35b1a10d825e2567c4cfb4a3f2075686ff909a603cf8",
+    "ios/Athar/KhatmahJourneyView.swift": "5594f7ab7f01aced8f3b8ab2c5d6f8bad1240fb78d91a88fa65d84b2314aa50b",
+    "ios/Athar/NoorFocusView.swift": "72a43b51379cef22e33db9c1fde0ec2a451e94590ce67ad5a6a519bcd08a0d9b",
+    "ios/Athar/NoorTodayView.swift": "4384c1c1018a15a61b7c2e3d6133321f0d5e307a053080d1c5c3ead29b701c53",
+    "ios/NoorFocusExtensions/NoorFocusShield.swift": "28fbf966bec34ffcff102af12e2cfee391f6f28bae5a51a36cf94d0eaa2eaa48",
+    "ios/NoorFocusShared/NoorFocusState.swift": "fd03eb4880c9553825b2c167508e95bf3ebbf8bcc220a1c718668281702334fa",
+    "ios/AtharTests/NoorKhatmahProtectionTests.swift": "f3adc0083ab95e3d276288ddcda3f6fbd9d40fdd4f287593a452dc74bf433e49",
+    "ios/AtharUITests/NoorKhatmahProtectionUITests.swift": "bb543583fecb390911dbb9e9b1c64081e4ac7c3c57cac99d149ffdd1e2522ff9",
+    "scripts/test-khatmah-protection.sh": "1eb25d3cdcbe20c62de4a9e95bf47a7384d72365ae0a084d4c34c5bebbfd4607",
+    ".github/workflows/khatmah-protection.yml": "d983d19c0a655a6c799e221aeb547fc8a2d69cf17c5ea5345512d4944be1ccd0"
+  }
+}
