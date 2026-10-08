@@ -37,6 +37,7 @@ stop_video() { kill -INT "$noor_video_pid" 2>/dev/null || true; wait "$noor_vide
 trap stop_video EXIT
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
   -resultBundlePath release/recitation-app/microphone-denial.xcresult || noor_gate=$?
 stop_video
 trap - EXIT
