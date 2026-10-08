@@ -4,6 +4,17 @@ on:
   push:
     paths:
       - .github/workflows/recitation-app-integration.yml
+      - ios/Athar/InteractiveMushafReader.swift
+      - ios/Athar/MushafSessionRecorder.swift
+      - ios/Athar/QCFV2Content.swift
+      - ios/Athar/QuranSessionResult.swift
+      - ios/AtharUITests/NoorInteractiveMushafUITests.swift
+      - tools/RecitationEngineProbe/Sources/RecitationAlignment/**
+      - content-sources/recitation-word-script.json
+      - content-sources/recitation-model-manifest.json
+      - ios/project.yml
+      - scripts/prepare-recitation-model.py
+      - scripts/prepare-native-quran-resources.sh
       - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranRecognitionWorker.swift
       - ios/Athar/QuranRecitationController.swift
@@ -20,6 +31,13 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pinned resources that are revalidated before every build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/RecitationModel
+            ios/Athar/Fonts
+          key: noor-quran-resources-${{ hashFiles('content-sources/recitation-model-manifest.json', 'release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py', 'scripts/prepare-mushaf-companion.py') }}
       - name: Install project generator
         run: brew install xcodegen
       - name: Verify actual bundled model and independent audio persistence
