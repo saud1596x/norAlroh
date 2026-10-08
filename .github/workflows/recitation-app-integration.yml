@@ -24,6 +24,7 @@ on:
       - ios/Athar/QuranRecitationController.swift
       - ios/AtharTests/QuranRecognitionIntegrationTests.swift
       - scripts/test-recitation-app.sh
+      - scripts/seed-recording-ui.py
 permissions:
   contents: read
 concurrency:
