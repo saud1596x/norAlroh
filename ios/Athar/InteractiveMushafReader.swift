@@ -47,6 +47,7 @@ struct InteractiveMushafReader: View {
     @AppStorage("noor.recitation.pending") private var pendingRecitation = ""
     @EnvironmentObject private var legacyRecorder: LocalRecitationRecorder
     @State private var recordingsOpen = false
+    @State private var recordingsAfterResult = false
     @State private var recordingSession: UUID?
     let chapter: Int; let ayah: Int; let initialPage: Int?
     let startsStudy: Bool
@@ -188,10 +189,12 @@ struct InteractiveMushafReader: View {
         .sheet(isPresented: $recordingsOpen) {
             if let recordingSession { MushafRecordingList(session: recordingSession, recorder: studyRecorder) }
         }
-        .sheet(isPresented: $studySummary) {
+        .sheet(isPresented: $studySummary, onDismiss: {
+            if recordingsAfterResult { recordingsAfterResult = false; recordingsOpen = true }
+        }) {
             if let record = recitation.record {
                 QuranSessionResult(record: record, onRecordings: {
-                    studySummary = false; recordingSession = record.id; recordingsOpen = true
+                    recordingSession = record.id; recordingsAfterResult = true; studySummary = false
                 }, onReview: { key in
                     studySummary = false; selected = key; manualSelection = VerseSelection(key: key)
                     if let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
