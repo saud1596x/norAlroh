@@ -42,13 +42,28 @@ jobs:
           PY
       - name: Native geometry and actual reader acceptance
         run: |
+          set -o pipefail
           echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
           xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
             -only-testing:AtharTests/MushafViewportTests \
             -only-testing:AtharUITests/NoorReaderComfortUITests \
             -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
-            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES 2>&1 | tee release/reader-acceptance.log
+      - name: Report native acceptance failures
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          log=Path('release/reader-acceptance.log')
+          lines=log.read_text(errors='replace').splitlines() if log.exists() else []
+          failures=[line for line in lines if re.search(r'error:|failed|TEST FAILED|Executed .*tests|Test Suite .*passed',line,re.I)]
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+              summary.write('### Native reader acceptance — ${{ matrix.display }}\n\n')
+              summary.write('Actual simulator: '+os.environ.get('NOOR_STAGE1_DEVICE_NAME','not selected')+'\n\n')
+              summary.write('```text\n'+'\n'.join(failures[-100:])+'\n```\n')
+          PY
       - name: Export actual application screenshots
         if: always()
         run: |
