@@ -4,6 +4,37 @@ import Combine
 @testable import Athar
 
 final class MushafRecordingTests: XCTestCase {
+    func testReferenceAudioFixtureUsesActualApplicationArchiveAndReopens() throws {
+        // Identified reference audio for transport UI, never a live recording or
+        // invented recognition result. Resolve storage through production code.
+        let id = try XCTUnwrap(UUID(uuidString: "A1662B68-55BB-4A4B-9441-761EF83DCF54"))
+        let take = try XCTUnwrap(UUID(uuidString: "50CC9A34-A7A3-44B5-A7A7-39671AC60968"))
+        let root = try MushafRecordingArchive.root()
+        let directory = try MushafRecordingArchive.directory(session: id)
+        let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let input = try AVAudioFile(forReading: source)
+        let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: input.processingFormat,
+            frameCapacity: AVAudioFrameCount(input.length)))
+        try input.read(into: buffer)
+        XCTAssertGreaterThan(buffer.frameLength, 0)
+        let path = directory.appendingPathComponent(take.uuidString + ".caf")
+        do {
+            let output = try AVAudioFile(forWriting: path, settings: input.processingFormat.settings)
+            for _ in 0..<20 { try output.write(from: buffer) }
+        }
+        let data = try JSONSerialization.data(withJSONObject: [
+            "id": id.uuidString, "startedAt": Date().timeIntervalSinceReferenceDate,
+            "scope": "range", "keys": ["112:1"], "page": 604
+        ])
+        try data.write(to: directory.appendingPathComponent("session.json"), options: .atomic)
+        XCTAssertEqual(try MushafRecordingArchive.metadata(session: id)?.id, id)
+        XCTAssertEqual(try MushafRecordingArchive.takes(session: id).first?.id, take)
+        XCTAssertTrue(try MushafRecordingArchive.sessions().contains { $0.id == id })
+        let documents = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask,
+            appropriateFor: nil, create: true)
+        try root.path.write(to: documents.appendingPathComponent("noor-ui-archive-path.txt"), atomically: true, encoding: .utf8)
+        print("NOOR_UI_REFERENCE_ARCHIVE_ROOT: \(root.path)")
+    }
     private func folder() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("NoorRecordingTests-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
