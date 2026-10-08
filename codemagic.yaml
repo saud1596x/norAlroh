@@ -1,4 +1,17 @@
 workflows:
+  recitation-app-integration:
+    name: Noor Alruh offline recognition and durable audio on iOS
+    instance_type: mac_mini_m2
+    max_build_duration: 35
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install native project generator
+        script: brew install xcodegen
+      - name: Verify bundled Core ML and independent recording persistence
+        script: bash scripts/test-recitation-app.sh
+    artifacts:
+      - release/recitation-app/**
   recitation-engine-probe:
     name: Noor Alruh native Quran recognition investigation
     instance_type: mac_mini_m2
