@@ -12,6 +12,7 @@ let package = Package(
     targets: [
         .executableTarget(name: "RecitationEngineProbe", dependencies: [
             .product(name: "WhisperKit", package: "argmax-oss-swift")
-        ])
+        ]),
+        .testTarget(name: "RecitationEngineProbeTests", dependencies: ["RecitationEngineProbe"])
     ]
 )
