@@ -1,9 +1,41 @@
 import XCTest
 import AVFoundation
 import Combine
+import Network
 @testable import Athar
 
 final class MushafRepetitionTests: XCTestCase {
+    @MainActor func testNonRespondingStreamTimesOutAndCannotReviveStoppedPlayer() async throws {
+        // Real AVPlayer with a local HTTP connection which accepts bytes but
+        // never supplies media. No CDN delay or mock status callback is needed.
+        let listener = try NWListener(using: .tcp, on: .any)
+        let ready = expectation(description: "Local stalled media source is listening")
+        let queue = DispatchQueue(label: "Noor.StalledMedia")
+        var connections: [NWConnection] = []
+        listener.stateUpdateHandler = { state in if case .ready = state { ready.fulfill() } }
+        listener.newConnectionHandler = { connection in
+            connections.append(connection); connection.start(queue: queue)
+        }
+        listener.start(queue: queue)
+        defer { queue.sync { listener.cancel(); connections.forEach { $0.cancel() } } }
+        await fulfillment(of: [ready], timeout: 5)
+        let port = try XCTUnwrap(listener.port)
+        let url = try XCTUnwrap(URL(string: "http://127.0.0.1:\(port.rawValue)/stalled.mp3"))
+        let sound = MushafVerseAudio(source: { _ in url }, loadTimeoutSeconds: 0.4)
+        defer { sound.stop() }
+        let failed = expectation(description: "Stalled stream produces a visible bounded error")
+        let observation = sound.$error.compactMap { $0 }.prefix(1).sink { _ in failed.fulfill() }
+        defer { observation.cancel() }
+        var starts = 0; sound.onVerse = { _ in starts += 1 }
+        sound.play(["114:1"])
+        await fulfillment(of: [failed], timeout: 5)
+        XCTAssertNil(sound.loadingKey); XCTAssertNil(sound.playing)
+        XCTAssertTrue(sound.error?.contains("وقتًا طويلًا") == true,
+            "The actual load deadline must fire, rather than an unrelated stream rejection")
+        XCTAssertEqual(starts, 0)
+        try await Task.sleep(nanoseconds: 600_000_000)
+        XCTAssertNil(sound.loadingKey); XCTAssertEqual(starts, 0)
+    }
     private func fixture() throws -> URL {
         // Silent AAC tests AVPlayer/end timing, never Quran pronunciation.
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
