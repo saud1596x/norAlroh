@@ -92,11 +92,11 @@ import Combine
         do {
             guard let journal else { throw QuranJournalFailure.invalidRecord }
             var restored = try journal.load(id)
-            if restored.phase == .finished {
-                record = restored; state = .stopped; return
-            }
             guard MushafStudySession(keys: restored.keys, scope: .range, page: restored.originPage).valid(corpus: corpus) else {
                 throw QuranJournalFailure.invalidRecord
+            }
+            if restored.phase == .finished {
+                record = restored; state = .stopped; return
             }
             state = .preparing
             try await bind(snapshot: snapshot, corpus: corpus)
