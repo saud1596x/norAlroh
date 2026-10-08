@@ -299,6 +299,6 @@ struct MushafRecordingBrowser: View {
     }
     private func reloadSessions() {
         do { sessions = try MushafRecordingArchive.sessions(); error = nil }
-        catch { error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
+        catch { self.error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
     }
 }
