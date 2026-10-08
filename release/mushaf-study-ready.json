@@ -1,16 +1,16 @@
 {
-  "increment": "actual-denial-and-granted-microphone-playback-acceptance",
-  "source_commit": "08b95445cabb35cfb63fb1f287cb81c42a97bc88",
+  "increment": "owned-audio-session-failure-cleanup",
+  "source_commit": "3148e91601114f666065353235787d5317590e22",
   "sha256": {
     ".github/workflows/mushaf-study.yml": "2a0b5a62598ae38f0e0a15d7b5e1da1f040a524af944493e61d41b8bc9dbb91e",
-    "ios/Athar/MushafSessionRecorder.swift": "e55feacf15f43ff05e1d53c4758483361222c07371fb4ce978dddcd266900162",
+    "ios/Athar/MushafSessionRecorder.swift": "b149badbf4af25d04f7f2dc15ef6f59a4a224ca4ce8d1505f1cbbeac3aec77e0",
     "ios/Athar/InteractiveMushafReader.swift": "4d583979b6de0dedb888c35a2443dabe19117e9ca779f8ebe3089f261694df0c",
     "ios/Athar/InteractiveMushafCanvas.swift": "9faf5451b91b6cdf95cbdbc0646475ea157d59a735c44dea5b59939648ff5167",
     "ios/Athar/MushafStudySession.swift": "4064aedcf31f03e2a9e2f778a901c0fff16a82aafb2d98d68565cd775d7a4b5d",
     "ios/Athar/MushafStudyViews.swift": "59e016e10d368bcf7fea87c493466b47098a2e78c91c8f0788f0b4a36640188c",
     "ios/Athar/FeatureViews.swift": "442cb9a91d7414aa3eff83dafd80b8bdce6254df826523a543337a283207a4f7",
     "ios/Athar/Store.swift": "264b901de96e14bf5c8493c561a015b2709d189cc6ba7c8e4be748463f174d08",
-    "ios/AtharTests/MushafRecordingTests.swift": "ff6ce8af5fae1584a18b1fa310a9be1a841fd3f7d4128e5abf128d2371f8dd8d",
+    "ios/AtharTests/MushafRecordingTests.swift": "8da810f178dece46a39629357b18323c7a9e5fbf102d4d563a7ef8339b1613f1",
     "ios/AtharTests/MushafStudySessionTests.swift": "e0460d25bf8f077919b545b1f9dea9dbe16aab358af2197a591cdb322a0ba13e",
     "ios/AtharUITests/NoorMushafStudyUITests.swift": "0429ddd08221e3aa996cfaa329e3ca126315d4fb4286b1dc088d5006b1ee3211",
     "ios/Athar/LocalRecitationRecorder.swift": "94a1b580ef50594e8b0eefaf95666e1f74812d1479a826888110622492b8f252"
