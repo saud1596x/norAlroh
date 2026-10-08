@@ -6,6 +6,19 @@ import WhisperKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testRecitationBuildContainsCompleteMushafResources() async throws {
+        XCTAssertNotNil(Bundle.main.url(forResource: "qcf-v2-manifest", withExtension: "json"))
+        for page in 1...604 {
+            XCTAssertNotNil(Bundle.main.url(forResource: "p\(page)", withExtension: "ttf"), "Missing authentic page font \(page)")
+        }
+        try OriginalMushafCompanion.register()
+        let fonts = MushafFonts()
+        await fonts.load("QCF2001"); await fonts.load("QCF2604")
+        XCTAssertNil(fonts.error)
+        XCTAssertNotNil(fonts.names["QCF2001"])
+        XCTAssertNotNil(fonts.names["QCF2604"])
+    }
+
     @MainActor func testDeniedMicrophoneDoesNotCreateOrHideSession() async throws {
         let controller = QuranRecitationController(requestPermission: { false })
         // Denial must stop before binding fonts, loading the model, or creating
