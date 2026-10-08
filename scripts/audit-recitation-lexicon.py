@@ -15,7 +15,7 @@ import zipfile
 EXPECTED_JSON_SHA256 = "60b5341ecf04b6dbcdd2c42cc9b377003d9185ac6a76ad104a109ed669b0cf3c"
 
 
-def audit(raw, snapshot, corpus):
+def audit(raw, snapshot, corpus, reviewed=None):
     source_hash = hashlib.sha256(raw).hexdigest()
     if source_hash != EXPECTED_JSON_SHA256:
         raise ValueError("Lexicon changed; inspect and approve its identity before updating the pin")
@@ -49,6 +49,13 @@ def audit(raw, snapshot, corpus):
     unresolved = []
     mapped = 0
     markers = 0
+    correspondences = {}
+    reviews = {row['verse']: row for row in (reviewed or {}).get('compounds', [])}
+    if reviewed and (reviewed.get('source_sha256') != source_hash
+                     or len(reviews) != len(reviewed['compounds'])):
+        raise ValueError("Compound reviews do not belong to this source")
+    if not set(reviews).issubset(set(keys)):
+        raise ValueError("Reviewed compound refers to an unknown verse")
     for key in keys:
         source = sorted(lexicon[key], key=lambda row: int(row['word']))
         target = sorted(native[key], key=lambda row: row['position_in_verse'])
@@ -62,18 +69,37 @@ def audit(raw, snapshot, corpus):
         if target[-1]['char_type_name'] != 'end' or any(x['char_type_name'] != 'word' for x in target[:-1]):
             raise ValueError(f"Wrong native ayah marker: {key}")
         markers += 1
-        if len(source) != len(target):
+        groups = [[word] for word in source[:-1]]
+        if key in reviews:
+            row = reviews[key]
+            position = row['native_position']
+            if row['source_positions'] != [position, position + 1]:
+                raise ValueError(f"Invalid reviewed compound positions: {key}")
+            item = target[position - 1]
+            source_group = source[position - 1:position + 1]
+            if (item['text'] != row['native_code'] or item['page_number'] != row['native_page']
+                    or [x['text'] for x in source_group] != row['source_texts']):
+                raise ValueError(f"Reviewed compound identity changed: {key}")
+            groups[position - 1:position + 1] = [source_group]
+        if len(groups) != len(target) - 1:
             unresolved.append(dict(verse=key, source_count=len(source), native_count=len(target),
                 reason="Different authored word boundaries; no guessed tail shift",
                 source_words=[dict(location=x['location'], text=x['text']) for x in source]))
         else:
             mapped += len(target) - 1
+            correspondences[key] = [dict(position=item['position_in_verse'],
+                native_word_id=item['id'], native_code=item['text'], page=item['page_number'],
+                source_locations=[word['location'] for word in group],
+                spoken_words=[word['text'] for word in group])
+                for item, group in zip(target[:-1], groups)]
     return dict(schema_version=1, source_sha256=source_hash,
-        strategy="Exact canonical verse key and authored position; never cross-database numeric ID",
+        strategy="Canonical verse key and authored position, plus pinned manually reviewed compounds; never cross-database numeric ID",
         verses_checked=len(keys), markers_checked=markers,
         position_compatible_verses=len(keys) - len(unresolved),
         position_compatible_words=mapped, unresolved_verses=unresolved,
         complete_correspondence_verified=not unresolved,
+        reviewed_compounds=len(reviews),
+        correspondences=correspondences,
         scope="Position audit only. Does not approve ASR, display text replacement or pronunciation grading.")
 
 
@@ -83,6 +109,8 @@ def main():
     parser.add_argument('--snapshot', type=Path, required=True)
     parser.add_argument('--canonical', type=Path, default=Path('ios/Athar/quran.json'))
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--reviewed-compounds', type=Path)
+    parser.add_argument('--word-script-output', type=Path)
     args = parser.parse_args()
     if zipfile.is_zipfile(args.lexicon):
         with zipfile.ZipFile(args.lexicon) as archive:
@@ -91,9 +119,20 @@ def main():
             raw = archive.read('imlaei-simple.json')
     else:
         raw = args.lexicon.read_bytes()
-    result = audit(raw, json.loads(args.snapshot.read_bytes()), json.loads(args.canonical.read_bytes()))
+    reviewed = json.loads(args.reviewed_compounds.read_bytes()) if args.reviewed_compounds else None
+    result = audit(raw, json.loads(args.snapshot.read_bytes()), json.loads(args.canonical.read_bytes()), reviewed)
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    # Keep the audit small; the exact correspondence is a separate source asset.
+    mapping = result.pop('correspondences')
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+    if args.word_script_output and result['complete_correspondence_verified']:
+        compact = {key: [[word['page'], word['native_code'], word['spoken_words']]
+                         for word in words] for key, words in mapping.items()}
+        args.word_script_output.parent.mkdir(parents=True, exist_ok=True)
+        args.word_script_output.write_text(json.dumps(dict(schema_version=1,
+            source_sha256=result['source_sha256'],
+            edition=dict(resource_group='mushafs', resource_id=1, resource_content_id=382),
+            groups=compact), ensure_ascii=False, separators=(',', ':')) + '\n')
     print(f"Checked {result['verses_checked']} verses and {result['markers_checked']} markers; "
           f"{len(result['unresolved_verses'])} boundary differences quarantined.")
     return 0 if result['complete_correspondence_verified'] else 2
