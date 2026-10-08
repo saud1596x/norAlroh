@@ -279,5 +279,7 @@ struct NoorPrivacyExport: Codable {
     var preCloudMerge: [String: Data]? = nil
     var syncJournal: Data? = nil
     var preReadingMerge: Data? = nil
+    var mushafStudy: MushafStudyArchive? = nil
+    var unreadableMushafStudy: Data? = nil
 
 }
