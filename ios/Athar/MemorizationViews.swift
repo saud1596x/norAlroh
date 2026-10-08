@@ -448,7 +448,7 @@ struct MemorizationView: View {
                     action("احفظ آية جديدة", detail: "اقرأ الآية، أخفها، ثم اكشف كلماتها بالتدرج", icon: "book.closed", number: "١")
                 }.accessibilityIdentifier("hifz.practice")
                 NavigationLink { SpeechRecitationView() } label: {
-                    action("سمّع بصوتك", detail: "نطاق تختاره، مع حفظ موضع المتابعة", icon: "mic", number: "٢")
+                    action("سمّع داخل المصحف", detail: "اختر مقطعك، وأخفِ الآيات وسجّل صوتك اختياريًا", icon: "mic", number: "٢")
                 }.accessibilityIdentifier("hifz.speech")
                 NavigationLink { MemorizationTestView() } label: {
                     action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")
