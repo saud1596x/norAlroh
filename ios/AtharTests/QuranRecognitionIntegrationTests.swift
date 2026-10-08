@@ -1,11 +1,47 @@
 import XCTest
 import AVFoundation
+import UIKit
 import WhisperKit
 @testable import Athar
 
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testRecognizedRevealKeepsActualPageAndAccessibleTextStable() async throws {
+        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
+        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let rows = try OriginalMushafRows.load(); try rows.validate(snapshot)
+        try OriginalMushafCompanion.register()
+        let fonts = MushafFonts(); await fonts.load("QCF2604"); XCTAssertNil(fonts.error)
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let page = OriginalPageData.page(604, snapshot: snapshot, rows: rows, keys: keys)
+        let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
+        canvas.hiddenTextAccessibilityHint = "نص الآية مخفي للتسميع؛ يظهر عندما يتعرف النظام على تلاوتك."
+        canvas.allowsVerseSelection = false
+        canvas.configure(page: page, corpus: corpus)
+        XCTAssertTrue(canvas.renderedSuccessfully)
+        let original = canvas.regions.map(\.rect)
+        let lines = canvas.rowGeometry.map(\.ink)
+        let ornaments = canvas.ornamentBounds
+        let hidden = Set(MushafStudyWordIndex(snapshot: snapshot, keys: keys).words["112:1"] ?? [])
+        XCTAssertFalse(hidden.isEmpty)
+        canvas.hiddenWordIDs = hidden
+        let elements = canvas.accessibilityElements as? [UIAccessibilityElement] ?? []
+        let verse = try XCTUnwrap(elements.first { $0.accessibilityIdentifier == "reader.verse.112:1" })
+        XCTAssertTrue(verse.accessibilityLabel?.contains("مخفي للتسميع") == true)
+        XCTAssertFalse(verse.accessibilityLabel?.contains("كشف الآية") == true)
+        XCTAssertFalse(verse.accessibilityLabel?.contains(corpus[111].ayahs[0].text) == true)
+        for id in hidden {
+            canvas.hiddenWordIDs.remove(id)
+            XCTAssertEqual(canvas.regions.map(\.rect), original)
+            XCTAssertEqual(canvas.rowGeometry.map(\.ink), lines)
+            XCTAssertEqual(canvas.ornamentBounds, ornaments)
+        }
+        XCTAssertTrue(verse.accessibilityLabel?.contains(corpus[111].ayahs[0].text) == true)
+    }
     @MainActor func testRecitationBuildContainsCompleteMushafResources() async throws {
         XCTAssertNotNil(Bundle.main.url(forResource: "qcf-v2-manifest", withExtension: "json"))
         for page in 1...604 {
