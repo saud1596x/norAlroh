@@ -8,10 +8,9 @@ final class NoorAllScreensTests: XCTestCase {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         capture(app, "01-home")
-        tap(app.buttons["home.reflection"], in: app)
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reflection.screen").firstMatch.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["reflection.save"].isEnabled)
-        capture(app, "25-reflection")
+        tap(app.buttons["home.myJourney"], in: app)
+        XCTAssertTrue(app.navigationBars["رحلتي"].waitForExistence(timeout: 10))
+        capture(app, "25-my-journey")
         back(app)
 
         selectNoorTab("المصحف", in: app)
@@ -106,9 +105,6 @@ final class NoorAllScreensTests: XCTestCase {
         back(app); back(app)
         tap(app.buttons["hifz.insights"], in: app)
         capture(app, "36-mastery-map")
-        back(app)
-        tap(app.buttons["hifz.similarities"], in: app)
-        capture(app, "20-similarities")
         back(app)
 
         tap(app.buttons["app.settings"], in: app)
