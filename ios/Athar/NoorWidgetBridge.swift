@@ -7,7 +7,7 @@ import WidgetKit
         let entries = QuranResources.data("adhkar").flatMap { try? JSONDecoder().decode(Collection.self, from: $0) }
         return entries?.entries.first { $0.id == "hisn-9-14" }?.text ?? ""
     }()
-    static func publish(data: DeviceData, memorization: MemorizationStore, page: Int) {
+    static func publish(data: DeviceData, memorization: MemorizationStore, page: Int, khatmah: KhatmahStore, salawat: NoorSalawatStore) {
         guard let file = NoorWidgetSnapshot.file() else { return }
         let plan = memorization.plan
         let practiced = memorization.progress.practiceDays.mapValues { keys in
@@ -21,9 +21,14 @@ import WidgetKit
             guard parts.count == 2, parts[0] == plan.chapter, (plan.from...plan.to).contains(parts[1]) else { return nil }
             return value.nextReview
         }
+        let journey = khatmah.active.map { plan in
+            NoorKhatmahWidgetState(firstPage: plan.firstPage, nextPage: plan.nextPage, completed: plan.completed.count,
+                paused: plan.paused, timeZone: plan.timeZone, days: plan.days.map { .init(date: $0.date, first: $0.first, last: $0.last) })
+        }
         let snapshot = NoorWidgetSnapshot(version: 1, updated: Date(), prayer: PrayerCalculator.inputs(data),
             page: min(604, max(1, page)), dailyTarget: memorization.dailyTarget, practiced: practiced,
-            reviewDates: dates, dua: dua, duaTitle: "دعاء بعد الوضوء")
+            reviewDates: dates, dua: dua, duaTitle: "دعاء بعد الوضوء", khatmah: journey,
+            salawat: salawat.counts, salawatTimeZone: TimeZone.current.identifier)
         do {
             try JSONEncoder().encode(snapshot).write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             WidgetCenter.shared.reloadAllTimelines()
@@ -55,7 +60,7 @@ import WidgetKit
         if Self.retiredHosts.contains(host) {
             destination = .init(host: "reading", page: savedPage); return true
         }
-        guard ["reading", "prayers", "dhikr", "ward", "review"].contains(host) else { return false }
+        guard ["reading", "prayers", "dhikr", "ward", "review", "khatmah", "salawat"].contains(host) else { return false }
         let page = Int(url.lastPathComponent)
         if host == "reading", let page, !(1...604).contains(page) { return false }
         destination = .init(host: host, page: page); return true
@@ -76,6 +81,8 @@ struct NoorWidgetGuide: View {
                 Label("آخر صفحة قرأتها", systemImage: "book")
                 Label("ورد اليوم", systemImage: "checkmark.circle")
                 Label("المراجعة المستحقة", systemImage: "arrow.clockwise")
+                Label("تقدم الختمة ووردها القادم", systemImage: "book.closed")
+                Label("عداد الصلاة على النبي", systemImage: "plus.circle")
             }
             Section {
                 Text("تتبع المواقيت آخر موقع صالح أو المدينة المختارة، وبمحرك الحساب نفسه المستخدم في التطبيق. يحدد النظام توقيت تحديث الأدوات؛ افتح التطبيق بعد السفر لتحديث الموقع.")

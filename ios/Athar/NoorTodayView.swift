@@ -3,6 +3,7 @@ import SwiftUI
 struct NoorTodayView: View {
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var memorization: MemorizationStore
+    @EnvironmentObject private var khatmah: KhatmahStore
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     private var page: Int { max(1, min(lastPage, 604)) }
@@ -81,8 +82,17 @@ struct NoorTodayView: View {
                     .overlay { RoundedRectangle(cornerRadius: 28).stroke(Theme.buttonInk.opacity(0.15), lineWidth: 1).allowsHitTesting(false) }
                     .noorEntrance(delay: 0.08)
                 NavigationLink { KhatmahJourneyView() } label: {
-                    Card { Label("رحلة الختمة", systemImage: "book.closed"); Text("خطتك ووردك اليومي").font(.subheadline).foregroundStyle(.secondary) }
+                    Card {
+                        Label("رحلة الختمة", systemImage: "book.closed")
+                        if let plan = khatmah.active {
+                            Text("\(plan.completed.count) من \(605 - plan.firstPage) صفحة").font(.headline)
+                            Text(plan.finished != nil ? "اكتملت رحلتك" : plan.paused ? "الرحلة متوقفة مؤقتًا" : "تابع من الصفحة \(plan.nextPage)").font(.subheadline).foregroundStyle(.secondary)
+                        } else { Text("خطتك ووردك اليومي").font(.subheadline).foregroundStyle(.secondary) }
+                    }
                 }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.khatmah")
+                NavigationLink { NoorSalawatView() } label: {
+                    Card { Label("الصلاة على النبي ﷺ", systemImage: "plus.circle"); Text("عدادك اليومي وهدفك الشخصي").font(.subheadline).foregroundStyle(.secondary) }
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.salawat")
                 HStack {
                     Text("خطواتك اليوم").font(.title3.bold())
                     Spacer()

@@ -163,6 +163,7 @@ struct SettingsView: View {
     @EnvironmentObject var notifications: PrayerNotifications
     @EnvironmentObject var prayerLocation: PrayerLocationController
     @EnvironmentObject var dhikrCounters: DhikrCounterStore
+    @EnvironmentObject var salawat: NoorSalawatStore
     @EnvironmentObject var memorization: MemorizationStore
     @EnvironmentObject var recitation: LocalRecitationRecorder
     @EnvironmentObject var speech: LegacySpeechArchive
@@ -205,7 +206,7 @@ struct SettingsView: View {
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: try MushafRecordingArchive.exportMetadata())
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: try MushafRecordingArchive.exportMetadata(), salawatArchive: salawat.exportBytes)
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
                     }
@@ -247,6 +248,7 @@ struct SettingsView: View {
                 guard NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
                 guard recitation.erase() else { exportMessage = recitation.message; return }
                 guard await KhatmahStore.shared.erase() else { exportMessage = KhatmahStore.shared.error; return }
+                guard salawat.erase() else { exportMessage = salawat.error; return }
                 do { try MushafRecordingArchive.erase() }
                 catch { exportMessage = "تعذّر حذف تسجيلات التسميع. حاول بعد فتح قفل الجهاز."; return }
                 if store.erase() {

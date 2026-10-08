@@ -8,6 +8,7 @@ struct AtharApp: App {
     @StateObject private var notifications = PrayerNotifications()
     @StateObject private var prayerLocation = PrayerLocationController()
     @StateObject private var dhikrCounters = DhikrCounterStore()
+    @StateObject private var salawat = NoorSalawatStore()
     @StateObject private var memorization = MemorizationStore()
     @StateObject private var recitation = LocalRecitationRecorder()
     @StateObject private var speech = LegacySpeechArchive()
@@ -26,6 +27,8 @@ struct AtharApp: App {
                 .environmentObject(notifications)
                 .environmentObject(prayerLocation)
                 .environmentObject(dhikrCounters)
+                .environmentObject(salawat)
+                .environmentObject(khatmah)
                 .environmentObject(memorization)
                 .environmentObject(recitation)
                 .environmentObject(speech)
@@ -37,7 +40,7 @@ struct AtharApp: App {
                 .preferredColorScheme(nil)
                 .onOpenURL { if !widgetRouter.open($0) { account.handle($0) } }
                 .onReceive(store.$data) { data in
-                    NoorWidgetBridge.publish(data: data, memorization: memorization, page: widgetPage)
+                    NoorWidgetBridge.publish(data: data, memorization: memorization, page: widgetPage, khatmah: khatmah, salawat: salawat)
                     Task { @MainActor in account.captureLocalChanges() }
                 }
                 .onChange(of: account.uid) { _, _ in account.authenticationChanged() }
@@ -45,14 +48,20 @@ struct AtharApp: App {
                 .onReceive(memorization.$practice.dropFirst()) { value in if value == nil { Task { @MainActor in account.captureLocalChanges() } } }
                 .onReceive(memorization.$progress.dropFirst()) { _ in
                     Task { @MainActor in
-                        NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage)
+                        NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage, khatmah: khatmah, salawat: salawat)
                         account.captureLocalChanges(memoryChanged: true)
                     }
                 }
                 .onReceive(memorization.$plan.dropFirst()) { _ in
-                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage); account.captureLocalChanges(planChanged: true) }
+                    Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage, khatmah: khatmah, salawat: salawat); account.captureLocalChanges(planChanged: true) }
                 }
-                .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page); account.captureLocalChanges() }
+                .onReceive(khatmah.$archive.dropFirst()) { _ in
+                    Task { @MainActor in publishWidgets() }
+                }
+                .onReceive(salawat.$counts.dropFirst()) { _ in
+                    Task { @MainActor in publishWidgets() }
+                }
+                .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page, khatmah: khatmah, salawat: salawat); account.captureLocalChanges() }
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
                 .onChange(of: store.data.prayerScheduleKey, initial: true) { _, _ in
@@ -67,6 +76,7 @@ struct AtharApp: App {
                 .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
+                        publishWidgets()
                         Task { await khatmah.refreshReminders() }
                         account.attach(store: store, memorization: memorization)
                         prayerLocation.activate(store: store)
@@ -84,6 +94,9 @@ struct AtharApp: App {
             await retiredFriday.cleanup()
             PrayerBackgroundRefresh.submit()
         }
+    }
+    private func publishWidgets() {
+        NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage, khatmah: khatmah, salawat: salawat)
     }
 }
 
@@ -155,6 +168,8 @@ struct RootView: View {
             case "dhikr": selectedTab = 3
             case "reading": selectedTab = 1; widgetDestination = destination
             case "review": selectedTab = 4; widgetDestination = destination
+            case "khatmah": selectedTab = 0; widgetDestination = destination
+            case "salawat": selectedTab = 3; widgetDestination = destination
             default: selectedTab = 4
             }
             widgetRouter.destination = nil
@@ -164,8 +179,16 @@ struct RootView: View {
                 InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: destination.page)
             } else {
                 NavigationStack {
-                    MemorizationTestView()
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { widgetDestination = nil } } }
+                    Group {
+                        if destination.host == "khatmah" { KhatmahJourneyView() }
+                        else if destination.host == "salawat" { NoorSalawatView() }
+                        else { MemorizationTestView() }
+                    }
+                        .toolbar {
+                            if destination.host != "khatmah" {
+                                ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { widgetDestination = nil } }
+                            }
+                        }
                 }
             }
         }

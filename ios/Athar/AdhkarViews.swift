@@ -125,6 +125,9 @@ struct AdhkarView: View {
                         Picker("عرض الأذكار", selection: $favoritesOnly) {
                             Text("جميع الأبواب").tag(false); Text("المفضلة").tag(true)
                         }.pickerStyle(.segmented)
+                        NavigationLink { NoorSalawatView() } label: {
+                            Label("عداد الصلاة على النبي ﷺ", systemImage: "plus.circle").frame(minHeight: 48)
+                        }.accessibilityIdentifier("adhkar.salawat")
                         ForEach(groups) { group in
                             HStack(spacing: 8) {
                                 NavigationLink { DhikrListView(group: group, entries: content.entries(in: group)) } label: {
