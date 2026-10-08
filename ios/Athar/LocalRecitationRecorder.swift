@@ -54,7 +54,7 @@ enum RecitationArchive {
         do {
             stop()
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
+            try MushafCaptureAudio.configure(session)
             try session.setActive(true)
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             let temporary = file.deletingLastPathComponent().appendingPathComponent(".capture-" + UUID().uuidString + ".m4a")
