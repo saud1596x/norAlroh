@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import Combine
 
 @MainActor final class MushafVerseAudio: ObservableObject {
     @Published var playing: String?
@@ -100,6 +101,12 @@ struct InteractiveMushafReader: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @StateObject private var fonts = MushafFonts()
     @StateObject private var audio = MushafVerseAudio()
+    @StateObject private var studyRecorder = MushafSessionRecorder()
+    @EnvironmentObject private var legacyRecorder: LocalRecitationRecorder
+    @EnvironmentObject private var legacySpeech: LocalSpeechRecitation
+    @State private var recordingsOpen = false
+    @State private var recordingSession: UUID?
+    private let meterTick = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
     let chapter: Int; let ayah: Int; let initialPage: Int?
     @State private var snapshot: QCFV2Snapshot?
     @State private var rows: OriginalMushafRows?
@@ -121,6 +128,8 @@ struct InteractiveMushafReader: View {
     @State private var studyIndex: MushafStudyWordIndex?
     @State private var audioHelpRequest: String?
     @State private var studySummary = false
+    @State private var finishAfterSetupDismiss = false
+    @State private var studyError: String?
     @Environment(\.scenePhase) private var scenePhase
     private var study: MushafStudySession? { studyOpen ? memorization.mushafStudy.pending : nil }
     private var hiddenStudyWords: Set<Int> {
@@ -139,7 +148,7 @@ struct InteractiveMushafReader: View {
             GeometryReader { geometry in
                 if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: selected, reduceMotion: reduced || store.data.lowMotion,
-                        hiddenWordIDs: hiddenStudyWords,
+                        hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
                         onVerse: { key in
                             guard !studyOpen else { return }
                             if let key {
@@ -211,7 +220,13 @@ struct InteractiveMushafReader: View {
         .task { await load() }
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
         .onDisappear { pauseStudy(); audio.stop(); audio.onVerse = nil }
-        .onChange(of: scenePhase) { _, value in if value != .active { pauseStudy() } }
+        .onChange(of: scenePhase) { _, value in
+            if value == .background || (value == .inactive && !studyRecorder.requestingPermission) { pauseStudy() }
+        }
+        .onReceive(meterTick) { _ in studyRecorder.meters() }
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { event in
+            if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { pauseStudy() }
+        }
         .onChange(of: number) { _, value in lastPage = value }
         .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; studySetup = true } }) { selection in
             VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
@@ -219,9 +234,14 @@ struct InteractiveMushafReader: View {
             })
                 .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $studySetup) {
+        .sheet(isPresented: $studySetup, onDismiss: {
+            if finishAfterSetupDismiss { finishAfterSetupDismiss = false; finishStudy() }
+        }) {
             MushafStudySetup(page: number, pageKeys: Array(Set(page?.words.map(\.verse) ?? [])).sorted { keys.firstIndex(of: $0)! < keys.firstIndex(of: $1)! },
                 initialKey: studyStartKey ?? page?.words.first?.verse ?? "1:1", onOpen: openStudy)
+        }
+        .sheet(isPresented: $recordingsOpen) {
+            if let recordingSession { MushafRecordingList(session: recordingSession, recorder: studyRecorder) }
         }
         .sheet(isPresented: $studySummary) {
             MushafStudyResultView().environmentObject(memorization)
@@ -233,6 +253,30 @@ struct InteractiveMushafReader: View {
             }.navigationTitle("الانتقال في المصحف").toolbar { Button("إغلاق") { picker = false } } }
         }
         .alert("التلاوة", isPresented: Binding(get: { audio.error != nil }, set: { if !$0 { audio.error = nil } })) { Button("حسنًا") { audio.error = nil } } message: { Text(audio.error ?? "") }
+        .alert("التسجيل المحلي", isPresented: Binding(get: { studyRecorder.message != nil && !recordingsOpen }, set: { if !$0 { studyRecorder.message = nil } })) {
+            if studyRecorder.permissionDenied {
+                Button("إعدادات الميكروفون") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+            }
+            Button("متابعة التسميع", role: .cancel) {
+                studyRecorder.message = nil
+                if studyOpen, study?.phase == .paused {
+                    if !memorization.updateMushafStudy({ $0.phase = .active; return true }) { showStudySaveError() }
+                }
+            }
+        } message: { Text(studyRecorder.message ?? "") }
+        .alert("حفظ الجلسة", isPresented: Binding(get: { studyError != nil }, set: { if !$0 { studyError = nil } })) {
+            Button("حسنًا") { studyError = nil }
+        } message: { Text(studyError ?? "") }
+    }
+    private func toggleStudyMicrophone(_ session: MushafStudySession) {
+        if studyRecorder.recording || studyRecorder.requestingPermission { studyRecorder.stop() }
+        else {
+            audio.stop(); audioHelpRequest = nil; legacyRecorder.stop(); legacySpeech.stop()
+            Task { await studyRecorder.start(session: session) }
+        }
+    }
+    private func openStudyRecordings(_ session: MushafStudySession) {
+        pauseStudy(); recordingSession = session.id; recordingsOpen = true
     }
     private func showStudySetup(_ key: String? = nil) {
         audio.stop(); audioHelpRequest = nil; clearManualSelection()
@@ -240,6 +284,9 @@ struct InteractiveMushafReader: View {
     }
     private func openStudy() {
         guard let session = memorization.mushafStudy.pending, studyIndex != nil else { return }
+        if session.phase == .finishing || session.currentKey == nil {
+            finishAfterSetupDismiss = true; studySetup = false; return
+        }
         studyOpen = true; tools = true; studySetup = false; followStudy(session)
     }
     private func followStudy(_ session: MushafStudySession) {
@@ -251,20 +298,23 @@ struct InteractiveMushafReader: View {
     }
     private func pauseStudy() {
         guard studyOpen else { return }
-        audio.stop(); audioHelpRequest = nil
-        _ = memorization.updateMushafStudy { session in
-            guard session.phase == .active else { return false }; session.phase = .paused; return true
-        }
+        studyRecorder.stop(); audio.stop(); audioHelpRequest = nil
+        guard study?.phase == .active else { return }
+        if !memorization.updateMushafStudy({ $0.phase = .paused; return true }) { showStudySaveError() }
     }
     private func finishStudy() {
-        audio.stop(); audioHelpRequest = nil
+        studyRecorder.stop(); audio.stop(); audioHelpRequest = nil
         if memorization.finishMushafStudy() { studyOpen = false; selected = nil; studySummary = true }
+        else { showStudySaveError() }
     }
     private func answerStudy(_ assessment: String) {
         audio.stop(); audioHelpRequest = nil
         if memorization.updateMushafStudy({ $0.answer(assessment) }), let updated = memorization.mushafStudy.pending {
             if updated.currentKey == nil { finishStudy() } else { followStudy(updated) }
-        }
+        } else { showStudySaveError() }
+    }
+    private func showStudySaveError() {
+        studyError = memorization.error ?? "تعذّر حفظ التغيير. احتُفظ بالجولة السابقة؛ أعد المحاولة أو صدّر بياناتك من الإعدادات."
     }
     private func studyControls(_ session: MushafStudySession) -> some View {
         VStack(spacing: 0) {
@@ -280,12 +330,20 @@ struct InteractiveMushafReader: View {
                     }.accessibilityIdentifier("study.finish")
                 }
                 HStack {
+                    Button { toggleStudyMicrophone(session) } label: {
+                        Group {
+                            if studyRecorder.requestingPermission { ProgressView() }
+                            else { Image(systemName: studyRecorder.recording ? "mic.fill" : "mic") }
+                        }.frame(width: 44, height: 44).contentShape(Rectangle())
+                    }.disabled(session.phase != .active)
+                        .accessibilityLabel(studyRecorder.recording ? "إيقاف التسجيل وحفظ المقطع" : studyRecorder.requestingPermission ? "إلغاء بدء التسجيل" : "تسجيل صوتي محلي اختياري")
+                        .accessibilityIdentifier("study.mic")
                     Text("\(title) · الآية \(session.currentKey?.split(separator: ":").last.map(String.init) ?? "—")").lineLimit(1)
                     Spacer()
                     Button {
                         if session.phase == .active { pauseStudy() }
                         else if session.phase == .paused {
-                            _ = memorization.updateMushafStudy { $0.phase = .active; return true }
+                            if !memorization.updateMushafStudy({ $0.phase = .active; return true }) { showStudySaveError() }
                         }
                     } label: {
                         Text(session.phase == .paused ? "استئناف" : "إيقاف مؤقت")
@@ -295,14 +353,20 @@ struct InteractiveMushafReader: View {
             }.frame(height: 88)
             Spacer(minLength: 0)
             VStack(spacing: 0) {
-                Text(session.phase == .paused ? "الجلسة متوقفة · تقدمك محفوظ" : "تقييم ذاتي؛ التحليل الصوتي غير متاح")
-                    .font(.caption).frame(height: 44).accessibilityIdentifier("study.status")
+                HStack {
+                    Text(session.phase == .paused ? "الجلسة متوقفة · تقدمك محفوظ" : studyRecorder.recording ? "تسجيل محلي · \(MushafAudioTime.text(studyRecorder.elapsed)) · تقييم ذاتي" : "تقييم ذاتي؛ التحليل الصوتي غير متاح")
+                        .font(.caption).lineLimit(1).accessibilityIdentifier("study.status")
+                    Spacer(minLength: 4)
+                    Button { openStudyRecordings(session) } label: {
+                        Text("التسجيلات").font(.caption).frame(minWidth: 64, minHeight: 44).contentShape(Rectangle())
+                    }.accessibilityIdentifier("study.recordings")
+                }.frame(height: 44)
                 HStack(spacing: 4) {
                     Button("كشف كلمة") { revealStudy(all: false) }.accessibilityIdentifier("study.revealWord").disabled(session.assistance.revealAll || session.assistance.visibleWords >= (session.currentKey.flatMap { studyIndex?.words[$0]?.count } ?? 0))
                     Button("كشف الآية") { revealStudy(all: true) }.accessibilityIdentifier("study.revealAll").disabled(session.assistance.revealAll || session.assistance.visibleWords >= (session.currentKey.flatMap { studyIndex?.words[$0]?.count } ?? 0))
                     Button(audio.loadingKey != nil || audio.playing != nil ? "إيقاف الصوت" : "استماع") {
                         if audio.loadingKey != nil || audio.playing != nil { audio.stop(); audioHelpRequest = nil }
-                        else if let key = session.currentKey { audioHelpRequest = key; audio.play([key]) }
+                        else if let key = session.currentKey { studyRecorder.stop(); audioHelpRequest = key; audio.play([key]) }
                     }.accessibilityIdentifier("study.listen")
                 }.buttonStyle(MushafStudyButtonStyle()).disabled(session.phase != .active)
                 HStack(spacing: 4) {
@@ -323,7 +387,8 @@ struct InteractiveMushafReader: View {
     }
     private func revealStudy(all: Bool) {
         guard let session = study, let key = session.currentKey, let count = studyIndex?.words[key]?.count else { return }
-        _ = memorization.updateMushafStudy { $0.reveal(wordCount: count, all: all) }
+        guard session.phase == .active, !session.assistance.revealAll, session.assistance.visibleWords < count else { return }
+        if !memorization.updateMushafStudy({ $0.reveal(wordCount: count, all: all) }) { showStudySaveError() }
     }
     private func readerControlMeasurement(_ key: String) -> some View {
         GeometryReader { geometry in
@@ -408,7 +473,9 @@ struct InteractiveMushafReader: View {
                 if studyOpen {
                     guard audioHelpRequest == key else { return }
                     audioHelpRequest = nil
-                    _ = memorization.updateMushafStudy { $0.recordAudioHelp(for: key) }
+                    if !memorization.updateMushafStudy({ $0.recordAudioHelp(for: key) }) {
+                        audio.stop(); pauseStudy(); showStudySaveError()
+                    }
                     return
                 }
                 manualSelection = nil
