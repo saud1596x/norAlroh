@@ -81,6 +81,25 @@ final class QuranWordAlignmentTests: XCTestCase {
         XCTAssertEqual(tracker.evidence.first?.end, 1.8)
         XCTAssertFalse(tracker.revealedIDs.contains(103))
     }
+    func testSingleGroupScopeRequiresItsFullFormAndStrongerConfidence() throws {
+        // Alignment inputs are explicit unit-test evidence, not live ASR.
+        var tracker = QuranRecitationTracker(expected: [
+            .init(id: 51, verse: "55:64", page: 533, aliases: [["مدهامتان"]])
+        ])
+        let take = UUID()
+        XCTAssertTrue(try tracker.consume([.init(text: "مدهامتان", start: 0, end: 1, probability: 0.94)], takeID: take).isEmpty)
+        XCTAssertTrue(try tracker.consume([.init(text: "مدهامت", start: 0, end: 1, probability: 0.99)], takeID: take).isEmpty)
+        XCTAssertEqual(try tracker.consume([.init(text: "مدهامتان", start: 0, end: 1, probability: 0.97)], takeID: take).map(\.nativeID), [51])
+        XCTAssertEqual(tracker.evidence.first?.minimumConfidence, 0.97)
+        var compound = QuranRecitationTracker(expected: [word(71, [["بعد", "ما"]])])
+        XCTAssertTrue(try compound.consume([.init(text: "بعد", start: 0, end: 1, probability: 0.99)], takeID: take).isEmpty)
+        XCTAssertEqual(try compound.consume([
+            .init(text: "بعد", start: 0, end: 1, probability: 0.99),
+            .init(text: "ما", start: 1, end: 2, probability: 0.99)
+        ], takeID: take).map(\.nativeID), [71])
+        var multiple = QuranRecitationTracker(expected: [word(1, [["الله"]]), word(2, [["الصمد"]])])
+        XCTAssertTrue(try multiple.consume([.init(text: "الله", start: 0, end: 1, probability: 0.99)], takeID: take).isEmpty)
+    }
     func testDistantReturnNeedsUniqueLongAnchorAndDoesNotRevealSkippedText() throws {
         let words = [word(1, [["قل"]]), word(2, [["هو"]]), word(3, [["الله"]])]
             + (4...30).map { word($0, [["فاصل"]]) }
