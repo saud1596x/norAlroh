@@ -74,6 +74,9 @@ struct OriginalPageData {
             refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
         }
     }
+    var allowsVerseSelection = true {
+        didSet { if oldValue != allowsVerseSelection { refreshAccessibilityLabels() } }
+    }
     private var decorationPaths: [CGPath] = []
     var ornamentBounds: [CGRect] { decorationPaths.map(\.boundingBoxOfPath) }
     struct RowGeometry { let line: Int; let kind: String; var ink: CGRect }
@@ -215,8 +218,11 @@ struct OriginalPageData {
     private func refreshAccessibilityLabels() {
         let hiddenVerses = Set(regions.filter { hiddenWordIDs.contains($0.word) }.map(\.verse))
         for element in accessibilityElements as? [MushafVerseAccessibility] ?? [] {
+            let key = element.verseKey
+            element.accessibilityTraits = allowsVerseSelection ? .button : .staticText
+            element.action = allowsVerseSelection ? { [weak self] in self?.onVerse?(key) } : nil
             element.accessibilityLabel = element.heading + ". " + (hiddenVerses.contains(element.verseKey)
-                ? "نص الآية مخفي للتدريب. استخدم كشف الكلمات للمساعدة." : element.fullText)
+                ? "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة." : element.fullText)
         }
     }
     /// A title and its separate basmala share the space between actual body ink.
@@ -366,7 +372,7 @@ struct OriginalPageData {
     var heading = ""
     var fullText = ""
     var action: (() -> Void)?
-    override func accessibilityActivate() -> Bool { action?(); return true }
+    override func accessibilityActivate() -> Bool { guard let action else { return false }; action(); return true }
 }
 
 @MainActor final class OriginalMushafViewport: UIScrollView, UIScrollViewDelegate {
@@ -374,6 +380,10 @@ struct OriginalPageData {
     private var fitted: CGFloat = 0
     var onTurn: ((Int) -> Void)?
     var onToggleTools: (() -> Void)?
+    private var selectionGesture: UILongPressGestureRecognizer?
+    var allowsVerseSelection = true {
+        didSet { canvas.allowsVerseSelection = allowsVerseSelection; selectionGesture?.isEnabled = allowsVerseSelection }
+    }
     private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
     var canTurnPages: Bool {
         onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
@@ -391,6 +401,7 @@ struct OriginalPageData {
         contentSize = OriginalMushafCanvas.pageSize
         let tap = UITapGestureRecognizer(target: self, action: #selector(tappedOnViewport(_:)))
         let selection = UILongPressGestureRecognizer(target: self, action: #selector(selectedOnViewport(_:)))
+        selectionGesture = selection
         selection.minimumPressDuration = 0.4
         selection.allowableMovement = 10
         tap.require(toFail: selection)
@@ -459,11 +470,13 @@ struct OriginalPageData {
 struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
+    var allowsVerseSelection = true
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     var onTurn: ((Int) -> Void)? = nil
     var onToggleTools: (() -> Void)? = nil
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
+        view.allowsVerseSelection = allowsVerseSelection
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
         view.onToggleTools = onToggleTools
