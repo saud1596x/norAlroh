@@ -1,0 +1,57 @@
+import XCTest
+import AVFoundation
+import WhisperKit
+@testable import Athar
+
+/// Real Core ML inference on identified reference audio; this is not a live
+/// microphone journey and must not be presented as one in release evidence.
+final class QuranRecognitionIntegrationTests: XCTestCase {
+    func testBundledOfflineModelProducesTimedQuranAnchorsAndRejectsSilence() async throws {
+        let bundle = Bundle(for: Self.self)
+        let url = try XCTUnwrap(bundle.url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let worker = QuranRecognitionWorker()
+        try await worker.prepare()
+        let result = try await worker.recognize(.init(samples: samples, startFrame: 0, endFrame: Int64(samples.count)))
+        let expected = ["قل", "هو", "الله", "احد"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        }
+        var tracker = QuranRecitationTracker(expected: expected)
+        let take = UUID()
+        for run in result.runs { try tracker.consume(run, takeID: take) }
+        XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, 2, "A bundled model must demonstrate useful timed Quran recognition, not merely load.")
+        XCTAssertTrue(tracker.evidence.allSatisfy { $0.end <= Double(samples.count) / 16_000 + 0.1 })
+        let silent = try await worker.recognize(.init(samples: Array(repeating: 0, count: 128_000), startFrame: 0, endFrame: 128_000))
+        XCTAssertTrue(silent.runs.isEmpty, "No acoustic evidence means no progressive reveal.")
+    }
+
+    func testActualAudioAndSessionEvidenceSurviveIndependentReopening() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journal = QuranRecitationJournal(root: root)
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        try journal.create(record)
+        var take = QuranRecitationTake()
+        let file = journal.audio(session: record.id, take: take.id)
+        record.takes = [take]; record.phase = .recording; try journal.save(record)
+        let writer = try QuranPCMWriter(url: file, onWindow: { _ in }, onFailure: { XCTFail("Unexpected recording failure: \($0)") })
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        for start in stride(from: 0, to: samples.count, by: 4096) {
+            writer.append(Array(samples[start..<min(start + 4096, samples.count)]))
+        }
+        let saved: Result<Int64, Error> = await withCheckedContinuation { continuation in
+            writer.finish { continuation.resume(returning: $0) }
+        }
+        take.frames = try saved.get(); take.closed = true
+        record.takes = [take]; record.phase = .paused; record.recognitionUnavailable = true
+        try journal.save(record)
+        let reopened = try QuranRecitationJournal(root: root).load(record.id)
+        XCTAssertEqual(reopened.takes[0].frames, Int64(samples.count))
+        let audio = try AVAudioFile(forReading: file)
+        XCTAssertEqual(audio.length, Int64(samples.count))
+        let player = try AVAudioPlayer(contentsOf: file)
+        XCTAssertTrue(player.prepareToPlay())
+        XCTAssertEqual(player.duration, Double(samples.count) / 16_000, accuracy: 0.02)
+    }
+}
