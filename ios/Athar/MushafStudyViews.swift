@@ -254,11 +254,14 @@ enum MushafAudioTime {
 }
 
 /// Durable access to finished sessions, independent of the latest summary.
+struct MushafRecordingSelection: Identifiable {
+    let id: UUID
+}
+
 struct MushafRecordingBrowser: View {
     @StateObject private var recorder = MushafSessionRecorder()
     @State private var sessions: [MushafRecordingSessionRow] = []
-    @State private var selected: UUID?
-    @State private var opened = false
+    @State private var selected: MushafRecordingSelection?
     @State private var error: String?
     var body: some View {
         ScrollView {
@@ -269,7 +272,7 @@ struct MushafRecordingBrowser: View {
                 }
                 ForEach(sessions) { session in
                 Button {
-                    selected = session.id; opened = true
+                    selected = MushafRecordingSelection(id: session.id)
                 } label: {
                     HStack(spacing: 16) {
                         Image(systemName: "waveform").font(.title2).foregroundStyle(Theme.gold)
@@ -292,8 +295,8 @@ struct MushafRecordingBrowser: View {
         }.background(Theme.background)
         .navigationTitle("تسجيلات التسميع")
         .task { reloadSessions() }
-        .sheet(isPresented: $opened, onDismiss: reloadSessions) {
-            if let selected { MushafRecordingList(session: selected, recorder: recorder) }
+        .sheet(item: $selected, onDismiss: reloadSessions) { selection in
+            MushafRecordingList(session: selection.id, recorder: recorder)
         }
         .onDisappear { recorder.stop() }
     }

@@ -55,7 +55,7 @@ struct InteractiveMushafReader: View {
     @StateObject private var recitation = QuranRecitationController()
     @AppStorage("noor.recitation.pending") private var pendingRecitation = ""
     @EnvironmentObject private var legacyRecorder: LocalRecitationRecorder
-    @State private var recordingsOpen = false
+    @State private var recordingSheet: MushafRecordingSelection?
     @State private var recordingsAfterResult = false
     @State private var recordingSession: UUID?
     let chapter: Int; let ayah: Int; let initialPage: Int?
@@ -212,11 +212,14 @@ struct InteractiveMushafReader: View {
                 initialKey: visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
         }
         .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
-        .sheet(isPresented: $recordingsOpen) {
-            if let recordingSession { MushafRecordingList(session: recordingSession, recorder: studyRecorder) }
+        .sheet(item: $recordingSheet) { selection in
+            MushafRecordingList(session: selection.id, recorder: studyRecorder)
         }
         .sheet(isPresented: $studySummary, onDismiss: {
-            if recordingsAfterResult { recordingsAfterResult = false; recordingsOpen = true }
+            if recordingsAfterResult {
+                recordingsAfterResult = false
+                if let recordingSession { recordingSheet = MushafRecordingSelection(id: recordingSession) }
+            }
         }) {
             if let record = recitation.record {
                 QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onRecordings: {
@@ -280,7 +283,7 @@ struct InteractiveMushafReader: View {
                     Button("تسجيلات الجلسة") {
                         Task {
                             await recitation.pause()
-                            if let id = recitation.record?.id { recordingSession = id; recordingsOpen = true }
+                            if let id = recitation.record?.id { recordingSheet = MushafRecordingSelection(id: id) }
                         }
                     }
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
