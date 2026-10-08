@@ -86,7 +86,8 @@ public struct QuranAlignedWord {
         let expanded = text.replacingOccurrences(of: "\u{0670}", with: "ا")
             .replacingOccurrences(of: "ٱ", with: "ا")
         let scalars = expanded.decomposedStringWithCompatibilityMapping.unicodeScalars.filter {
-            CharacterSet.letters.contains($0) && $0.value != 0x0640
+            CharacterSet.letters.contains($0) && !CharacterSet.nonBaseCharacters.contains($0)
+                && $0.value != 0x0640
                 && $0.value != 0x06E5 && $0.value != 0x06E6
         }
         return String(String.UnicodeScalarView(scalars))
