@@ -62,6 +62,14 @@ final class QuranWordAlignmentTests: XCTestCase {
         XCTAssertEqual(tracker.evidence.count, 6)
         XCTAssertEqual(tracker.evidence.last?.start, 9)
         XCTAssertEqual(tracker.revealedIDs, Set([1, 2, 3, 4]))
+        let bytes = try JSONEncoder().encode(tracker.evidence)
+        let saved = try JSONDecoder().decode([QuranWordEvidence].self, from: bytes)
+        var restored = try QuranRecitationTracker(expected: words, restoring: saved)
+        XCTAssertEqual(restored.cursor, 2)
+        XCTAssertEqual(restored.evidence, tracker.evidence)
+        XCTAssertEqual(try restored.consume(heard(["قل", "هو"], offset: 8), takeID: take).count, 0)
+        XCTAssertEqual(try restored.consume(heard(["الله", "أحد"]), takeID: UUID()).count, 2)
+        XCTAssertThrowsError(try QuranRecitationTracker(expected: [word(900, [["قل"]])], restoring: saved))
     }
     func testCompoundNeedsBothWordsAndDoesNotShiftFollowingIDs() throws {
         var tracker = QuranRecitationTracker(expected: [word(71, [["بعد", "ما"]]),
