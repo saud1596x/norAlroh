@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "source_sha256": "60b5341ecf04b6dbcdd2c42cc9b377003d9185ac6a76ad104a109ed669b0cf3c",
+  "strategy": "Canonical verse key and authored position, plus pinned manually reviewed compounds; never cross-database numeric ID",
+  "verses_checked": 6236,
+  "markers_checked": 6236,
+  "position_compatible_verses": 6236,
+  "position_compatible_words": 77429,
+  "unresolved_verses": [],
+  "complete_correspondence_verified": true,
+  "reviewed_compounds": 3,
+  "scope": "Position audit only. Does not approve ASR, display text replacement or pronunciation grading."
+}
