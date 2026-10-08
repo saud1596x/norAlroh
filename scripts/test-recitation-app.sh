@@ -30,9 +30,10 @@ xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharTests/QuranRecognitionIntegrationTests \
   -only-testing:AtharTests/MushafRecordingTests \
   -resultBundlePath release/recitation-app/recognition-integration.xcresult || noor_gate=$?
-# This is real permission-denial UI evidence, not a live recitation claim.
+python3 scripts/seed-recording-ui.py "$noor_recitation_device"
+# Actual reader/permission UI and reference-audio transport, not live recitation.
 xcrun simctl privacy "$noor_recitation_device" reset microphone com.saud1596x.nooralruh || true
-xcrun simctl io "$noor_recitation_device" recordVideo --codec=h264 --force release/recitation-app/microphone-denial.mp4 &
+xcrun simctl io "$noor_recitation_device" recordVideo --codec=h264 --force release/recitation-app/reader-and-recording-ui.mp4 &
 noor_video_pid=$!
 stop_video() { kill -INT "$noor_video_pid" 2>/dev/null || true; wait "$noor_video_pid" || true; }
 trap stop_video EXIT
@@ -40,6 +41,7 @@ xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testPersistedReferenceRecordingTransportRemovalAndRelaunch \
   -resultBundlePath release/recitation-app/microphone-denial.xcresult || noor_gate=$?
 stop_video
 trap - EXIT
