@@ -1,0 +1,60 @@
+import XCTest
+@testable import Athar
+
+final class NoorKhatmahProtectionTests: XCTestCase {
+    private func date(_ text: String) -> Date { ISO8601DateFormatter().date(from: text)! }
+    private func contract() -> NoorKhatmahWardContract {
+        NoorKhatmahWardContract(planID: UUID(), firstPage: 590, timeZone: "Asia/Riyadh", days: [
+            .init(date: date("2026-10-08T21:00:00Z"), first: 590, last: 595),
+            .init(date: date("2026-10-10T21:00:00Z"), first: 596, last: 604)
+        ], nextPage: 590)
+    }
+    func testConfirmedPagesReleaseWardAndRestDayUntilNextRiyadhMidnight() throws {
+        var value = contract()
+        XCTAssertTrue(value.valid)
+        XCTAssertNil(value.ward(at: date("2026-10-08T20:59:59Z")))
+        XCTAssertEqual(value.ward(at: date("2026-10-08T21:00:00Z"))?.last, 595)
+        value.confirm(planID: value.planID, nextPage: 593)
+        XCTAssertEqual(value.ward(at: date("2026-10-09T10:00:00Z"))?.first, 593)
+        value.confirm(planID: value.planID, nextPage: 596)
+        XCTAssertNil(value.ward(at: date("2026-10-10T20:59:59Z")))
+        XCTAssertEqual(value.ward(at: date("2026-10-10T21:00:00Z"))?.first, 596)
+        let restored = try JSONDecoder().decode(NoorKhatmahWardContract.self, from: JSONEncoder().encode(value))
+        XCTAssertEqual(restored, value)
+        value.confirm(planID: value.planID, nextPage: 605)
+        XCTAssertTrue(value.finished)
+        XCTAssertNil(value.ward(at: date("2026-10-15T00:00:00Z")))
+    }
+    func testAnotherKhatmahBackwardProgressAndInvalidPagesCannotUnlock() {
+        var value = contract()
+        value.confirm(planID: UUID(), nextPage: 605)
+        value.confirm(planID: value.planID, nextPage: 606)
+        value.confirm(planID: value.planID, nextPage: 589)
+        XCTAssertEqual(value.nextPage, 590)
+        XCTAssertEqual(value.ward(at: date("2026-10-12T00:00:00Z"))?.last, 604)
+        value.confirm(planID: value.planID, nextPage: 595)
+        value.confirm(planID: value.planID, nextPage: 591)
+        XCTAssertEqual(value.nextPage, 595)
+        XCTAssertEqual(value.ward(at: date("2026-10-09T00:00:00Z"))?.first, 595)
+    }
+    func testRevisedActualPlanCanBeProtectedWithoutCountingOldPagesAgain() throws {
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "Asia/Riyadh")!
+        let now = date("2026-10-09T00:00:00Z")
+        let plan = try KhatmahCalculator.make(first: 590, date: now, weekdays: Set(1...7), daily: 6, deadline: nil, reminder: nil, calendar: calendar)
+        let read = try KhatmahCalculator.confirm(plan, first: 590, last: 595, date: now)
+        let revised = try KhatmahCalculator.revised(read, date: now, weekdays: Set(1...7), daily: 3, deadline: nil, reminder: nil)
+        let value = NoorKhatmahWardContract(planID: revised.id, firstPage: revised.days.first!.first, timeZone: revised.timeZone,
+            days: revised.days.map { .init(date: $0.date, first: $0.first, last: $0.last) }, nextPage: revised.nextPage)
+        XCTAssertTrue(value.valid)
+        XCTAssertEqual(value.ward(at: now)?.first, 596)
+        XCTAssertEqual(value.ward(at: now)?.last, 598)
+    }
+    func testMalformedScheduleDoesNotShield() {
+        let original = contract()
+        let invalid = NoorKhatmahWardContract(planID: original.planID, firstPage: 590, timeZone: "Asia/Riyadh",
+            days: [.init(date: date("2026-10-09T00:00:00Z"), first: 590, last: 595),
+                   .init(date: date("2026-10-11T00:00:00Z"), first: 597, last: 604)], nextPage: 590)
+        XCTAssertFalse(invalid.valid)
+        XCTAssertNil(invalid.ward(at: date("2026-10-12T00:00:00Z")))
+    }
+}
