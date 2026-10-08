@@ -96,6 +96,48 @@ final class NoorMushafStudyUITests: XCTestCase {
         capture(app, "study-range-skip-without-false-assessment")
 
     }
+    func testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable() {
+        // CI grants the simulator's actual OS microphone permission before this
+        // separate journey. No app test mode or invented recording is injected.
+        let app = XCUIApplication(); application = app; app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        app.buttons["reader.study"].tap()
+        XCTAssertTrue(app.buttons["study.start"].waitForExistence(timeout: 10)); app.buttons["study.start"].tap()
+        XCTAssertTrue(app.buttons["study.mic"].waitForExistence(timeout: 10)); app.buttons["study.mic"].tap()
+        let status = app.staticTexts["study.status"]
+        let captured = NSPredicate { object, _ in
+            guard let text = object as? XCUIElement else { return false }
+            let label = text.label
+            return label.contains("تسجيل محلي") && (5...59).contains(where: { label.contains(String(format: "0:%02d", $0)) })
+        }
+        let recording = expectation(for: captured, evaluatedWith: status)
+        wait(for: [recording], timeout: 20)
+        capture(app, "study-actual-microphone-recording")
+        XCUIDevice.shared.press(.home); app.activate()
+        XCTAssertFalse(app.buttons["study.remembered"].isEnabled, "Background must pause and finalize the recording")
+        capture(app, "study-background-paused-with-durable-take")
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        app.buttons["reader.study"].tap()
+        XCTAssertTrue(app.buttons["study.resume"].waitForExistence(timeout: 10)); app.buttons["study.resume"].tap()
+        XCTAssertTrue(app.buttons["study.recordings"].waitForExistence(timeout: 10)); app.buttons["study.recordings"].tap()
+        let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "study.recording.play.")).firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 10), "A real decodable recording must survive termination")
+        XCTAssertGreaterThanOrEqual(play.frame.height, 44)
+        capture(app, "study-recording-restored-and-playable")
+        play.tap()
+        let playing = expectation(for: NSPredicate(format: "label CONTAINS %@", "إيقاف المقطع"), evaluatedWith: play)
+        wait(for: [playing], timeout: 5)
+        capture(app, "study-real-recording-playback")
+        play.tap(); app.buttons["study.recordings.close"].tap()
+        app.buttons["study.finish"].tap()
+        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 10))
+        XCTAssertEqual(numbers(app.staticTexts["study.result.answered"].label), [0, 15])
+        XCTAssertEqual(numbers(app.staticTexts["study.result.helped"].label), [0, 0], "Recording must never invent a Quran assessment or assistance")
+        capture(app, "study-recording-finish-without-automatic-grades")
+    }
     private func numbers(_ text: String) -> [Int] {
         text.split { $0.wholeNumberValue == nil }.map { $0.reduce(0) { $0 * 10 + ($1.wholeNumberValue ?? 0) } }
     }
