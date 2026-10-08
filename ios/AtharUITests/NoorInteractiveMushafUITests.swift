@@ -45,10 +45,16 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                 XCTAssertTrue(actualTitle.waitForExistence(timeout: 10), key)
                 let titleDigits = actualTitle.label.compactMap { $0.wholeNumberValue }
                 XCTAssertEqual(titleDigits.reduce(0) { $0 * 10 + $1 }, number, "Correct ayah title \(key)")
+                let normalizedTitle = actualTitle.label.folding(options: .diacriticInsensitive, locale: Locale(identifier: "ar"))
+                XCTAssertTrue(normalizedTitle.contains(chapter == 112 ? "الإخلاص".folding(options: .diacriticInsensitive, locale: Locale(identifier: "ar")) : chapter == 113 ? "الفلق" : "الناس"),
+                    "The surah and ayah must belong to the same selected word: \(key)")
+                XCTAssertEqual(page.frame, originalFrame, "Selection must retain the reading viewport")
                 if key == "114:1" {
                     capture(app, "text-reader-604-highlight-tools")
                     app.buttons["verse.tafsir"].tap()
                     XCTAssertTrue(app.staticTexts["verse.tafsir.text"].waitForExistence(timeout: 45))
+                    XCTAssertTrue(app.staticTexts["verse.tafsir.ayah"].exists)
+                    XCTAssertTrue(app.staticTexts["verse.sheet.title"].label.contains("١") || app.staticTexts["verse.sheet.title"].label.contains("1"))
                     capture(app, "text-reader-604-tafsir")
                     app.buttons["verse.tafsir.close"].tap()
                     verse.press(forDuration: 0.6)
