@@ -1,5 +1,6 @@
 import XCTest
 import AVFoundation
+import Combine
 @testable import Athar
 
 final class MushafRecordingTests: XCTestCase {
@@ -69,6 +70,22 @@ final class MushafRecordingTests: XCTestCase {
         let export = try XCTUnwrap(MushafRecordingArchive.exportMetadata(base: root).first)
         XCTAssertEqual(Set(export.files.map(\.id)), [first, second]); XCTAssertTrue(export.files.allSatisfy { $0.bytes > 0 })
         XCTAssertEqual(export.metadata?.id, value.id); XCTAssertNil(export.unreadableMetadata)
+    }
+    @MainActor func testActualLocalPlaybackCompletesAndPreservesOriginalAACFile() async throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let value = session(); let directory = try MushafRecordingArchive.register(value, base: root)
+        let url = directory.appendingPathComponent(UUID().uuidString + ".m4a")
+        try audio(url, seconds: 1); let bytes = try Data(contentsOf: url)
+        let take = try XCTUnwrap(MushafRecordingArchive.takes(session: value.id, base: root).first)
+        let recorder = MushafSessionRecorder(base: root, permission: { false }, isActive: { true })
+        recorder.play(take)
+        XCTAssertEqual(recorder.playing, take.id); XCTAssertNil(recorder.message)
+        let ended = expectation(description: "Actual AVAudioPlayer completion")
+        let observation = recorder.$playing.dropFirst().filter { $0 == nil }.prefix(1).sink { _ in ended.fulfill() }
+        await fulfillment(of: [ended], timeout: 6)
+        withExtendedLifetime(observation) {}
+        XCTAssertNil(recorder.playing); XCTAssertNil(recorder.message)
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
     }
     func testUnreadableMetadataAndAudioArePreservedAndConflictingHeaderCannotReplaceSession() throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
