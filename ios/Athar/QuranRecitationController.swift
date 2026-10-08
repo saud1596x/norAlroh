@@ -14,10 +14,20 @@ import Combine
     @Published var message: String?
     private let worker = QuranRecognitionWorker()
     private let requestPermission: () async -> Bool
-    init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() }) {
+    private let archiveRoot: URL?
+    private let makeCapture: (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture
+    private let setSessionActive: (Bool) throws -> Void
+    init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
+         archiveRoot: URL? = nil,
+         makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
+             try QuranMicrophoneCapture(writer: $0, onFailure: $1)
+         }, setSessionActive: @escaping (Bool) throws -> Void = { active in
+             try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
+         }) {
         self.requestPermission = requestPermission
+        self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
-    private var capture: QuranMicrophoneCapture?
+    private var capture: (any QuranAudioCapture)?
     private var mailbox: QuranWindowMailbox?
     private var pump: Task<Void, Never>?
     private var capturing = false
@@ -27,7 +37,8 @@ import Combine
     private var finishRequest = false
     private var closing = false
     private var journal: QuranRecitationJournal? {
-        (try? MushafRecordingArchive.root()).map(QuranRecitationJournal.init(root:))
+        if let archiveRoot { return QuranRecitationJournal(root: archiveRoot) }
+        return (try? MushafRecordingArchive.root()).map(QuranRecitationJournal.init(root:))
     }
     private func save(_ value: QuranRecitationRecord) throws {
         guard let journal else { throw QuranJournalFailure.invalidRecord }
@@ -150,9 +161,9 @@ import Combine
         finishRequest = false; next.finishedAt = nil
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
-        try audio.setActive(true)
+        try setSessionActive(true)
         var started = false
-        defer { if !started { try? audio.setActive(false, options: .notifyOthersOnDeactivation) } }
+        defer { if !started { try? setSessionActive(false) } }
         let take = QuranRecitationTake()
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id),
@@ -166,7 +177,7 @@ import Combine
         next.takes.append(take); next.phase = .recording
         do {
             try journal.save(next); record = next
-            let microphone = try QuranMicrophoneCapture(writer: writer, onFailure: { [weak self] _ in
+            let microphone = try makeCapture(writer, { [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }
                     self.message = "انقطع إدخال الصوت. احتُفظ بالتسجيل؛ استأنف عندما يصبح الميكروفون متاحًا."
@@ -188,7 +199,6 @@ import Combine
             record = next
             do { try journal.save(next) }
             catch { message = "الصوت محفوظ، لكن تعذّر حفظ حالة الجلسة. أعد محاولة الإنهاء." }
-            try? audio.setActive(false, options: .notifyOthersOnDeactivation)
             throw error
         }
     }
@@ -273,7 +283,7 @@ import Combine
             catch { record = current; state = .paused; message = "الصوت محفوظ، لكن تعذّر حفظ ملخص الجلسة. أعد محاولة الإنهاء." }
         }
         closing = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        try? setSessionActive(false)
     }
     func finish() async {
         finishRequest = true

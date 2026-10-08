@@ -3,7 +3,12 @@ import Foundation
 
 /// Audio capture never waits for model loading, inference or UI updates.
 /// The pipe serializes tap shutdown with conversion and drains the final PCM.
-final class QuranMicrophoneCapture {
+protocol QuranAudioCapture: AnyObject {
+    func start() throws
+    func stop() async -> Result<Int64, Error>
+}
+
+final class QuranMicrophoneCapture: QuranAudioCapture {
     private let engine: AVAudioEngine
     private let pipe: Pipe
     private var installed = false

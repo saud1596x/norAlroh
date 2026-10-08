@@ -41,7 +41,16 @@ struct InteractiveMushafReader: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduced
     @StateObject private var fonts = MushafFonts()
-    @StateObject private var audio = MushafVerseAudio()
+    @StateObject private var audio: MushafVerseAudio = {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-NoorAcceptanceUnavailableVerseAudio") {
+            // Exercise real AVPlayer failure, never a staged successful result.
+            let unavailable = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp3")
+            return MushafVerseAudio(source: { _ in unavailable })
+        }
+        #endif
+        return MushafVerseAudio()
+    }()
     @StateObject private var studyRecorder = MushafSessionRecorder()
     @StateObject private var recitation = QuranRecitationController()
     @AppStorage("noor.recitation.pending") private var pendingRecitation = ""
@@ -224,7 +233,6 @@ struct InteractiveMushafReader: View {
                 Button("انتقل") { if let value = ArabicSearch.integer(input), (1...604).contains(value) { turn(value - number); picker = false } }
             }.navigationTitle("الانتقال في المصحف").toolbar { Button("إغلاق") { picker = false } } }
         }
-        .alert("التلاوة", isPresented: Binding(get: { audio.error != nil }, set: { if !$0 { audio.error = nil } })) { Button("حسنًا") { audio.error = nil } } message: { Text(audio.error ?? "") }
         .onChange(of: recitation.record?.id) { _, value in
             if let value { pendingRecitation = value.uuidString }
         }
@@ -242,12 +250,14 @@ struct InteractiveMushafReader: View {
                 Task { await recitation.pause() }
             }
         }
-        .alert("التسميع", isPresented: Binding(get: { recitation.message != nil }, set: { if !$0 { recitation.message = nil } })) {
-            if recitation.permissionDenied {
+        .alert(audio.error == nil ? "التسميع" : "التلاوة", isPresented: Binding(
+            get: { audio.error != nil || recitation.message != nil },
+            set: { if !$0 { audio.error = nil; recitation.message = nil } })) {
+            if audio.error == nil && recitation.permissionDenied {
                 Button("إعدادات الميكروفون") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
             }
-            Button("حسنًا", role: .cancel) { recitation.message = nil }
-        } message: { Text(recitation.message ?? "") }
+            Button("حسنًا", role: .cancel) { audio.error = nil; recitation.message = nil }
+        } message: { Text(audio.error ?? recitation.message ?? "") }
     }
     private func showStudySetup(_ key: String? = nil) {
         startRecitation(keys: key.map { [$0] } ?? visiblePageKeys)

@@ -39,9 +39,13 @@ struct QuranSessionResult: View {
                         metric("مدة التسجيل", value: MushafAudioTime.text(record.duration))
                         metric("كلمات متتبّعة", value: String(trackedCount))
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                    Button(action: onRecordings) {
-                        Label("استمع إلى تسجيلك", systemImage: "play.fill").frame(maxWidth: .infinity, minHeight: 48)
-                    }.buttonStyle(.borderedProminent).tint(Theme.gold).accessibilityIdentifier("study.result.recordings")
+                    if record.takes.contains(where: { $0.frames > 0 }) {
+                        Button(action: onRecordings) {
+                            Label("استمع إلى تسجيلك", systemImage: "play.fill").frame(maxWidth: .infinity, minHeight: 48)
+                        }.buttonStyle(.borderedProminent).tint(Theme.gold).accessibilityIdentifier("study.result.recordings")
+                    } else {
+                        Text("لم يُحفظ تسجيل صوتي لهذه الجلسة.").font(.subheadline).foregroundStyle(.secondary)
+                    }
                     if let key = unresolved.first {
                         Button { onReview(key) } label: {
                             Label("راجع المقاطع غير المتتبّعة", systemImage: "book").frame(maxWidth: .infinity, minHeight: 44)
