@@ -9,6 +9,18 @@ final class PublishingContentTests: XCTestCase {
         XCTAssertEqual(Set(content.documents.map(\.id)), ["privacy", "terms", "support"])
         XCTAssertTrue(content.documents.allSatisfy { !$0.sections.isEmpty })
     }
+    func testOfflinePoliciesDescribeActualSelfStudyAndPreservedLegacyFiles() throws {
+        let content = try XCTUnwrap(NoorLegalContent.current)
+        let privacy = try XCTUnwrap(content.documents.first { $0.id == "privacy" })
+        let recording = try XCTUnwrap(privacy.sections.first { $0.title == "تسجيل التسميع" })
+        XCTAssertTrue(recording.text.contains("داخل المصحف"))
+        XCTAssertTrue(recording.text.contains("تقييم ذاتي"))
+        XCTAssertTrue(recording.text.contains("لا يستبدل"))
+        let all = content.documents.flatMap { $0.sections.map(\.text) }.joined(separator: "\n")
+        XCTAssertFalse(all.contains("جهّز النموذج")); XCTAssertFalse(all.contains("Hugging Face"))
+        XCTAssertFalse(all.contains("المتابعة الصوتية الاختيارية تقارن"))
+        XCTAssertTrue(all.contains("مواضع المتابعة")); XCTAssertTrue(all.contains("ملفات النموذج القديم"))
+    }
     func testIncompleteOrUnknownLegalResourceIsRejected() throws {
         let url = try XCTUnwrap(Bundle.main.url(forResource: "app-legal", withExtension: "json"))
         let data = try Data(contentsOf: url)
