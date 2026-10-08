@@ -2,23 +2,42 @@ import SwiftUI
 
 struct NoorLaunchGate: View {
     @EnvironmentObject private var store: AtharStore
+    @EnvironmentObject private var account: NoorAccountStore
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(\.scenePhase) private var phase
     @State private var finished = false
+    @AppStorage("noor.welcome.completed") private var welcomeCompleted = false
+    #if DEBUG || NOOR_ACCEPTANCE_TESTING
+    @State private var preparedAcceptanceWelcome = false
+    #endif
     private var still: Bool { reduced || store.data.lowMotion || ProcessInfo.processInfo.isLowPowerModeEnabled }
     var body: some View {
         ZStack {
-            if finished { RootView().transition(.opacity) }
+            if finished {
+                if welcomeCompleted || account.signedIn { RootView().transition(.opacity) }
+                else { NoorWelcomeView { welcomeCompleted = true }.transition(.opacity) }
+            }
             else { NoorLaunchView { finish() }.transition(.opacity) }
         }.background(Theme.background)
             .task(id: phase) {
-                guard !finished, phase == .active else { return }
+                guard phase == .active else { return }
+                #if DEBUG || NOOR_ACCEPTANCE_TESTING
+                if !preparedAcceptanceWelcome {
+                    preparedAcceptanceWelcome = true
+                    if ProcessInfo.processInfo.arguments.contains("-NoorAcceptanceShowWelcome") {
+                        // Reset only this test's first-use flag, never personal data.
+                        welcomeCompleted = false
+                    }
+                }
+                #endif
+                guard !finished else { return }
                 if still { finish(); return }
                 do { try await Task.sleep(for: .milliseconds(1250)) }
                 catch { return }
                 if !Task.isCancelled { finish() }
             }
             .onChange(of: still) { _, value in if value { finish() } }
+            .onChange(of: account.signedIn) { _, value in if value { welcomeCompleted = true } }
     }
     private func finish() {
         guard !finished else { return }
