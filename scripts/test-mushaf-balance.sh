@@ -31,6 +31,7 @@ layout_exit=0
 xcodebuild test-without-building "${common[@]}" -destination "platform=iOS Simulator,id=$NOOR_BALANCE_COMPACT" \
   -only-testing:AtharTests/InteractiveMushafTests -only-testing:AtharTests/MushafViewportTests \
   -only-testing:AtharTests/QCFV2ContentTests -parallel-testing-enabled NO \
+  -only-testing:AtharTests/MushafRepetitionTests \
   -resultBundlePath release/mushaf-balance/all-604-pages.xcresult || layout_exit=$?
 # Export failed native pages as well; diagnostic capture must never turn a
 # failed layout gate green. A crash may leave only a partial result bundle.
