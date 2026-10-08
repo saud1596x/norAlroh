@@ -1,0 +1,18 @@
+{
+  "scope": "Real khatmah progress and salawat count; hardware widget gallery acceptance remains separate",
+  "sha256": {
+    ".github/workflows/widget-progress.yml": "67c41d4b38ea731a78d210f979b819207e437b759b033c772c282541a551e517",
+    "ios/Athar/AdhkarViews.swift": "f1272ebd6ebd85fba5dcf2ca4329e6683baad03c3518a773f3fde0b8e3a2701f",
+    "ios/Athar/AtharApp.swift": "8ee823b37096c4ca25fc7a8f7329dfc5e7e625e2510a7a3ee706db64c9f3304d",
+    "ios/Athar/FeatureViews.swift": "39b34b3ee669c1dd11dcb754e20a71568f508b6b440208ce11619dc1c9b3cd3b",
+    "ios/Athar/NoorSalawat.swift": "32362086771912eabeb0c28d9fdef00871c4166415eb6e9965784f353f1ad66c",
+    "ios/Athar/NoorTodayView.swift": "7a488a9a8b5f95ad7094de9765f068fa1ccc08e32ca30047cd26a876c69f8d0e",
+    "ios/Athar/NoorWidgetBridge.swift": "26831c5e2c1027dbf8fe262d02fe060a42a0a66b79afa45bbc1bdff24d0fdfd4",
+    "ios/Athar/Store.swift": "ca832d5565b8dd26306c78d1a82b4c32ebfbdab90f616630989d9769abd469ed",
+    "ios/AtharTests/NoorSalawatTests.swift": "ba08e4a1d57c19d193947ca65feb2020246c741cd138b5c843427d6e75393c46",
+    "ios/AtharUITests/NoorSalawatUITests.swift": "43452626390d41936e8153dbde2c3f707a6be79f5b11303e51d60a99714152f9",
+    "ios/NoorWidgetShared/WidgetSnapshot.swift": "698b9bbcc82f1d166cac493ea5265bb72341a8a512d7e87f9ba929b3d3d0e360",
+    "ios/NoorWidgets/NoorWidgets.swift": "1a2b453e06716b0eaa86db881d34a75123ad037e55f32ead622ed0306dd23264",
+    "scripts/test-widget-progress.sh": "258e85aa8f3e927d20560267ec4011f827ba8b385e3760fac14ccd158bb38349"
+  }
+}
