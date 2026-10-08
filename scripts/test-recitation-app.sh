@@ -2,33 +2,53 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p release/recitation-app
+noor_configuration="${NOOR_TEST_CONFIGURATION:-Debug}"
+[[ "$noor_configuration" == Debug || "$noor_configuration" == Release ]] || { echo 'NOOR_TEST_CONFIGURATION must be Debug or Release.' >&2; exit 2; }
+noor_display="${NOOR_DISPLAY_CLASS:-compact}"
+[[ "$noor_display" == compact || "$noor_display" == large ]] || { echo 'NOOR_DISPLAY_CLASS must be compact or large.' >&2; exit 2; }
+export NOOR_DISPLAY_CLASS="$noor_display"
 python3 scripts/select-xcode.py > release/recitation-app/xcode.env
 source release/recitation-app/xcode.env
 export DEVELOPER_DIR
 xcodegen generate --spec ios/project.yml --project ios
 noor_recitation_device=$(python3 - <<'PY'
-import json, subprocess
+import json, os, subprocess
 devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
 for group in devices['devices'].values():
-    phone=next((x for x in group if x.get('isAvailable') and x['name'].startswith('iPhone')), None)
+    large=os.environ['NOOR_DISPLAY_CLASS']=='large'
+    phone=next((x for x in group if x.get('isAvailable') and x['name'].startswith('iPhone') and ('Pro Max' in x['name'])==large), None)
     if phone:
         print(phone['udid'])
         break
 else:
-    raise SystemExit('No available iPhone simulator')
+    raise SystemExit('Requested iPhone display class unavailable: '+os.environ['NOOR_DISPLAY_CLASS'])
 PY
 )
-xcrun simctl boot "$noor_recitation_device" || true
+noor_device_state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["state"] for rows in d["devices"].values() for x in rows if x["udid"]==sys.argv[1]))' "$noor_recitation_device")
+if [[ "$noor_device_state" != Booted ]]; then xcrun simctl boot "$noor_recitation_device"; fi
 xcrun simctl bootstatus "$noor_recitation_device" -b
-common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Debug
+python3 - "$noor_recitation_device" "$noor_configuration" <<'PYEVIDENCE'
+import json, subprocess, sys
+from pathlib import Path
+udid, configuration=sys.argv[1:]
+devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
+phone=next(x for rows in devices['devices'].values() for x in rows if x['udid']==udid)
+Path('release/recitation-app/acceptance-context.json').write_text(json.dumps({
+    'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+    'configuration':configuration,'simulator':phone['name'],'udid':udid,
+    'evidenceScope':'Simulator recognition, reference-recording transport and reader interaction; not physical-device voice or notification-sound acceptance'
+},indent=2)+'\n')
+PYEVIDENCE
+common=(-project ios/Athar.xcodeproj -scheme Athar -configuration "$noor_configuration"
   -destination "platform=iOS Simulator,id=$noor_recitation_device"
   -derivedDataPath release/recitation-app-derived-data CODE_SIGNING_ALLOWED=NO
   ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO)
 xcodebuild build-for-testing "${common[@]}"
 noor_gate=0
+native_tests=(-only-testing:AtharTests/QuranRecognitionIntegrationTests -only-testing:AtharTests/MushafRecordingTests)
+if [[ "${NOOR_ALL_NATIVE_TESTS:-0}" == 1 ]]; then native_tests=(-only-testing:AtharTests); fi
 xcodebuild test-without-building "${common[@]}" \
-  -only-testing:AtharTests/QuranRecognitionIntegrationTests \
-  -only-testing:AtharTests/MushafRecordingTests \
+  "${native_tests[@]}" \
   -resultBundlePath release/recitation-app/recognition-integration.xcresult || noor_gate=$?
 python3 scripts/seed-recording-ui.py "$noor_recitation_device"
 # Actual reader/permission UI and reference-audio transport, not live recitation.
