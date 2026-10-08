@@ -321,9 +321,9 @@ private struct VerseTools: View {
                 Section {
                     Button("الاستماع من هذه الآية", systemImage: "play.fill") {
                         audio.play((selection.ayah...surah.ayahs.count).map { "\(selection.chapter):\($0)" }); dismiss()
-                    }.accessibilityIdentifier("verse.play")
-                    Button("التفسير", systemImage: "book") { showTafsir = true }.accessibilityIdentifier("verse.tafsir")
-                    Button(store.data.bookmarks.contains(selection.key) ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية", systemImage: "bookmark") { store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah) }.accessibilityIdentifier("verse.bookmark")
+                    }.accessibilityIdentifier("verse.sheet.play")
+                    Button("التفسير", systemImage: "book") { showTafsir = true }.accessibilityIdentifier("verse.sheet.tafsir")
+                    Button(store.data.bookmarks.contains(selection.key) ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية", systemImage: "bookmark") { store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah) }.accessibilityIdentifier("verse.sheet.bookmark")
                 }
                 }
                 Section("التكرار") {
@@ -346,10 +346,10 @@ private struct VerseTools: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("\(surah.name) · الآية \(selection.ayah)").font(.headline)
-                        .accessibilityIdentifier("verse.tools.title")
+                        .accessibilityIdentifier("verse.sheet.title")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("إغلاق") { dismiss() }.accessibilityIdentifier(initialAction == .tafsir ? "verse.tafsir.close" : "verse.tools.close")
+                    Button("إغلاق") { dismiss() }.accessibilityIdentifier(initialAction == .tafsir ? "verse.tafsir.close" : "verse.sheet.close")
                 }
             }
             .onAppear { repeatEnd = selection.ayah }
