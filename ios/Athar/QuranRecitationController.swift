@@ -12,6 +12,10 @@ import Combine
     @Published private(set) var permissionDenied = false
     @Published var message: String?
     private let worker = QuranRecognitionWorker()
+    private let requestPermission: () async -> Bool
+    init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() }) {
+        self.requestPermission = requestPermission
+    }
     private var capture: QuranMicrophoneCapture?
     private var mailbox: QuranWindowMailbox?
     private var pump: Task<Void, Never>?
@@ -51,7 +55,7 @@ import Combine
         let token = UUID(); revision = token; message = nil; permissionDenied = false
         record = nil; tracker = nil; revealed = []; currentVerse = nil
         state = .permission
-        guard await AVAudioApplication.requestRecordPermission() else {
+        guard await requestPermission() else {
             guard revision == token else { return }
             permissionDenied = true; state = .idle
             message = "اسمح بالميكروفون من إعدادات الجهاز لبدء التسميع. يمكنك متابعة قراءة المصحف دون إذن."; return
@@ -94,8 +98,10 @@ import Combine
         do {
             guard let journal else { throw QuranJournalFailure.invalidRecord }
             var restored = try journal.load(id)
-            guard restored.phase != .finished,
-                  MushafStudySession(keys: restored.keys, scope: .range, page: restored.originPage).valid(corpus: corpus) else {
+            if restored.phase == .finished {
+                record = restored; state = .stopped; return
+            }
+            guard MushafStudySession(keys: restored.keys, scope: .range, page: restored.originPage).valid(corpus: corpus) else {
                 throw QuranJournalFailure.invalidRecord
             }
             try bind(snapshot: snapshot, corpus: corpus)
@@ -123,7 +129,7 @@ import Combine
         guard state == .paused, !closing, record != nil else { return }
         permissionDenied = false; state = .permission
         let token = revision
-        guard await AVAudioApplication.requestRecordPermission() else {
+        guard await requestPermission() else {
             guard revision == token else { return }
             state = .paused; permissionDenied = true; message = "الميكروفون غير مسموح. تقدمك وتسجيلاتك محفوظة."; return
         }
