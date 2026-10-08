@@ -24,6 +24,14 @@ import Foundation
     private var count = 1
     private var gap = 0
     private var reportedStart = false
+    // Native CI needs to distinguish corrupt media, buffering and simulator
+    // audio-route failure without exposing URLs or a user's recording content.
+    private(set) var lastPlaybackDiagnostic = ""
+    var playbackDiagnostic: String {
+        guard let player else { return lastPlaybackDiagnostic }
+        let item = player.currentItem
+        return "player=\(player.status.rawValue), item=\(item?.status.rawValue ?? -1), timeControl=\(player.timeControlStatus.rawValue), waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "none"), seconds=\(player.currentTime().seconds), duration=\(item?.duration.seconds ?? .nan), itemError=\((item?.error as NSError?)?.code ?? 0), outputs=\(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","))"
+    }
     private let source: (String) -> URL?
     var onVerse: ((String) -> Void)?
     init(source: ((String) -> URL?)? = nil, loadTimeoutSeconds: Double = 15) {
@@ -39,7 +47,7 @@ import Foundation
             "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1]))
     }
     func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0) {
-        stop(); error = nil
+        stop(); error = nil; lastPlaybackDiagnostic = ""
         guard !keys.isEmpty, (1...20).contains(repetitions), (0...30).contains(delaySeconds),
               keys.allSatisfy({ source($0) != nil }) else {
             error = "تعذّر تشغيل نطاق التلاوة أو خيارات التكرار."; return
@@ -49,6 +57,7 @@ import Foundation
     }
     private func releasePlayer() {
         loadDeadline?.cancel(); loadDeadline = nil
+        if player != nil { lastPlaybackDiagnostic = playbackDiagnostic }
         player?.pause(); player = nil; observation = nil; playbackObservation = nil
         if let end { NotificationCenter.default.removeObserver(end) }; end = nil
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
