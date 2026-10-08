@@ -9,7 +9,8 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         capture(app, "01-home")
         tap(app.buttons["home.myJourney"], in: app)
-        XCTAssertTrue(app.navigationBars["رحلتي"].waitForExistence(timeout: 10))
+        // This screen uses its own visible heading, rather than a navigation-bar title.
+        XCTAssertTrue(app.staticTexts["journey.month"].waitForExistence(timeout: 20))
         capture(app, "25-my-journey")
         back(app)
 

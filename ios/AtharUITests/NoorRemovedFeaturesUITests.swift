@@ -18,7 +18,8 @@ final class NoorRemovedFeaturesUITests: XCTestCase {
         XCTAssertTrue(journey.exists && journey.isHittable)
         capture(app, "home-with-retired-actions-removed")
         journey.tap()
-        XCTAssertTrue(app.navigationBars["رحلتي"].waitForExistence(timeout: 10))
+        // This screen uses its own visible heading, rather than a navigation-bar title.
+        XCTAssertTrue(app.staticTexts["journey.month"].waitForExistence(timeout: 20))
         capture(app, "journey-still-reachable")
         selectNoorTab("الحفظ", in: app)
         for _ in 0..<4 { app.swipeUp() }
