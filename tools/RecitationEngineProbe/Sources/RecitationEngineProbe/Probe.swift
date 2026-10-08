@@ -16,6 +16,7 @@ struct ProbeWindow: Codable {
     let text: String
     let words: [WordTiming]
     let noSpeechProbabilities: [Float]
+    let validationIssues: [String]
 }
 
 struct ProbeReport: Codable {
@@ -66,26 +67,49 @@ struct ProbeReport: Codable {
                 let elapsed = Date().timeIntervalSince(began)
                 let words = output.flatMap(\.allWords)
                 let duration = Float(end - start) / 16_000
-                guard words.allSatisfy({ word in
-                    word.start.isFinite && word.end.isFinite && word.probability.isFinite
-                        && word.start >= 0 && word.end >= word.start
-                        && word.end <= duration + 0.1 && (0...1).contains(word.probability)
-                }) else { throw ProbeFailure("Invalid real word timing in \(fixture.name)") }
+                var issues: [String] = []
+                for (index, word) in words.enumerated() {
+                    if !word.start.isFinite || !word.end.isFinite || !word.probability.isFinite {
+                        issues.append("Word \(index): non-finite timing or confidence")
+                    } else if word.start < 0 || word.end < word.start || word.end > duration + 0.1 {
+                        issues.append("Word \(index): \(word.start)...\(word.end) outside audio 0...\(duration)")
+                    } else if !(0...1).contains(word.probability) {
+                        issues.append("Word \(index): confidence outside 0...1")
+                    }
+                }
+                if fixture.kind == "silence" && !words.isEmpty {
+                    issues.append("Model emitted words for a digital-silence control")
+                }
                 windows.append(.init(fixture: fixture.name, kind: fixture.kind,
                     audioStart: Double(start) / 16_000, audioEnd: Double(end) / 16_000,
                     inferenceSeconds: elapsed, text: output.map(\.text).joined(separator: " "),
-                    words: words, noSpeechProbabilities: output.flatMap(\.segments).map(\.noSpeechProb)))
+                    words: words, noSpeechProbabilities: output.flatMap(\.segments).map(\.noSpeechProb),
+                    validationIssues: issues))
+                // Keep every decoded window, including failures. A late control
+                // failure must not destroy earlier real model evidence.
+                try write(windows, to: arguments[4])
+                print("\(fixture.name) [\(Double(start) / 16_000)...\(Double(end) / 16_000)] \(words.count) words, \(elapsed)s inference: \(output.map(\.text).joined(separator: " ").prefix(180))")
+                for issue in issues { print("REJECTED WINDOW: \(issue)") }
             }
         }
+        await engine.unloadModels()
+        let invalid = windows.filter { !$0.validationIssues.isEmpty }
+        guard invalid.isEmpty else {
+            throw ProbeFailure("Native model failed \(invalid.count) window controls; raw evidence saved. Do not connect raw output to reader progress.")
+        }
+        print("Saved \(windows.count) actual Core ML decoding windows. Accuracy requires reviewing the report; execution success is not feature acceptance.")
+    }
+
+    private static func write(_ windows: [ProbeWindow], to path: String) throws {
         let report = ProbeReport(modelRevision: "0338074ac8d662f6f52c5d66b433cac74202158e",
             runtimeRevision: "1e2a163736dfa5a198e637ae44c114e1c6d5cc2d",
             platform: "macOS Core ML; not a live iPhone session",
             scope: "Professional reference clips plus explicitly assembled repetitions, returns, silence and noise. Raw recognition diagnostics only; no pronunciation, Tajweed or reader grade.",
             windows: windows)
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode(report).write(to: URL(fileURLWithPath: arguments[4]), options: .atomic)
-        await engine.unloadModels()
-        print("Saved \(windows.count) actual Core ML decoding windows. Accuracy requires reviewing the report; execution success is not feature acceptance.")
+        encoder.nonConformingFloatEncodingStrategy = .convertToString(
+            positiveInfinity: "Infinity", negativeInfinity: "-Infinity", nan: "NaN")
+        try encoder.encode(report).write(to: URL(fileURLWithPath: path), options: .atomic)
     }
 }
 
