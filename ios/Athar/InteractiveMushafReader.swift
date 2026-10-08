@@ -103,11 +103,14 @@ struct InteractiveMushafReader: View {
     @StateObject private var audio = MushafVerseAudio()
     @StateObject private var studyRecorder = MushafSessionRecorder()
     @EnvironmentObject private var legacyRecorder: LocalRecitationRecorder
-    @EnvironmentObject private var legacySpeech: LocalSpeechRecitation
     @State private var recordingsOpen = false
     @State private var recordingSession: UUID?
     private let meterTick = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
     let chapter: Int; let ayah: Int; let initialPage: Int?
+    let startsStudy: Bool
+    init(chapter: Int, ayah: Int, initialPage: Int?, startsStudy: Bool = false) {
+        self.chapter = chapter; self.ayah = ayah; self.initialPage = initialPage; self.startsStudy = startsStudy
+    }
     @State private var snapshot: QCFV2Snapshot?
     @State private var rows: OriginalMushafRows?
     @State private var number = 1
@@ -217,7 +220,10 @@ struct InteractiveMushafReader: View {
         .transaction { transaction in
             if reduced || store.data.lowMotion { transaction.disablesAnimations = true }
         }
-        .task { await load() }
+        .task {
+            await load()
+            if startsStudy, snapshot != nil, fonts.error == nil { showStudySetup() }
+        }
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
         .onDisappear { pauseStudy(); audio.stop(); audio.onVerse = nil }
         .onChange(of: scenePhase) { _, value in
@@ -271,7 +277,7 @@ struct InteractiveMushafReader: View {
     private func toggleStudyMicrophone(_ session: MushafStudySession) {
         if studyRecorder.recording || studyRecorder.requestingPermission { studyRecorder.stop() }
         else {
-            audio.stop(); audioHelpRequest = nil; legacyRecorder.stop(); legacySpeech.stop()
+            audio.stop(); audioHelpRequest = nil; legacyRecorder.stop()
             Task { await studyRecorder.start(session: session) }
         }
     }
