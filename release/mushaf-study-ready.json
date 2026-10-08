@@ -1,6 +1,6 @@
 {
-  "increment": "retire-unverified-inference-retain-data-and-direct-inline-entry",
-  "source_commit": "b3996fb2c0d9e1ff435897e48872515671c9454c",
+  "increment": "retired-inference-archive-initialization-correction",
+  "source_commit": "f7ecbb611b7a49314cef825352f75c9a043a3041",
   "sha256": {
     ".github/workflows/mushaf-study.yml": "546035d52d30b56cb7538ec483ea070a478f4b15bcdf3c1bc0d3aa3e92a7f81a",
     "README-NOOR.md": "d703492dbdffdabb3d46a324523d7cf48e7fe9bf0281237fde2860f0230584ad",
@@ -9,7 +9,7 @@
     "ios/Athar/InteractiveMushafCanvas.swift": "9faf5451b91b6cdf95cbdbc0646475ea157d59a735c44dea5b59939648ff5167",
     "ios/Athar/InteractiveMushafReader.swift": "0892cee6b3e3dbad7b25d8105499f60fc01106a73876e23682c9c72c42f5c1ab",
     "ios/Athar/LocalRecitationRecorder.swift": "b63c3c609584ac93b793d32295e1d074f0a94f30721e2615591da92921e89773",
-    "ios/Athar/LocalSpeechRecitation.swift": "9a80f9000ee1a8824fc6c55539310875f15061620cfbe3054eb4761f6bdd0a21",
+    "ios/Athar/LocalSpeechRecitation.swift": "41d634d36fdcaeded55d6985724d96f418aa4f02c47e00e4d6e272d441689c31",
     "ios/Athar/MemorizationViews.swift": "72b6a6d69706764e84a789ba06c2cea065adc26eb01e10520c1a1ac206bc6ab9",
     "ios/Athar/MushafReader.swift": "e069b411ce51fa5efc8e748f4d129834f6eec5c2da8831c51735ee313f85f66c",
     "ios/Athar/MushafSessionRecorder.swift": "b149badbf4af25d04f7f2dc15ef6f59a4a224ca4ce8d1505f1cbbeac3aec77e0",
