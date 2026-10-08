@@ -3,7 +3,7 @@ import AVFoundation
 import Combine
 
 @MainActor final class QuranRecitationController: ObservableObject {
-    enum State { case idle, permission, preparing, listening, paused, processing, stopped }
+    enum State: Equatable { case idle, permission, preparing, listening, paused, processing, stopped }
     @Published private(set) var state = State.idle
     @Published private(set) var record: QuranRecitationRecord?
     @Published private(set) var revealed = Set<Int>()
@@ -138,6 +138,7 @@ import Combine
     }
     private func beginTake(token: UUID) async throws {
         guard var next = record, let journal else { throw QuranJournalFailure.invalidRecord }
+        finishRequest = false; next.finishedAt = nil
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
         try audio.setActive(true)

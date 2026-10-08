@@ -26,6 +26,7 @@ struct MushafRecordingExport: Codable {
     let metadata: MushafRecordingSessionMetadata?
     let unreadableMetadata: Data?
     let files: [MushafRecordingFileMetadata]
+    let recognizedSession: Data?
 }
 
 struct MushafRecordingSessionMetadata: Codable, Equatable, Identifiable {
@@ -36,6 +37,9 @@ struct MushafRecordingSessionMetadata: Codable, Equatable, Identifiable {
     let page: Int?
     init(_ session: MushafStudySession) {
         id = session.id; startedAt = session.startedAt; scope = session.scope; keys = session.keys; page = session.originPage
+    }
+    init(_ session: QuranRecitationRecord) {
+        id = session.id; startedAt = session.startedAt; scope = .range; keys = session.keys; page = session.originPage
     }
     func valid() -> Bool {
         guard let corpus = QuranResources.corpus else { return false }
@@ -65,7 +69,7 @@ enum MushafRecordingArchive {
         let files = try FileManager.default.contentsOfDirectory(at: directory,
             includingPropertiesForKeys: [.creationDateKey, .isRegularFileKey, .isSymbolicLinkKey])
         let decoded: [MushafRecordingTake] = try files.compactMap { file -> MushafRecordingTake? in
-            guard file.pathExtension == "m4a", let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent) else { return nil }
+            guard ["m4a", "caf"].contains(file.pathExtension), let id = UUID(uuidString: file.deletingPathExtension().lastPathComponent) else { return nil }
             let values = try file.resourceValues(forKeys: [.creationDateKey, .isRegularFileKey, .isSymbolicLinkKey])
             guard values.isRegularFile == true, values.isSymbolicLink != true,
                 let player = try? AVAudioPlayer(contentsOf: file), player.duration.isFinite, player.duration > 0 else { return nil }
@@ -77,7 +81,13 @@ enum MushafRecordingArchive {
     static func metadata(session: UUID, base: URL? = nil) throws -> MushafRecordingSessionMetadata? {
         let root = try base ?? self.root()
         let file = root.appendingPathComponent(session.uuidString).appendingPathComponent("session.json")
-        guard FileManager.default.fileExists(atPath: file.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            let journal = QuranRecitationJournal(root: root)
+            guard FileManager.default.fileExists(atPath: journal.folder(session).appendingPathComponent("recognized-session.json").path) else { return nil }
+            let value = MushafRecordingSessionMetadata(try journal.load(session))
+            guard value.valid() else { throw CocoaError(.fileReadCorruptFile) }
+            return value
+        }
         let value = try JSONDecoder().decode(MushafRecordingSessionMetadata.self, from: Data(contentsOf: file))
         guard value.id == session, value.valid() else { throw CocoaError(.fileReadCorruptFile) }
         return value
@@ -105,7 +115,7 @@ enum MushafRecordingArchive {
             let values = try folder.resourceValues(forKeys: [.creationDateKey, .isDirectoryKey, .isSymbolicLinkKey])
             guard values.isDirectory == true, values.isSymbolicLink != true else { continue }
             let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])
-            guard files.contains(where: { $0.pathExtension == "m4a" && UUID(uuidString: $0.deletingPathExtension().lastPathComponent) != nil
+            guard files.contains(where: { ["m4a", "caf"].contains($0.pathExtension) && UUID(uuidString: $0.deletingPathExtension().lastPathComponent) != nil
                 && ((try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 }) else { continue }
             let header = try? metadata(session: id, base: base)
             rows.append(.init(id: id, date: header?.startedAt ?? values.creationDate ?? .distantPast, metadata: header))
@@ -122,14 +132,15 @@ enum MushafRecordingArchive {
                 includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey])
             var files: [MushafRecordingFileMetadata] = []
             for path in paths {
-                guard path.pathExtension == "m4a", let id = UUID(uuidString: path.deletingPathExtension().lastPathComponent) else { continue }
+                guard ["m4a", "caf"].contains(path.pathExtension), let id = UUID(uuidString: path.deletingPathExtension().lastPathComponent) else { continue }
                 let values = try path.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey])
                 guard values.isRegularFile == true, values.isSymbolicLink != true else { continue }
                 files.append(.init(id: id, bytes: values.fileSize ?? 0))
             }
             let unreadable = row.metadata == nil ? (try? Data(contentsOf: folder.appendingPathComponent("session.json"))) : nil
             return MushafRecordingExport(session: row.id, metadata: row.metadata, unreadableMetadata: unreadable,
-                files: files.sorted { $0.id.uuidString < $1.id.uuidString })
+                files: files.sorted { $0.id.uuidString < $1.id.uuidString },
+                recognizedSession: try? Data(contentsOf: folder.appendingPathComponent("recognized-session.json")))
         }
     }
     static func erase(base: URL? = nil) throws {

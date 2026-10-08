@@ -131,7 +131,7 @@ struct MushafRecordingList: View {
         NavigationStack {
             List {
                 Section {
-                    Text("التسجيلات على هذا الجهاز. يمكنك الاستماع إلى المقاطع وحفظ نسخة منها؛ نتيجة التسميع تقييم ذاتي.").font(.footnote)
+                    Text("التسجيلات محفوظة على هذا الجهاز. استمع إلى المقاطع أو احفظ نسخة منها.").font(.footnote)
                     if takes.isEmpty { Text(loadError ?? "لا يوجد تسجيل قابل للتشغيل لهذه الجلسة.") }
                 }
                 ForEach(takes) { take in
