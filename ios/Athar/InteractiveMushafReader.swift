@@ -129,7 +129,7 @@ struct InteractiveMushafReader: View {
                         .padding(.bottom, (controlHeights["footer"] ?? 44) + 8)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
-                    VStack(spacing: 18) { Text(message); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                    VStack(spacing: 18) { Text(message).accessibilityIdentifier("reader.load.error"); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if renderingFailed {
                     ContentUnavailableView("تعذّر فتح الصفحة", systemImage: "book.closed", description: Text("حاول الانتقال إلى صفحة أخرى ثم العودة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة."))
                 } else { ProgressView("تنزيل بيانات المصحف والتحقق من الخط…").frame(maxWidth: .infinity, maxHeight: .infinity) }
@@ -343,7 +343,6 @@ private struct VerseTools: View {
             }
             .navigationTitle("\(surah.name) · الآية \(selection.ayah)")
             .navigationBarTitleDisplayMode(.inline)
-            .accessibilityIdentifier("verse.tools.\(selection.key)")
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("\(surah.name) · الآية \(selection.ayah)").font(.headline)
