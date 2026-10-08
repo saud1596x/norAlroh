@@ -2,6 +2,55 @@ import XCTest
 
 final class NoorInteractiveMushafUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    func testPersistedReferenceRecordingTransportRemovalAndRelaunch() {
+        // seed-recording-ui.py installs repeated authentic reference audio,
+        // explicitly identified as a fixture. No live capture/ASR claim.
+        let app = XCUIApplication(); app.launch()
+        let session = "A1662B68-55BB-4A4B-9441-761EF83DCF54"
+        let take = "50CC9A34-A7A3-44B5-A7A7-39671AC60968"
+        func open() {
+            XCTAssertTrue(app.buttons["app.settings"].waitForExistence(timeout: 20))
+            app.buttons["app.settings"].tap()
+            let recordings = app.buttons["settings.recordings"]
+            for _ in 0..<8 {
+                if recordings.exists && recordings.isHittable { break }
+                app.swipeUp()
+            }
+            XCTAssertTrue(recordings.waitForExistence(timeout: 5)); recordings.tap()
+            let row = app.buttons["study.recording.session.\(session)"]
+            XCTAssertTrue(row.waitForExistence(timeout: 10)); capture(app, "reference-recording-session-history")
+            row.tap()
+        }
+        open()
+        XCTAssertTrue(app.staticTexts["study.recordings.range"].waitForExistence(timeout: 5))
+        let play = app.buttons["study.recording.play.\(take)"]
+        XCTAssertTrue(play.waitForExistence(timeout: 5)); play.tap()
+        let seek = app.sliders["study.recording.seek"]
+        XCTAssertTrue(seek.waitForExistence(timeout: 5)); capture(app, "reference-recording-playing")
+        play.tap(); XCTAssertTrue(play.label.contains("استماع"))
+        seek.adjust(toNormalizedSliderPosition: 0.45)
+        capture(app, "reference-recording-paused-and-seeked")
+        play.tap(); XCTAssertTrue(play.label.contains("إيقاف مؤقت"))
+        app.buttons["study.recording.replay.\(take)"].tap()
+        XCTAssertTrue(seek.exists); capture(app, "reference-recording-replayed")
+        app.buttons["study.recording.options.\(take)"].tap()
+        app.buttons["نقل إلى المحذوفات"].tap()
+        XCTAssertFalse(play.exists)
+        app.buttons["study.recordings.deleted"].tap()
+        XCTAssertTrue(app.buttons["study.recording.restore.\(take)"].waitForExistence(timeout: 5))
+        capture(app, "reference-recording-recoverable-removal")
+        app.terminate(); app.launch(); open()
+        XCTAssertFalse(app.buttons["study.recording.play.\(take)"].exists)
+        app.buttons["study.recordings.deleted"].tap()
+        let restore = app.buttons["study.recording.restore.\(take)"]
+        XCTAssertTrue(restore.waitForExistence(timeout: 5)); restore.tap()
+        app.buttons["study.recordings.deleted"].tap()
+        let restoredPlay = app.buttons["study.recording.play.\(take)"]
+        XCTAssertTrue(restoredPlay.waitForExistence(timeout: 5)); restoredPlay.tap()
+        XCTAssertTrue(app.sliders["study.recording.seek"].waitForExistence(timeout: 5))
+        capture(app, "reference-recording-restored-playback-after-relaunch")
+        app.buttons["study.recordings.close"].tap()
+    }
     func test604ActualReaderEveryVerseToolsAndZoom() {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
