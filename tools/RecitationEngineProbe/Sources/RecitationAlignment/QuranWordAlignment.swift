@@ -126,13 +126,25 @@ public struct QuranRecitationTracker {
     public let expected: [QuranAlignedWord]
     public private(set) var cursor = 0
     public private(set) var evidence: [QuranWordEvidence] = []
+    private let starts: [String: Set<Int>]
     public var revealedIDs: Set<Int> { Set(evidence.map(\.nativeID)) }
-    public init(expected: [QuranAlignedWord]) { self.expected = expected }
+    public init(expected: [QuranAlignedWord]) {
+        self.expected = expected; self.starts = Self.index(expected)
+    }
+    private static func index(_ words: [QuranAlignedWord]) -> [String: Set<Int>] {
+        var result: [String: Set<Int>] = [:]
+        for (index, word) in words.enumerated() {
+            for form in word.aliases {
+                if let first = form.first { result[first, default: []].insert(index) }
+            }
+        }
+        return result
+    }
 
     /// Reopen only evidence tied to this exact native corpus and scope. No
     /// inferred words are added when restoring a paused or interrupted session.
     public init(expected: [QuranAlignedWord], restoring evidence: [QuranWordEvidence]) throws {
-        self.expected = expected
+        self.expected = expected; self.starts = Self.index(expected)
         let ids = Set(expected.map(\.id))
         guard ids.count == expected.count else { throw QuranAlignmentFailure.invalidEdition }
         let known = Dictionary(uniqueKeysWithValues: expected.map { ($0.id, $0.verse) })
@@ -165,7 +177,11 @@ public struct QuranRecitationTracker {
         struct Match { let first: Int; let bounds: [(Int, Int, Int)] }
         var candidates: [Match] = []
         let lower = max(0, cursor - 12), upper = min(expected.count, cursor + 13)
-        for first in lower..<upper {
+        // A slow device or an intentional return can move outside the local
+        // window. Reacquire only with a longer unique exact anchor; never reveal
+        // the skipped interval or convert it into a confirmed reader mistake.
+        let possible = Set(tokens).reduce(into: Set<Int>()) { $0.formUnion(starts[$1] ?? []) }
+        for first in possible.sorted() {
             for heardStart in tokens.indices {
                 var word = first, token = heardStart, bounds: [(Int, Int, Int)] = []
                 while word < expected.count && token < tokens.count {
@@ -183,7 +199,8 @@ public struct QuranRecitationTracker {
                             .allSatisfy({ $1.start - $0.end <= 2 }) else { break }
                     bounds.append((word, token, end)); word += 1; token = end
                 }
-                if bounds.count >= 2 { candidates.append(.init(first: first, bounds: bounds)) }
+                let minimumAnchor = (lower..<upper).contains(first) ? 2 : 3
+                if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
             }
         }
         guard let length = candidates.map({ $0.bounds.count }).max() else { return [] }
