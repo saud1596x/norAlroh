@@ -1,4 +1,19 @@
 workflows:
+  recitation-engine-probe:
+    name: Noor Alruh native Quran recognition investigation
+    instance_type: mac_mini_m2
+    max_build_duration: 25
+    environment:
+      xcode: latest
+    scripts:
+      - name: Prepare reference audio decoder
+        script: brew install ffmpeg
+      - name: Run pinned Quran Core ML engine and export actual word timing
+        script: bash scripts/test-recitation-engine.sh
+    artifacts:
+      - release/recitation-engine-probe/coreml-investigation.json
+      - release/recitation-engine-probe/data/data-provenance.json
+      - release/recitation-engine-probe/data/fixtures/fixtures.json
   mushaf-balance:
     name: Noor Alruh all 604 pages and two iPhone reader checks
     instance_type: mac_mini_m2
