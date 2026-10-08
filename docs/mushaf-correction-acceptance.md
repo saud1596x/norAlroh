@@ -15,9 +15,25 @@ text, glyph IDs, reading position, bookmarks, settings, plans and session data.
       GitHub Actions run `37771657826`, Release, iPhone 16 Pro Max/iOS 18.5.
       All 604 shaped pages and word regions passed; viewport centering and
       snapshot/offline recovery also passed (3 tests, zero failures).
-- [ ] Review all contact sheets and individual suspicious pages.
+- [x] Reviewed all 13 contact sheets (604 actual UIKit/CoreText captures) from
+      Codemagic build `6ac7872b546ce6236cec8595`, source `9714124`, iPhone 17 Pro.
+      Investigated the small heading around pages 427/428 in full-resolution
+      native images; the title is present and centered. No atlas-level clipping
+      or displaced heading was found. This does not replace two-phone UI checks.
 - [ ] Inspect actual reader captures on two iPhone display classes, tools
       visible/hidden, selection and zoom; no cropped marks or layout movement.
+
+Codemagic build 2 passed all seven selected native tests: all 604 page/word
+regions, centering, four viewport tests and atomic snapshot/offline recovery.
+Its compact-phone UI journey failed at `verse.notice` after Copy (line 58).
+The failure hierarchy contained Copy and Share rows but no instantiated notice.
+The List placed feedback after the Share row outside the smaller viewport;
+lazy row creation is the suspected cause, pending verification of the action.
+Action feedback has been moved to a non-scrolling safe-area inset in `0350ab2`.
+That fix still requires a passing native UI rerun. The first failure prevented
+the script from running the larger phone; do not mark both display classes done.
+Rerun build `6ac796f4546ce6236cec8b61` (Codemagic index 3) was created from
+`0350ab2`; its last observed status was queued, not successful.
 
 ## 2. Recognized recitation
 
@@ -30,6 +46,12 @@ on async-main trapping has been corrected without removing either rejection.
 The live microphone, whole-corpus word correspondence and iPhone validation
 remain outstanding. QUL's official word-script download requires sign-in;
 do not scrape previews or use guessed compound boundaries to bypass that gate.
+
+QUL sign-in was positively verified on 2026-10-08 (signed-in CMS dashboard and
+account menu). The official resource-60 JSON download did not complete; opening
+its visible download link was explicitly rejected by the cloud browser URL
+security policy. Do not retry through other clients, routes or indirect calls.
+An original JSON file supplied by the user is a legitimate continuation input.
 
 - [x] Current source inspected: independent local audio recording exists; no
       functioning recognition engine is connected to the inline study session.
@@ -87,7 +109,8 @@ Investigated model revisions:
 - `OdyAsh/faster-whisper-base-ar-quran`:
   `8578bafd427d122f671b187706650e76edf6f86f` (CPU investigation only).
 - `fazalshaikh123/ultra-fast-tarteel-coreml`:
-  `0338074ac8d662f6f52c5d66b433cac74202158e` (metadata inspected; not executed).
+  `0338074ac8d662f6f52c5d66b433cac74202158e` (executed on a native Apple runner;
+  failed silence/noise control acceptance, not integrated into the app).
 
 Reference audio investigation uses existing-app EveryAyah URLs. Professional
 recordings and assembled repeat/silence/noise signals are not a live session or
