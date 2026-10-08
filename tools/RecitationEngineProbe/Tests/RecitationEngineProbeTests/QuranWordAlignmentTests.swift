@@ -29,6 +29,9 @@ final class QuranWordAlignmentTests: XCTestCase {
         let bound = try script.bind(native: native, verseKeys: keys)
         XCTAssertEqual(bound.count, 77429)
         XCTAssertEqual(Set(bound.map(\.verse)).count, 6236)
+        XCTAssertTrue(bound.filter { $0.verse == "1:1" }[2].aliases.contains(["الرحمن"]))
+        XCTAssertTrue(bound.filter { $0.verse == "1:1" }[2].aliases.contains(["الرحمان"]))
+        XCTAssertTrue(bound.filter { $0.verse == "114:3" }[0].aliases.contains(["اله"]))
         for (key, position) in [("2:181", 3), ("8:6", 4), ("13:37", 8)] {
             let word = bound.filter { $0.verse == key }[position - 1]
             XCTAssertTrue(word.aliases.contains(["بعد", "ما"]))
