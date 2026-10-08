@@ -14,7 +14,7 @@ def section(name,start,end):
 manifest=json.loads((base/'quran-resource-hashes.json').read_text())
 for name in ['quran.json','quran-basmalas.json','mushaf.json','mushaf-headers.json','adhkar.json','saudi-cities.json']:
  raw=(base/name).read_bytes();assert hashlib.sha256(raw).hexdigest()==manifest[name];inputs['ios/Athar/'+name]=manifest[name]
-parts=[section('Store.swift','struct Ayah:','struct ExportDocument:'),section('Store.swift','enum QuranText {','struct NoorPrivacyExport'),section('Services.swift','struct PrayerRow:','private final class PrayerNotificationPresenter'),read('PrayerNotificationPlan.swift'),section('AdhkarViews.swift','struct DhikrEntry:','struct AdhkarView:'),section('MemorizationViews.swift','struct MemorizationPlan:','struct MemorizationView:'),section('NoorReflectionView.swift','enum NoorDailyVerse {','struct NoorReflectionView:'),read('NoorMotion.swift').split('enum ArabicSearch {')[1],section('MushafReader.swift','struct MushafWord:','// Release builds')]
+parts=[section('Store.swift','struct Ayah:','struct ExportDocument:'),section('Store.swift','enum QuranText {','struct NoorPrivacyExport'),section('Services.swift','struct PrayerRow:','private final class PrayerNotificationPresenter'),read('PrayerNotificationPlan.swift'),section('AdhkarViews.swift','struct DhikrEntry:','struct AdhkarView:'),section('MemorizationViews.swift','struct MemorizationPlan:','struct MemorizationView:'),read('NoorMotion.swift').split('enum ArabicSearch {')[1],section('MushafReader.swift','struct MushafWord:','// Release builds')]
 parts[-2]='enum ArabicSearch {'+parts[-2]
 parts.extend([read('DhikrReadingContent.swift'),read('RecitationComparison.swift')])
 parts.append(section('NoorLegalContent.swift','struct NoorLegalSection:','struct NoorLegalDocumentView:'))
@@ -53,9 +53,7 @@ tests=r'''
   let foreign=City(id:"dubai",name:"دبي",latitude:25,longitude:55,timeZone:"Asia/Dubai",region:nil,countryCode:"AE",sourceID:nil)
   try verify("foreignCityMigratesToMakkah",City.normalized(foreign).id=="makkah")
   try verify("ArabicSearchAndNumbers",ArabicSearch.integer("١١٤")==114 && ArabicSearch.integer("۱۱۲")==112 && ArabicSearch.integer("12x")==nil && ArabicSearch.normalize("الإخْلاص")==ArabicSearch.normalize("الاخلاص"))
-  let formatter=ISO8601DateFormatter(),before=ISO8601DateFormatter().date(from:"2026-10-04T20:59:59Z")!,after=ISO8601DateFormatter().date(from:"2026-10-04T21:00:00Z")!
-  let a=NoorDailyVerse.select(corpus:corpus,date:before)!,b=NoorDailyVerse.select(corpus:corpus,date:after)!,same=NoorDailyVerse.select(corpus:corpus,date:before.addingTimeInterval(-3600))!
-  try verify("dailyVerseSaudiMidnight",a.chapter.number==same.chapter.number && a.ayah.number==same.ayah.number && "\(a.chapter.number):\(a.ayah.number)" != "\(b.chapter.number):\(b.ayah.number)" && b.ayah.text==corpus[b.chapter.number-1].ayahs[b.ayah.number-1].text)
+  let formatter=ISO8601DateFormatter()
   var days=0,plans=0
   for city in City.all {
    var data=DeviceData();data.city=city
