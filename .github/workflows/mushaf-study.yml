@@ -76,7 +76,7 @@ jobs:
         run: |
           set -o pipefail
           echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
-          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Debug \
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
             -only-testing:AtharTests/MushafStudySessionTests \
             -only-testing:AtharTests/MushafRecordingTests \
@@ -94,7 +94,7 @@ jobs:
         run: |
           set -o pipefail
           xcrun simctl privacy "$NOOR_STAGE1_DEVICE" grant microphone com.saud1596x.nooralruh
-          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Debug \
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
             -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable \
             -parallel-testing-enabled NO -resultBundlePath release/recording-${{ matrix.display }}.xcresult \
