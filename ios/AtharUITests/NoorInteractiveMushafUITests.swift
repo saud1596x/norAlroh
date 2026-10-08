@@ -51,6 +51,8 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                     XCTAssertTrue(app.staticTexts["verse.tafsir.text"].waitForExistence(timeout: 45))
                     capture(app, "text-reader-604-tafsir")
                     app.buttons["verse.tafsir.close"].tap()
+                    verse.press(forDuration: 0.6)
+                    app.buttons["verse.more"].tap()
                     app.swipeUp()
                     app.buttons["verse.copy"].tap()
                     XCTAssertTrue(app.staticTexts["verse.notice"].waitForExistence(timeout: 10))
