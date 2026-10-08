@@ -31,19 +31,6 @@ jobs:
           PYBATCH
       - name: Choose Xcode
         run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
-      - name: Restore pinned Quran fonts
-        uses: actions/cache@v4
-        with:
-          path: ios/Athar/Fonts
-          key: qcf-v2-reviewed-${{ hashFiles('release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py', 'scripts/prepare-mushaf-companion.py') }}
-      # Preparation still validates each restored font against its pinned hash.
-      - name: Prepare original Quran resources
-        run: |
-          brew install xcodegen
-          python3 scripts/prepare-mushaf-companion.py
-          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
-          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
-          xcodegen generate --spec ios/project.yml --project ios
       - name: Select actual iPhone simulator
         env:
           DISPLAY_CLASS: ${{ matrix.display }}
@@ -58,18 +45,42 @@ jobs:
           selected=candidates[0]
           print('NOOR_STAGE1_DEVICE='+selected['udid'])
           print('NOOR_STAGE1_DEVICE_NAME='+selected['name'])
+          print('NOOR_STAGE1_DEVICE_STATE='+selected['state'])
           PY
+      - name: Start selected iPhone while verified resources prepare
+        if: env.NOOR_STAGE1_DEVICE_STATE != 'Booted'
+        run: xcrun simctl boot "$NOOR_STAGE1_DEVICE"
+      - name: Restore pinned Quran fonts
+        uses: actions/cache@v4
+        with:
+          path: ios/Athar/Fonts
+          key: qcf-v2-reviewed-${{ hashFiles('release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py', 'scripts/prepare-mushaf-companion.py') }}
+      # Preparation still validates each restored font against its pinned hash.
+      - name: Prepare original Quran resources
+        run: |
+          brew install xcodegen
+          python3 scripts/prepare-mushaf-companion.py
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+          xcodegen generate --spec ios/project.yml --project ios
       - name: Boot selected iPhone with bounded readiness check
-        timeout-minutes: 5
+        timeout-minutes: 9
         run: |
           python3 - <<'PYBOOT'
           import os, subprocess
-          # The same native boot command used by scripts/test-ios.sh, with a
-          # deadline so an unresponsive simulator cannot consume the test job.
-          subprocess.run(['xcrun', 'simctl', 'bootstatus', os.environ['NOOR_STAGE1_DEVICE'], '-b'], check=True, timeout=240)
+          try:
+              result=subprocess.run(['xcrun','simctl','bootstatus',os.environ['NOOR_STAGE1_DEVICE'],'-b'], capture_output=True, text=True, timeout=480)
+              print(result.stdout[-4000:]); print(result.stderr[-2000:])
+              raise SystemExit(result.returncode)
+          except subprocess.TimeoutExpired as error:
+              output=error.stdout or b''
+              print((output.decode(errors='replace') if isinstance(output,bytes) else output)[-4000:])
+              print('Simulator readiness failed before application tests: 480-second bound exceeded')
+              raise SystemExit(1)
           PYBOOT
       - name: Native geometry and actual reader acceptance
         run: |
+          set -o pipefail
           echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
           xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" -destination-timeout 60 \
@@ -98,15 +109,28 @@ jobs:
             -only-testing:AtharUITests/NoorMushafStudyUITests/testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount \
             -only-testing:AtharUITests/NoorMushafStudyUITests/testActualRepeatControlsPersistAndGapCancels \
             -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
-            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental 2>&1 | tee -a release/final-native-${{ matrix.display }}.log
       - name: Actual microphone background resume and playback in Release
         run: |
+          set -o pipefail
           xcrun simctl privacy "$NOOR_STAGE1_DEVICE" grant microphone com.saud1596x.nooralruh
           xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
             -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" -destination-timeout 60 \
             -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable \
             -parallel-testing-enabled NO -resultBundlePath release/recording-${{ matrix.display }}.xcresult \
-            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES SWIFT_COMPILATION_MODE=incremental 2>&1 | tee -a release/final-native-${{ matrix.display }}.log
+      - name: Report actual native failures
+        if: always()
+        run: |
+          python3 - <<'PYREPORT'
+          import os,re
+          from pathlib import Path
+          log=Path('release/final-native-${{ matrix.display }}.log')
+          lines=log.read_text(errors='replace').splitlines() if log.exists() else []
+          failures=[line for line in lines if re.search(r'error:|failed|TEST FAILED|Executed .*tests|Test Suite .*passed',line,re.I)]
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+              summary.write('## Combined Release native result\n\n```text\n'+'\n'.join(failures[-100:])+'\n```\n')
+          PYREPORT
       - name: Export actual application screenshots
         if: always()
         run: |
