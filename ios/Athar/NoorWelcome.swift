@@ -77,7 +77,6 @@ struct NoorWelcomeView: View {
             .padding(20)
             .background(Theme.background)
         }
-        .accessibilityIdentifier("welcome.screen")
     }
 
     private var unavailableAccount: some View {
