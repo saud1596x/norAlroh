@@ -1,0 +1,78 @@
+name: Prayer dates and clocks native acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches: [mushaf-viewport-20261007]
+    paths: ['.github/workflows/prayer-display.yml', 'ios/NoorWidgetShared/PrayerEngine.swift', 'ios/Athar/PrayerView.swift', 'ios/AtharTests/AutomaticPrayerTests.swift', 'ios/AtharUITests/NoorPrayerDisplayUITests.swift']
+permissions:
+  contents: read
+concurrency:
+  group: prayer-display-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reading:
+    # Standard Intel runner avoids the current arm64 capacity queue. Keep real
+    # Xcode/simulator acceptance; never substitute a build-only check.
+    runs-on: macos-15-intel
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        display: [compact, large]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Prepare original Quran resources
+        run: |
+          brew install xcodegen
+          python3 scripts/prepare-mushaf-companion.py
+          python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
+          cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Select actual iPhone simulator
+        env:
+          DISPLAY_CLASS: ${{ matrix.display }}
+        run: |
+          xcrun simctl list devices available --json > /tmp/noor-prayer-display-devices.json
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json,os
+          devices=[d for r,rows in json.load(open('/tmp/noor-prayer-display-devices.json'))['devices'].items() if 'SimRuntime.iOS' in r for d in rows if d.get('isAvailable') and d['name'].startswith('iPhone')]
+          large=os.environ['DISPLAY_CLASS']=='large'
+          candidates=[d for d in devices if ('Pro Max' in d['name'])==large]
+          assert candidates, 'Requested iPhone display is unavailable'
+          selected=candidates[0]
+          print('NOOR_STAGE1_DEVICE='+selected['udid'])
+          print('NOOR_STAGE1_DEVICE_NAME='+selected['name'])
+          PY
+      - name: Native timezone dates clocks and navigation acceptance
+        run: |
+          echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
+          xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+            -destination "platform=iOS Simulator,id=$NOOR_STAGE1_DEVICE" \
+            -only-testing:AtharTests/AutomaticPrayerTests \
+            -only-testing:AtharUITests/NoorPrayerDisplayUITests \
+            -parallel-testing-enabled NO -resultBundlePath release/prayer-display-${{ matrix.display }}.xcresult \
+            CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES
+      - name: Export actual application screenshots
+        if: always()
+        run: |
+          if [ -d release/prayer-display-${{ matrix.display }}.xcresult ]; then
+            xcrun xcresulttool export attachments --path release/prayer-display-${{ matrix.display }}.xcresult \
+              --output-path release/prayer-display-${{ matrix.display }}-screens
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prayer-display-${{ matrix.display }}
+          path: |
+            release/prayer-display-${{ matrix.display }}.xcresult
+            release/prayer-display-${{ matrix.display }}-screens
+          retention-days: 14
+      - name: Export small actual screenshot bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prayer-display-screens-${{ matrix.display }}
+          path: release/prayer-display-${{ matrix.display }}-screens
+          retention-days: 14
