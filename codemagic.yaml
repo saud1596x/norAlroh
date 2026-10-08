@@ -1,4 +1,17 @@
 workflows:
+  mushaf-balance:
+    name: Noor Alruh all 604 pages and two iPhone reader checks
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install native project generator
+        script: brew install xcodegen
+      - name: Check all native page layouts and actual reader behavior
+        script: bash scripts/test-mushaf-balance.sh
+    artifacts:
+      - release/mushaf-balance/**
   ios-quality:
     name: Noor Alruh native build and quality checks
     instance_type: mac_mini_m2
