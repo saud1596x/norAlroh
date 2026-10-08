@@ -50,10 +50,17 @@ final class NoorMushafStudyUITests: XCTestCase {
         for _ in 0..<3 { if goal.exists && goal.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(goal.isHittable); goal.tap()
         let enabled = app.switches["study.goal.enabled"]
-        XCTAssertTrue(enabled.waitForExistence(timeout: 10)); enabled.tap()
-        XCTAssertTrue(numbers(app.staticTexts["study.goal.target"].label).contains(7))
+        XCTAssertTrue(enabled.waitForExistence(timeout: 10))
+        let control = enabled.switches.firstMatch
+        XCTAssertTrue(control.exists); XCTAssertTrue(control.isHittable)
+        XCTAssertEqual(control.value as? String, "0"); control.tap()
+        XCTAssertEqual(control.value as? String, "1")
+        let target = app.staticTexts["study.goal.target"]
+        XCTAssertTrue(target.waitForExistence(timeout: 10)); XCTAssertTrue(numbers(target.label).contains(7))
         XCTAssertGreaterThanOrEqual(app.buttons["study.goal.increase"].frame.height, 44)
         XCTAssertGreaterThanOrEqual(app.buttons["study.goal.decrease"].frame.height, 44)
+        app.buttons["study.goal.increase"].tap(); XCTAssertTrue(numbers(target.label).contains(8))
+        app.buttons["study.goal.decrease"].tap(); XCTAssertTrue(numbers(target.label).contains(7))
         capture(app, "study-goal-configured-with-real-controls")
         app.buttons["study.goal.save"].tap()
         let progress = app.staticTexts["study.goal.progress"]
