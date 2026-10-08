@@ -7,9 +7,10 @@ final class QuranPCMWriterTests: XCTestCase {
     func testActualReferenceAudioSurvivesWriterClosureWithExactSampleClock() async throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }
-        let fixture = root.appendingPathComponent("release/recitation-engine-probe/data/fixtures/112001.mp3")
+        let fixture = root.appendingPathComponent("release/recitation-engine-probe/data/fixtures/assembled-return.wav")
         let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: fixture.path)
-        XCTAssertGreaterThan(samples.count, 64_000)
+        XCTAssertGreaterThan(samples.count, 128_000,
+            "The explicit reference-return fixture must exercise rolling eight-second windows")
         XCTAssertLessThan(samples.count, 32 * 16_000)
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
