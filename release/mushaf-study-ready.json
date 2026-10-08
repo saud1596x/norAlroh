@@ -1,17 +1,18 @@
 {
-  "increment": "protected-local-recordings-corrected-error-property",
-  "source_commit": "4534ab15be876977d85bd6ddcc263344754e98c8",
+  "increment": "protected-recordings-compatible-capture-mode",
+  "source_commit": "660ca0859bfc88ff452b695ce2ead9faa568f3c5",
   "sha256": {
     ".github/workflows/mushaf-study.yml": "c0ebe18da67997baab6b1e34c65de637fe612c1f51845a9a0614175b8973a6bd",
-    "ios/Athar/MushafSessionRecorder.swift": "3408021482cf521644853fba488e70209613a5a8c6e6a40b9c5184367feafd96",
+    "ios/Athar/MushafSessionRecorder.swift": "e55feacf15f43ff05e1d53c4758483361222c07371fb4ce978dddcd266900162",
     "ios/Athar/InteractiveMushafReader.swift": "4d583979b6de0dedb888c35a2443dabe19117e9ca779f8ebe3089f261694df0c",
     "ios/Athar/InteractiveMushafCanvas.swift": "9faf5451b91b6cdf95cbdbc0646475ea157d59a735c44dea5b59939648ff5167",
     "ios/Athar/MushafStudySession.swift": "4064aedcf31f03e2a9e2f778a901c0fff16a82aafb2d98d68565cd775d7a4b5d",
     "ios/Athar/MushafStudyViews.swift": "59e016e10d368bcf7fea87c493466b47098a2e78c91c8f0788f0b4a36640188c",
     "ios/Athar/FeatureViews.swift": "442cb9a91d7414aa3eff83dafd80b8bdce6254df826523a543337a283207a4f7",
     "ios/Athar/Store.swift": "264b901de96e14bf5c8493c561a015b2709d189cc6ba7c8e4be748463f174d08",
-    "ios/AtharTests/MushafRecordingTests.swift": "2ee12e083a5794145113fc6d31176b84983a47c7415424f2b5e5dd576a6d2974",
+    "ios/AtharTests/MushafRecordingTests.swift": "ee86da44ba186eac0e56eb6f06dcc537e064caf7689405c4267a50231529035c",
     "ios/AtharTests/MushafStudySessionTests.swift": "e0460d25bf8f077919b545b1f9dea9dbe16aab358af2197a591cdb322a0ba13e",
-    "ios/AtharUITests/NoorMushafStudyUITests.swift": "9619a6e760a03f74dabc035e356d8a0ffde5566e94987fe4d65d6acbffa9d158"
+    "ios/AtharUITests/NoorMushafStudyUITests.swift": "9619a6e760a03f74dabc035e356d8a0ffde5566e94987fe4d65d6acbffa9d158",
+    "ios/Athar/LocalRecitationRecorder.swift": "94a1b580ef50594e8b0eefaf95666e1f74812d1479a826888110622492b8f252"
   }
 }
