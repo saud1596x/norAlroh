@@ -63,7 +63,7 @@ public struct QuranWordScript: Decodable {
 
 public enum QuranAlignmentFailure: Error { case invalidScript, invalidEdition, invalidEvidence }
 
-public struct QuranNativeWord {
+public struct QuranNativeWord: Equatable, Sendable {
     public let id: Int
     public let verse: String
     public let position: Int
@@ -74,7 +74,7 @@ public struct QuranNativeWord {
     }
 }
 
-public struct QuranAlignedWord {
+public struct QuranAlignedWord: Sendable {
     public let id: Int
     public let verse: String
     public let page: Int
@@ -103,7 +103,7 @@ public struct QuranAlignedWord {
 
 /// Only evidence which already passed the word-local audio/timing gate belongs
 /// here. This layer identifies a position; it cannot judge pronunciation.
-public struct QuranHeardWord {
+public struct QuranHeardWord: Sendable {
     public let text: String
     public let start: Double
     public let end: Double
