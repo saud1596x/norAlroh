@@ -1,9 +1,9 @@
-name: Mushaf study data acceptance
+name: Mushaf inline study acceptance
 on:
   workflow_dispatch:
   push:
     branches: [mushaf-ux-stage1-20261007]
-    paths: ['.github/workflows/mushaf-study.yml', 'ios/Athar/MushafStudy*.swift', 'ios/Athar/MemorizationViews.swift', 'ios/Athar/Store.swift', 'ios/Athar/FeatureViews.swift', 'ios/AtharTests/MushafStudySessionTests.swift']
+    paths: ['.github/workflows/mushaf-study.yml', 'ios/Athar/MushafStudy*.swift', 'ios/Athar/MemorizationViews.swift', 'ios/Athar/Store.swift', 'ios/Athar/FeatureViews.swift', 'ios/AtharTests/MushafStudySessionTests.swift', 'ios/Athar/InteractiveMushafReader.swift', 'ios/AtharUITests/NoorMushafStudyUITests.swift']
 permissions:
   contents: read
 concurrency:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        display: [compact]
+        display: [compact, large]
     steps:
       - uses: actions/checkout@v4
       - name: Choose Xcode
@@ -55,7 +55,7 @@ jobs:
           print('NOOR_STAGE1_DEVICE='+selected['udid'])
           print('NOOR_STAGE1_DEVICE_NAME='+selected['name'])
           PY
-      - name: Native geometry and actual reader acceptance
+      - name: Native study data and real in-reader journey
         run: |
           set -o pipefail
           echo "Actual simulator: $NOOR_STAGE1_DEVICE_NAME"
@@ -64,6 +64,7 @@ jobs:
             -only-testing:AtharTests/MushafStudySessionTests \
             -only-testing:AtharTests/MushafMemorizationTests \
             -only-testing:AtharTests/ReadingSyncTests \
+            -only-testing:AtharUITests/NoorMushafStudyUITests \
             -parallel-testing-enabled NO -resultBundlePath release/stage1-${{ matrix.display }}.xcresult \
             CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES 2>&1 | tee release/reader-acceptance.log
       - name: Report native acceptance failures
@@ -98,7 +99,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mushaf-study-data-${{ matrix.display }}
+          name: mushaf-study-inline-${{ matrix.display }}
           path: |
             release/stage1-${{ matrix.display }}.xcresult
             release/stage1-${{ matrix.display }}-screens
