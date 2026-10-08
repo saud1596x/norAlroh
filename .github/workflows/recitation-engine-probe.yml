@@ -1,8 +1,19 @@
 name: Quran Core ML engine investigation
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - tools/RecitationEngineProbe/Package.swift
+      - tools/RecitationEngineProbe/Sources/**
+      - tools/RecitationEngineProbe/fixtures/sources.json
+      - scripts/prepare-recitation-probe.py
+      - scripts/test-recitation-engine.sh
+      - .github/workflows/recitation-engine-probe.yml
 permissions:
   contents: read
+concurrency:
+  group: quran-coreml-probe-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   coreml:
     runs-on: macos-15
