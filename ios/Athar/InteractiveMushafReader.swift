@@ -91,7 +91,9 @@ struct InteractiveMushafReader: View {
         ZStack {
             Theme.panel.ignoresSafeArea()
             GeometryReader { geometry in
-                if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
+                if recitation.state == .preparing, UUID(uuidString: pendingRecitation) != nil, recitation.record == nil {
+                    ProgressView("استعادة موضع التسميع…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
                         onVerse: { key in
@@ -380,7 +382,7 @@ struct InteractiveMushafReader: View {
                    let target = versePages[key] { lastPage = target; number = target }
             }
             if first, let pending = UUID(uuidString: pendingRecitation) {
-                recitation.restore(id: pending, snapshot: data, corpus: store.quran)
+                await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
                 if recitation.hasSession {
                     selected = recitation.currentVerse
                     if let key = recitation.currentVerse, let destination = versePages[key] { number = destination; lastPage = destination }

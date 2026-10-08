@@ -145,9 +145,9 @@ enum MushafRecordingArchive {
     }
     static func erase(base: URL? = nil) throws {
         let root = try base ?? self.root()
-        guard FileManager.default.fileExists(atPath: root.path) else { return }
         // Root was created by this feature; no legacy recordings live here.
-        try FileManager.default.removeItem(at: root)
+        if FileManager.default.fileExists(atPath: root.path) { try FileManager.default.removeItem(at: root) }
+        if base == nil { UserDefaults.standard.removeObject(forKey: "noor.recitation.pending") }
     }
 }
 

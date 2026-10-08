@@ -5,7 +5,7 @@ import FoundationNetworking
 
 /// Content Sync's full-copy contract. Glyphs are never bundled or substituted
 /// into the QCF4 renderer. A font and its positioned words must share an edition.
-struct QCFV2Snapshot: Decodable {
+struct QCFV2Snapshot: Decodable, Sendable {
     let resource_group: String
     let resource_id: Int
     // Immutable Content Sync edition matching the pinned original V2 fonts.
@@ -14,7 +14,7 @@ struct QCFV2Snapshot: Decodable {
     let sync_sequence: Int
     let records: [Record]
 
-    struct Record: Decodable {
+    struct Record: Decodable, Sendable {
         let id: Int
         let record_type: String
         let mushaf_id: Int?

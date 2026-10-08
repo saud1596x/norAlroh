@@ -66,7 +66,8 @@ import Combine
             guard MushafStudySession(keys: keys, scope: .range, page: page).valid(corpus: corpus), let journal else {
                 throw QuranJournalFailure.invalidRecord
             }
-            try bind(snapshot: snapshot, corpus: corpus)
+            try await bind(snapshot: snapshot, corpus: corpus)
+            guard revision == token, state == .preparing else { return }
             try await worker.prepare()
             guard revision == token, state == .preparing else { return }
             let scope = Set(keys)
@@ -81,20 +82,13 @@ import Combine
             message = "تعذّر تجهيز التسميع. لم يبدأ الميكروفون؛ تحقق من المساحة المتاحة ثم أعد المحاولة."
         }
     }
-    private func bind(snapshot: QCFV2Snapshot, corpus: [Surah]) throws {
-        guard words.isEmpty else { return }
-        guard let url = Bundle.main.url(forResource: "recitation-word-script", withExtension: "json") else {
-            throw QuranAlignmentFailure.invalidScript
-        }
-        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: url))
+    private func bind(snapshot: QCFV2Snapshot, corpus: [Surah]) async throws {
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
-        let native = try snapshot.validated().records.filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }
-            .map { QuranNativeWord(id: $0.id, verse: verseKeys[$0.verse_id! - 1],
-                position: $0.position_in_verse!, page: $0.page_number!, glyph: $0.text!) }
-        words = try script.bind(native: native, verseKeys: verseKeys)
+        words = try await worker.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
-    func restore(id: UUID, snapshot: QCFV2Snapshot, corpus: [Surah]) {
+    func restore(id: UUID, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
+        let token = UUID(); revision = token
         do {
             guard let journal else { throw QuranJournalFailure.invalidRecord }
             var restored = try journal.load(id)
@@ -104,7 +98,9 @@ import Combine
             guard MushafStudySession(keys: restored.keys, scope: .range, page: restored.originPage).valid(corpus: corpus) else {
                 throw QuranJournalFailure.invalidRecord
             }
-            try bind(snapshot: snapshot, corpus: corpus)
+            state = .preparing
+            try await bind(snapshot: snapshot, corpus: corpus)
+            guard revision == token, state == .preparing else { return }
             for index in restored.takes.indices {
                 let take = restored.takes[index]
                 let url = journal.audio(session: restored.id, take: take.id)
@@ -123,7 +119,10 @@ import Combine
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
             currentVerse = restored.evidence.last?.verse ?? restored.keys.first
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
-        } catch { message = "تعذّر استعادة الجلسة. لم تُحذف ملفات الصوت أو بياناتها؛ يمكنك فتح التسجيلات لفحص المتاح." }
+        } catch {
+            guard revision == token else { return }
+            state = .idle; message = "تعذّر استعادة الجلسة. لم تُحذف ملفات الصوت أو بياناتها؛ يمكنك فتح التسجيلات لفحص المتاح."
+        }
     }
     func resume() async {
         guard state == .paused, !closing, record != nil else { return }
@@ -140,7 +139,10 @@ import Combine
             guard revision == token, state == .preparing else { return }
             try await beginTake(token: token)
         }
-        catch { state = .paused; message = "تعذّر استئناف الميكروفون. احتُفظ بالتسجيل السابق." }
+        catch {
+            guard revision == token else { return }
+            state = .paused; message = "تعذّر استئناف الميكروفون. احتُفظ بالتسجيل السابق."
+        }
     }
     private func beginTake(token: UUID) async throws {
         guard var next = record, let journal else { throw QuranJournalFailure.invalidRecord }
