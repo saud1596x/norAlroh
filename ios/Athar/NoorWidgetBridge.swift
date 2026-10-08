@@ -34,7 +34,7 @@ import WidgetKit
 @MainActor final class NoorWidgetRouter: ObservableObject {
     static let shared = NoorWidgetRouter()
     private let defaults: UserDefaults
-    private static let retiredHosts: Set<String> = ["compare", "compare-verses", "similarities", "reflection", "daily-verse"]
+    private static let retiredHosts: Set<String> = ["compare", "compare-verses", "similarities", "reflection", "daily-verse", "friday", "friday-settings"]
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
     private var savedPage: Int { max(1, min(604, defaults.integer(forKey: "noor.mushaf.lastPage"))) }
     struct Destination: Identifiable { let id = UUID(); let host: String; let page: Int? }

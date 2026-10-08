@@ -11,8 +11,7 @@ struct AtharApp: App {
     @StateObject private var memorization = MemorizationStore()
     @StateObject private var recitation = LocalRecitationRecorder()
     @StateObject private var speech = LocalSpeechRecitation()
-    @StateObject private var friday = FridayStore()
-    @StateObject private var fridayAlarms = FridayAlarms()
+    @StateObject private var retiredFriday = NoorRetiredFridayCleanup()
     @StateObject private var account = NoorAccountStore()
     @StateObject private var widgetRouter = NoorWidgetRouter.shared
     @AppStorage("noor.mushaf.lastPage") private var widgetPage = 1
@@ -23,15 +22,14 @@ struct AtharApp: App {
         WindowGroup {
             NoorLaunchGate()
                 .environmentObject(store)
-                .task { await khatmah.refreshReminders() }
+                .task { await retiredFriday.cleanup(); await khatmah.refreshReminders() }
                 .environmentObject(notifications)
                 .environmentObject(prayerLocation)
                 .environmentObject(dhikrCounters)
                 .environmentObject(memorization)
                 .environmentObject(recitation)
                 .environmentObject(speech)
-                .environmentObject(friday)
-                .environmentObject(fridayAlarms)
+                .environmentObject(retiredFriday)
                 .environmentObject(account)
                 .environmentObject(widgetRouter)
                 .environment(\.layoutDirection, .rightToLeft)
@@ -55,29 +53,18 @@ struct AtharApp: App {
                     Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage); account.captureLocalChanges(planChanged: true) }
                 }
                 .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page); account.captureLocalChanges() }
-                .onChange(of: notifications.salawat.enabled) { _, _ in
-                    Task { await friday.refresh(data: store.data) }
-                }
-                .onChange(of: notifications.enabled) { _, _ in
-                    Task { await friday.refresh(data: store.data) }
-                }
-                .onChange(of: notifications.preferences.prayers) { _, _ in
-                    Task { await friday.refresh(data: store.data) }
-                }
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
                 .onChange(of: store.data.prayerScheduleKey, initial: true) { _, _ in
                     Task {
                         await notifications.refresh(store: store)
-                        await friday.refresh(data: store.data)
-                        await fridayAlarms.schedule(data: store.data, preferences: friday.preferences)
                         PrayerBackgroundRefresh.submit()
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                    Task { await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences) }
+                    Task { await notifications.refresh(store: store) }
                 }
-                .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
+                .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         Task { await khatmah.refreshReminders() }
@@ -86,7 +73,7 @@ struct AtharApp: App {
                         PrayerBackgroundRefresh.submit()
                         NoorFocusController.shared.sync(progress: memorization.progress)
                         dhikrCounters.refreshDay()
-                        Task { await notifications.refresh(store: store); await friday.refresh(data: store.data); await fridayAlarms.schedule(data: store.data, preferences: friday.preferences); await account.refresh() }
+                        Task { await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                     } else {
                         if speech.listening || phase == .background { speech.stop() }
                         if phase == .background { account.enterBackground(); recitation.stop(); prayerLocation.deactivate(); PrayerBackgroundRefresh.submit() }
@@ -95,7 +82,7 @@ struct AtharApp: App {
         }
         .backgroundTask(.appRefresh(PrayerBackgroundRefresh.identifier)) {
             await notifications.refresh(store: store)
-            await friday.refresh(data: store.data)
+            await retiredFriday.cleanup()
             PrayerBackgroundRefresh.submit()
         }
     }

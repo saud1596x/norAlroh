@@ -166,8 +166,7 @@ struct SettingsView: View {
     @EnvironmentObject var memorization: MemorizationStore
     @EnvironmentObject var recitation: LocalRecitationRecorder
     @EnvironmentObject var speech: LocalSpeechRecitation
-    @EnvironmentObject var friday: FridayStore
-    @EnvironmentObject var fridayAlarms: FridayAlarms
+    @EnvironmentObject var retiredFriday: NoorRetiredFridayCleanup
     @EnvironmentObject var account: NoorAccountStore
     @Environment(\.dismiss) private var dismiss
     @State private var erase = false
@@ -179,7 +178,13 @@ struct SettingsView: View {
         Form {
             Section("حسابي") {
                 NavigationLink("الحساب والنسخة السحابية") { NoorAccountView() }
-                NavigationLink("إعدادات يوم الجمعة") { FridaySettingsView() }
+            }
+            if let message = retiredFriday.message {
+                Section {
+                    Text(message).foregroundStyle(.secondary)
+                    Button("إعادة إلغاء التنبيهات القديمة") { Task { await retiredFriday.cleanup() } }
+                        .disabled(retiredFriday.busy)
+                }
             }
             Section("مساحة تحترم خصوصيتك") {
                 Text(account.available
@@ -246,8 +251,8 @@ struct SettingsView: View {
                     dhikrCounters.erase()
                     memorization.erase()
                     speech.eraseSavedPosition()
-                    friday.erase()
-                    fridayAlarms.disable()
+                    await retiredFriday.cleanup()
+                    retiredFriday.eraseArchivedRecords()
                     UserDefaults.standard.removeObject(forKey: "noor.mushaf.lastPage")
                     NoorReadingSyncJournal.shared.erase()
                     UserDefaults.standard.removeObject(forKey: "noor.sync.preReadingMerge")

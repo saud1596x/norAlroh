@@ -102,15 +102,6 @@ struct NoorTodayView: View {
                         Spacer(minLength: 0)
                     }
                 }
-                TimelineView(.periodic(from: .now, by: 60)) { context in
-                    if FridayPlan.active(at: context.date, city: store.data.city) {
-                        NavigationLink { FridayView() } label: {
-                            Label("يوم الجمعة", systemImage: "sun.max.fill").font(.title3.bold())
-                                .frame(maxWidth: .infinity, minHeight: 64).background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
-                        }.accessibilityIdentifier("home.friday")
-                    }
-
-                }
                 Text("مساحاتك").font(.title3.bold())
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 14)], spacing: 14) {
                     NavigationLink { AdhkarView() } label: { tile("أذكارك", "حصن المسلم كاملًا", "sparkles") }

@@ -60,7 +60,7 @@ struct PrayerNotificationSettings: View {
                     Text("كل 6 ساعات").tag(6)
                     Text("مرة يوميًا").tag(12)
                 }
-                Text("تذكيرات صامتة بين 09:00 و21:00، بحد أقصى 7 يوميًا. لا نكرر تذكيرات الجمعة عند تفعيل هذا الخيار.")
+                Text("تذكيرات صامتة بين 09:00 و21:00، بحد أقصى 7 يوميًا.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("الموقع المحفوظ") {
