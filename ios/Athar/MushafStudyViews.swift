@@ -128,14 +128,15 @@ struct MushafRecordingList: View {
     @Environment(\.dismiss) private var dismiss
     @State private var takes: [MushafRecordingTake] = []
     @State private var loadError: String?
+    @State private var showingDeleted = false
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if takes.isEmpty {
-                        ContentUnavailableView("لا يوجد صوت قابل للتشغيل", systemImage: "waveform",
-                            description: Text(loadError ?? "لم يُحفظ تسجيل قابل للتشغيل لهذه الجلسة."))
+                        ContentUnavailableView(showingDeleted ? "لا توجد مقاطع محذوفة" : "لا يوجد صوت قابل للتشغيل", systemImage: "waveform",
+                            description: Text(loadError ?? (showingDeleted ? "المقاطع المحذوفة قابلة للاستعادة هنا." : "لم يُحفظ تسجيل قابل للتشغيل لهذه الجلسة.")))
                     }
                     ForEach(Array(takes.enumerated()), id: \.element.id) { index, take in
                         VStack(alignment: .leading, spacing: 16) {
@@ -168,7 +169,12 @@ struct MushafRecordingList: View {
                                 Text(MushafAudioTime.text(take.duration)).font(.caption.monospacedDigit())
                                     .environment(\.layoutDirection, .leftToRight)
                             }
-                            HStack(spacing: 16) {
+                            if showingDeleted {
+                                Button { move(take, deleted: false) } label: {
+                                    Label("استعادة المقطع", systemImage: "arrow.uturn.backward")
+                                        .frame(maxWidth: .infinity, minHeight: 44)
+                                }.buttonStyle(.borderedProminent).tint(Theme.gold)
+                            } else { HStack(spacing: 16) {
                                 Button {
                                     if recorder.playing != take.id { recorder.play(take) }
                                     else if recorder.playbackPaused { recorder.resumePlayback() }
@@ -182,7 +188,11 @@ struct MushafRecordingList: View {
                                 Button { recorder.play(take) } label: {
                                     Image(systemName: "arrow.counterclockwise").frame(width: 44, height: 44)
                                 }.accessibilityLabel("إعادة المقطع من البداية")
-                            }
+                                Menu {
+                                    Button("نقل إلى المحذوفات", systemImage: "trash") { move(take, deleted: true) }
+                                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                                    .accessibilityLabel("خيارات المقطع")
+                            } }
                         }
                         .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
                     }
@@ -190,10 +200,14 @@ struct MushafRecordingList: View {
             }
             .navigationTitle("تسجيلات الجلسة")
             .toolbar { Button("العودة للمصحف") { recorder.stop(); dismiss() }.accessibilityIdentifier("study.recordings.close") }
-            .task {
-                do { takes = try MushafRecordingArchive.takes(session: session) }
-                catch { loadError = "تعذّر قراءة قائمة التسجيلات. احتُفظ بالملفات الأصلية؛ أعد المحاولة بعد فتح قفل الجهاز." }
+            .toolbar {
+                ToolbarItem(placement: .bottomBar) {
+                    Button(showingDeleted ? "عرض التسجيلات" : "المقاطع المحذوفة") {
+                        recorder.stop(); showingDeleted.toggle(); reload()
+                    }.frame(minHeight: 44).accessibilityIdentifier("study.recordings.deleted")
+                }
             }
+            .task { reload() }
             .onDisappear { recorder.stop() }
             .onChange(of: scenePhase) { _, phase in if phase != .active { recorder.pausePlayback() } }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in recorder.pausePlayback() }
@@ -201,6 +215,17 @@ struct MushafRecordingList: View {
                 Button("حسنًا") { recorder.message = nil }
             } message: { Text(recorder.message ?? "") }
         }
+    }
+    private func reload() {
+        do {
+            takes = try showingDeleted ? MushafRecordingArchive.deletedTakes(session: session) : MushafRecordingArchive.takes(session: session)
+            loadError = nil
+        } catch { loadError = "تعذّر قراءة قائمة التسجيلات. احتُفظ بالملفات الأصلية؛ أعد المحاولة بعد فتح قفل الجهاز." }
+    }
+    private func move(_ take: MushafRecordingTake, deleted: Bool) {
+        if recorder.playing == take.id { recorder.stop() }
+        do { try MushafRecordingArchive.moveAudio(take, toDeleted: deleted); reload() }
+        catch { recorder.message = "تعذّر نقل المقطع. لم يُستبدل الصوت أو سجل الجلسة." }
     }
 }
 

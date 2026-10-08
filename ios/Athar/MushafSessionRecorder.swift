@@ -20,6 +20,7 @@ struct MushafRecordingSessionRow: Identifiable {
 struct MushafRecordingFileMetadata: Codable {
     let id: UUID
     let bytes: Int
+    var deleted: Bool? = nil
 }
 struct MushafRecordingExport: Codable {
     let session: UUID
@@ -63,8 +64,15 @@ enum MushafRecordingArchive {
         return folder
     }
     static func takes(session: UUID, base: URL? = nil) throws -> [MushafRecordingTake] {
+        try audioFiles(session: session, deleted: false, base: base)
+    }
+    static func deletedTakes(session: UUID, base: URL? = nil) throws -> [MushafRecordingTake] {
+        try audioFiles(session: session, deleted: true, base: base)
+    }
+    private static func audioFiles(session: UUID, deleted: Bool, base: URL?) throws -> [MushafRecordingTake] {
         let root = try base ?? self.root()
-        let directory = root.appendingPathComponent(session.uuidString, isDirectory: true)
+        let container = deleted ? root.appendingPathComponent("DeletedAudio", isDirectory: true) : root
+        let directory = container.appendingPathComponent(session.uuidString, isDirectory: true)
         guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
         let files = try FileManager.default.contentsOfDirectory(at: directory,
             includingPropertiesForKeys: [.creationDateKey, .isRegularFileKey, .isSymbolicLinkKey])
@@ -77,6 +85,27 @@ enum MushafRecordingArchive {
                 date: values.creationDate ?? .distantPast, duration: player.duration)
         }
         return decoded.sorted { $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date < $1.date }
+    }
+    /// Recoverable removal. Never edits the recognition journal or deletes audio
+    /// bytes; the user can restore each take through the recording screen.
+    static func moveAudio(_ take: MushafRecordingTake, toDeleted deleted: Bool, base: URL? = nil) throws {
+        let root = try base ?? self.root()
+        let live = root.appendingPathComponent(take.session.uuidString, isDirectory: true)
+        let trash = root.appendingPathComponent("DeletedAudio", isDirectory: true)
+            .appendingPathComponent(take.session.uuidString, isDirectory: true)
+        let sourceFolder = deleted ? live : trash
+        let destinationFolder = deleted ? trash : live
+        guard ["caf", "m4a"].contains(take.url.pathExtension) else { throw CocoaError(.fileReadInvalidFileName) }
+        let name = take.id.uuidString + "." + take.url.pathExtension
+        let source = sourceFolder.appendingPathComponent(name)
+        guard source.standardizedFileURL == take.url.standardizedFileURL else { throw CocoaError(.fileReadInvalidFileName) }
+        let properties = try source.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        guard properties.isRegularFile == true, properties.isSymbolicLink != true else { throw CocoaError(.fileReadInvalidFileName) }
+        try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUnlessOpen])
+        // moveItem refuses to overwrite an existing destination, including a
+        // restored take created on another operation boundary.
+        try FileManager.default.moveItem(at: source, to: destinationFolder.appendingPathComponent(name))
     }
     static func metadata(session: UUID, base: URL? = nil) throws -> MushafRecordingSessionMetadata? {
         let root = try base ?? self.root()
@@ -115,8 +144,9 @@ enum MushafRecordingArchive {
             let values = try folder.resourceValues(forKeys: [.creationDateKey, .isDirectoryKey, .isSymbolicLinkKey])
             guard values.isDirectory == true, values.isSymbolicLink != true else { continue }
             let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])
-            guard files.contains(where: { ["m4a", "caf"].contains($0.pathExtension) && UUID(uuidString: $0.deletingPathExtension().lastPathComponent) != nil
-                && ((try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 }) else { continue }
+            let hasLiveAudio = files.contains(where: { ["m4a", "caf"].contains($0.pathExtension) && UUID(uuidString: $0.deletingPathExtension().lastPathComponent) != nil
+                && ((try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 })
+            if !hasLiveAudio, try deletedTakes(session: id, base: base).isEmpty { continue }
             let header = try? metadata(session: id, base: base)
             rows.append(.init(id: id, date: header?.startedAt ?? values.creationDate ?? .distantPast, metadata: header))
         }
@@ -136,6 +166,10 @@ enum MushafRecordingArchive {
                 let values = try path.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey])
                 guard values.isRegularFile == true, values.isSymbolicLink != true else { continue }
                 files.append(.init(id: id, bytes: values.fileSize ?? 0))
+            }
+            for take in try deletedTakes(session: row.id, base: base) {
+                let size = try take.url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                files.append(.init(id: take.id, bytes: size, deleted: true))
             }
             let unreadable = row.metadata == nil ? (try? Data(contentsOf: folder.appendingPathComponent("session.json"))) : nil
             return MushafRecordingExport(session: row.id, metadata: row.metadata, unreadableMetadata: unreadable,
