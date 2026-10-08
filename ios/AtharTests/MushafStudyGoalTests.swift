@@ -37,6 +37,16 @@ final class MushafStudyGoalTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian); calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
         XCTAssertEqual(MushafStudyGoal.completed(history: rows, corpus: corpus, at: now, calendar: calendar), 2)
     }
+    func testLocalMidnightStartsNewGoalDayWithoutDeletingYesterdayHistory() throws {
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let rows = [MemorizationResult(date: try date("2026-10-07T20:59:00Z"), chapter: 112, answers: [answer(1)])]
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Riyadh"))
+        XCTAssertEqual(MushafStudyGoal.completed(history: rows, corpus: corpus, at: try date("2026-10-07T20:59:59Z"), calendar: calendar), 1)
+        XCTAssertEqual(MushafStudyGoal.completed(history: rows, corpus: corpus, at: try date("2026-10-07T21:00:00Z"), calendar: calendar), 0)
+        XCTAssertEqual(MushafStudyGoal.completed(history: rows, corpus: corpus, at: try date("2026-10-07T20:59:59Z"), calendar: calendar), 1)
+        XCTAssertEqual(rows[0].answers.count, 1)
+    }
     @MainActor func testGoalSaveDisableAndRelaunchPreservePendingSessionRepeatChoicesAndLegacyPlan() throws {
         let suite = "Noor.StudyGoal." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
