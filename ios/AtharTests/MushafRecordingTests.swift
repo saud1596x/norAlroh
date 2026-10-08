@@ -164,6 +164,31 @@ final class MushafRecordingTests: XCTestCase {
         XCTAssertEqual(exported.unreadableMetadata, damaged)
         XCTAssertEqual(try Data(contentsOf: metadata), damaged); XCTAssertEqual(try Data(contentsOf: audioURL), damaged)
     }
+    func testRecoverableDeletionSurvivesArchiveReopeningAndRestoresIdenticalAudio() throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let value = session(); let directory = try MushafRecordingArchive.register(value, base: root)
+        let file = directory.appendingPathComponent(UUID().uuidString + ".m4a")
+        try audio(file, seconds: 2)
+        let audioBytes = try Data(contentsOf: file)
+        let headerURL = directory.appendingPathComponent("session.json")
+        let headerBytes = try Data(contentsOf: headerURL)
+        let take = try XCTUnwrap(MushafRecordingArchive.takes(session: value.id, base: root).first)
+        try MushafRecordingArchive.moveAudio(take, toDeleted: true, base: root)
+        XCTAssertTrue(try MushafRecordingArchive.takes(session: value.id, base: root).isEmpty)
+        XCTAssertEqual(try MushafRecordingArchive.sessions(base: root).map(\.id), [value.id], "Keep a route to restore sessions with no live takes")
+        let removed = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: value.id, base: root).first)
+        XCTAssertEqual(try Data(contentsOf: removed.url), audioBytes)
+        XCTAssertEqual(try Data(contentsOf: headerURL), headerBytes)
+        let export = try XCTUnwrap(MushafRecordingArchive.exportMetadata(base: root).first)
+        XCTAssertEqual(export.files.first?.deleted, true); XCTAssertEqual(export.files.first?.id, take.id)
+        try MushafRecordingArchive.moveAudio(removed, toDeleted: false, base: root)
+        XCTAssertTrue(try MushafRecordingArchive.deletedTakes(session: value.id, base: root).isEmpty)
+        XCTAssertEqual(try MushafRecordingArchive.takes(session: value.id, base: root).first?.id, take.id)
+        XCTAssertEqual(try Data(contentsOf: file), audioBytes)
+        XCTAssertEqual(try Data(contentsOf: headerURL), headerBytes)
+        XCTAssertThrowsError(try MushafRecordingArchive.moveAudio(removed, toDeleted: false, base: root))
+        XCTAssertEqual(try Data(contentsOf: file), audioBytes)
+    }
     func testExplicitEraseTouchesOnlyNewRecordingRoot() throws {
         let container = try folder(); defer { try? FileManager.default.removeItem(at: container) }
         let legacy = container.appendingPathComponent("latest-recitation.m4a")
