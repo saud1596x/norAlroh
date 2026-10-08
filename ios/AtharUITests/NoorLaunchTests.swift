@@ -8,8 +8,8 @@ final class NoorLaunchTests: XCTestCase {
         app.launchArguments = ["-NoorAcceptanceShowWelcome"]
         app.launch()
         let guest = app.buttons["welcome.continue"]
-        XCTAssertTrue(guest.waitForExistence(timeout: 20))
-        XCTAssertTrue(app.staticTexts["welcome.title"].exists)
+        XCTAssertTrue(guest.waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["welcome.title"].exists, app.debugDescription)
         XCTAssertTrue(guest.isHittable)
         capture(app, name: "welcome-first-use")
         guest.tap()

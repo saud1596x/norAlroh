@@ -52,7 +52,14 @@ extension XCTestCase {
     func launchNoorApp(_ app: XCUIApplication) {
         app.launch()
         let guest = app.buttons["welcome.continue"]
-        if guest.waitForExistence(timeout: 4) { guest.tap() }
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guest.exists || app.buttons["home.resume"].exists
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
+            XCTFail("Neither first-use continuation nor home is available: \(app.debugDescription)")
+            return
+        }
+        if guest.exists { guest.tap() }
     }
 
     func selectNoorTab(_ title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
