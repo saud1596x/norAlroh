@@ -118,13 +118,34 @@ struct MushafRepeatPreferences: Codable, Equatable {
     var valid: Bool { (1...20).contains(count) && (0...30).contains(delaySeconds) }
 }
 
+struct MushafStudyGoal: Codable, Equatable {
+    var dailyAyahs: Int
+    var valid: Bool { (1...200).contains(dailyAyahs) }
+    /// Count completed self-assessment, once per ayah in the user's local day.
+    /// Skips, unattempted verses and merely opening a page never count.
+    static func completed(history: [MemorizationResult], corpus: [Surah], at date: Date = Date(), calendar: Calendar = .current) -> Int {
+        guard date.timeIntervalSince1970.isFinite else { return 0 }
+        var local = Calendar(identifier: .gregorian); local.timeZone = calendar.timeZone
+        var keys = Set<String>()
+        for result in history where result.date.timeIntervalSince1970.isFinite && local.isDate(result.date, inSameDayAs: date) {
+            guard corpus.indices.contains(result.chapter - 1) else { continue }
+            for answer in result.answers where answer.assessment == "remembered" || answer.assessment == "review" {
+                guard (1...corpus[result.chapter - 1].ayahs.count).contains(answer.ayah) else { continue }
+                keys.insert("\(result.chapter):\(answer.ayah)")
+            }
+        }
+        return keys.count
+    }
+}
+
 struct MushafStudyArchive: Codable, Equatable {
     var version = 1
     var pending: MushafStudySession?
     var summary: MushafStudySummary?
     var repetition: MushafRepeatPreferences?
+    var goal: MushafStudyGoal?
     func valid(corpus: [Surah]) -> Bool {
-        version == 1 && (repetition?.valid ?? true) && (pending?.valid(corpus: corpus) ?? true)
+        version == 1 && (repetition?.valid ?? true) && (goal?.valid ?? true) && (pending?.valid(corpus: corpus) ?? true)
             && (summary.map { $0.session.phase == .finishing && $0.session.valid(corpus: corpus) } ?? true)
     }
 }

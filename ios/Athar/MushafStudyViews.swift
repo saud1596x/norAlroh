@@ -80,12 +80,77 @@ struct MushafStudySetup: View {
                         Section("آخر جلسة") { MushafStudySummaryContent() }
                     }
                 }
+                MushafStudyGoalSection()
                 if let error = memorization.error { Section { Text(error).foregroundStyle(.red) } }
             }
             .navigationTitle("الحفظ والتسميع")
             .toolbar { Button("إغلاق") { dismiss() }.accessibilityIdentifier("study.setup.close") }
             .onChange(of: chapter) { _, _ in from = 1; to = 1 }
             .onChange(of: from) { _, value in if to < value { to = value } }
+        }
+    }
+}
+
+struct MushafStudyGoalSection: View {
+    @EnvironmentObject private var store: AtharStore
+    @EnvironmentObject private var memorization: MemorizationStore
+    var body: some View {
+        Section {
+            if let goal = memorization.mushafStudy.goal {
+                let completed = MushafStudyGoal.completed(history: memorization.history, corpus: store.quran)
+                Text("هدف اليوم: \(completed) من \(goal.dailyAyahs) آية")
+                    .accessibilityIdentifier("study.goal.progress")
+                ProgressView(value: Double(min(completed, goal.dailyAyahs)), total: Double(goal.dailyAyahs))
+                    .accessibilityLabel("تقدم هدف الحفظ").accessibilityValue("\(completed) من \(goal.dailyAyahs)")
+            }
+            NavigationLink {
+                MushafStudyGoalSettings()
+            } label: {
+                Label(memorization.mushafStudy.goal == nil ? "اضبط هدفًا يوميًا" : "تعديل هدف الحفظ", systemImage: "target")
+                    .frame(minHeight: 44)
+            }.accessibilityIdentifier("study.goal.open")
+        }
+    }
+}
+
+private struct MushafStudyGoalSettings: View {
+    @EnvironmentObject private var memorization: MemorizationStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var enabled = false
+    @State private var target = 7
+    var body: some View {
+        Form {
+            Section {
+                Toggle("هدف يومي للحفظ والمراجعة", isOn: $enabled).accessibilityIdentifier("study.goal.enabled")
+                if enabled {
+                    HStack {
+                        Text("\(target) آية في اليوم").accessibilityIdentifier("study.goal.target")
+                        Spacer()
+                        Button { target -= 1 } label: { Image(systemName: "minus").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                            .disabled(target == 1).accessibilityLabel("تقليل الهدف").accessibilityIdentifier("study.goal.decrease")
+                        Button { target += 1 } label: { Image(systemName: "plus").frame(width: 44, height: 44).contentShape(Rectangle()) }
+                            .disabled(target == 200).accessibilityLabel("زيادة الهدف").accessibilityIdentifier("study.goal.increase")
+                    }.buttonStyle(.borderless)
+                }
+                Text("تُحسب كل آية مرة واحدة في يومك المحلي بعد إنهاء جلسة التسميع وتقييمها. المراجعة مع المساعدة تُحسب ممارسة، وليست إثباتًا للإتقان. لا تُحسب الآيات المتجاوزة أو مجرد فتح الصفحة.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            Section {
+                Button {
+                    var next = memorization.mushafStudy
+                    next.goal = enabled ? .init(dailyAyahs: target) : nil
+                    if memorization.saveMushafStudy(next) { dismiss() }
+                } label: { Text("حفظ الهدف").frame(minHeight: 44) }.disabled(memorization.unreadableMushafStudy != nil).accessibilityIdentifier("study.goal.save")
+                if memorization.unreadableMushafStudy != nil {
+                    Text("البيانات السابقة محفوظة، لكن تعذّر قراءتها. صدّرها من الإعدادات قبل إصلاحها؛ لن نستبدلها بهدف جديد.")
+                }
+                if let error = memorization.error { Text(error).foregroundStyle(.red) }
+            }
+        }
+        .navigationTitle("هدف الحفظ")
+        .onAppear {
+            enabled = memorization.mushafStudy.goal != nil
+            target = memorization.mushafStudy.goal?.dailyAyahs ?? 7
         }
     }
 }
