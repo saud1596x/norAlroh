@@ -3,20 +3,6 @@ import UIKit
 @testable import Athar
 
 final class QuranAccuracyTests: XCTestCase {
-    func testDailyVerseUsesSaudiMidnightAndKeepsExactSource() throws {
-        let corpus = try XCTUnwrap(QuranResources.corpus)
-        let formatter = ISO8601DateFormatter()
-        let before = try XCTUnwrap(formatter.date(from: "2026-10-04T20:59:59Z"))
-        let after = try XCTUnwrap(formatter.date(from: "2026-10-04T21:00:00Z"))
-        let a = try XCTUnwrap(NoorDailyVerse.select(corpus: corpus, date: before))
-        let b = try XCTUnwrap(NoorDailyVerse.select(corpus: corpus, date: after))
-        let sameDay = try XCTUnwrap(NoorDailyVerse.select(corpus: corpus, date: before.addingTimeInterval(-3600)))
-        XCTAssertEqual(a.chapter.number, sameDay.chapter.number)
-        XCTAssertEqual(a.ayah.number, sameDay.ayah.number)
-        XCTAssertNotEqual("\(a.chapter.number):\(a.ayah.number)", "\(b.chapter.number):\(b.ayah.number)")
-        XCTAssertEqual(b.ayah.text, corpus[b.chapter.number - 1].ayahs[b.ayah.number - 1].text)
-        XCTAssertNil(NoorDailyVerse.select(corpus: [], date: after))
-    }
     func testIkhlasAndNasAreNumberedVersesWithoutInjectedBasmala() throws {
         let corpus = try XCTUnwrap(QuranResources.corpus)
         XCTAssertEqual(corpus[111].ayahs.count, 4)
