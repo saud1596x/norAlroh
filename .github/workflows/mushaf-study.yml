@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [mushaf-ux-stage1-20261007]
-    paths: ['.github/workflows/mushaf-study.yml', 'ios/Athar/MushafStudy*.swift', 'ios/AtharTests/MushafStudySessionTests.swift']
+    paths: ['.github/workflows/mushaf-study.yml', 'ios/Athar/MushafStudy*.swift', 'ios/Athar/MemorizationViews.swift', 'ios/Athar/Store.swift', 'ios/Athar/FeatureViews.swift', 'ios/AtharTests/MushafStudySessionTests.swift']
 permissions:
   contents: read
 concurrency:
