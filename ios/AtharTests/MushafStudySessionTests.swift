@@ -167,5 +167,8 @@ final class MushafStudySessionTests: XCTestCase {
         XCTAssertTrue(store.finishMushafStudy())
         XCTAssertNil(store.progress.verses["1:1"])
         XCTAssertEqual(store.mushafStudy.summary?.helped, 1)
+        XCTAssertEqual(store.mushafStudy.summary?.answered, 0)
+        XCTAssertEqual(store.mushafStudy.summary?.skipped, 1)
+        XCTAssertEqual(store.mushafStudy.summary?.reviewKeys, [])
     }
 }
