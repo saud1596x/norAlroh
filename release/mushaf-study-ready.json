@@ -1,8 +1,8 @@
 {
-  "increment": "actual-cancellable-range-repetition",
-  "source_commit": "3b845a0d775f33fde449f944c88b6fd01b1c6066",
+  "increment": "real-stepper-fixture-debug-behavior-gate",
+  "source_commit": "65a589eaf877991ac5da71e8cda27d9089f6a751",
   "sha256": {
-    ".github/workflows/mushaf-study.yml": "1286a95303f59bc1ed75c75e1511148a7c946826f7c9456e81439404f2adbfd4",
+    ".github/workflows/mushaf-study.yml": "bd926e3f102c1bf738ff6a6335bba58180d347dd9861432607c7d20d7ddf456f",
     "README-NOOR.md": "d703492dbdffdabb3d46a324523d7cf48e7fe9bf0281237fde2860f0230584ad",
     "ios/Athar/AtharApp.swift": "09d60503638db5a1d394aa8deef27d4a03e8dbbe02175ef231b7fda5d66a453d",
     "ios/Athar/FeatureViews.swift": "082694f5223b886fd9d50cd4104f05282b5d31ef81bfab30927674416848c501",
@@ -25,9 +25,9 @@
     "ios/AtharTests/MushafStudySessionTests.swift": "e0460d25bf8f077919b545b1f9dea9dbe16aab358af2197a591cdb322a0ba13e",
     "ios/AtharTests/PublishingContentTests.swift": "aa3892348976f9f80b1b0152eae7f1d48f219b7d584a2cab4fc43abe7c07fd1c",
     "ios/AtharUITests/NoorAllScreensTests.swift": "c8b15c6df536b9bf49045aef8099ab8045a2452b18221adaa0627cb99e8799f8",
-    "ios/AtharUITests/NoorMushafStudyUITests.swift": "50953749bacf255626ba4fafbcf44d6b2975d2d981547b2d57e38bc74d7734f4",
+    "ios/AtharUITests/NoorMushafStudyUITests.swift": "e9358955f1265e0d70511d0ce5dad5196784f02ff2ba84d490f7513102abccc0",
     "ios/project.yml": "0a99fe60671ceff5c648e510eea338c5e92be59e2346fc87b738a10102bb1684",
-    "release/FINAL-UX-ACCEPTANCE-20261008.md": "4e54e53e1e8f1e3c7d62cfb275f1af86690c2eb4d809d0f862faf03d9af83a2a",
+    "release/FINAL-UX-ACCEPTANCE-20261008.md": "92ce744f0fbb311d3fa6caab550adc77e79356bb4790a8bd603bafe3ae762389",
     "release/legal-content-accounts.json": "cceb8d714cc316739ea09a37ce2d2d6df0583a97cb2d1563651cd3c536ab4b2b",
     "release/legal-content.json": "03bb56f28a8445146e6a3a5044205457f18ee43a8d195af05b5459c793956110",
     "release/publishing-content-report.json": "9ed3b161c2bf56b53c980b82fe8e440010bf87eff4841516039cabc41ab78345",
