@@ -45,6 +45,11 @@ final class NoorFridayRetirementUITests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(about.exists && about.isHittable)
+        let capability = app.staticTexts["settings.studyCapability"]
+        XCTAssertTrue(capability.waitForExistence(timeout: 5))
+        XCTAssertTrue(capability.label.contains("بتقييم ذاتي"))
+        XCTAssertTrue(capability.label.contains("لا يوجد تصحيح صوتي آلي مفعّل"))
+        XCTAssertFalse(capability.label.contains("تقارن الكلمات"))
         XCTAssertFalse(app.buttons["إعدادات يوم الجمعة"].exists)
         XCTAssertFalse(app.buttons["تفعيل تذكيرات الجمعة"].exists)
         app.buttons["تم"].tap()

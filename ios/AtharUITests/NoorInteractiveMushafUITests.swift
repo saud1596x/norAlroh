@@ -57,8 +57,13 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                     app.buttons["verse.copy"].tap()
                     XCTAssertTrue(app.staticTexts["verse.notice"].waitForExistence(timeout: 10))
                     capture(app, "text-reader-604-copy-confirmed")
+                    XCTAssertTrue(app.buttons["verse.sheet.close"].waitForExistence(timeout: 5))
+                    app.buttons["verse.sheet.close"].tap()
+                    XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 5))
+                    XCTAssertFalse(app.buttons["verse.tafsir"].exists, "Dismissing the sheet clears selection")
+                } else {
+                    app.buttons["verse.tools.close"].tap()
                 }
-                app.buttons["verse.tools.close"].tap()
             }
         }
         let verse = app.buttons["reader.verse.114:1"]
