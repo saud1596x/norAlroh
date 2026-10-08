@@ -1,5 +1,5 @@
 import XCTest
-@testable import RecitationEngineProbe
+@testable import RecitationEvidence
 
 final class AudioEvidenceGateTests: XCTestCase {
     func testObservedSilenceHallucinationCannotReachReader() {
