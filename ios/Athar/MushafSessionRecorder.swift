@@ -181,7 +181,7 @@ enum MushafRecordingArchive {
             let directory = try MushafRecordingArchive.register(session, base: base)
             let file = directory.appendingPathComponent(UUID().uuidString + ".m4a")
             let sound = AVAudioSession.sharedInstance()
-            try sound.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
+            try MushafCaptureAudio.configure(sound)
             try sound.setActive(true)
             let capture = try AVAudioRecorder(url: file, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: 44100, AVNumberOfChannelsKey: 1, AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue])
@@ -236,5 +236,13 @@ enum MushafRecordingArchive {
             guard let self, self.player === player else { return }; self.stop()
             if !flag { self.message = "انقطع تشغيل التسجيل. يمكنك إعادة المحاولة." }
         }
+    }
+}
+
+/// Apple's category/mode table allows measurement with recording; spokenAudio
+/// belongs to playback. Configure before activation, without requesting input.
+enum MushafCaptureAudio {
+    static func configure(_ session: AVAudioSession) throws {
+        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
     }
 }
