@@ -4,9 +4,6 @@ mkdir -p release/mushaf-balance
 python3 scripts/select-xcode.py > release/mushaf-balance/xcode.env
 source release/mushaf-balance/xcode.env
 export DEVELOPER_DIR
-python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
-python3 scripts/prepare-mushaf-companion.py
-cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
 xcodegen generate --spec ios/project.yml --project ios
 python3 - <<'PY'
 import json, subprocess

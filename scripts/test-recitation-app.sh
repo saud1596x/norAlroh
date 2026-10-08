@@ -5,7 +5,6 @@ mkdir -p release/recitation-app
 python3 scripts/select-xcode.py > release/recitation-app/xcode.env
 source release/recitation-app/xcode.env
 export DEVELOPER_DIR
-python3 scripts/prepare-mushaf-companion.py
 xcodegen generate --spec ios/project.yml --project ios
 noor_recitation_device=$(python3 - <<'PY'
 import json, subprocess
