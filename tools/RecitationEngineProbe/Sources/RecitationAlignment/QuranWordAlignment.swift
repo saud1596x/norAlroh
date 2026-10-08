@@ -49,7 +49,8 @@ public struct QuranWordScript: Decodable {
                 guard record.page == group.page, record.glyph == group.glyph,
                       (1...604).contains(group.page) else { throw QuranAlignmentFailure.invalidEdition }
                 let aliases = Set([QuranAlignedWord.tokens(group.imlaei),
-                                   QuranAlignedWord.tokens(group.canonical)])
+                                   QuranAlignedWord.tokens(group.canonical),
+                                   QuranAlignedWord.tokens(group.canonical, expandDaggerAlif: true)])
                 guard aliases.allSatisfy({ !$0.isEmpty && $0.allSatisfy({ !$0.isEmpty }) }) else {
                     throw QuranAlignmentFailure.invalidScript
                 }
@@ -82,8 +83,8 @@ public struct QuranAlignedWord {
         self.id = id; self.verse = verse; self.page = page; self.aliases = aliases
     }
     /// Keep long vowels and consonants. No fuzzy distance or deletion of alif.
-    public static func normalize(_ text: String) -> String {
-        let expanded = text.replacingOccurrences(of: "\u{0670}", with: "ا")
+    public static func normalize(_ text: String, expandDaggerAlif: Bool = false) -> String {
+        let expanded = (expandDaggerAlif ? text.replacingOccurrences(of: "\u{0670}", with: "ا") : text)
             .replacingOccurrences(of: "ٱ", with: "ا")
         let scalars = expanded.decomposedStringWithCompatibilityMapping.unicodeScalars.filter {
             CharacterSet.letters.contains($0) && !CharacterSet.nonBaseCharacters.contains($0)
@@ -92,8 +93,10 @@ public struct QuranAlignedWord {
         }
         return String(String.UnicodeScalarView(scalars))
     }
-    public static func tokens(_ words: [String]) -> [String] {
-        words.flatMap { $0.split(whereSeparator: \.isWhitespace).map { normalize(String($0)) } }
+    public static func tokens(_ words: [String], expandDaggerAlif: Bool = false) -> [String] {
+        words.flatMap { $0.split(whereSeparator: \.isWhitespace).map {
+            normalize(String($0), expandDaggerAlif: expandDaggerAlif)
+        } }
             .filter { !$0.isEmpty }
     }
 }
