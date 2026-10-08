@@ -151,6 +151,8 @@ enum MushafRecordingArchive {
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
     private var revision = 0
+    private var ownsAudioSession = false
+    private let setSessionActive: (Bool) throws -> Void
     private let permission: () async -> Bool
     private let isActive: () -> Bool
     private let base: URL?
@@ -158,8 +160,11 @@ enum MushafRecordingArchive {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
         }
-    }, isActive: @escaping () -> Bool = { UIApplication.shared.applicationState == .active }) {
-        self.base = base; self.permission = permission; self.isActive = isActive
+    }, isActive: @escaping () -> Bool = { UIApplication.shared.applicationState == .active },
+        setSessionActive: @escaping (Bool) throws -> Void = { active in
+            try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
+        }) {
+        self.base = base; self.permission = permission; self.isActive = isActive; self.setSessionActive = setSessionActive
         super.init()
     }
     func start(session: MushafStudySession) async {
@@ -182,7 +187,7 @@ enum MushafRecordingArchive {
             let file = directory.appendingPathComponent(UUID().uuidString + ".m4a")
             let sound = AVAudioSession.sharedInstance()
             try MushafCaptureAudio.configure(sound)
-            try sound.setActive(true)
+            try activateSound()
             let capture = try AVAudioRecorder(url: file, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: 44100, AVNumberOfChannelsKey: 1, AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue])
             capture.delegate = self; capture.isMeteringEnabled = true; recorder = capture
@@ -193,6 +198,12 @@ enum MushafRecordingArchive {
             stop(); message = "تعذّر بدء التسجيل. تحقق من مساحة الجهاز والميكروفون. جلسة التسميع ونتائجها محفوظة بشكل مستقل عن الصوت."
         }
     }
+    private func activateSound() throws {
+        try setSessionActive(true)
+        // Track activation before creating the encoder/player: their initializers
+        // can throw while the app already owns an active system audio session.
+        ownsAudioSession = true
+    }
     func meters() {
         guard recording, let recorder else { return }
         recorder.updateMeters(); elapsed = recorder.currentTime.isFinite ? max(0, recorder.currentTime) : 0
@@ -200,10 +211,13 @@ enum MushafRecordingArchive {
     }
     func stop() {
         revision += 1
-        let ownsSound = recorder != nil || player != nil
+        let ownsSound = ownsAudioSession
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = nil; level = 0
-        if ownsSound { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+        if ownsSound {
+            do { try setSessionActive(false); ownsAudioSession = false }
+            catch { /* Retain ownership so the next explicit stop can retry. */ }
+        }
         // Never replace/delete a take here. Interrupted bytes remain recoverable;
         // the list exposes only files AVFoundation can actually decode.
     }
@@ -211,7 +225,7 @@ enum MushafRecordingArchive {
         stop()
         do {
             let sound = AVAudioSession.sharedInstance()
-            try sound.setCategory(.playback); try sound.setActive(true)
+            try sound.setCategory(.playback); try activateSound()
             let playback = try AVAudioPlayer(contentsOf: take.url)
             playback.delegate = self; player = playback
             guard playback.play() else { throw CocoaError(.fileReadCorruptFile) }
