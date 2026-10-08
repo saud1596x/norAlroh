@@ -7,6 +7,31 @@ final class NoorMushafStudyUITests: XCTestCase {
         if let run = testRun, run.failureCount > 0, let application { print("STUDY_FAILURE_HIERARCHY\n" + application.debugDescription) }
         XCUIDevice.shared.orientation = .portrait
     }
+    func testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount() {
+        let app = XCUIApplication(); application = app; app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        selectNoorTab("الحفظ", in: app)
+        let entry = app.buttons["hifz.speech"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        if !entry.isHittable { app.swipeUp() }
+        XCTAssertTrue(entry.isHittable); entry.tap()
+        XCTAssertTrue(app.buttons["study.start"].waitForExistence(timeout: 120), "Actual reader setup opens directly from the former voice entry")
+        XCTAssertFalse(app.buttons["speech.prepare"].exists)
+        XCTAssertFalse(app.buttons["speech.listen"].exists)
+        capture(app, "inline-entry-without-model-or-account")
+        app.buttons["study.start"].tap()
+        XCTAssertTrue(app.buttons["study.finish"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.exists)
+        XCTAssertTrue(app.buttons["study.mic"].isHittable)
+        XCTAssertTrue(app.buttons["study.revealWord"].isHittable)
+        capture(app, "former-voice-entry-now-actual-mushaf-session")
+        app.buttons["study.finish"].tap()
+        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 10))
+        XCTAssertEqual(numbers(app.staticTexts["study.result.answered"].label).first, 0)
+        app.buttons["study.result.close"].tap()
+        app.buttons["إغلاق المصحف"].tap()
+        XCTAssertTrue(app.buttons["hifz.speech"].waitForExistence(timeout: 10), "Leaving returns to the same navigation context")
+    }
     func testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch() {
         let app = XCUIApplication(); application = app; app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
@@ -102,6 +127,10 @@ final class NoorMushafStudyUITests: XCTestCase {
         let app = XCUIApplication(); application = app; app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        app.buttons["reader.jump"].tap()
+        let jump = app.textFields["reader.pageNumber"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 5)); jump.tap(); jump.typeText("604"); app.buttons["انتقل"].tap()
+        XCTAssertTrue(app.buttons["reader.verse.112:1"].waitForExistence(timeout: 30))
         app.buttons["reader.study"].tap()
         XCTAssertTrue(app.buttons["study.start"].waitForExistence(timeout: 10)); app.buttons["study.start"].tap()
         XCTAssertTrue(app.buttons["study.mic"].waitForExistence(timeout: 10)); app.buttons["study.mic"].tap()
