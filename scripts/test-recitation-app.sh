@@ -28,6 +28,7 @@ xcodebuild build-for-testing "${common[@]}"
 noor_gate=0
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharTests/QuranRecognitionIntegrationTests \
+  -only-testing:AtharTests/MushafRecordingTests \
   -resultBundlePath release/recitation-app/recognition-integration.xcresult || noor_gate=$?
 # This is real permission-denial UI evidence, not a live recitation claim.
 xcrun simctl privacy "$noor_recitation_device" reset microphone com.saud1596x.nooralruh || true
