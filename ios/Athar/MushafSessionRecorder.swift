@@ -156,6 +156,9 @@ enum MushafRecordingArchive {
     @Published private(set) var requestingPermission = false
     @Published private(set) var permissionDenied = false
     @Published private(set) var playing: UUID?
+    @Published private(set) var playbackPaused = false
+    @Published private(set) var playbackPosition: TimeInterval = 0
+    @Published private(set) var playbackDuration: TimeInterval = 0
     @Published private(set) var elapsed: TimeInterval = 0
     @Published private(set) var level = 0.0
     @Published var message: String?
@@ -225,6 +228,7 @@ enum MushafRecordingArchive {
         let ownsSound = ownsAudioSession
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = nil; level = 0
+        playbackPaused = false; playbackPosition = 0; playbackDuration = 0
         if ownsSound {
             do { try setSessionActive(false); ownsAudioSession = false }
             catch { /* Retain ownership so the next explicit stop can retry. */ }
@@ -232,16 +236,45 @@ enum MushafRecordingArchive {
         // Never replace/delete a take here. Interrupted bytes remain recoverable;
         // the list exposes only files AVFoundation can actually decode.
     }
-    func play(_ take: MushafRecordingTake) {
+    func play(_ take: MushafRecordingTake, at position: TimeInterval = 0) {
         stop()
         do {
             let sound = AVAudioSession.sharedInstance()
             try sound.setCategory(.playback); try activateSound()
             let playback = try AVAudioPlayer(contentsOf: take.url)
             playback.delegate = self; player = playback
+            playback.currentTime = position.isFinite ? min(max(0, position), playback.duration) : 0
             guard playback.play() else { throw CocoaError(.fileReadCorruptFile) }
-            playing = take.id; message = nil
+            playing = take.id; playbackDuration = playback.duration
+            playbackPosition = playback.currentTime; playbackPaused = false; message = nil
         } catch { stop(); message = "تعذّر تشغيل هذا التسجيل. احتُفظ بالملف الأصلي دون استبدال." }
+    }
+    func refreshPlaybackPosition() {
+        guard let player, playing != nil else { return }
+        playbackPosition = min(playbackDuration, max(0, player.currentTime))
+    }
+    func pausePlayback() {
+        guard let player, playing != nil, !playbackPaused else { return }
+        player.pause(); refreshPlaybackPosition(); playbackPaused = true
+        if ownsAudioSession {
+            do { try setSessionActive(false); ownsAudioSession = false }
+            catch { /* Retain ownership for the next explicit stop. */ }
+        }
+    }
+    func resumePlayback() {
+        guard let player, playing != nil, playbackPaused else { return }
+        do {
+            try activateSound()
+            guard player.play() else { throw CocoaError(.fileReadUnknown) }
+            playbackPaused = false; message = nil
+        } catch {
+            message = "تعذّر استئناف الصوت. بقي التسجيل محفوظًا؛ أعد المحاولة."
+        }
+    }
+    func seekPlayback(to position: TimeInterval) {
+        guard position.isFinite, let player, playing != nil else { return }
+        player.currentTime = min(max(0, position), playbackDuration)
+        refreshPlaybackPosition()
     }
     nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         Task { @MainActor [weak self] in

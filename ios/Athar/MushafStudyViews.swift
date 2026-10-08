@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 struct MushafStudyButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
@@ -127,31 +128,65 @@ struct MushafRecordingList: View {
     @Environment(\.dismiss) private var dismiss
     @State private var takes: [MushafRecordingTake] = []
     @State private var loadError: String?
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Text("التسجيلات محفوظة على هذا الجهاز. استمع إلى المقاطع أو احفظ نسخة منها.").font(.footnote)
-                    if takes.isEmpty { Text(loadError ?? "لا يوجد تسجيل قابل للتشغيل لهذه الجلسة.") }
-                }
-                ForEach(takes) { take in
-                    Section {
-                        Text(take.date, style: .date).font(.headline)
-                        Text("المدة: \(MushafAudioTime.text(take.duration))").environment(\.layoutDirection, .leftToRight)
-                        Button {
-                            if recorder.playing == take.id { recorder.stop() } else { recorder.play(take) }
-                        } label: {
-                            Label(recorder.playing == take.id ? "إيقاف المقطع" : "استماع إلى المقطع", systemImage: recorder.playing == take.id ? "stop.fill" : "play.fill")
-                                .frame(minHeight: 44).contentShape(Rectangle())
-                        }.accessibilityIdentifier("study.recording.play.\(take.id.uuidString)")
-                        ShareLink(item: take.url) {
-                            Label("حفظ أو مشاركة ملف الصوت", systemImage: "square.and.arrow.up").frame(minHeight: 44)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if takes.isEmpty {
+                        ContentUnavailableView("لا يوجد صوت قابل للتشغيل", systemImage: "waveform",
+                            description: Text(loadError ?? "لم يُحفظ تسجيل قابل للتشغيل لهذه الجلسة."))
                     }
-                }
-                Section {
-                    Text("المقاطع التي انقطعت قبل اكتمالها تبقى محفوظة على الجهاز. تعرض هذه القائمة الملفات التي يمكن تشغيلها فقط.").font(.footnote).foregroundStyle(.secondary)
-                }
+                    ForEach(Array(takes.enumerated()), id: \.element.id) { index, take in
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "waveform").foregroundStyle(Theme.gold).accessibilityHidden(true)
+                                Text("المقطع \(index + 1)").font(.headline)
+                                Spacer()
+                                ShareLink(item: take.url) {
+                                    Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44)
+                                }.accessibilityLabel("مشاركة المقطع \(index + 1)")
+                            }
+                            Text(take.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                            if recorder.playing == take.id {
+                                TimelineView(.periodic(from: .now, by: 0.25)) { context in
+                                    VStack(spacing: 8) {
+                                        Slider(value: Binding(get: { recorder.playbackPosition },
+                                            set: { recorder.seekPlayback(to: $0) }),
+                                            in: 0...max(0.01, recorder.playbackDuration))
+                                            .accessibilityLabel("موضع تشغيل التسجيل")
+                                            .accessibilityIdentifier("study.recording.seek")
+                                        HStack {
+                                            Text(MushafAudioTime.text(recorder.playbackPosition))
+                                            Spacer()
+                                            Text(MushafAudioTime.text(recorder.playbackDuration))
+                                        }.font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                    }.environment(\.layoutDirection, .leftToRight)
+                                        .onChange(of: context.date) { _, _ in recorder.refreshPlaybackPosition() }
+                                }
+                            } else {
+                                Text(MushafAudioTime.text(take.duration)).font(.caption.monospacedDigit())
+                                    .environment(\.layoutDirection, .leftToRight)
+                            }
+                            HStack(spacing: 16) {
+                                Button {
+                                    if recorder.playing != take.id { recorder.play(take) }
+                                    else if recorder.playbackPaused { recorder.resumePlayback() }
+                                    else { recorder.pausePlayback() }
+                                } label: {
+                                    Label(recorder.playing == take.id && !recorder.playbackPaused ? "إيقاف مؤقت" : "استماع",
+                                        systemImage: recorder.playing == take.id && !recorder.playbackPaused ? "pause.fill" : "play.fill")
+                                        .frame(maxWidth: .infinity, minHeight: 44)
+                                }.buttonStyle(.borderedProminent).tint(Theme.gold)
+                                    .accessibilityIdentifier("study.recording.play.\(take.id.uuidString)")
+                                Button { recorder.play(take) } label: {
+                                    Image(systemName: "arrow.counterclockwise").frame(width: 44, height: 44)
+                                }.accessibilityLabel("إعادة المقطع من البداية")
+                            }
+                        }
+                        .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
+                    }
+                }.padding(20)
             }
             .navigationTitle("تسجيلات الجلسة")
             .toolbar { Button("العودة للمصحف") { recorder.stop(); dismiss() }.accessibilityIdentifier("study.recordings.close") }
@@ -160,6 +195,8 @@ struct MushafRecordingList: View {
                 catch { loadError = "تعذّر قراءة قائمة التسجيلات. احتُفظ بالملفات الأصلية؛ أعد المحاولة بعد فتح قفل الجهاز." }
             }
             .onDisappear { recorder.stop() }
+            .onChange(of: scenePhase) { _, phase in if phase != .active { recorder.pausePlayback() } }
+            .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in recorder.pausePlayback() }
             .alert("تشغيل التسجيل", isPresented: Binding(get: { recorder.message != nil }, set: { if !$0 { recorder.message = nil } })) {
                 Button("حسنًا") { recorder.message = nil }
             } message: { Text(recorder.message ?? "") }
