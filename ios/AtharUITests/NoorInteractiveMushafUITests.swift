@@ -68,9 +68,21 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         }
         let verse = app.buttons["reader.verse.114:1"]
         verse.press(forDuration: 0.6); app.buttons["verse.play"].tap()
-        XCTAssertTrue(app.buttons["إيقاف التلاوة"].waitForExistence(timeout: 20))
-        capture(app, "text-reader-604-audio-started")
-        app.buttons["إيقاف التلاوة"].tap()
+        let audioTerminal = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.buttons["إيقاف التلاوة"].exists || app.alerts["التلاوة"].exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [audioTerminal], timeout: 25), .completed,
+            "Playback must start or report a bounded connection failure; never spin indefinitely")
+        if app.buttons["إيقاف التلاوة"].exists {
+            capture(app, "text-reader-604-audio-started")
+            app.buttons["إيقاف التلاوة"].tap()
+        } else {
+            capture(app, "text-reader-604-audio-connection-failure")
+            app.alerts["التلاوة"].buttons["حسنًا"].tap()
+            XCTAssertFalse(app.buttons["إلغاء تحميل التلاوة"].exists)
+            XCTAssertTrue(app.buttons["reader.study"].exists,
+                "A failed stream releases playback ownership and restores reader tools")
+        }
         page.pinch(withScale: 1.6, velocity: 1)
         capture(app, "text-reader-604-zoom")
         page.swipeLeft()
