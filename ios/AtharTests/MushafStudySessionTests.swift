@@ -2,7 +2,7 @@ import XCTest
 @testable import Athar
 
 final class MushafStudySessionTests: XCTestCase {
-    func testTrustedWordMaskKeepsVerseEndMarkersAndSpansEveryAuthoredPage() async throws {
+    func testTrustedWordMaskKeepsVerseEndMarkersAcrossRangePages() async throws {
         let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
         let (data, response) = try await URLSession.shared.data(from: url)
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
@@ -10,7 +10,8 @@ final class MushafStudySessionTests: XCTestCase {
         let Quran = try corpus()
         let keys = Quran.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
         let index = MushafStudyWordIndex(snapshot: snapshot, keys: keys)
-        let crossing = try XCTUnwrap(keys.dropLast().first { (index.pages[$0]?.count ?? 0) > 1 })
+        let crossing = "2:282" // Long authored verse, followed by the next page
+        XCTAssertTrue(keys.contains(crossing))
         let position = try XCTUnwrap(keys.firstIndex(of: crossing))
         let next = keys[position + 1]
         let words = try XCTUnwrap(index.words[crossing])
@@ -29,6 +30,29 @@ final class MushafStudySessionTests: XCTestCase {
         XCTAssertEqual(index.hiddenIDs(session: session), Set(index.words[next] ?? []))
         let actualPages = Set(snapshot.records.filter { $0.verse_id == position + 1 }.compactMap(\.page_number))
         XCTAssertEqual(Set(index.pages[crossing] ?? []), actualPages)
+    }
+    func testContinuationProjectionFixturePreservesWordsOnBothPages() throws {
+        // Projection-only fixture, never rendered or substituted for Quran data.
+        // The current verified edition keeps complete ayahs within a page;
+        // exercise continuation handling explicitly without inventing one in it.
+        func record(_ id: Int, _ verse: Int, _ page: Int, _ position: Int, _ kind: String) -> QCFV2Snapshot.Record {
+            .init(id: id, record_type: "mushaf_word", mushaf_id: 1, page_number: page,
+                pages_count: nil, lines_per_page: nil, default_font_name: nil, word_id: id,
+                verse_id: verse, text: "\u{FC00}", char_type_name: kind, line_number: 1,
+                position_in_page: position, position_in_line: position, position_in_verse: position)
+        }
+        let fixture = QCFV2Snapshot(resource_group: "mushafs", resource_id: 1, resource_content_id: 382,
+            schema_version: 1, sync_sequence: 0, records: [record(10, 1, 1, 1, "word"),
+                record(11, 1, 2, 2, "word"), record(12, 1, 2, 3, "end"),
+                record(13, 2, 2, 1, "word"), record(14, 2, 2, 2, "end")])
+        let index = MushafStudyWordIndex(snapshot: fixture, keys: ["1:1", "1:2"])
+        XCTAssertEqual(index.pages["1:1"], [1, 2])
+        var session = MushafStudySession(keys: ["1:1", "1:2"], scope: .range)
+        XCTAssertEqual(index.hiddenIDs(session: session), [10, 11, 13])
+        XCTAssertTrue(session.reveal(wordCount: 2, all: false))
+        XCTAssertEqual(index.hiddenIDs(session: session), [11, 13])
+        XCTAssertTrue(session.answer("review"))
+        XCTAssertEqual(index.hiddenIDs(session: session), [13])
     }
     private func corpus() throws -> [Surah] { try XCTUnwrap(QuranResources.corpus) }
     private func isolated() throws -> (String, UserDefaults) {
