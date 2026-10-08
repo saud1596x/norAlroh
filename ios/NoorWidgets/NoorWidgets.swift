@@ -100,7 +100,7 @@ struct NoorWidgetView: View {
         switch kind {
         case .nextPrayer, .prayerDay:
             guard let next = PrayerCalculator.next(data: snapshot.prayer, now: entry.date) else { return "افتح التطبيق لتحديث المواقيت" }
-            return "\(next.name) \(PrayerCalculator.time(next.date, city: snapshot.prayer.city))"
+            return "\(next.name) \(PrayerDisplay.isolatedClock(next.date, city: snapshot.prayer.city))"
         case .reading: return "الصفحة \(snapshot.page.formatted(.number.locale(Locale(identifier: "ar_SA"))))"
         case .ward: return "\(snapshot.completed(at: entry.date)) من \(snapshot.dailyTarget) آيات"
         case .review: return "\(snapshot.due(at: entry.date)) آيات للمراجعة"
@@ -112,24 +112,30 @@ struct NoorWidgetView: View {
         case .nextPrayer:
             if let next = PrayerCalculator.next(data: snapshot.prayer, now: entry.date) {
                 Text(summary(snapshot)).font(lockScreen ? .headline : .title2.bold())
-                Text(next.date, style: .relative).font(.caption).monospacedDigit()
+                Text(timerInterval: entry.date...next.date, countsDown: true).font(.caption).monospacedDigit()
+                    .environment(\.locale, Locale(identifier: "en_US_POSIX"))
+                    .environment(\.layoutDirection, .leftToRight)
                 if !lockScreen {
                     HStack {
                         Text(snapshot.prayer.city.name)
                         Spacer()
-                        Text(next.date, style: .date)
+                        Text(PrayerDisplay.date(next.date, city: snapshot.prayer.city, format: "d MMMM"))
                     }.font(.caption).foregroundStyle(.secondary)
                 }
             } else { Text("افتح التطبيق لتحديث المواقيت") }
         case .prayerDay:
             Text(snapshot.prayer.city.name).font(.headline)
-            Text(entry.date, style: .date).font(.caption).foregroundStyle(.secondary)
+            Text(PrayerDisplay.gregorian(entry.date, city: snapshot.prayer.city)).font(.caption).foregroundStyle(.secondary)
+            if family == .systemLarge {
+                Text(PrayerDisplay.hijri(entry.date, city: snapshot.prayer.city)).font(.caption).foregroundStyle(.secondary)
+            }
             let rows = PrayerCalculator.rows(data: snapshot.prayer, date: entry.date)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: family == .systemLarge ? 2 : 3), spacing: 7) {
                 ForEach(rows) { row in
                     VStack(spacing: 2) {
                         Text(row.name).font(.caption)
                         Text(PrayerCalculator.time(row.date, city: snapshot.prayer.city)).font(.subheadline.bold()).monospacedDigit()
+                            .environment(\.layoutDirection, .leftToRight)
                     }
                 }
             }
