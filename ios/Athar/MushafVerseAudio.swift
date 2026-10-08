@@ -15,6 +15,8 @@ import Foundation
     private var end: NSObjectProtocol?
     private var failure: NSObjectProtocol?
     private var delay: Task<Void, Never>?
+    private var loadDeadline: Task<Void, Never>?
+    private let loadTimeout: UInt64
     private var revision = UUID()
     private var keys: [String] = []
     private var index = 0
@@ -24,7 +26,10 @@ import Foundation
     private var reportedStart = false
     private let source: (String) -> URL?
     var onVerse: ((String) -> Void)?
-    init(source: ((String) -> URL?)? = nil) { self.source = source ?? Self.recitationURL }
+    init(source: ((String) -> URL?)? = nil, loadTimeoutSeconds: Double = 15) {
+        self.source = source ?? Self.recitationURL
+        loadTimeout = UInt64(max(0.05, min(60, loadTimeoutSeconds.isFinite ? loadTimeoutSeconds : 15)) * 1_000_000_000)
+    }
     static func recitationURL(_ key: String) -> URL? {
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, let corpus = QuranResources.corpus,
@@ -43,6 +48,7 @@ import Foundation
         advance()
     }
     private func releasePlayer() {
+        loadDeadline?.cancel(); loadDeadline = nil
         player?.pause(); player = nil; observation = nil; playbackObservation = nil
         if let end { NotificationCenter.default.removeObserver(end) }; end = nil
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
@@ -78,8 +84,12 @@ import Foundation
             Task { @MainActor in
                 guard let self, self.revision == token, self.player === player else { return }
                 if started {
+                    self.loadDeadline?.cancel(); self.loadDeadline = nil
                     self.playing = key; self.loadingKey = nil
                     if !self.reportedStart { self.reportedStart = true; self.onVerse?(key) }
+                } else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
+                    self.playing = nil; self.loadingKey = key
+                    self.startLoadDeadline(key: key, token: token)
                 }
             }
         }
@@ -99,7 +109,19 @@ import Foundation
                 self.error = "انقطع تحميل التلاوة. تحقق من الاتصال وأعد المحاولة."; self.stop()
             }
         }
+        startLoadDeadline(key: key, token: token)
         playback.play()
+    }
+    private func startLoadDeadline(key: String, token: UUID) {
+        guard loadDeadline == nil else { return }
+        let timeout = loadTimeout
+        loadDeadline = Task { [weak self] in
+            do { try await Task.sleep(nanoseconds: timeout) } catch { return }
+            guard let self, !Task.isCancelled, self.revision == token,
+                  self.loadingKey == key else { return }
+            self.error = "استغرق تحميل التلاوة وقتًا طويلًا. تحقق من الاتصال وأعد المحاولة، أو نزّل السورة للاستماع دون اتصال."
+            self.stop()
+        }
     }
     func stop() {
         revision = UUID(); delay?.cancel(); delay = nil; waitingKey = nil
@@ -107,6 +129,7 @@ import Foundation
     }
     deinit {
         delay?.cancel()
+        loadDeadline?.cancel()
         if let end { NotificationCenter.default.removeObserver(end) }
         if let failure { NotificationCenter.default.removeObserver(failure) }
     }
