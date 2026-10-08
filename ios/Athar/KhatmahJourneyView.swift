@@ -150,6 +150,7 @@ struct KhatmahSetupView: View {
                 if reminder {
                     DatePicker("الوقت", selection: $time, displayedComponents: .hourAndMinute)
                         .environment(\.locale, Locale(identifier: "en_GB"))
+                        .environment(\.timeZone, existing?.calendar.timeZone ?? .current)
                 }
                 Text("يمكنك القراءة دون حساب أو تذكيرات. يُجدّد التذكير عند فتح التطبيق، ضمن حدود iOS.").font(.caption)
             }
