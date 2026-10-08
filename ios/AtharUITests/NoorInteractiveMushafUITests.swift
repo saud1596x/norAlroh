@@ -102,6 +102,26 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
         capture(app, "text-reader-604-zoom-reselection")
     }
+    func testMicrophoneDenialKeepsReaderAvailableAndStationary() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120))
+        let frame = page.frame
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
+        app.buttons["reader.study"].tap()
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let denied = system.buttons.matching(NSPredicate(format: "label == %@ OR label == %@ OR label == %@", "Don’t Allow", "Don't Allow", "عدم السماح")).firstMatch
+        if denied.waitForExistence(timeout: 10) { denied.tap() }
+        XCTAssertTrue(app.alerts["التسميع"].waitForExistence(timeout: 15))
+        capture(app, "recitation-microphone-denied")
+        app.alerts["التسميع"].buttons["حسنًا"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
+        XCTAssertEqual(page.frame, frame, "Permission denial cannot move the Quran page")
+        XCTAssertFalse(app.buttons["study.finish"].exists, "No false recording session after denied permission")
+        capture(app, "recitation-reading-after-denial")
+    }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
