@@ -15,6 +15,8 @@ struct MushafRecordingSessionRow: Identifiable {
     let id: UUID
     let date: Date
     let metadata: MushafRecordingSessionMetadata?
+    let duration: TimeInterval
+    let takeCount: Int
 }
 
 struct MushafRecordingFileMetadata: Codable {
@@ -45,6 +47,20 @@ struct MushafRecordingSessionMetadata: Codable, Equatable, Identifiable {
     func valid() -> Bool {
         guard let corpus = QuranResources.corpus else { return false }
         return MushafStudySession(keys: keys, scope: scope, page: page, date: startedAt).valid(corpus: corpus)
+    }
+    var title: String {
+        guard let first = keys.first, let last = keys.last, let corpus = QuranResources.corpus else { return "تسجيل تسميع" }
+        func reference(_ key: String) -> (Int, Int)? {
+            let parts = key.split(separator: ":").compactMap { Int($0) }
+            guard parts.count == 2, corpus.indices.contains(parts[0] - 1),
+                (1...corpus[parts[0] - 1].ayahs.count).contains(parts[1]) else { return nil }
+            return (parts[0], parts[1])
+        }
+        guard let start = reference(first), let end = reference(last) else { return "تسجيل تسميع" }
+        let name = corpus[start.0 - 1].name
+        if start == end { return "\(name) · الآية \(start.1)" }
+        if start.0 == end.0 { return "\(name) · الآيات \(start.1)–\(end.1)" }
+        return "\(name) \(start.1) — \(corpus[end.0 - 1].name) \(end.1)"
     }
 }
 
@@ -148,7 +164,9 @@ enum MushafRecordingArchive {
                 && ((try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0 })
             if !hasLiveAudio, try deletedTakes(session: id, base: base).isEmpty { continue }
             let header = try? metadata(session: id, base: base)
-            rows.append(.init(id: id, date: header?.startedAt ?? values.creationDate ?? .distantPast, metadata: header))
+            let available = try takes(session: id, base: base)
+            rows.append(.init(id: id, date: header?.startedAt ?? values.creationDate ?? .distantPast,
+                metadata: header, duration: available.reduce(0) { $0 + $1.duration }, takeCount: available.count))
         }
         return rows.sorted { $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date > $1.date }
     }

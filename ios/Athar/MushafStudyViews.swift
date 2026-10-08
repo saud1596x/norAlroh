@@ -129,11 +129,13 @@ struct MushafRecordingList: View {
     @State private var takes: [MushafRecordingTake] = []
     @State private var loadError: String?
     @State private var showingDeleted = false
+    @State private var sessionTitle = ""
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    if !sessionTitle.isEmpty { Text(verbatim: sessionTitle).font(.title3.bold()).accessibilityIdentifier("study.recordings.range") }
                     if takes.isEmpty {
                         ContentUnavailableView(showingDeleted ? "لا توجد مقاطع محذوفة" : "لا يوجد صوت قابل للتشغيل", systemImage: "waveform",
                             description: Text(loadError ?? (showingDeleted ? "المقاطع المحذوفة قابلة للاستعادة هنا." : "لم يُحفظ تسجيل قابل للتشغيل لهذه الجلسة.")))
@@ -148,13 +150,14 @@ struct MushafRecordingList: View {
                                     Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44)
                                 }.accessibilityLabel("مشاركة المقطع \(index + 1)")
                             }
-                            Text(take.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                            Text(verbatim: MushafAudioTime.date(take.date)).font(.caption).foregroundStyle(.secondary)
                             if recorder.playing == take.id {
                                 TimelineView(.periodic(from: .now, by: 0.25)) { context in
                                     VStack(spacing: 8) {
                                         Slider(value: Binding(get: { recorder.playbackPosition },
                                             set: { recorder.seekPlayback(to: $0) }),
                                             in: 0...max(0.01, recorder.playbackDuration))
+                                            .frame(minHeight: 44)
                                             .accessibilityLabel("موضع تشغيل التسجيل")
                                             .accessibilityIdentifier("study.recording.seek")
                                         HStack {
@@ -174,6 +177,7 @@ struct MushafRecordingList: View {
                                     Label("استعادة المقطع", systemImage: "arrow.uturn.backward")
                                         .frame(maxWidth: .infinity, minHeight: 44)
                                 }.buttonStyle(.borderedProminent).tint(Theme.gold)
+                                    .accessibilityIdentifier("study.recording.restore.\(take.id.uuidString)")
                             } else { HStack(spacing: 16) {
                                 Button {
                                     if recorder.playing != take.id { recorder.play(take) }
@@ -188,10 +192,12 @@ struct MushafRecordingList: View {
                                 Button { recorder.play(take) } label: {
                                     Image(systemName: "arrow.counterclockwise").frame(width: 44, height: 44)
                                 }.accessibilityLabel("إعادة المقطع من البداية")
+                                    .accessibilityIdentifier("study.recording.replay.\(take.id.uuidString)")
                                 Menu {
                                     Button("نقل إلى المحذوفات", systemImage: "trash") { move(take, deleted: true) }
                                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                                     .accessibilityLabel("خيارات المقطع")
+                                    .accessibilityIdentifier("study.recording.options.\(take.id.uuidString)")
                             } }
                         }
                         .padding(20).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
@@ -207,7 +213,10 @@ struct MushafRecordingList: View {
                     }.frame(minHeight: 44).accessibilityIdentifier("study.recordings.deleted")
                 }
             }
-            .task { reload() }
+            .task {
+                sessionTitle = (try? MushafRecordingArchive.metadata(session: session))?.title ?? ""
+                reload()
+            }
             .onDisappear { recorder.stop() }
             .onChange(of: scenePhase) { _, phase in if phase != .active { recorder.pausePlayback() } }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in recorder.pausePlayback() }
@@ -234,6 +243,14 @@ enum MushafAudioTime {
         let whole = seconds.isFinite ? Int(max(0, min(seconds, Double(Int.max / 2)))) : 0
         return "\(whole / 60):" + String(format: "%02d", whole % 60)
     }
+    static func date(_ date: Date) -> String {
+        let formatter = DateFormatter(); formatter.locale = Locale(identifier: "ar_SA")
+        formatter.calendar = Calendar(identifier: .gregorian); formatter.timeZone = .current
+        formatter.dateFormat = "d MMMM yyyy · HH:mm"
+        return formatter.string(from: date).map { character in
+            character.wholeNumberValue.map(String.init) ?? String(character)
+        }.joined()
+    }
 }
 
 /// Durable access to finished sessions, independent of the latest summary.
@@ -244,33 +261,42 @@ struct MushafRecordingBrowser: View {
     @State private var opened = false
     @State private var error: String?
     var body: some View {
-        List {
-            Section {
-                Text("تسجيلات التسميع المحلية؛ لا تُرفع للحساب ولا تُستخدم لتقييم النطق أو التجويد.").font(.footnote)
-                if sessions.isEmpty { Text(error ?? "لم تُحفظ تسجيلات تسميع بعد.") }
-            }
-            ForEach(sessions) { session in
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                if sessions.isEmpty {
+                    ContentUnavailableView("تسجيلاتك", systemImage: "waveform",
+                        description: Text(error ?? "بعد جلسة التسميع، تجد صوتك محفوظًا هنا."))
+                }
+                ForEach(sessions) { session in
                 Button {
                     selected = session.id; opened = true
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(session.date, style: .date)
-                        if let metadata = session.metadata {
-                            Text("من \(metadata.keys.first ?? "") إلى \(metadata.keys.last ?? "") · \(metadata.keys.count) آية")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        } else { Text("تسجيل محفوظ · تعذّر قراءة معلومات الجلسة").font(.footnote) }
-                    }.frame(minHeight: 44).contentShape(Rectangle())
-                }.accessibilityIdentifier("study.recording.session.\(session.id.uuidString)")
-            }
-        }
+                    HStack(spacing: 16) {
+                        Image(systemName: "waveform").font(.title2).foregroundStyle(Theme.gold)
+                            .frame(width: 48, height: 48).background(Theme.gold.opacity(0.08), in: Circle()).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(verbatim: session.metadata?.title ?? "تسجيل محفوظ · معلومات الجلسة غير متاحة").font(.headline)
+                            Text(verbatim: MushafAudioTime.date(session.date)).font(.caption).foregroundStyle(.secondary)
+                            Text(verbatim: session.takeCount == 0 ? "مقاطع محذوفة قابلة للاستعادة" : "\(session.takeCount) مقاطع · \(MushafAudioTime.text(session.duration))")
+                                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.left").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+                    }.padding(20).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24)).contentShape(Rectangle())
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("study.recording.session.\(session.id.uuidString)")
+                }
+            }.padding(20)
+        }.background(Theme.background)
         .navigationTitle("تسجيلات التسميع")
-        .task {
-            do { sessions = try MushafRecordingArchive.sessions() }
-            catch { self.error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
-        }
-        .sheet(isPresented: $opened) {
+        .task { reloadSessions() }
+        .sheet(isPresented: $opened, onDismiss: reloadSessions) {
             if let selected { MushafRecordingList(session: selected, recorder: recorder) }
         }
         .onDisappear { recorder.stop() }
+    }
+    private func reloadSessions() {
+        do { sessions = try MushafRecordingArchive.sessions(); error = nil }
+        catch { error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
     }
 }
