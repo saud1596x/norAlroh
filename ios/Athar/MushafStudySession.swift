@@ -103,11 +103,12 @@ struct MushafStudySession: Codable, Equatable, Identifiable {
 
 struct MushafStudySummary: Codable, Equatable {
     let session: MushafStudySession
-    var answered: Int { session.answers.count }
+    var answered: Int { session.answers.filter { $0.assessment != "skip" }.count }
+    var skipped: Int { session.answers.filter { $0.assessment == "skip" }.count }
     var helped: Int { session.answers.filter { $0.assistance.used }.count }
     var remembered: Int { session.answers.filter { $0.assessment == "remembered" }.count }
     var reviewKeys: [String] {
-        session.answers.filter { $0.assessment == "review" || $0.assistance.used }.map(\.key)
+        session.answers.filter { $0.assessment != "skip" && ($0.assessment == "review" || $0.assistance.used) }.map(\.key)
     }
 }
 
