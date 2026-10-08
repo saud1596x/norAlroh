@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [mushaf-ux-stage1-20261007]
-    paths: ['.github/workflows/reader-compact-diagnosis.yml']
+    paths: ['release/mushaf-study-ready.json']
 permissions:
   contents: read
 concurrency:
