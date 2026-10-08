@@ -54,6 +54,7 @@ struct NoorTodayView: View {
                         }
                     }
                 }
+                NoorKhatmahProtectionCard()
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Label("موعدك مع القرآن", systemImage: "book.closed").font(.subheadline)

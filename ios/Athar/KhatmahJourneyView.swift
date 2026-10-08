@@ -16,6 +16,7 @@ struct KhatmahJourneyView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("رحلة الختمة").font(.largeTitle.bold())
                 Text("ورد واضح يناسب أيامك، وتقدم تحفظه بعد القراءة.").foregroundStyle(.secondary)
+                NoorKhatmahProtectionCard()
                 if let plan = journey.active {
                     Card {
                         Label(plan.finished != nil ? "اكتملت رحلتك" : plan.paused ? "الرحلة متوقفة مؤقتًا" : "خطوتك القادمة", systemImage: "book.closed")

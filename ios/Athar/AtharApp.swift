@@ -56,7 +56,7 @@ struct AtharApp: App {
                     Task { @MainActor in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: widgetPage, khatmah: khatmah, salawat: salawat); account.captureLocalChanges(planChanged: true) }
                 }
                 .onReceive(khatmah.$archive.dropFirst()) { _ in
-                    Task { @MainActor in publishWidgets() }
+                    Task { @MainActor in publishWidgets(); NoorFocusController.shared.sync(plan: khatmah.active) }
                 }
                 .onReceive(salawat.$counts.dropFirst()) { _ in
                     Task { @MainActor in publishWidgets() }
@@ -73,7 +73,7 @@ struct AtharApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
                     Task { await notifications.refresh(store: store) }
                 }
-                .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(progress: memorization.progress); await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
+                .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(plan: khatmah.active); await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         publishWidgets()
@@ -81,7 +81,7 @@ struct AtharApp: App {
                         account.attach(store: store, memorization: memorization)
                         prayerLocation.activate(store: store)
                         PrayerBackgroundRefresh.submit()
-                        NoorFocusController.shared.sync(progress: memorization.progress)
+                        NoorFocusController.shared.sync(plan: khatmah.active)
                         dhikrCounters.refreshDay()
                         Task { await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                     } else {
