@@ -7,6 +7,40 @@ final class NoorMushafStudyUITests: XCTestCase {
         if let run = testRun, run.failureCount > 0, let application { print("STUDY_FAILURE_HIERARCHY\n" + application.debugDescription) }
         XCUIDevice.shared.orientation = .portrait
     }
+    func testActualRepeatControlsPersistAndGapCancels() {
+        let app = XCUIApplication(); application = app; app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        app.buttons["reader.jump"].tap()
+        let jump = app.textFields["reader.pageNumber"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 5)); jump.tap(); jump.typeText("604"); app.buttons["انتقل"].tap()
+        let verse = app.buttons["reader.verse.112:1"]
+        XCTAssertTrue(verse.waitForExistence(timeout: 30)); verse.press(forDuration: 0.6)
+        app.buttons["verse.repeat"].tap()
+        let count = app.steppers["verse.repeat.count"]
+        let delay = app.steppers["verse.repeat.delay"]
+        XCTAssertTrue(count.waitForExistence(timeout: 10)); XCTAssertTrue(delay.exists)
+        count.buttons["Increment"].tap()
+        delay.buttons["Increment"].tap(); delay.buttons["Increment"].tap()
+        capture(app, "repeat-actual-count-and-delay-controls")
+        app.buttons["verse.repeat.start"].tap()
+        let stop = app.buttons["reader.audio.stop"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 45), "Actual network Quran playback must start")
+        let waiting = expectation(for: NSPredicate(format: "label CONTAINS %@", "المهلة"), evaluatedWith: stop)
+        wait(for: [waiting], timeout: 30)
+        capture(app, "repeat-real-gap-with-visible-stop")
+        stop.tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
+        let cancelled = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: stop)
+        wait(for: [cancelled], timeout: 5)
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(verse.waitForExistence(timeout: 120)); verse.press(forDuration: 0.6); app.buttons["verse.repeat"].tap()
+        XCTAssertTrue(count.waitForExistence(timeout: 10))
+        XCTAssertTrue(numbers(count.label).contains(4)); XCTAssertTrue(numbers(delay.label).contains(2))
+        capture(app, "repeat-options-restored-after-relaunch")
+        app.buttons["verse.sheet.close"].tap()
+    }
     func testFormerVoiceEntryOpensActualInlineMushafWithoutModelOrAccount() {
         let app = XCUIApplication(); application = app; app.launch()
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
