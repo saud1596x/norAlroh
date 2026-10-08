@@ -107,7 +107,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 120))
+        XCTAssertTrue(page.waitForExistence(timeout: 120), "Reader failed to become available: \(app.debugDescription)")
         let frame = page.frame
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
         app.buttons["reader.study"].tap()
