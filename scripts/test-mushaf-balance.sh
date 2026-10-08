@@ -42,11 +42,10 @@ fi
 xcrun xcresulttool export attachments --path release/mushaf-balance/all-604-pages.xcresult --output-path release/mushaf-balance/native-pages
 python3 -m venv release/balance-python
 release/balance-python/bin/pip install Pillow
-if [[ "$layout_exit" != 0 ]]; then
-  release/balance-python/bin/python scripts/export-mushaf-contact-sheets.py release/mushaf-balance/native-pages release/mushaf-balance/contact-sheets || true
-  exit "$layout_exit"
-fi
-release/balance-python/bin/python scripts/export-mushaf-contact-sheets.py release/mushaf-balance/native-pages release/mushaf-balance/contact-sheets
+# A playback failure must remain red, but must not suppress independent UI
+# evidence on either screen size. Collect every gate, then return its failure.
+noor_overall_exit="$layout_exit"
+release/balance-python/bin/python scripts/export-mushaf-contact-sheets.py release/mushaf-balance/native-pages release/mushaf-balance/contact-sheets || noor_overall_exit=1
 for noor_class in compact large; do
   if [[ "$noor_class" == compact ]]; then noor_device="$NOOR_BALANCE_COMPACT"; else noor_device="$NOOR_BALANCE_LARGE"; fi
   xcrun simctl boot "$noor_device" || true
@@ -61,6 +60,11 @@ for noor_class in compact large; do
     -parallel-testing-enabled NO -resultBundlePath "release/mushaf-balance/reader-$noor_class.xcresult" || noor_exit=$?
   stop_video
   trap - EXIT
-  xcrun xcresulttool export attachments --path "release/mushaf-balance/reader-$noor_class.xcresult" --output-path "release/mushaf-balance/reader-$noor_class-screens"
-  [[ "$noor_exit" == 0 ]] || exit "$noor_exit"
+  if [[ -d "release/mushaf-balance/reader-$noor_class.xcresult" ]]; then
+    xcrun xcresulttool export attachments --path "release/mushaf-balance/reader-$noor_class.xcresult" --output-path "release/mushaf-balance/reader-$noor_class-screens" || noor_overall_exit=1
+  else
+    noor_overall_exit=1
+  fi
+  [[ "$noor_exit" == 0 ]] || noor_overall_exit="$noor_exit"
 done
+exit "$noor_overall_exit"
