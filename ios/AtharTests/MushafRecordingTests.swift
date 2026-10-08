@@ -87,6 +87,37 @@ final class MushafRecordingTests: XCTestCase {
         XCTAssertNil(recorder.playing); XCTAssertNil(recorder.message)
         XCTAssertEqual(try Data(contentsOf: url), bytes)
     }
+    @MainActor func testActualPlaybackTransportSeeksPausesResumesAndReopensOriginalFile() throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let value = session(); let directory = try MushafRecordingArchive.register(value, base: root)
+        let url = directory.appendingPathComponent(UUID().uuidString + ".m4a")
+        try audio(url, seconds: 12); let bytes = try Data(contentsOf: url)
+        let take = try XCTUnwrap(MushafRecordingArchive.takes(session: value.id, base: root).first)
+        let transport = MushafSessionRecorder(base: root)
+        transport.play(take, at: 3)
+        XCTAssertEqual(transport.playing, take.id); XCTAssertNil(transport.message)
+        XCTAssertGreaterThan(transport.playbackDuration, 11)
+        transport.pausePlayback()
+        XCTAssertTrue(transport.playbackPaused)
+        XCTAssertEqual(transport.playbackPosition, 3, accuracy: 0.5)
+        transport.seekPlayback(to: 7)
+        XCTAssertEqual(transport.playbackPosition, 7, accuracy: 0.1)
+        XCTAssertTrue(transport.playbackPaused, "Seeking must not resume paused audio")
+        transport.seekPlayback(to: .nan)
+        XCTAssertEqual(transport.playbackPosition, 7, accuracy: 0.1)
+        transport.resumePlayback(); XCTAssertFalse(transport.playbackPaused); XCTAssertNil(transport.message)
+        transport.pausePlayback(); transport.seekPlayback(to: -5)
+        XCTAssertEqual(transport.playbackPosition, 0, accuracy: 0.1)
+        transport.stop(); XCTAssertNil(transport.playing); XCTAssertEqual(transport.playbackDuration, 0)
+        // A new archive read and player reconstruct playback from persisted bytes.
+        // This tests native transport, not an app UI relaunch or audible device output.
+        let reopened = try XCTUnwrap(MushafRecordingArchive.takes(session: value.id, base: root).first)
+        let fresh = MushafSessionRecorder(base: root)
+        fresh.play(reopened, at: 5)
+        XCTAssertEqual(fresh.playing, take.id); XCTAssertEqual(fresh.playbackPosition, 5, accuracy: 0.5)
+        fresh.stop()
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
     @MainActor func testFailedRealDecodeReleasesOnlyOwnedAudioSessionWithoutDeletingBytes() throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent(UUID().uuidString + ".m4a")
