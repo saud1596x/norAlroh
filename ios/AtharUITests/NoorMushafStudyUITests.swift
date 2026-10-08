@@ -31,8 +31,11 @@ final class NoorMushafStudyUITests: XCTestCase {
         }
         app.buttons["study.mic"].tap()
         let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let deny = system.buttons["Don’t Allow"].exists ? system.buttons["Don’t Allow"] : system.buttons["Don't Allow"].exists ? system.buttons["Don't Allow"] : system.buttons["عدم السماح"]
-        XCTAssertTrue(deny.waitForExistence(timeout: 10), "Exercise actual iOS microphone denial")
+        let denialNames = ["Don’t Allow", "Don't Allow", "عدم السماح", "لا تسمح"]
+        let deny = system.buttons.matching(NSPredicate(format: "label IN %@", argumentArray: [denialNames])).firstMatch
+        let appeared = deny.waitForExistence(timeout: 15)
+        if !appeared { print("STUDY_PERMISSION_SYSTEM_HIERARCHY\n" + system.debugDescription); capture(app, "study-permission-failure-actual-screen") }
+        XCTAssertTrue(appeared, "Exercise actual iOS microphone denial after the system prompt exists")
         deny.tap()
         XCTAssertTrue(app.buttons["متابعة التسميع"].waitForExistence(timeout: 10))
         app.buttons["متابعة التسميع"].tap()
