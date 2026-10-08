@@ -11,8 +11,39 @@ import hashlib
 import json
 from pathlib import Path
 import zipfile
+import unicodedata
 
 EXPECTED_JSON_SHA256 = "60b5341ecf04b6dbcdd2c42cc9b377003d9185ac6a76ad104a109ed669b0cf3c"
+
+
+def canonical_groups(corpus, mapping):
+    """Verified display-corpus aliases; never change displayed text or glyphs.
+
+    The three reviewed بعد ما compounds share the original group boundary.
+    37:130 is explicitly one QUL group 'ال ياسين', not two rendered words.
+    Any other boundary mismatch stops export instead of shifting later words.
+    """
+    result = {}
+    joins = {'2:181': 3, '8:6': 4, '13:37': 8, '37:130': 3}
+    for surah in corpus:
+        for ayah in surah['ayahs']:
+            key = f"{surah['number']}:{ayah['number']}"
+            groups = [[token] for token in ayah['text'].split()
+                      if any(unicodedata.category(char).startswith('L')
+                             and ord(char) not in (0x6e5, 0x6e6) for char in token)]
+            if key in joins:
+                index = joins[key] - 1
+                source = mapping[key][index]['spoken_words']
+                if key == '37:130':
+                    if source != ['ال ياسين']:
+                        raise ValueError('Unverified Ilyasin compound')
+                elif source != ['بعد', 'ما']:
+                    raise ValueError(f'Unverified canonical compound: {key}')
+                groups[index:index + 2] = [groups[index] + groups[index + 1]]
+            if len(groups) != len(mapping[key]):
+                raise ValueError(f'Canonical aliases do not fit authored groups: {key}')
+            result[key] = groups
+    return result
 
 
 def audit(raw, snapshot, corpus, reviewed=None):
@@ -126,10 +157,12 @@ def main():
     mapping = result.pop('correspondences')
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     if args.word_script_output and result['complete_correspondence_verified']:
-        compact = {key: [[word['page'], word['native_code'], word['spoken_words']]
-                         for word in words] for key, words in mapping.items()}
+        aliases = canonical_groups(json.loads(args.canonical.read_bytes()), mapping)
+        compact = {key: [[word['page'], word['native_code'], word['spoken_words'], alias]
+                         for word, alias in zip(words, aliases[key])]
+                   for key, words in mapping.items()}
         args.word_script_output.parent.mkdir(parents=True, exist_ok=True)
-        args.word_script_output.write_text(json.dumps(dict(schema_version=1,
+        args.word_script_output.write_text(json.dumps(dict(schema_version=2,
             source_sha256=result['source_sha256'],
             edition=dict(resource_group='mushafs', resource_id=1, resource_content_id=382),
             groups=compact), ensure_ascii=False, separators=(',', ':')) + '\n')
