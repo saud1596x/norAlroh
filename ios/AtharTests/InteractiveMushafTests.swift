@@ -53,7 +53,27 @@ import UIKit
             for row in canvas.rowGeometry {
                 XCTAssertGreaterThanOrEqual(row.ink.minX, 0)
                 XCTAssertLessThanOrEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width)
+                XCTAssertGreaterThanOrEqual(row.ink.minY, 0)
+                XCTAssertLessThanOrEqual(row.ink.maxY, OriginalMushafCanvas.pageSize.height)
             }
+            let titles = canvas.rowGeometry.filter { $0.kind == "surah_name" }
+            XCTAssertEqual(titles.count, canvas.ornamentBounds.count, "Every title has its own original ornament")
+            for (title, ornament) in zip(titles, canvas.ornamentBounds) {
+                XCTAssertEqual(title.ink.midX, ornament.midX, accuracy: 0.01, "Title horizontal center on page \(number)")
+                XCTAssertEqual(title.ink.midY, ornament.midY, accuracy: 0.01, "Title vertical center on page \(number)")
+                XCTAssertTrue(ornament.contains(title.ink), "Full title ink fits on page \(number)")
+                XCTAssertLessThanOrEqual(title.ink.height / ornament.height, 0.6401)
+                XCTAssertLessThanOrEqual(title.ink.width / ornament.width, 0.4601)
+                XCTAssertTrue(canvas.rowGeometry.filter { $0.kind == "ayah" }.allSatisfy {
+                    !$0.ink.intersects(ornament)
+                }, "Ornament must not cover any vowel or verse on page \(number)")
+            }
+            let originalRows = canvas.rowGeometry.map(\.ink)
+            let originalOrnaments = canvas.ornamentBounds
+            canvas.hiddenWordIDs = Set(page.words.map(\.id))
+            XCTAssertEqual(canvas.rowGeometry.map(\.ink), originalRows, "All hidden words retain original locations")
+            XCTAssertEqual(canvas.ornamentBounds, originalOrnaments, "Training cannot move headings")
+            canvas.hiddenWordIDs = []
             // Capture every page with the exact native renderer, not a web mockup.
             do {
                 let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.preferredRange = .standard
