@@ -150,7 +150,7 @@ this checkpoint for the latest status; no failed test is relabelled as a pass.
 | Single complete authored group | `14a85dc5622a8b5b56cf29738e7f31184d6f61e8`, Actions `37830443451` | Passed. Strong-confidence exact matching is tested; no claim about live one-word recognition accuracy. |
 | Native bundled resources, CAF reopen/export, genuine model/silence, denied capture | `05475278436f1c27fcebc0b948d2ae9cba90b4ec`, Actions `37828351851` | Passed, including actual OS microphone refusal and restored reader controls. |
 | Stable actual page/reveal accessibility, compact scope selection, OS denial | `e1d691838d44c5147198b232df805ec023d0301e`, Actions `37830571667` | Passed, 13m 29s. Page/surah/range scope and actual native canvas are exercised. |
-| Controller start/pause/reopen/resume/end, retained actual reference PCM; startup failure; late permission cancellation; real invalid AVPlayer input | `7c9ee97373d1f624b7fbcd7fb778ad775ed3840e`, Actions `37832540906` | Pending. Reference audio is explicitly a fixture, not live microphone acceptance. |
+| Controller start/pause/reopen/resume/end, retained actual reference PCM; startup failure; late permission cancellation; real invalid AVPlayer input | `7c9ee97373d1f624b7fbcd7fb778ad775ed3840e`, Actions `37832540906` | Passed, 15m 29s (native job 13m 5s). Eight native integration tests and three focused UI tests passed. Reference audio is explicitly a fixture, not live microphone acceptance. |
 | Codemagic all-pages and two phones | `4eb34290a120d9f05b016f0c4bc13171ab001347`, build `6ac7d435546ce6236ceca23d` | Failed. All-page shape/viewport and atomic offline recovery passed. Real AAC repetition had 7 assertions fail with HAL proxy 268451843/268435460 and zero advancing player time. Compact UI did not expose playback or failure within its deadline; large UI exposed `reader.load.error`. Actual artifacts retained and inspected. |
 
 Codemagic's old source predates shared mandatory font/manifest staging and the
@@ -191,3 +191,19 @@ intact. Never replace legacy self-assessment with purported automatic evidence.
       screen and a real full-session walkthrough including recording playback.
 - [ ] Resolve existing release-rights gate for original common font/layout.
 - [ ] Present verified result to the user before App Store publication.
+
+### Recording transport implementation checkpoint
+
+Added actual AVAudioPlayer pause/resume, clamped seeking, replay and its real
+playback position to the recording screen. Audio interruptions and leaving the
+foreground pause playback without auto-resuming. Removed repeated explanatory
+sections from the recording list. File sharing uses the existing original URL.
+Recoverable removal moves each original audio file into DeletedAudio; restoration
+refuses to overwrite live audio. Sessions remain reachable when every take is
+removed, and exports include removed-take metadata. Recognition journals are
+not rewritten by any playback or removal operation.
+
+New native tests exercise real AAC transport and a newly created player's
+reopening, plus byte-identical removal/restoration and unchanged session metadata.
+These additions are pending native execution; they are not UI relaunch, audible
+physical-device output, or full-session video acceptance.
