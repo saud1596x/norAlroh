@@ -24,6 +24,12 @@ struct NoorProvider: TimelineProvider {
             }
             // Memorization day uses the device calendar, independently of city time.
             if let midnight = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) { dates.append(midnight) }
+            for zone in [snapshot.khatmah?.timeZone, snapshot.salawatTimeZone].compactMap({ $0 }) {
+                var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: zone) ?? .current
+                for offset in 1...2 {
+                    if let midnight = c.date(byAdding: .day, value: offset, to: c.startOfDay(for: now)) { dates.append(midnight) }
+                }
+            }
         }
         let entries = Set(dates).sorted().map { NoorEntry(date: $0, snapshot: snapshot) }
         completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(6 * 3600))))
@@ -31,7 +37,7 @@ struct NoorProvider: TimelineProvider {
 }
 
 enum NoorWidgetKind: String, CaseIterable {
-    case nextPrayer, prayerDay, dua, reading, ward, review
+    case nextPrayer, prayerDay, dua, reading, ward, review, khatmah, salawat
     var title: String {
         switch self {
         case .nextPrayer: "الصلاة القادمة"
@@ -40,6 +46,8 @@ enum NoorWidgetKind: String, CaseIterable {
         case .reading: "تابع القراءة"
         case .ward: "ورد اليوم"
         case .review: "المراجعة المستحقة"
+        case .khatmah: "رحلة الختمة"
+        case .salawat: "الصلاة على النبي ﷺ"
         }
     }
     var symbol: String {
@@ -50,6 +58,8 @@ enum NoorWidgetKind: String, CaseIterable {
         case .reading: "book"
         case .ward: "checkmark.circle"
         case .review: "arrow.clockwise"
+        case .khatmah: "book.closed"
+        case .salawat: "plus.circle"
         }
     }
     var families: [WidgetFamily] {
@@ -67,6 +77,8 @@ enum NoorWidgetKind: String, CaseIterable {
         case .reading: route = "reading/\(page)"
         case .ward: route = "ward"
         case .review: route = "review"
+        case .khatmah: route = "khatmah"
+        case .salawat: route = "salawat"
         }
         return URL(string: "nooralruh://" + route)
     }
@@ -105,6 +117,13 @@ struct NoorWidgetView: View {
         case .ward: return "\(snapshot.completed(at: entry.date)) من \(snapshot.dailyTarget) آيات"
         case .review: return "\(snapshot.due(at: entry.date)) آيات للمراجعة"
         case .dua: return snapshot.duaTitle
+        case .khatmah:
+            guard let plan = snapshot.khatmah else { return "ابدأ رحلة الختمة" }
+            guard let ward = plan.ward(at: entry.date) else { return plan.wardTitle(at: entry.date) }
+            return "\(plan.wardTitle(at: entry.date)) · \(ward.first)–\(ward.last)"
+        case .salawat:
+            let zone = snapshot.salawatTimeZone.flatMap(TimeZone.init(identifier:)) ?? .current
+            return "عدد اليوم: \(snapshot.salawat?.count(at: entry.date, timeZone: zone) ?? 0)"
         }
     }
     @ViewBuilder private func content(_ snapshot: NoorWidgetSnapshot) -> some View {
@@ -158,6 +177,20 @@ struct NoorWidgetView: View {
         case .review:
             Text(summary(snapshot)).font(.headline)
             Text(snapshot.updated, style: .date).font(.caption).foregroundStyle(.secondary)
+        case .khatmah:
+            Text(summary(snapshot)).font(.headline)
+            if let plan = snapshot.khatmah {
+                Text("\(plan.completed) من \(605 - plan.firstPage) صفحة").font(.caption)
+                if !lockScreen {
+                    ProgressView(value: Double(plan.completed), total: Double(605 - plan.firstPage))
+                    Text("القراءة المؤكدة في التطبيق").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        case .salawat:
+            Text(summary(snapshot)).font(lockScreen ? .headline : .title2.bold())
+            if let goal = snapshot.salawat?.goal {
+                Text("هدفك الشخصي: \(goal)").font(.caption).foregroundStyle(.secondary)
+            } else if !lockScreen { Text("افتح العداد لمتابعة الذكر").font(.caption).foregroundStyle(.secondary) }
         }
     }
 }
@@ -180,5 +213,7 @@ struct NoorWidget: Widget {
         NoorWidget(type: .reading)
         NoorWidget(type: .ward)
         NoorWidget(type: .review)
+        NoorWidget(type: .khatmah)
+        NoorWidget(type: .salawat)
     }
 }
