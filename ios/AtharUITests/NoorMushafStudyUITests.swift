@@ -20,8 +20,8 @@ final class NoorMushafStudyUITests: XCTestCase {
         let count = app.steppers["verse.repeat.count"]
         let delay = app.steppers["verse.repeat.delay"]
         XCTAssertTrue(count.waitForExistence(timeout: 10)); XCTAssertTrue(delay.exists)
-        count.buttons["Increment"].tap()
-        delay.buttons["Increment"].tap(); delay.buttons["Increment"].tap()
+        count.buttons["verse.repeat.count-Increment"].tap()
+        delay.buttons["verse.repeat.delay-Increment"].tap(); delay.buttons["verse.repeat.delay-Increment"].tap()
         capture(app, "repeat-actual-count-and-delay-controls")
         app.buttons["verse.repeat.start"].tap()
         let stop = app.buttons["reader.audio.stop"]
