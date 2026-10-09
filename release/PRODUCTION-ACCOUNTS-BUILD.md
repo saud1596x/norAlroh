@@ -57,3 +57,8 @@ CI150 finished: unsigned account/extension Release build passed; native executio
 ### Automatic-sync follow-up, 2026-10-07
 
 Source now includes opt-in automatic reading/bookmark/plan/progress sync, durable deletion tombstones and excluded-note merge protection. All 11 isolated emulator rule tests passed on CI37612234523. Direct Firebase Console inspection confirms `(default)` exists in `me-central2` on Spark, but its published rules still only cover `private/memorization`; the new readingState/accountDeletions rules have NOT been deployed. The Apple-provider draft remains unsaved with blank OAuth credential fields. Do not recreate the database, republish old rules, or describe source-only sync as production-tested. Current native testing is tracked in EXECUTION-CHECKPOINT-20261007.md.
+
+
+### Current live configuration check, 2026-10-09
+
+Read-only Firebase Console inspection now confirms Apple Enabled. The current published Firestore Rules tab (selected starred current version) includes accountDeletions, private memorization/readingState, owner checks, supported documents, deletion guards, exact allowed fields, version1, bytes payload up to750000 and request.time timestamps. These visible rules match backend/firestore.rules except source-only comments. The older checkpoint saying these rules were not deployed is historical. No rules, provider, credential or access permission was changed during this check. Production sign-in, token revocation/deletion and two-device sync remain untested on hardware.

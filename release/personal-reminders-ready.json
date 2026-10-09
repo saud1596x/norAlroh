@@ -15,7 +15,7 @@
     "ios/Athar/MemorizationViews.swift": "2276d1471e952eb682ee327ff7edc7b1147008a8c7d980b83fe476d789f8c6f7",
     "ios/AtharTests/NoorPersonalReminderTests.swift": "0e4f64645b231a2200214c886f56430302bf8dfc0ca2ac4d08e80df43c446fdb",
     "ios/AtharTests/MushafRepetitionTests.swift": "7d0ccc9945dd155ee68809473a868a7a6be26436990b415e78a285efac5454de",
-    "ios/AtharUITests/NoorReminderUITests.swift": "a38a93741548acaf0098511b242bde1b9f6648563d024ac70522835e3b37bd32"
+    "ios/AtharUITests/NoorReminderUITests.swift": "54c284e38bd46cee8c9ab3cb62ee8d4eb012138e647e4fd534ae59b3a1dfaed5"
   },
-  "revision": "Cancel legacy delivered salawat when adopting the independent editor"
+  "revision": "Preserve 44-point hit target check with one-millionth-point coordinate rounding tolerance"
 }
