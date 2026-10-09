@@ -55,14 +55,24 @@ struct NoorKhatmahWardContract: Codable, Equatable {
     }
 }
 
+enum NoorFocusPersistence {
+    static let group = "group.com.saud1596x.nooralruh"
+    static let key = "noor.focus.state.v1"
+    @discardableResult static func erase(defaults: UserDefaults? = UserDefaults(suiteName: NoorFocusPersistence.group)) -> Bool {
+        guard let defaults else { return false }
+        defaults.removeObject(forKey: key)
+        return defaults.object(forKey: key) == nil
+    }
+}
+
 #if NOOR_FOCUS_ENABLED
 import FamilyControls
 import ManagedSettings
 import DeviceActivity
 
 struct NoorFocusState: Codable {
-    static let group = "group.com.saud1596x.nooralruh"
-    static let key = "noor.focus.state.v1"
+    static let group = NoorFocusPersistence.group
+    static let key = NoorFocusPersistence.key
     static let storeName = ManagedSettingsStore.Name("noor.dailyWard")
     static let activity = DeviceActivityName("noor.dailyWard")
     var enabled = false
