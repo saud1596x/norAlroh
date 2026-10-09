@@ -30,6 +30,7 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Release
 xcodebuild build-for-testing "${common[@]}"
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharTests/NoorKhatmahProtectionTests \
+  -only-testing:AtharTests/NoorSalawatTests \
   -only-testing:AtharTests/WidgetTests \
   -only-testing:AtharTests/KhatmahJourneyTests \
   -resultBundlePath release/khatmah-protection/data.xcresult
@@ -41,6 +42,7 @@ noor_protection_gate=0
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorLaunchTests \
   -only-testing:AtharUITests/NoorKhatmahProtectionUITests \
+  -only-testing:AtharUITests/NoorSalawatUITests \
   -only-testing:AtharUITests/NoorKhatmahUITests \
   -resultBundlePath release/khatmah-protection/ui.xcresult || noor_protection_gate=$?
 stop_video
