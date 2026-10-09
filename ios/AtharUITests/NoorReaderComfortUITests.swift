@@ -2,6 +2,22 @@ import XCTest
 import UIKit
 
 final class NoorReaderComfortUITests: XCTestCase {
+    func testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone() {
+        let app = XCUIApplication(); launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120))
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.buttons["reader.fullscreen"].exists)
+        XCTAssertFalse(app.navigationBars.firstMatch.exists)
+        let mic = app.buttons["reader.study"]
+        XCTAssertGreaterThanOrEqual(mic.frame.width, 60)
+        XCTAssertEqual(mic.frame.midX, app.frame.midX, accuracy: 2)
+        XCTAssertTrue(mic.isHittable)
+        XCTAssertTrue(app.frame.contains(page.frame))
+        capture(app, "automatic-fullscreen-reader")
+    }
     private var screenshotBackground: UInt32?
     private var acceptanceApp: XCUIApplication?
     override func setUpWithError() throws {
