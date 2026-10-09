@@ -21,8 +21,13 @@ on:
       - scripts/prepare-native-quran-resources.sh
       - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranRecognitionWorker.swift
+      - ios/Athar/NoorAccountView.swift
+      - ios/Athar/NoorOperationDeadline.swift
       - ios/Athar/QuranRecitationController.swift
       - ios/AtharTests/QuranRecognitionIntegrationTests.swift
+      - ios/AtharTests/NoorOperationDeadlineTests.swift
+      - ios/AtharUITests/NoorAllScreensTests.swift
+      - scripts/test-home-flow.sh
       - scripts/test-recitation-app.sh
       - scripts/seed-recording-ui.py
 permissions:
@@ -54,10 +59,10 @@ jobs:
       - name: Install project generator
         run: brew install xcodegen
       - name: Verify actual bundled model and independent audio persistence
-        run: bash scripts/test-recitation-app.sh
+        run: bash scripts/test-home-flow.sh
       - name: Retain actual iOS test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: recitation-app-integration-${{ matrix.display }}
-          path: release/recitation-app
+          path: release/home-flow
