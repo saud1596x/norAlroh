@@ -167,6 +167,22 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
+  ios-testflight-verified-update:
+    <<: *signed_ios
+    name: Noor Alruh verified update / TestFlight webhook
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: mushaf-recitation-correction-20261008
+          include: true
+          source: true
+      cancel_previous_builds: false
+    when:
+      changeset:
+        includes:
+          - release/current-native-preview-evidence.json
+          - release/testflight-preview-review.json
   ios-appstore:
     <<: *signed_ios
     name: Noor Alruh signed iOS / App Store release
