@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://noor-alruh-support.onrender.com/sitemap.xml
