@@ -47,7 +47,10 @@ import Combine
     }
     var hasSession: Bool { record != nil && state != .stopped && state != .idle }
     var hiddenIDs: Set<Int> {
-        guard hasSession else { return [] }
+        // Starting a microphone session is not proof that recognition works.
+        // Keep the reader usable until actual saved word evidence establishes
+        // a position, and expose the text again if the engine becomes unavailable.
+        guard hasSession, !revealed.isEmpty, recognitionAvailable else { return [] }
         return Set(tracker?.expected.map(\.id) ?? []).subtracting(revealed)
     }
     var status: String {
@@ -57,6 +60,7 @@ import Combine
         case .preparing: return "تجهيز الميكروفون…"
         case .listening:
             if !recognitionAvailable { return "التسجيل مستمر · التتبع متعذر" }
+            if revealed.isEmpty { return uncertain ? "أستمع · لم أتعرف على الموضع بعد" : "أستمع · أنتظر بداية التلاوة" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
         case .paused: return "متوقف مؤقتًا"
         case .processing: return "حفظ الجلسة ومعالجة التلاوة"
