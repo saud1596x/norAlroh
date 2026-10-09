@@ -67,12 +67,18 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         let original = controller()
         await original.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(original.state, .listening)
+        XCTAssertTrue(original.hiddenIDs.isEmpty, "Opening the microphone must not blank the page before real recognized word evidence")
         await original.pause()
         XCTAssertEqual(original.state, .paused); XCTAssertNil(original.message)
         let first = try XCTUnwrap(original.record)
         XCTAssertEqual(first.takes.count, 1); XCTAssertTrue(first.takes[0].closed)
         XCTAssertEqual(first.takes[0].frames, Int64(samples.count))
         XCTAssertGreaterThanOrEqual(first.evidence.count, 2, "Actual reference speech must produce authentic native word evidence")
+        let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let verseID = try XCTUnwrap(verseKeys.firstIndex(of: "112:1")) + 1
+        XCTAssertEqual(original.hiddenIDs, Set(snapshot.records.filter {
+            $0.record_type == "mushaf_word" && $0.char_type_name == "word" && $0.verse_id == verseID
+        }.map(\.id)).subtracting(original.revealed))
         let journal = QuranRecitationJournal(root: root)
         let firstURL = journal.audio(session: first.id, take: first.takes[0].id)
         let firstAudio = try Data(contentsOf: firstURL)
