@@ -1,8 +1,12 @@
 import XCTest
-import CoreGraphics
 
 final class NoorReminderUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    override func tearDownWithError() throws {
+        if let testRun, testRun.failureCount > 0 {
+            print("REMINDER_FAILURE_SCREEN\n" + XCUIApplication().debugDescription)
+        }
+    }
     func testIndependentEditorsSaveDaysAndQuietSettingsAcrossRelaunch() {
         let app = XCUIApplication(); launchNoorApp(app)
         openReminders(app)
@@ -17,7 +21,7 @@ final class NoorReminderUITests: XCTestCase {
             setSwitch(friday, to: "0", app: app)
             let quiet = app.switches["reminder.quiet"]
             setSwitch(quiet, to: "1", app: app)
-            tapVisible(app.buttons["reminder.save"], app: app)
+            saveAndReturnToHub(app)
         }
         app.terminate(); launchNoorApp(app); openReminders(app)
         for kind in ["dua", "morning", "evening", "salawat", "hifz"] {
@@ -29,7 +33,7 @@ final class NoorReminderUITests: XCTestCase {
             let quiet = app.switches["reminder.quiet"]
             requireVisible(quiet, app: app)
             XCTAssertEqual(quiet.value as? String, "1")
-            tapVisible(app.buttons["reminder.save"], app: app)
+            saveAndReturnToHub(app)
         }
     }
     private func openReminders(_ app: XCUIApplication) {
@@ -43,30 +47,43 @@ final class NoorReminderUITests: XCTestCase {
             if element.exists && element.isHittable { break }
             app.swipeUp()
         }
+        if !(element.exists && element.isHittable) {
+            // Returning from an editor may preserve a List offset below the
+            // desired row. Search back toward the top, rather than only down.
+            for _ in 0..<8 {
+                if element.exists && element.isHittable { break }
+                app.swipeDown()
+            }
+        }
         XCTAssertTrue(element.waitForExistence(timeout: 10))
         XCTAssertTrue(element.isHittable)
     }
     private func setSwitch(_ element: XCUIElement, to expected: String, app: XCUIApplication) {
         requireVisible(element, app: app)
         if element.value as? String != expected {
-            element.tap()
-            let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            // SwiftUI exposes the labelled row as a Switch and nests the
+            // actual UIKit control. Native Run4 confirmed that row-centre taps
+            // do not toggle it; use the observed child control directly.
+            let control = element.switches.firstMatch
+            XCTAssertTrue(control.exists)
+            XCTAssertTrue(control.isHittable)
+            control.tap()
+            let toggled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 element.value as? String == expected
             }, object: nil)
-            if XCTWaiter.wait(for: [changed], timeout: 1) != .completed {
-                print("REMINDER_SWITCH_ROW_CENTER_DID_NOT_CHANGE\n" + element.debugDescription)
-                // The app's explicit RTL Form puts the switch at the left edge.
-                // SwiftUI can expose its whole labelled row as one Switch; tap
-                // the actual control area rather than the centre of the label.
-                element.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tap()
-                let toggled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                    element.value as? String == expected
-                }, object: nil)
-                XCTAssertEqual(XCTWaiter.wait(for: [toggled], timeout: 3), .completed)
-            }
+            XCTAssertEqual(XCTWaiter.wait(for: [toggled], timeout: 3), .completed)
         }
         // Verify the real UI change before Save, as well as after relaunch.
         XCTAssertEqual(element.value as? String, expected)
+    }
+    private func saveAndReturnToHub(_ app: XCUIApplication) {
+        tapVisible(app.buttons["reminder.save"], app: app)
+        // Do not swipe the next List during the asynchronous Save/dismissal.
+        // A missing return now fails here with the actual failure-screen tree.
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !app.buttons["reminder.save"].exists && app.navigationBars["تذكيراتي"].exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 10), .completed)
     }
     private func tapVisible(_ button: XCUIElement, app: XCUIApplication) {
         requireVisible(button, app: app)
