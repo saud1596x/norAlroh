@@ -59,8 +59,9 @@ final class QCFV2ContentTests: XCTestCase {
             return entry.snapshot
         })
         let staleNow = now.addingTimeInterval(8 * 86400)
+        let openingSignal = await MainActor.run { SnapshotOpeningSignal() }
         let reading = Task {
-            let value = try await delayed.readingEntry(now: staleNow)
+            let value = try await delayed.readingEntry(now: staleNow, onDownload: { openingSignal.count += 1 })
             readingReturned.fulfill()
             return value
         }
@@ -69,6 +70,8 @@ final class QCFV2ContentTests: XCTestCase {
         let immediate = try await reading.value
         XCTAssertEqual(immediate.downloadedAt, now)
         XCTAssertEqual(immediate.snapshot, entry.snapshot)
+        let cachedDownloadSignals = await openingSignal.count
+        XCTAssertEqual(cachedDownloadSignals, 0, "A stale offline opening must not announce a foreground download")
         let refreshed = try await delayed.refresh(now: staleNow)
         XCTAssertEqual(refreshed.downloadedAt, staleNow)
         XCTAssertEqual(refreshed.snapshot, entry.snapshot)
@@ -154,9 +157,11 @@ final class QCFV2ContentTests: XCTestCase {
         let empty = QCFV2ContentCache(file: folder.appendingPathComponent("absent.json"), endpoint: endpoint,
             fetch: { _ in throw URLError(.notConnectedToInternet) })
         do {
-            _ = try await empty.readingEntry()
+            _ = try await empty.readingEntry(onDownload: { openingSignal.count += 1 })
             XCTFail("First-use offline reading must report unavailable original data honestly")
         } catch { }
+        let firstDownloadSignals = await openingSignal.count
+        XCTAssertEqual(firstDownloadSignals, 1, "Only an unavailable copy starts the explicit download state")
 
     }
 }
@@ -172,4 +177,8 @@ private actor SnapshotFetchGate {
         released = true
         continuation?.resume(); continuation = nil
     }
+}
+
+@MainActor private final class SnapshotOpeningSignal {
+    var count = 0
 }
