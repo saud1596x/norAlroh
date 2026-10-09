@@ -60,8 +60,9 @@ struct InteractiveMushafReader: View {
     @State private var recordingSession: UUID?
     let chapter: Int; let ayah: Int; let initialPage: Int?
     let startsStudy: Bool
-    init(chapter: Int, ayah: Int, initialPage: Int?, startsStudy: Bool = false) {
-        self.chapter = chapter; self.ayah = ayah; self.initialPage = initialPage; self.startsStudy = startsStudy
+    let opensStudyScope: Bool
+    init(chapter: Int, ayah: Int, initialPage: Int?, startsStudy: Bool = false, opensStudyScope: Bool = false) {
+        self.chapter = chapter; self.ayah = ayah; self.initialPage = initialPage; self.startsStudy = startsStudy; self.opensStudyScope = opensStudyScope
     }
     @State private var snapshot: QCFV2Snapshot?
     @State private var rows: OriginalMushafRows?
@@ -84,6 +85,7 @@ struct InteractiveMushafReader: View {
     @State private var studyIndex: MushafStudyWordIndex?
     @State private var studySummary = false
     @State private var scopeOpen = false
+    @State private var openedEntryScope = false
     @State private var requestedScope: [String]?
     @Environment(\.scenePhase) private var scenePhase
     private var studyOpen: Bool { recitation.hasSession || recitation.state == .permission || recitation.state == .preparing }
@@ -194,7 +196,11 @@ struct InteractiveMushafReader: View {
         }
         .task {
             await load()
-            if startsStudy, snapshot != nil, fonts.error == nil { showStudySetup() }
+            if opensStudyScope, snapshot != nil, error == nil, !openedEntryScope, !Task.isCancelled {
+                openedEntryScope = true
+                studyStartKey = "\(chapter):\(ayah)"
+                scopeOpen = true
+            } else if startsStudy, snapshot != nil, fonts.error == nil { showStudySetup() }
         }
         .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
         .onDisappear { Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
@@ -215,7 +221,7 @@ struct InteractiveMushafReader: View {
             if let scope = requestedScope { requestedScope = nil; startRecitation(keys: scope) }
         }) {
             QuranRecitationScope(page: number, pageKeys: visiblePageKeys,
-                initialKey: visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
+                initialKey: studyStartKey ?? visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
         }
         .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
         .sheet(item: $recordingSheet) { selection in
@@ -305,8 +311,9 @@ struct InteractiveMushafReader: View {
                 Text(recitation.status).font(.subheadline).lineLimit(1)
                     .accessibilityIdentifier("study.status").accessibilityAddTraits(.updatesFrequently)
                 Spacer(minLength: 8)
-                Button("إنهاء") { Task { await recitation.finish() } }
-                    .frame(minWidth: 44, minHeight: 44).disabled(recitation.state == .processing)
+                Button { Task { await recitation.finish() } } label: {
+                    Text("إنهاء").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                }.disabled(recitation.state == .processing)
                     .accessibilityIdentifier("study.finish")
             }.background { readerControlMeasurement("header") }
             Spacer(minLength: 0)

@@ -140,6 +140,7 @@ struct RootView: View {
     @EnvironmentObject var store: AtharStore
     @State private var settings = false
     @State private var selectedTab = 0
+    @EnvironmentObject private var memorization: MemorizationStore
     @EnvironmentObject private var widgetRouter: NoorWidgetRouter
     @State private var widgetDestination: NoorWidgetRouter.Destination?
     var body: some View {
@@ -156,9 +157,6 @@ struct RootView: View {
             NavigationStack { AdhkarView().settingsAccess { settings = true } }
                 .tabItem { Label("الأذكار", systemImage: "sun.max") }
                 .tag(3)
-            NavigationStack { MemorizationView().settingsAccess { settings = true } }
-                .tabItem { Label("الحفظ", systemImage: "sparkles") }
-                .tag(4)
         }
         .onChange(of: widgetRouter.destination?.id, initial: true) { _, _ in
             guard let destination = widgetRouter.destination else { return }
@@ -167,16 +165,19 @@ struct RootView: View {
             case "prayers": selectedTab = 2
             case "dhikr": selectedTab = 3
             case "reading": selectedTab = 1; widgetDestination = destination
-            case "review": selectedTab = 4; widgetDestination = destination
+            case "review", "ward": selectedTab = 1; widgetDestination = destination
             case "khatmah": selectedTab = 0; widgetDestination = destination
             case "salawat", "dua", "morning", "evening": selectedTab = 3; widgetDestination = destination
-            default: selectedTab = 4
+            default: selectedTab = 1
             }
             widgetRouter.destination = nil
         }
         .fullScreenCover(item: $widgetDestination) { destination in
             if destination.host == "reading" {
                 InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: destination.page)
+            } else if ["review", "ward"].contains(destination.host) {
+                InteractiveMushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from,
+                    initialPage: nil, opensStudyScope: true)
             } else {
                 NavigationStack {
                     Group {
@@ -187,7 +188,7 @@ struct RootView: View {
                                 let group = content.groups.first(where: { $0.id == "hisn-27" }) {
                             DhikrListView(group: group, entries: content.entries(in: group))
                         }
-                        else { MemorizationTestView() }
+                        else { QuranView() }
                     }
                         .toolbar {
                             if destination.host != "khatmah" {

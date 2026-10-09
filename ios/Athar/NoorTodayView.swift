@@ -4,6 +4,7 @@ struct NoorTodayView: View {
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var memorization: MemorizationStore
     @EnvironmentObject private var khatmah: KhatmahStore
+    @EnvironmentObject private var account: NoorAccountStore
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     private var page: Int { max(1, min(lastPage, 604)) }
@@ -34,6 +35,7 @@ struct NoorTodayView: View {
                             Spacer()
                             NoorAmbientOrnament().frame(width: 64, height: 64)
                         }.noorEntrance()
+                        accountCard
                         if let next = PrayerCalculator.next(data: store.data, now: context.date) {
                             NavigationLink { PrayerView() } label: {
                                 HStack(spacing: 12) {
@@ -97,7 +99,7 @@ struct NoorTodayView: View {
                 HStack {
                     Text("خطواتك اليوم").font(.title3.bold())
                     Spacer()
-                    NavigationLink { MemorizationPlanView() } label: { Label("هدفك", systemImage: "slider.horizontal.3").font(.caption).frame(minHeight: 44) }
+                    NavigationLink { MemorizationPlanView() } label: { Label("هدفك", systemImage: "slider.horizontal.3").font(.caption).frame(minHeight: 44) }.accessibilityIdentifier("home.goal")
                 }
                 Card {
                     HStack(spacing: 16) {
@@ -108,7 +110,10 @@ struct NoorTodayView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(reviewed) من \(memorization.dailyTarget) آيات").font(.headline)
                             Text("مراجعتك الفعلية، خطوة بعد خطوة").font(.caption).foregroundStyle(.secondary)
-                            NavigationLink("ابدأ المراجعة") { MemorizationView() }.font(.subheadline).frame(minHeight: 44)
+                            NavigationLink {
+                                MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
+                            } label: { Text("ابدأ المراجعة").font(.subheadline).frame(minHeight: 44) }
+                                .accessibilityIdentifier("home.review")
                         }
                         Spacer(minLength: 0)
                     }
@@ -121,11 +126,31 @@ struct NoorTodayView: View {
                 }.buttonStyle(NoorPressStyle())
                 HStack(spacing: 8) {
                     Image(systemName: "lock.shield")
-                    Text("مساحة لك. بياناتك محفوظة على جهازك.")
+                    Text("مساحة لك. المزامنة السحابية اختيارية من صفحة حسابك.")
                 }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8).accessibilityIdentifier("home.footer")
             }.padding(20)
         }.background(Theme.background).navigationTitle("اليوم").navigationBarTitleDisplayMode(.inline)
             .animation(reduced ? nil : .spring(duration: 0.4, bounce: 0.1), value: reviewed)
+    }
+    private var accountCard: some View {
+        NavigationLink { NoorAccountView() } label: {
+            HStack(spacing: 12) {
+                Image(systemName: account.signedIn ? "person.crop.circle.fill" : "person.crop.circle")
+                    .font(.title2).foregroundStyle(Theme.gold).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابي · الدخول بحساب Apple")
+                        .font(.headline)
+                    Text(account.signedIn ? account.syncStatus : account.available
+                         ? "اختياري؛ القراءة والأذكار متاحة دون حساب."
+                         : "الدخول قيد التجهيز في هذه النسخة؛ القراءة متاحة دون حساب.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.left").accessibilityHidden(true)
+            }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .padding(16).foregroundStyle(.primary)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+        }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.account")
     }
     private func tile(_ title: String, _ subtitle: String, _ symbol: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {

@@ -100,61 +100,26 @@ struct QuranReader: View {
 
 struct LibraryView: View {
     @EnvironmentObject var store: AtharStore
-    @State private var text = ""
-    @State private var noteToDelete: JournalNote?
-    @State private var confirmDelete = false
-    @State private var saved = false
     var body: some View {
         List {
-            Section("دفتر التأمل") {
-                Text("ماذا تريد أن تتذكر من يومك؟ يبقى ما تكتبه على جهازك فقط.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                TextEditor(text: $text).frame(minHeight: 150).accessibilityLabel("اكتب تأملك")
-                    .onChange(of: text) { _, value in if value.count > 5000 { text = String(value.prefix(5000)) } }
-                Button("احفظ تأملي") {
-                    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    if store.update({ $0.notes.insert(JournalNote(text: trimmed), at: 0) }) {
-                        text = ""
-                        saved = true
-                    }
-                }.disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                ForEach(store.data.notes) { note in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(note.date, style: .date).font(.subheadline).foregroundStyle(.secondary)
-                        Text(note.text).textSelection(.enabled)
-                        Button("حذف", role: .destructive) {
-                            noteToDelete = note
-                            confirmDelete = true
-                        }.frame(minHeight: 44)
-                    }.padding(.vertical, 8)
-                }
-            }
             Section("علامات القرآن") {
                 if store.data.bookmarks.isEmpty {
-                    Text("اضغط آية في القرآن لحفظ علامة.").foregroundStyle(.secondary)
+                    Text("اضغط مطولًا على آية في المصحف، ثم اختر العلامة لحفظها.").foregroundStyle(.secondary)
                 }
                 ForEach(store.data.bookmarks, id: \.self) { key in
                     let numbers = key.split(separator: ":").compactMap { Int($0) }
                     if numbers.count == 2, let surah = store.quran.first(where: { $0.number == numbers[0] }) {
                         NavigationLink { MushafReader(chapter: surah.number, ayah: numbers[1]) } label: {
                             Label("\(surah.name) · الآية \(numbers[1])", systemImage: "bookmark")
-                        }
+                        }.accessibilityIdentifier("library.bookmark.\(key)")
                     }
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("علاماتي وتأملاتي")
-        .confirmationDialog("حذف هذا التأمل نهائيًا؟", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("حذف", role: .destructive) {
-                if let id = noteToDelete?.id { store.update { $0.notes.removeAll { $0.id == id } } }
-                noteToDelete = nil
-            }
-            Button("إلغاء", role: .cancel) { noteToDelete = nil }
-        }
-        .alert("حُفظ تأملك على هذا الجهاز", isPresented: $saved) { Button("تم", role: .cancel) {} }
+        .navigationTitle("علاماتي")
+        .accessibilityIdentifier("library.bookmarks")
     }
 }
 

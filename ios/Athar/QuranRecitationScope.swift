@@ -68,7 +68,7 @@ struct QuranRecitationScope: View {
                 }.padding(24)
             }.background(Theme.panel)
                 .navigationTitle("مقطع التسميع").navigationBarTitleDisplayMode(.inline)
-                .toolbar { Button("إغلاق") { dismiss() }.accessibilityIdentifier("recitation.scope.close") }
+                .toolbar { Button { dismiss() } label: { Text("إغلاق").frame(minWidth: 44, minHeight: 44) }.accessibilityIdentifier("recitation.scope.close") }
                 .onChange(of: chapter) { _, _ in from = 1; to = 1 }
                 .onChange(of: from) { _, value in if to < value { to = value } }
         }
