@@ -130,6 +130,7 @@ struct MushafRecordingList: View {
     @State private var loadError: String?
     @State private var showingDeleted = false
     @State private var sessionTitle = ""
+    @State private var removalCandidate: MushafRecordingTake?
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
@@ -193,8 +194,9 @@ struct MushafRecordingList: View {
                                     Image(systemName: "arrow.counterclockwise").frame(width: 44, height: 44)
                                 }.accessibilityLabel("إعادة المقطع من البداية")
                                     .accessibilityIdentifier("study.recording.replay.\(take.id.uuidString)")
-                                Menu {
-                                    Button("نقل إلى المحذوفات", systemImage: "trash") { move(take, deleted: true) }
+                                Button {
+                                    recorder.pausePlayback()
+                                    removalCandidate = take
                                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                                     .accessibilityLabel("خيارات المقطع")
                                     .accessibilityIdentifier("study.recording.options.\(take.id.uuidString)")
@@ -220,6 +222,17 @@ struct MushafRecordingList: View {
             .onDisappear { recorder.stop() }
             .onChange(of: scenePhase) { _, phase in if phase != .active { recorder.pausePlayback() } }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in recorder.pausePlayback() }
+            .confirmationDialog("نقل المقطع إلى المحذوفات؟", isPresented: Binding(
+                get: { removalCandidate != nil },
+                set: { if !$0 { removalCandidate = nil } }), titleVisibility: .visible) {
+                if let take = removalCandidate {
+                    Button("نقل إلى المحذوفات", role: .destructive) { move(take, deleted: true) }
+                        .accessibilityIdentifier("study.recording.remove.\(take.id.uuidString)")
+                }
+                Button("إلغاء", role: .cancel) { removalCandidate = nil }
+            } message: {
+                Text("يبقى المقطع محفوظًا، ويمكنك استعادته من المقاطع المحذوفة.")
+            }
             .alert("تشغيل التسجيل", isPresented: Binding(get: { recorder.message != nil }, set: { if !$0 { recorder.message = nil } })) {
                 Button("حسنًا") { recorder.message = nil }
             } message: { Text(recorder.message ?? "") }
