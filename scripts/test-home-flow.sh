@@ -38,6 +38,9 @@ python3 scripts/seed-recording-ui.py "$noor_home_device"
 xcrun simctl privacy "$noor_home_device" reset microphone com.saud1596x.nooralruh
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorHomeFlowUITests \
+  -only-testing:AtharUITests/NoorAllScreensTests \
+  -only-testing:AtharUITests/NoorNavigationTests \
+  -only-testing:AtharUITests/NoorPrayerDisplayUITests \
   -only-testing:AtharUITests/NoorRemovedFeaturesUITests \
   -only-testing:AtharUITests/NoorReaderComfortUITests \
   -only-testing:AtharUITests/NoorReminderUITests \
