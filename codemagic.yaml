@@ -179,6 +179,7 @@ workflows:
           source: true
       cancel_previous_builds: false
     when:
+      condition: event.head_commit.message == "Publish verified Noor update to TestFlight"
       changeset:
         includes:
           - release/current-native-preview-evidence.json
