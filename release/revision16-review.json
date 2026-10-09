@@ -1,0 +1,12 @@
+{
+  "reportedBuild": 16,
+  "status": "IMPLEMENTED_AWAITING_NATIVE_ACCEPTANCE",
+  "scope": ["recitation startup and shutdown", "recording history", "account network operations and deletion", "fullscreen and proportional Quran magnification", "current four-tab screen walkthrough"],
+  "localPythonTests": {"executed": 20, "failed": 0},
+  "nativeTestsPassed": false,
+  "physicalMicrophoneAccepted": false,
+  "productionAccountDeletionAccepted": false,
+  "recognitionAccuracyParityWithTarteel": "Not established; current evidence is reference-audio tracking, not a comparative accuracy benchmark",
+  "publicationApproved": false,
+  "notes": "Bundled model is reused across reader entries with one in-flight load. SDK and inference deadlines unblock controls; closed recording bytes remain preserved. Source hashes must be repinned only after successful current-source native tests."
+}
