@@ -40,6 +40,7 @@ struct NoorReminderEditor: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     let kind: NoorReminderKind
+    @State private var saving = false
     @State private var draft: NoorReminderPreference
     init(kind: NoorReminderKind, initial: NoorReminderPreference) {
         self.kind = kind; _draft = State(initialValue: initial)
@@ -79,16 +80,32 @@ struct NoorReminderEditor: View {
                 if !draft.valid { Text("اجعل نهاية التذكيرات بعد بدايتها، واختر يومًا واحدًا على الأقل.") }
                 if draft.enabled && draft.minutes.isEmpty { Text("كل المواعيد تقع في وقت الهدوء؛ لن يُرسل هذا التذكير.") }
                 if let message = notifications.message { Text(message).foregroundStyle(.secondary) }
-                Button {
-                    Task {
-                        await notifications.setReminder(kind, preference: draft, store: store)
-                        if notifications.personal.values[kind.rawValue] == draft { dismiss() }
-                    }
-                } label: { Text("حفظ التذكير").frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle()) }
-                    .accessibilityIdentifier("reminder.save")
-                    .disabled(!draft.valid || notifications.requestingPermission || notifications.personalUnreadable)
+
             }
-        }.navigationTitle(kind.title).tint(Theme.gold)
+        }.disabled(saving)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    Divider()
+                    Button {
+                        guard !saving else { return }
+                        let preference = draft
+                        saving = true
+                        Task {
+                            await notifications.setReminder(kind, preference: preference, store: store)
+                            saving = false
+                            if notifications.personal.values[kind.rawValue] == preference { dismiss() }
+                        }
+                    } label: {
+                        Text(saving ? "جارٍ حفظ التذكير…" : "حفظ التذكير")
+                            .frame(maxWidth: .infinity, minHeight: 48).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderedProminent).tint(Theme.gold).foregroundStyle(Theme.buttonInk)
+                    .accessibilityIdentifier("reminder.save")
+                    .disabled(saving || !draft.valid || notifications.requestingPermission || notifications.personalUnreadable)
+                    .padding(.horizontal, 20).padding(.vertical, 10)
+                }.background(Theme.background)
+            }
+            .navigationTitle(kind.title).tint(Theme.gold)
             .onChange(of: draft.startMinute) { _, value in draft.endMinute = max(value, draft.endMinute) }
     }
     private func time(_ title: String, value: Binding<Int>, id: String) -> some View {
