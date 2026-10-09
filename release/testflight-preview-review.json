@@ -2,17 +2,17 @@
   "channel": "TESTFLIGHT_PREVIEW",
   "authorizedAt": "2026-10-07T00:11:20+03:00",
   "authorization": "User requested publishing the new TestFlight version after disclosure of unfinished visual review and service setup.",
-  "nativeRun": 37663422598,
-  "nativeSourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
+  "nativeRun": 37933543324,
+  "nativeSourceCommit": "714ea30563149210ae3cae180fdd4a898e2ffbd4",
   "nativeRunState": "success",
   "reviewedSourceHashes": {
-    "ios/Athar/InteractiveMushafCanvas.swift": "71b005b5f736bec59152d210a5fa9e2cb8a5ec8a3767df7b4215db72af11ed61",
-    "ios/Athar/InteractiveMushafReader.swift": "cc2412bd60f66b754d8e0a3d7d4f459c132cae608e3ccc7ebb858ee1f969c6b4",
-    "ios/Athar/MushafReader.swift": "e9accc94c43183e61af67aa5f40c1302eea13448e35f7f1acdcf4e585e5d0a88",
-    "ios/Athar/QCFV2Content.swift": "db40ad7db84f0be98261d441dabfa43fdbe22930e56f85deb972a8c93c56d002",
+    "ios/Athar/InteractiveMushafCanvas.swift": "7c549931186e7ada9d4890f2e0a6a0b0ce95c8fb2bea11ac15e4a6c17a7d534e",
+    "ios/Athar/InteractiveMushafReader.swift": "7801fa2c1e6de7c77e1feaf3b3b4a063352ae415783f94f36c9c3e99a9232925",
+    "ios/Athar/MushafReader.swift": "aba58496afc9e313b088576492d2ec0b900b4a479e0d0a0df931331281ca9b0e",
+    "ios/Athar/QCFV2Content.swift": "cf00dfc2a2b6aff5655615e725419b3deea6b314789150fd3637826db45fd771",
     "ios/Athar/qpc-v2-line-layout.json": "51b0ecce36ea708b974756348f25ec0031ed002871249a884c3386eeed5ca828",
     "release/qcf-v2-manifest.json": "72a50837bbd8d0719e023cd8c6b65ed7876f977a3f35db41feb0f1a4a6c92fad",
-    "ios/project.yml": "a9dbaa12aa762aaa1e42f550c88a1eb9f30d8474fde5ad9b3ac773c33d106ff1"
+    "ios/project.yml": "abdb9dc0c68c10a04f98941b5ac085a8556fad8aac47cdc44af0de527faf6cb3"
   },
   "limitations": [
     "Exact reference visual match is not yet verified",
@@ -22,7 +22,7 @@
     "Family Controls distribution request submitted, awaiting Apple review"
   ],
   "submitToAppStore": false,
-  "nativeEvidenceScope": "CI211 passed with repaired p245 font: native Release unit and UI/navigation tests, plus unsigned account/four-extension Release compilation. No actual-device, visual-reference or production-service acceptance.",
+  "nativeEvidenceScope": "Current complete source passed unsigned accounts/four-extension Release build, 190 unit tests (one skipped), two welcome UI tests and ten combined UI tests on compact and large iPhone simulators. All604 shaped-page bounds and word hits passed. No physical-device, production-service, final visual-reference or redistribution-rights approval is asserted.",
   "fontRepairReview": {
     "appleRejection": "ITMS-90853: QCF2245 / p245.ttf truncated Macintosh format-6 cmap",
     "sourceCommit": "65e445059240950ed97eabf52fa67c3df7bb59c9",
@@ -39,5 +39,6 @@
       "state": "success"
     },
     "appleAcceptance": "NOT_YET_VERIFIED"
-  }
+  },
+  "currentEvidence": "release/current-native-preview-evidence.json"
 }
