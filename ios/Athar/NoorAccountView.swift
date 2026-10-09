@@ -139,12 +139,12 @@ import FirebaseFirestore
             if pendingSync { scheduleSync() }
         }
         do {
-            try await user.reload()
+            try await NoorOperationDeadline.run { try await user.reload() }
             guard token == syncGeneration, !Task.isCancelled, Auth.auth().currentUser?.uid == user.uid else { return }
             let database = Firestore.firestore()
             let parent = database.collection("users").document(user.uid).collection("private")
             let readingRef = parent.document("readingState"), memoryRef = parent.document("memorization")
-            let output = try await database.runTransaction { transaction, errorPointer in
+            let output = try await NoorOperationDeadline.run { try await database.runTransaction { transaction, errorPointer in
                 do {
                     // Firestore requires every read before any write.
                     let readingDoc = try transaction.getDocument(readingRef)
@@ -183,7 +183,7 @@ import FirebaseFirestore
                     }
                     return try encoder.encode(NoorSyncResult(reading: reading, memorization: memory))
                 } catch { errorPointer?.pointee = error as NSError; return nil }
-            }
+            } }
             guard token == syncGeneration, !Task.isCancelled, Auth.auth().currentUser?.uid == user.uid,
                   journal.enabled, journal.record?.owner == user.uid, let bytes = output as? Data,
                   let latest = journal.record?.state else { return }
@@ -265,7 +265,7 @@ import FirebaseFirestore
     }
     func refresh() async {
         guard available, let user = Auth.auth().currentUser else { return }
-        do { try await user.reload(); signedIn = Auth.auth().currentUser != nil }
+        do { try await NoorOperationDeadline.run { try await user.reload() }; signedIn = Auth.auth().currentUser != nil }
         catch {
             if !expireIdentityIfNeeded(error) { message = "تعذّر التحقق من اتصال الحساب. بياناتك المحلية متاحة." }
         }
@@ -296,27 +296,31 @@ import FirebaseFirestore
             let credential = OAuthProvider.appleCredential(withIDToken: token, rawNonce: rawNonce, fullName: apple.fullName)
             if deletionRequested {
                 guard let user = Auth.auth().currentUser, let codeData = apple.authorizationCode, let code = String(data: codeData, encoding: .utf8) else { throw CocoaError(.coderInvalidValue) }
-                _ = try await user.reauthenticate(with: credential)
-                try await Auth.auth().revokeToken(withAuthorizationCode: code)
+                _ = try await NoorOperationDeadline.run { try await user.reauthenticate(with: credential) }
+                try await NoorOperationDeadline.run { try await Auth.auth().revokeToken(withAuthorizationCode: code) }
                 try await deleteUser(user)
-            } else { _ = try await Auth.auth().signIn(with: credential) }
+            } else { _ = try await NoorOperationDeadline.run { try await Auth.auth().signIn(with: credential) } }
         } catch let error as ASAuthorizationError where error.code == .canceled {
             message = nil
-        } catch { message = deletionRequested ? "لم يكتمل حذف الحساب. أعد التحقق من Apple والاتصال وحاول مجددًا." : "لم يكتمل الدخول بحساب Apple. حاول مجددًا." }
+        } catch {
+            message = deletionRequested ? "لم نتأكد من اكتمال حذف الحساب. تحقق من الاتصال وأعد المحاولة؛ بيانات جهازك محفوظة." : "لم يكتمل الدخول بحساب Apple. تحقق من الاتصال وأعد المحاولة."
+        }
     }
     private func deleteUser(_ user: User) async throws {
         let running = syncTask
         disconnectLocalSync()
-        await running?.value
+        // Firestore SDK work may ignore Task cancellation. A deletion marker
+        // blocks stale writes through security rules; never wait indefinitely.
+        _ = try? await NoorOperationDeadline.run(seconds: 3) { await running?.value }
         let database = Firestore.firestore(), batch = Firestore.firestore().batch()
         let parent = database.collection("users").document(user.uid).collection("private")
         let deletionRef = database.collection("accountDeletions").document(user.uid)
-        let marker = try await deletionRef.getDocument(source: .server)
+        let marker = try await NoorOperationDeadline.run { try await deletionRef.getDocument(source: .server) }
         if !marker.exists { batch.setData(["deletedAt": FieldValue.serverTimestamp()], forDocument: deletionRef) }
         batch.deleteDocument(parent.document("memorization"))
         batch.deleteDocument(parent.document("readingState"))
-        try await batch.commit()
-        try await user.delete()
+        try await NoorOperationDeadline.run { try await batch.commit() }
+        try await NoorOperationDeadline.run { try await user.delete() }
         signedIn = false; uid = nil; deletionRequested = false; name = ""
         message = "حُذف حسابك وبيانات تقدمك السحابية. بيانات جهازك متاحة دون حساب؛ احذفها من الإعدادات إذا أردت."
     }
@@ -337,7 +341,7 @@ import FirebaseFirestore
                 archive: .init(version: 1, history: memorization.history, progress: memorization.progress, plan: memorization.plan))
             let database = Firestore.firestore()
             let reference = database.collection("users").document(user.uid).collection("private").document("memorization")
-            _ = try await database.runTransaction { transaction, errorPointer in
+            _ = try await NoorOperationDeadline.run { try await database.runTransaction { transaction, errorPointer in
                 do {
                     let document = try transaction.getDocument(reference)
                     var merged = try MemorizationCloudMerge.merge(local: local, remote: local, corpus: corpus)
@@ -357,7 +361,7 @@ import FirebaseFirestore
                     errorPointer?.pointee = error as NSError
                     return nil
                 }
-            }
+            } }
             guard Auth.auth().currentUser?.uid == user.uid else { message = "تغيّر الحساب أثناء الحفظ. بقيت بيانات جهازك محفوظة."; return }
             message = "دُمج تقدمك مع نسخة حسابك دون تكرار النتائج. لا تتضمن النسخة صوتك أو تأملاتك."
         } catch { message = "لم تُحفظ النسخة السحابية. تحقق من الاتصال وحاول مجددًا؛ تقدمك المحلي محفوظ." }
@@ -368,7 +372,9 @@ import FirebaseFirestore
         guard bindLocalData(owner: user.uid) else { return }
         busy = true; defer { busy = false; scheduleSync() }
         do {
-            let document = try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").getDocument(source: .server)
+            let document = try await NoorOperationDeadline.run {
+                try await Firestore.firestore().collection("users").document(user.uid).collection("private").document("memorization").getDocument(source: .server)
+            }
             guard document.data()?["version"] as? Int == 1,
                   let compressed = document.data()?["data"] as? Data else { throw CocoaError(.fileReadCorruptFile) }
             let data = try NoorCloudPayload.decode(compressed)
@@ -403,6 +409,10 @@ struct NoorAccountView: View {
                 Text("حسابك في نور الروح").font(.title2.bold())
                 Text("تسجيل الدخول اختياري. يمكنك حفظ نسخة من خطة الحفظ وتقدمك واستعادتها عند تغيير الجهاز.")
             }
+            if account.busy || account.syncing {
+                Section { ProgressView(account.deletionRequested ? "جارٍ حذف الحساب…" : account.syncing ? "جارٍ مزامنة تقدمك…" : "جارٍ الاتصال بحسابك…")
+                    .accessibilityIdentifier("account.progress") }
+            }
             #if NOOR_ACCOUNT_ENABLED
             if account.available {
                 if account.signedIn {
@@ -422,10 +432,11 @@ struct NoorAccountView: View {
                         Button("حفظ نسخة سحابية من تقدمي") { uploading = true }.disabled(account.busy || account.syncing)
                         Button("استعادة نسخة الحفظ") { restoring = true }.disabled(account.busy || account.syncing)
                         Button("حذف حسابي", role: .destructive) { deleting = true }.disabled(account.busy)
+                            .accessibilityIdentifier("account.delete")
                         if account.deletionRequested {
                             Text("أعد تسجيل الدخول بالطريقة المرتبطة بحسابك لتأكيد الحذف.")
                             SignInWithAppleButton(.continue, onRequest: account.prepareApple) { result in Task { await account.completeApple(result) } }.frame(height: 50).disabled(account.busy)
-                            Button("إلغاء الحذف") { account.deletionRequested = false }
+                            Button("إلغاء الحذف") { account.deletionRequested = false }.disabled(account.busy)
                         }
                         Button("تسجيل الخروج") { account.signOut() }.disabled(account.busy)
                         Text("الحفظ السحابي اختياري؛ لا نرفع التسجيلات الصوتية أو التأملات. بيانات الجهاز تبقى بعد تسجيل الخروج.").font(.caption)

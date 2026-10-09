@@ -12,19 +12,20 @@ import Combine
     @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
     @Published var message: String?
-    private let worker = QuranRecognitionWorker()
+    private let worker = QuranRecognitionWorker.shared
+    private let drainTimeout: Double
     private let requestPermission: () async -> Bool
     private let archiveRoot: URL?
     private let makeCapture: (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture
     private let setSessionActive: (Bool) throws -> Void
     init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
-         archiveRoot: URL? = nil,
+         archiveRoot: URL? = nil, drainTimeout: Double = 8,
          makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
              try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
          }) {
-        self.requestPermission = requestPermission
+        self.requestPermission = requestPermission; self.drainTimeout = drainTimeout
         self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
     private var capture: (any QuranAudioCapture)?
@@ -53,7 +54,7 @@ import Combine
         switch state {
         case .idle: return "ابدأ التسميع"
         case .permission: return "إذن الميكروفون"
-        case .preparing: return "تهيئة التسميع"
+        case .preparing: return "تجهيز الميكروفون…"
         case .listening:
             if !recognitionAvailable { return "التسجيل مستمر · التتبع متعذر" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
@@ -80,7 +81,7 @@ import Combine
             }
             try await bind(snapshot: snapshot, corpus: corpus)
             guard revision == token, state == .preparing else { return }
-            try await worker.prepare()
+            try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
             guard revision == token, state == .preparing else { return }
             let scope = Set(keys)
             tracker = QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) })
@@ -91,7 +92,7 @@ import Combine
         } catch {
             guard revision == token else { return }
             state = record == nil ? .idle : .paused
-            message = "تعذّر تجهيز التسميع. لم يبدأ الميكروفون؛ تحقق من المساحة المتاحة ثم أعد المحاولة."
+            message = "تعذّر تجهيز التسميع الآن. النموذج مضمّن ولا يحتاج تنزيلًا جديدًا. أعد المحاولة أو تابع القراءة."
         }
     }
     private func bind(snapshot: QCFV2Snapshot, corpus: [Surah]) async throws {
@@ -147,7 +148,7 @@ import Combine
         guard revision == token, state == .permission else { return }
         do {
             state = .preparing
-            try await worker.prepare()
+            try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
             guard revision == token, state == .preparing else { return }
             try await beginTake(token: token)
         }
@@ -270,12 +271,15 @@ import Combine
         // Recognition is cancellable at encoder/decoder boundaries. A long
         // final decode can be cancelled without touching the closed audio.
         let pending = pump
-        let deadline = Task { [weak self] in
-            do { try await Task.sleep(nanoseconds: 20_000_000_000) } catch { return }
-            pending?.cancel()
-            if var current = self?.record { current.recognitionUnavailable = true; self?.record = current }
+        do {
+            try await NoorOperationDeadline.run(seconds: drainTimeout) { await pending?.value }
+        } catch {
+            // A Core ML decode may ignore cancellation. Invalidate its token
+            // before saving so it cannot change a paused or resumed session.
+            revision = UUID(); pending?.cancel()
+            if var current = record { current.recognitionUnavailable = true; record = current }
         }
-        await pending?.value; deadline.cancel(); pump = nil; mailbox = nil
+        pump = nil; mailbox = nil
         if var current = record {
             current.phase = finishRequest ? .finished : .paused
             current.finishedAt = finishRequest ? Date() : nil

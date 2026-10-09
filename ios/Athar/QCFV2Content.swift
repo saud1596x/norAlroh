@@ -223,6 +223,7 @@ actor MushafReadingPreparation {
         let rows: OriginalMushafRows
         let studyIndex: MushafStudyWordIndex
         let versePages: [String: Int]
+        let pageIndex: [Int: OriginalPageData]
     }
     private var source: Data?
     private var corpusKeys: [String] = []
@@ -239,7 +240,8 @@ actor MushafReadingPreparation {
         let pages = index.pages.compactMapValues { $0.first }
         guard pages.count == 6236 else { throw QCFV2Snapshot.Invalid.verse }
         try Task.checkCancellation()
-        let content = Content(snapshot: snapshot, rows: rows, studyIndex: index, versePages: pages)
+        let content = Content(snapshot: snapshot, rows: rows, studyIndex: index, versePages: pages,
+            pageIndex: OriginalPageData.index(snapshot: snapshot, rows: rows, keys: keys))
         source = bytes; corpusKeys = keys; prepared = content
         return content
     }

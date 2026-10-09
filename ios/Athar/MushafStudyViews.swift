@@ -131,6 +131,7 @@ struct MushafRecordingList: View {
     @State private var showingDeleted = false
     @State private var sessionTitle = ""
     @State private var removalCandidate: MushafRecordingTake?
+    @State private var loadRevision = UUID()
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
@@ -211,13 +212,13 @@ struct MushafRecordingList: View {
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
                     Button(showingDeleted ? "عرض التسجيلات" : "المقاطع المحذوفة") {
-                        recorder.stop(); showingDeleted.toggle(); reload()
+                        recorder.stop(); showingDeleted.toggle(); Task { await reload() }
                     }.frame(minHeight: 44).accessibilityIdentifier("study.recordings.deleted")
                 }
             }
             .task {
                 sessionTitle = (try? MushafRecordingArchive.metadata(session: session))?.title ?? ""
-                reload()
+                await reload()
             }
             .onDisappear { recorder.stop() }
             .onChange(of: scenePhase) { _, phase in if phase != .active { recorder.pausePlayback() } }
@@ -238,15 +239,21 @@ struct MushafRecordingList: View {
             } message: { Text(recorder.message ?? "") }
         }
     }
-    private func reload() {
+    @MainActor private func reload() async {
+        let token = UUID(); loadRevision = token
+        let deleted = showingDeleted, id = session
         do {
-            takes = try showingDeleted ? MushafRecordingArchive.deletedTakes(session: session) : MushafRecordingArchive.takes(session: session)
+            let result = try await Task.detached(priority: .userInitiated) {
+                try deleted ? MushafRecordingArchive.deletedTakes(session: id) : MushafRecordingArchive.takes(session: id)
+            }.value
+            guard loadRevision == token, !Task.isCancelled else { return }
+            takes = result
             loadError = nil
         } catch { loadError = "تعذّر قراءة قائمة التسجيلات. احتُفظ بالملفات الأصلية؛ أعد المحاولة بعد فتح قفل الجهاز." }
     }
     private func move(_ take: MushafRecordingTake, deleted: Bool) {
         if recorder.playing == take.id { recorder.stop() }
-        do { try MushafRecordingArchive.moveAudio(take, toDeleted: deleted); reload() }
+        do { try MushafRecordingArchive.moveAudio(take, toDeleted: deleted); Task { await reload() } }
         catch { recorder.message = "تعذّر نقل المقطع. لم يُستبدل الصوت أو سجل الجلسة." }
     }
 }
@@ -307,14 +314,19 @@ struct MushafRecordingBrowser: View {
             }.padding(20)
         }.background(Theme.background)
         .navigationTitle("تسجيلات التسميع")
-        .task { reloadSessions() }
-        .sheet(item: $selected, onDismiss: reloadSessions) { selection in
+        .task { await reloadSessions() }
+        .refreshable { await reloadSessions() }
+        .sheet(item: $selected, onDismiss: { Task { await reloadSessions() } }) { selection in
             MushafRecordingList(session: selection.id, recorder: recorder)
         }
         .onDisappear { recorder.stop() }
     }
-    private func reloadSessions() {
-        do { sessions = try MushafRecordingArchive.sessions(); error = nil }
+    @MainActor private func reloadSessions() async {
+        do {
+            let result = try await Task.detached(priority: .userInitiated) { try MushafRecordingArchive.sessions() }.value
+            guard !Task.isCancelled else { return }
+            sessions = result; error = nil
+        }
         catch { self.error = "تعذّر قراءة التسجيلات الآن. احتُفظ بالملفات الأصلية؛ حاول بعد فتح قفل الجهاز." }
     }
 }

@@ -66,13 +66,14 @@ struct InteractiveMushafReader: View {
     }
     @State private var snapshot: QCFV2Snapshot?
     @State private var rows: OriginalMushafRows?
+    @State private var pageIndex: [Int: OriginalPageData] = [:]
     @State private var number = 1
     @State private var selected: String?
     @State private var manualSelection: VerseSelection?
     @State private var sheetVerse: VerseSelection?
     @State private var sheetAction = VerseToolAction.details
     @State private var tools = true
-    @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 44]
+    @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 60]
     @State private var khatmah = false
     @State private var picker = false
     @FocusState private var pageInputFocused: Bool
@@ -93,8 +94,7 @@ struct InteractiveMushafReader: View {
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     private var keys: [String] { store.quran.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } } }
     private var page: OriginalPageData? {
-        guard let snapshot, let rows else { return nil }
-        return OriginalPageData.page(number, snapshot: snapshot, rows: rows, keys: keys)
+        pageIndex[number]
     }
     // The visible selection owns both the toolbar and canvas. A playback
     // callback must never silently replace the verse whose tools are open.
@@ -111,6 +111,7 @@ struct InteractiveMushafReader: View {
                 } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
+                        readingMagnification: store.data.largeQuran ? 1.15 : 1,
                         hiddenTextAccessibilityHint: "نص الآية مخفي للتسميع؛ يظهر عندما يتعرف النظام على تلاوتك.",
                         onVerse: { key in
                             guard !studyOpen else { return }
@@ -125,9 +126,9 @@ struct InteractiveMushafReader: View {
                             if manualSelection != nil { clearManualSelection() }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() } }
                         })
-                        .padding(.horizontal, 12)
-                        .padding(.top, (controlHeights["header"] ?? 44) + 8)
-                        .padding(.bottom, (controlHeights["footer"] ?? 44) + 8)
+                        .padding(.horizontal, 2)
+                        .padding(.top, 44)
+                        .padding(.bottom, 60)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
                     VStack(spacing: 18) { Text(message).accessibilityIdentifier("reader.load.error"); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -158,14 +159,6 @@ struct InteractiveMushafReader: View {
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else {
-                        Button { showStudySetup() } label: {
-                            Image(systemName: "mic.fill").font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(Theme.gold).frame(width: 44, height: 44)
-                                .background(Theme.gold.opacity(0.12), in: Circle())
-                        }
-                            .accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
-                            .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
-                            .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
                         Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
@@ -173,19 +166,29 @@ struct InteractiveMushafReader: View {
                 Spacer()
                 Group {
                     if let selection = manualSelection { verseActions(selection) }
-                    else { HStack {
+                    else { ZStack {
+                    HStack {
                     Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
-                    Button { input = ""; picker = true } label: {
-                        Text("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤")
-                            .frame(minHeight: 44).contentShape(Rectangle())
-                    }.buttonStyle(.plain).foregroundStyle(Theme.gold).accessibilityIdentifier("reader.jump")
-                    Spacer()
+                        Button { input = ""; picker = true } label: {
+                            Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption)
+                                .frame(minWidth: 70, minHeight: 44).contentShape(Rectangle())
+                        }.buttonStyle(.plain).foregroundStyle(Theme.gold)
+                            .accessibilityLabel("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤").accessibilityIdentifier("reader.jump")
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
+                    }
+                        Button { showStudySetup() } label: {
+                            Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
+                                .foregroundStyle(Theme.background).frame(width: 60, height: 60)
+                                .background(Theme.gold, in: Circle())
+                        }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
+                            .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
+                            .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
                     } }
                 }.background { readerControlMeasurement("footer") }
             }.padding(.horizontal, 10).transition(.opacity) }
         }
+        .statusBarHidden(true)
         .onPreferenceChange(ReaderControlHeight.self) { heights in
             for (key, height) in heights where height.isFinite && height > 0 {
                 if abs((controlHeights[key] ?? 0) - height) > 0.5 { controlHeights[key] = height }
@@ -313,7 +316,7 @@ struct InteractiveMushafReader: View {
                 Spacer(minLength: 8)
                 Button { Task { await recitation.finish() } } label: {
                     Text("إنهاء").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                }.disabled(recitation.state == .processing)
+                }.disabled(recitation.state == .processing || recitation.state == .preparing || recitation.state == .permission)
                     .accessibilityIdentifier("study.finish")
             }.background { readerControlMeasurement("header") }
             Spacer(minLength: 0)
@@ -329,9 +332,10 @@ struct InteractiveMushafReader: View {
                     Group {
                         if recitation.state == .processing || recitation.state == .preparing { ProgressView() }
                         else { Image(systemName: recitation.state == .paused ? "mic.fill" : "pause.fill") }
-                    }.frame(width: 44, height: 44).background(Theme.gold.opacity(0.12), in: Circle())
-                }.disabled(recitation.state == .processing || recitation.state == .preparing || recitation.state == .permission)
-                    .accessibilityLabel(recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
+                    }.font(.system(size: 24, weight: .semibold)).foregroundStyle(Theme.background)
+                        .frame(width: 60, height: 60).background(Theme.gold, in: Circle())
+                }.disabled(recitation.state == .processing || recitation.state == .permission)
+                    .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
                     .accessibilityIdentifier("study.pause")
                 Spacer()
                 Image(systemName: recitation.state == .listening ? "waveform" : "mic.slash")
@@ -383,8 +387,7 @@ struct InteractiveMushafReader: View {
         guard (1...604).contains(number + amount) else { return }
         if recitation.hasSession {
             let scope = Set(recitation.record?.keys ?? [])
-            guard let snapshot, let rows,
-                  OriginalPageData.page(number + amount, snapshot: snapshot, rows: rows, keys: keys).words.contains(where: { scope.contains($0.verse) }) == true else { return }
+            guard pageIndex[number + amount]?.words.contains(where: { scope.contains($0.verse) }) == true else { return }
         }
         let destination = number + amount
         // Persist before publishing the new page, including a quick close/background.
@@ -403,7 +406,7 @@ struct InteractiveMushafReader: View {
             let data = content.snapshot
             let versePages = content.versePages
             let first = snapshot == nil; snapshot = data; rows = content.rows
-            studyIndex = content.studyIndex
+            studyIndex = content.studyIndex; pageIndex = content.pageIndex
             if first {
                 number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil }
                     ?? versePages["\(chapter):\(ayah)"] ?? 1

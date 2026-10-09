@@ -7,11 +7,18 @@ struct QuranSessionResult: View {
     let wordIDs: [String: [Int]]
     let onRecordings: () -> Void
     let onReview: (String) -> Void
+    private let coverageCounts: [String: Int]
+    init(record: QuranRecitationRecord, wordIDs: [String: [Int]], onRecordings: @escaping () -> Void, onReview: @escaping (String) -> Void) {
+        self.record = record; self.wordIDs = wordIDs; self.onRecordings = onRecordings; self.onReview = onReview
+        let evidence = Dictionary(grouping: record.evidence, by: \.verse).mapValues { Set($0.map(\.nativeID)) }
+        coverageCounts = Dictionary(uniqueKeysWithValues: record.keys.map { key in
+            (key, (evidence[key] ?? []).intersection(Set(wordIDs[key] ?? [])).count)
+        })
+    }
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: AtharStore
     private func coverage(_ key: String) -> Int {
-        let expected = Set(wordIDs[key] ?? [])
-        return Set(record.evidence.filter { $0.verse == key }.map(\.nativeID)).intersection(expected).count
+        coverageCounts[key] ?? 0
     }
     private func complete(_ key: String) -> Bool {
         let count = wordIDs[key]?.count ?? 0
@@ -52,7 +59,7 @@ struct QuranSessionResult: View {
                         }.buttonStyle(.bordered).accessibilityIdentifier("study.result.review")
                     }
                     DisclosureGroup("تفاصيل التتبع") {
-                        VStack(alignment: .leading, spacing: 12) {
+                        LazyVStack(alignment: .leading, spacing: 12) {
                             Text("التتبع يحدد موضع التلاوة؛ لا يقيس صحة النطق أو التجويد. المقاطع غير المتتبّعة ليست أخطاء مؤكدة.").font(.footnote).foregroundStyle(.secondary)
                             if record.recognitionUnavailable { Text("تعذّر التحليل في جزء من الجلسة؛ التسجيل الصوتي محفوظ.").font(.footnote) }
                             ForEach(record.keys, id: \.self) { key in

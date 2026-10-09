@@ -2,11 +2,14 @@ import Foundation
 import WhisperKit
 
 actor QuranRecognitionWorker {
+    static let shared = QuranRecognitionWorker()
     struct Result: Sendable {
         let runs: [[QuranHeardWord]]
         let hasUnresolvedSpeech: Bool
     }
     private var engine: WhisperKit?
+    private var loading: Task<WhisperKit, Error>?
+    private var inference: Task<Result, Error>?
     private var boundNative: [QuranNativeWord] = []
     private var boundKeys: [String] = []
     private var boundWords: [QuranAlignedWord] = []
@@ -29,16 +32,31 @@ actor QuranRecognitionWorker {
     }
     func prepare() async throws {
         if engine != nil { return }
+        if let loading { engine = try await loading.value; return }
         guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
         }
-        engine = try await WhisperKit(WhisperKitConfig(
+        let task = Task { try await WhisperKit(WhisperKitConfig(
             modelFolder: root.appendingPathComponent("model").path,
             tokenizerFolder: root.appendingPathComponent("tokenizer", isDirectory: true),
-            verbose: false, logLevel: .error, prewarm: false, load: true, download: false))
+            verbose: false, logLevel: .error, prewarm: false, load: true, download: false)) }
+        loading = task
+        defer { loading = nil }
+        engine = try await task.value
     }
     func recognize(_ window: QuranAudioWindow) async throws -> Result {
+        let previous = inference
+        let task = Task {
+            _ = try? await previous?.value
+            try Task.checkCancellation()
+            return try await self.decode(window)
+        }
+        inference = task
+        return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+    private func decode(_ window: QuranAudioWindow) async throws -> Result {
         try await prepare()
+        try Task.checkCancellation()
         guard let engine else { throw CocoaError(.fileReadCorruptFile) }
         let options = DecodingOptions(language: "ar", temperatureFallbackCount: 0,
             skipSpecialTokens: true, withoutTimestamps: false, wordTimestamps: true,

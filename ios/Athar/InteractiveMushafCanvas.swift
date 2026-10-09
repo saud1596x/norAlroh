@@ -50,6 +50,17 @@ struct OriginalPageWord {
 }
 struct OriginalPageData {
     let number: Int; let words: [OriginalPageWord]; let rows: [OriginalMushafRows.Row]
+    static func index(snapshot: QCFV2Snapshot, rows: OriginalMushafRows, keys: [String]) -> [Int: Self] {
+        let records = Dictionary(grouping: snapshot.records.filter { $0.record_type == "mushaf_word" }, by: { $0.page_number! })
+        let pageRows = Dictionary(grouping: rows.rows, by: \.page)
+        return Dictionary(uniqueKeysWithValues: (1...604).map { number in
+            let words = (records[number] ?? []).sorted { $0.position_in_page! < $1.position_in_page! }.map {
+                OriginalPageWord(id: $0.id, verse: keys[$0.verse_id! - 1], code: $0.text!,
+                    line: $0.line_number! - (number <= 2 ? 7 : 0), order: $0.position_in_page!)
+            }
+            return (number, Self(number: number, words: words, rows: pageRows[number] ?? []))
+        })
+    }
     static func page(_ number: Int, snapshot: QCFV2Snapshot, rows: OriginalMushafRows, keys: [String]) -> Self {
         let words = snapshot.records.filter { $0.record_type == "mushaf_word" && $0.page_number == number }.sorted { $0.position_in_page! < $1.position_in_page! }.map {
             OriginalPageWord(id: $0.id, verse: keys[$0.verse_id! - 1], code: $0.text!, line: $0.line_number! - (number <= 2 ? 7 : 0), order: $0.position_in_page!)
@@ -426,6 +437,12 @@ struct OriginalPageData {
 @MainActor final class OriginalMushafViewport: UIScrollView, UIScrollViewDelegate {
     let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
     private var fitted: CGFloat = 0
+    var readingMagnification: CGFloat = 1 {
+        didSet {
+            guard readingMagnification != oldValue, minimumZoomScale > 0 else { return }
+            resetToFittedPage()
+        }
+    }
     var onTurn: ((Int) -> Void)?
     var onToggleTools: (() -> Void)?
     private var selectionGesture: UILongPressGestureRecognizer?
@@ -435,7 +452,7 @@ struct OriginalPageData {
     private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
     var canTurnPages: Bool {
         onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
-            && zoomScale <= minimumZoomScale * 1.01
+            && zoomScale <= minimumZoomScale * max(1, readingMagnification) * 1.01
             && pinchGestureRecognizer?.state != .began && pinchGestureRecognizer?.state != .changed
     }
     override init(frame: CGRect) {
@@ -489,7 +506,7 @@ struct OriginalPageData {
         guard bounds.width > 0, bounds.height > 0 else { return }
         let fit = min(bounds.width / OriginalMushafCanvas.pageSize.width, bounds.height / OriginalMushafCanvas.pageSize.height)
         if abs(fitted - fit) > 0.00001 {
-            let relativeZoom = fitted > 0 ? zoomScale / fitted : 1
+            let relativeZoom = fitted > 0 ? zoomScale / fitted : max(1, readingMagnification)
             fitted = fit; minimumZoomScale = fit; maximumZoomScale = fit * 4
             zoomScale = fit * min(4, max(1, relativeZoom))
         }
@@ -503,7 +520,7 @@ struct OriginalPageData {
         }
     }
     func resetToFittedPage() {
-        setZoomScale(minimumZoomScale, animated: false)
+        setZoomScale(minimumZoomScale * max(1, min(2, readingMagnification)), animated: false)
         setNeedsLayout(); layoutIfNeeded()
         setContentOffset(CGPoint(x: -contentInset.left, y: -contentInset.top), animated: false)
     }
@@ -519,12 +536,14 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
     var allowsVerseSelection = true
+    var readingMagnification: CGFloat = 1
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة."
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     var onTurn: ((Int) -> Void)? = nil
     var onToggleTools: (() -> Void)? = nil
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
+        view.readingMagnification = readingMagnification
         view.allowsVerseSelection = allowsVerseSelection
         view.canvas.hiddenTextAccessibilityHint = hiddenTextAccessibilityHint
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
