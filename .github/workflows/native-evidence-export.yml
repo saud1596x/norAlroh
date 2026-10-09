@@ -63,3 +63,27 @@ jobs:
           name: current-native-review-export
           path: release/native-review-export
           if-no-files-found: error
+      - name: Prepare smaller review overview from original captures
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 scripts/export-mushaf-contact-sheets.py release/native-review-export/compact/data release/native-review-overview/contact-sheets
+          python3 - <<'PY'
+          import json,shutil,re
+          from pathlib import Path
+          source=Path('release/native-review-export')
+          target=Path('release/native-review-overview')
+          selected={1,2,151,245,604}
+          inventory=json.loads((source/'inventory.json').read_text())
+          for row in inventory['attachments']:
+              match=re.search(r'QCF-V2-shaped-page-(\d{3})',row['name'])
+              if '/ui/' in row['file'] or '/welcome/' in row['file'] or (match and int(match[1]) in selected):
+                  out=target/row['file']
+                  out.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copy2(source/row['file'],out)
+          shutil.copy2(source/'inventory.json',target/'inventory.json')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: current-native-review-overview
+          path: release/native-review-overview
+          if-no-files-found: error
