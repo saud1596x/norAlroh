@@ -21,11 +21,11 @@ final class NoorRemovedFeaturesUITests: XCTestCase {
         // This screen uses its own visible heading, rather than a navigation-bar title.
         XCTAssertTrue(app.staticTexts["journey.month"].waitForExistence(timeout: 20))
         capture(app, "journey-still-reachable")
-        selectNoorTab("الحفظ", in: app)
+        selectNoorTab("المصحف", in: app)
         for _ in 0..<4 { app.swipeUp() }
         XCTAssertFalse(app.buttons["hifz.similarities"].exists)
         XCTAssertFalse(app.staticTexts["الآيات المتشابهة"].exists)
-        capture(app, "memorization-with-retired-action-removed")
+        capture(app, "mushaf-with-retired-action-removed")
     }
     @MainActor private func capture(_ app: XCUIApplication, _ name: String) {
         let image = XCTAttachment(screenshot: app.screenshot())
