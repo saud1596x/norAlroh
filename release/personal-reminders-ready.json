@@ -4,7 +4,7 @@
     ".github/workflows/personal-reminders.yml": "a649eb186921b87579f784940a3ca72177103d3d5628493fbdc0f90ee7e0d314",
     "scripts/test-personal-reminders.sh": "0c9ea7d4100ee0154751230d0b5d3c125900c1fa09f27b0f2007d676ae4cd830",
     "ios/Athar/NoorPersonalReminders.swift": "a2ddbbedd5f45744829bc10c60dd693e1f688cc837a6ad434d22c7bf131c7d88",
-    "ios/Athar/NoorReminderSettings.swift": "2aa8aefc13f5b68067abc10fb0ba348abdd3c8110f8a857df130bffa6cee2e19",
+    "ios/Athar/NoorReminderSettings.swift": "83ed5e09c61b49527ab00237a97b5fcf1c7d0e3af633626779d3dc258e94bb29",
     "ios/Athar/Services.swift": "725fdc617b842049c7df34898d74d72f04ec019aa786041fbc113d73c39a897b",
     "ios/Athar/FeatureViews.swift": "3e5912158e2eafe4d48370d6413dead1b78a998c78debfcaaf2b47c1576b5ab6",
     "ios/Athar/Store.swift": "fa2dd6ba4317f6c1802096e21d06e4a2211c8bf77fca55deb5bd01be71c43f24",
@@ -15,7 +15,7 @@
     "ios/Athar/MemorizationViews.swift": "2276d1471e952eb682ee327ff7edc7b1147008a8c7d980b83fe476d789f8c6f7",
     "ios/AtharTests/NoorPersonalReminderTests.swift": "0ba4300f7613b9966c9a1788891d95cc3843a2730bd439317274b28975fe5252",
     "ios/AtharTests/MushafRepetitionTests.swift": "7d0ccc9945dd155ee68809473a868a7a6be26436990b415e78a285efac5454de",
-    "ios/AtharUITests/NoorReminderUITests.swift": "8f30b6659447459c36a51741859210ccd7118bacad3dfdecd107c59fe3507dd3"
+    "ios/AtharUITests/NoorReminderUITests.swift": "c0dd2fb1aaaf22666fe0e049d5be69042ac37759ba25dd2e79db61b23a150247"
   },
-  "revision": "Await actual editor dismissal, use observed native switch child, search List in both directions and log failure hierarchy"
+  "revision": "Keep Save visible in the safe area, prevent in-flight edits, and verify actual window geometry before tapping"
 }
