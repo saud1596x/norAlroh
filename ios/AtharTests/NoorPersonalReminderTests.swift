@@ -143,9 +143,11 @@ final class NoorPersonalReminderTests: XCTestCase {
         await service.setSalawatInterval(2, store: store)
         await service.setSalawatEnabled(true, store: store)
         XCTAssertEqual(service.salawatCount, 7)
+        client.delivered = [try XCTUnwrap(client.pending.keys.first), "foreign.delivered"]
         var value = NoorReminderPreference(kind: .salawat); value.enabled = true
         await service.setReminder(.salawat, preference: value, store: store)
         XCTAssertFalse(service.salawat.enabled); XCTAssertEqual(service.salawatCount, 0)
+        XCTAssertEqual(client.delivered, ["foreign.delivered"])
         XCTAssertFalse(client.pending.keys.contains { $0.hasPrefix(SalawatNotificationPlan.prefix) })
         XCTAssertTrue(client.pending.values.allSatisfy { $0.content.userInfo["destination"] as? String == "salawat" })
         XCTAssertEqual(service.personalCounts["salawat"], 7)
