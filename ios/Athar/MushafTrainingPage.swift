@@ -79,15 +79,11 @@ struct MushafTrainingPage: View {
         do {
             try OriginalMushafCompanion.register()
             if snapshot == nil {
-                let metadata = try OriginalMushafRows.load()
-                let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-                let cache = QCFV2ContentCache(file: directory.appendingPathComponent("qcf-v2-cache.json"), endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-                let entry: QCFV2ContentCache.Entry
-                if let saved = await cache.cached() { entry = saved } else { entry = try await cache.refresh() }
-                let value = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated()
-                try metadata.validate(value)
+                let cache = try MushafReadingResources.cache()
+                let entry = try await cache.readingEntry()
+                let content = try await MushafReadingPreparation.shared.prepare(entry.snapshot, keys: keys)
                 try Task.checkCancellation()
-                snapshot = value; rows = metadata
+                snapshot = content.snapshot; rows = content.rows
             }
             try Task.checkCancellation()
             guard let first = pages.first else { throw QCFV2Snapshot.Invalid.page }

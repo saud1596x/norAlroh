@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -104,11 +105,13 @@ struct QCFV2Snapshot: Decodable, Sendable {
 /// The complete Content Sync snapshot is fetched again at least every seven
 /// days when a connection is available; API credentials stay on the gateway.
 actor QCFV2ContentCache {
-    struct Entry: Codable { let downloadedAt: Date; let snapshot: Data }
+    struct Entry: Codable, Sendable { let downloadedAt: Date; let snapshot: Data }
     private let file: URL
     private let endpoint: URL
     private let fetch: @Sendable (URL) async throws -> Data
     private var pending: Task<Entry, Error>?
+    private var verifiedFile: SHA256.Digest?
+    private var verifiedEntry: Entry?
 
     init(file: URL, endpoint: URL,
          fetch: @escaping @Sendable (URL) async throws -> Data = QCFV2ContentCache.download) {
@@ -116,11 +119,29 @@ actor QCFV2ContentCache {
     }
 
     func cached() -> Entry? {
-        guard let data = try? Data(contentsOf: file), data.count <= 48_000_000,
-              let entry = try? JSONDecoder().decode(Entry.self, from: data),
+        guard let data = try? Data(contentsOf: file), data.count <= 48_000_000 else {
+            verifiedFile = nil; verifiedEntry = nil; return nil
+        }
+        // Check the actual bytes on every entry. A replaced/corrupt file must
+        // never inherit validation merely because its timestamp is unchanged.
+        let fingerprint = SHA256.hash(data: data)
+        if fingerprint == verifiedFile, let verifiedEntry { return verifiedEntry }
+        verifiedFile = nil; verifiedEntry = nil
+        guard let entry = try? JSONDecoder().decode(Entry.self, from: data),
               entry.snapshot.count <= 32_000_000,
               (try? JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated()) != nil else { return nil }
+        verifiedFile = fingerprint; verifiedEntry = entry
         return entry
+    }
+
+    /// Open a verified offline copy without waiting for a connected refresh.
+    /// The existing seven-day refresh policy still runs in the background.
+    func readingEntry(now: Date = Date()) async throws -> Entry {
+        if let entry = cached() {
+            Task { _ = try? await self.refresh(now: now) }
+            return entry
+        }
+        return try await refresh(now: now)
     }
 
     func refresh(now: Date = Date(), force: Bool = false) async throws -> Entry {
@@ -174,5 +195,50 @@ actor QCFV2ContentCache {
         func urlSession(_ session: URLSession, task: URLSessionTask,
                         willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
                         completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
+    }
+}
+
+/// All reader entries share one cache, including its in-flight refresh.
+@MainActor enum MushafReadingResources {
+    private static var contentCache: QCFV2ContentCache?
+    static func cache() throws -> QCFV2ContentCache {
+        if let contentCache { return contentCache }
+        let directory = try FileManager.default.url(for: .applicationSupportDirectory,
+            in: .userDomainMask, appropriateFor: nil, create: true)
+        let value = QCFV2ContentCache(file: directory.appendingPathComponent("qcf-v2-cache.json"),
+            endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+        contentCache = value
+        return value
+    }
+}
+
+/// Decoding, authored-row verification and word indexing run off MainActor.
+/// A new payload is always validated before replacing a prepared reading copy.
+actor MushafReadingPreparation {
+    static let shared = MushafReadingPreparation()
+    struct Content: Sendable {
+        let snapshot: QCFV2Snapshot
+        let rows: OriginalMushafRows
+        let studyIndex: MushafStudyWordIndex
+        let versePages: [String: Int]
+    }
+    private var source: Data?
+    private var corpusKeys: [String] = []
+    private var prepared: Content?
+
+    func prepare(_ bytes: Data, keys: [String]) throws -> Content {
+        try Task.checkCancellation()
+        guard keys.count == 6236, Set(keys).count == 6236 else { throw QCFV2Snapshot.Invalid.verse }
+        if source == bytes, corpusKeys == keys, let prepared { return prepared }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let rows = try OriginalMushafRows.load()
+        try rows.validate(snapshot)
+        let index = MushafStudyWordIndex(snapshot: snapshot, keys: keys)
+        let pages = index.pages.compactMapValues { $0.first }
+        guard pages.count == 6236 else { throw QCFV2Snapshot.Invalid.verse }
+        try Task.checkCancellation()
+        let content = Content(snapshot: snapshot, rows: rows, studyIndex: index, versePages: pages)
+        source = bytes; corpusKeys = keys; prepared = content
+        return content
     }
 }

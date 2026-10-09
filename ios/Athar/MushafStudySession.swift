@@ -130,7 +130,7 @@ struct MushafStudyArchive: Codable, Equatable {
 }
 
 /// Word masks use the validated edition's IDs and ordering, never text guesses.
-struct MushafStudyWordIndex {
+struct MushafStudyWordIndex: Sendable {
     let words: [String: [Int]]
     let pages: [String: [Int]]
     init(snapshot: QCFV2Snapshot, keys: [String]) {

@@ -375,29 +375,14 @@ struct InteractiveMushafReader: View {
         error = nil
         do {
             try OriginalMushafCompanion.register()
-            let metadata = try OriginalMushafRows.load()
-            let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            let cache = QCFV2ContentCache(file: directory.appendingPathComponent("qcf-v2-cache.json"), endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-            let entry: QCFV2ContentCache.Entry
-            if let offline = await cache.cached() {
-                entry = offline
-                Task { _ = try? await cache.refresh() }
-            } else { entry = try await cache.refresh() }
-            let data = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated()
-            try metadata.validate(data)
-            // Materialize the stable corpus IDs once, not for every snapshot record.
-            let corpusKeys = keys
-            var pagesByVerse: [String: Int] = [:]
-            for record in data.records where record.record_type == "mushaf_word" {
-                if let verseID = record.verse_id, let sourcePage = record.page_number {
-                    let key = corpusKeys[verseID - 1]
-                    pagesByVerse[key] = min(pagesByVerse[key] ?? sourcePage, sourcePage)
-                }
-            }
-            let versePages = pagesByVerse
+            let cache = try MushafReadingResources.cache()
+            let entry = try await cache.readingEntry()
+            let content = try await MushafReadingPreparation.shared.prepare(entry.snapshot, keys: keys)
             try Task.checkCancellation()
-            let first = snapshot == nil; snapshot = data; rows = metadata
-            studyIndex = MushafStudyWordIndex(snapshot: data, keys: corpusKeys)
+            let data = content.snapshot
+            let versePages = content.versePages
+            let first = snapshot == nil; snapshot = data; rows = content.rows
+            studyIndex = content.studyIndex
             if first {
                 number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil }
                     ?? versePages["\(chapter):\(ayah)"] ?? 1

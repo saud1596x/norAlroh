@@ -5,8 +5,8 @@ import CryptoKit
 
 /// Research candidate: QCF V2 page fonts and authored V2 row alignment.
 /// Word IDs always come from Content Sync; QUL's token IDs are never imported.
-struct OriginalMushafRows: Decodable {
-    struct Row: Decodable { let page: Int; let line: Int; let type: String; let centered: Bool; let chapter: Int? }
+struct OriginalMushafRows: Decodable, Sendable {
+    struct Row: Decodable, Sendable { let page: Int; let line: Int; let type: String; let centered: Bool; let chapter: Int? }
     let rows: [Row]
     static func load() throws -> Self {
         guard let url = Bundle.main.url(forResource: "qpc-v2-line-layout", withExtension: "json") else { throw QCFV2Snapshot.Invalid.page }
