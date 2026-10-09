@@ -170,6 +170,9 @@ workflows:
   ios-testflight-verified-update:
     <<: *signed_ios
     name: Noor Alruh verified update / TestFlight webhook
+    environment:
+      <<: *signed_ios_environment
+      xcode: "26.5"
     triggering:
       events:
         - push
@@ -184,6 +187,7 @@ workflows:
         includes:
           - release/current-native-preview-evidence.json
           - release/testflight-preview-review.json
+          - codemagic.yaml
   ios-appstore:
     <<: *signed_ios
     name: Noor Alruh signed iOS / App Store release
