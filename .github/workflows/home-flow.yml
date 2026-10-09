@@ -1,8 +1,13 @@
 name: Home account and inline review acceptance
 on:
-  workflow_dispatch:
   push:
-    paths: ['release/home-flow-ready.json']
+    paths: ['.github/workflows/home-flow.yml']
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact fully verified source commit to test
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -20,15 +25,18 @@ jobs:
       NOOR_DISPLAY_CLASS: ${{ matrix.display }}
     steps:
       - uses: actions/checkout@v4
-      - name: Verify complete source batch
+      - name: Verify exact authorized source commit
+        env:
+          NOOR_EXPECTED_SOURCE: ${{ inputs.source_sha || github.sha }}
         run: |
           python3 - <<'PY'
-          import hashlib,json
-          from pathlib import Path
-          marker=json.loads(Path('release/home-flow-ready.json').read_text())
-          for name, expected in marker['sha256'].items():
-              assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==expected, 'Incomplete progress source: '+name
-          print('Complete source batch verified; unsigned accounts/extension compile and Simulator tests do not certify live Apple auth, physical device or publication.')
+          import os,re,subprocess
+          expected=os.environ['NOOR_EXPECTED_SOURCE']
+          assert re.fullmatch('[0-9a-f]{40}',expected), 'Require exact source SHA'
+          actual=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert actual==expected, 'Wrong source commit: '+actual
+          assert not subprocess.check_output(['git','status','--porcelain'],text=True), 'Modified source tree'
+          print('Testing exact complete source commit '+actual+'; no signing, hardware or publication claim.')
           PY
       - uses: actions/cache@v4
         with:
