@@ -71,7 +71,7 @@ struct AtharApp: App {
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                    Task { await notifications.refresh(store: store) }
+                    Task { NoorFocusController.shared.sync(plan: khatmah.active); await notifications.refresh(store: store) }
                 }
                 .task { account.attach(store: store, memorization: memorization); prayerLocation.activate(store: store); dhikrCounters.refreshDay(); NoorFocusController.shared.sync(plan: khatmah.active); await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                 .onChange(of: scenePhase) { _, phase in
