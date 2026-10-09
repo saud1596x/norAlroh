@@ -116,7 +116,13 @@ import Combine
             guard revision == token, state == .preparing else { return }
             for index in restored.takes.indices {
                 let take = restored.takes[index]
-                let url = journal.audio(session: restored.id, take: take.id)
+                let live = journal.audio(session: restored.id, take: take.id)
+                let removed = journal.root.appendingPathComponent("DeletedAudio", isDirectory: true)
+                    .appendingPathComponent(restored.id.uuidString, isDirectory: true)
+                    .appendingPathComponent(take.id.uuidString + ".caf")
+                // Moving a take to recoverable removal does not erase the
+                // session's durable progress or make it impossible to resume.
+                let url = FileManager.default.fileExists(atPath: live.path) ? live : removed
                 if FileManager.default.fileExists(atPath: url.path) {
                     let file = try AVAudioFile(forReading: url)
                     guard file.processingFormat.sampleRate == 16_000, file.processingFormat.channelCount == 1,
