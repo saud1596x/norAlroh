@@ -7,6 +7,49 @@ import WhisperKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (bytes, response) = try await URLSession.shared.data(from:
+            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
+            + Array(repeating: Float(0), count: 32_000)
+        var late: CheckedContinuation<QuranRecognitionWorker.Result, Never>?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionTimeout: 0.05, recognizeWindow: { _ in
+                await withCheckedContinuation { late = $0 }
+            }, makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) },
+            setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus)
+        let limit = Date().addingTimeInterval(3)
+        while controller.recognitionAvailable && Date() < limit {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.state, .listening, "Recognition failure must not erase or stop independent recording")
+        XCTAssertFalse(controller.recognitionAvailable)
+        XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertNotNil(controller.message)
+        // Explicitly injected recognition is fault simulation, not ASR evidence.
+        let continuation = try XCTUnwrap(late)
+        continuation.resume(returning: .init(runs: [
+            [.init(text: "قل", start: 0, end: 0.5, probability: 1),
+             .init(text: "هو", start: 0.5, end: 1, probability: 1)]
+        ], hasUnresolvedSpeech: false))
+        await Task.yield()
+        await controller.finish()
+        XCTAssertEqual(controller.state, .stopped)
+        let record = try XCTUnwrap(controller.record)
+        XCTAssertTrue(record.evidence.isEmpty, "Timed-out recognition must not create late progress")
+        let journal = QuranRecitationJournal(root: root)
+        let take = try XCTUnwrap(record.takes.first)
+        let audio = try AVAudioFile(forReading: journal.audio(session: record.id, take: take.id))
+        XCTAssertEqual(audio.length, Int64(samples.count))
+        XCTAssertTrue(try journal.load(record.id).evidence.isEmpty)
+    }
     @MainActor func testInterruptedPermissionCannotStartLateSession() async throws {
         let pending = expectation(description: "Permission boundary")
         var answer: CheckedContinuation<Bool, Never>?
