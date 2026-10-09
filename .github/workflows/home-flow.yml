@@ -46,7 +46,7 @@ jobs:
           key: noor-quran-resources-${{ hashFiles('content-sources/recitation-model-manifest.json', 'release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py', 'scripts/prepare-mushaf-companion.py') }}
       - name: Install project generator
         run: brew install xcodegen
-      - name: Verify four tabs and reader flows with portable reference fixture output
+      - name: Verify complete home flows with verse tools dismissed before reader exit
         run: bash scripts/test-home-flow.sh
       - name: Retain native test results
         if: always()
