@@ -74,6 +74,8 @@ struct InteractiveMushafReader: View {
     @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 44]
     @State private var khatmah = false
     @State private var picker = false
+    @FocusState private var pageInputFocused: Bool
+    @State private var needsFirstDownload = false
     @State private var input = ""
     @State private var error: String?
     @State private var renderingFailed = false
@@ -129,7 +131,9 @@ struct InteractiveMushafReader: View {
                     VStack(spacing: 18) { Text(message).accessibilityIdentifier("reader.load.error"); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if renderingFailed {
                     ContentUnavailableView("تعذّر فتح الصفحة", systemImage: "book.closed", description: Text("حاول الانتقال إلى صفحة أخرى ثم العودة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة."))
-                } else { ProgressView("تنزيل بيانات المصحف والتحقق من الخط…").frame(maxWidth: .infinity, maxHeight: .infinity) }
+                } else { ProgressView(needsFirstDownload ? "تنزيل بيانات المصحف لأول مرة…" : "فتح المصحف…")
+                    .accessibilityIdentifier(needsFirstDownload ? "reader.downloading" : "reader.preparing")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity) }
             }
             if studyOpen { recitationControls }
             else if tools { VStack {
@@ -170,8 +174,10 @@ struct InteractiveMushafReader: View {
                     else { HStack {
                     Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
-                    Button("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤") { input = ""; picker = true }
-                        .frame(minHeight: 44).accessibilityIdentifier("reader.jump")
+                    Button { input = ""; picker = true } label: {
+                        Text("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤")
+                            .frame(minHeight: 44).contentShape(Rectangle())
+                    }.buttonStyle(.plain).foregroundStyle(Theme.gold).accessibilityIdentifier("reader.jump")
                     Spacer()
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                     } }
@@ -230,11 +236,18 @@ struct InteractiveMushafReader: View {
                 })
             }
         }
-        .sheet(isPresented: $picker) {
+        .sheet(isPresented: $picker, onDismiss: { pageInputFocused = false }) {
             NavigationStack { Form {
-                TextField("١ إلى ٦٠٤", text: $input).keyboardType(.numberPad).accessibilityIdentifier("reader.pageNumber")
-                Button("انتقل") { if let value = ArabicSearch.integer(input), (1...604).contains(value) { turn(value - number); picker = false } }
-            }.navigationTitle("الانتقال في المصحف").toolbar { Button("إغلاق") { picker = false } } }
+                TextField("١ إلى ٦٠٤", text: $input).keyboardType(.numberPad)
+                    .focused($pageInputFocused).accessibilityIdentifier("reader.pageNumber")
+                Button("انتقل") {
+                    if let value = ArabicSearch.integer(input), (1...604).contains(value) {
+                        pageInputFocused = false; turn(value - number); picker = false
+                    }
+                }
+            }.navigationTitle("الانتقال في المصحف").toolbar {
+                Button("إغلاق") { pageInputFocused = false; picker = false }
+            } }
         }
         .onChange(of: recitation.record?.id) { _, value in
             if let value { pendingRecitation = value.uuidString }
@@ -372,11 +385,12 @@ struct InteractiveMushafReader: View {
         number = destination; selected = recitation.hasSession ? recitation.currentVerse : nil; manualSelection = nil
     }
     private func load() async {
-        error = nil
+        error = nil; needsFirstDownload = false
         do {
             try OriginalMushafCompanion.register()
             let cache = try MushafReadingResources.cache()
-            let entry = try await cache.readingEntry()
+            let entry = try await cache.readingEntry(onDownload: { needsFirstDownload = true })
+            needsFirstDownload = false
             let content = try await MushafReadingPreparation.shared.prepare(entry.snapshot, keys: keys)
             try Task.checkCancellation()
             let data = content.snapshot

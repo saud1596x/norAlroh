@@ -136,11 +136,13 @@ actor QCFV2ContentCache {
 
     /// Open a verified offline copy without waiting for a connected refresh.
     /// The existing seven-day refresh policy still runs in the background.
-    func readingEntry(now: Date = Date()) async throws -> Entry {
+    func readingEntry(now: Date = Date(),
+                      onDownload: @MainActor @Sendable () -> Void = {}) async throws -> Entry {
         if let entry = cached() {
             Task { _ = try? await self.refresh(now: now) }
             return entry
         }
+        await onDownload()
         return try await refresh(now: now)
     }
 
