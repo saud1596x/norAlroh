@@ -53,7 +53,11 @@ final class NoorHomeFlowUITests: XCTestCase {
         XCTAssertTrue(bookmark.waitForExistence(timeout: 5))
         let alreadySaved = bookmark.label == "إزالة العلامة المرجعية"
         if !alreadySaved { bookmark.tap(); XCTAssertEqual(bookmark.label, "إزالة العلامة المرجعية") }
-        app.buttons["إغلاق المصحف"].tap()
+        let closeVerse = app.buttons["verse.sheet.close"]
+        XCTAssertTrue(closeVerse.waitForExistence(timeout: 5)); closeVerse.tap()
+        let closeReader = app.buttons["إغلاق المصحف"]
+        XCTAssertTrue(closeReader.waitForExistence(timeout: 5)); XCTAssertTrue(closeReader.isHittable)
+        closeReader.tap()
         XCTAssertTrue(app.buttons["home.review"].waitForExistence(timeout: 10))
         let library = app.buttons["home.library"]
         reveal(library, app: app); library.tap()
