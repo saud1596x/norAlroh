@@ -65,6 +65,8 @@ jobs:
           if-no-files-found: error
       - name: Prepare smaller review overview from original captures
         run: |
+          python3 -m venv work/review-venv
+          source work/review-venv/bin/activate
           python3 -m pip install --quiet pillow
           python3 scripts/export-mushaf-contact-sheets.py release/native-review-export/compact/data release/native-review-overview/contact-sheets
           python3 - <<'PY'
