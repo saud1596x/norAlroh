@@ -49,6 +49,18 @@ final class NoorKhatmahProtectionTests: XCTestCase {
         XCTAssertEqual(value.ward(at: now)?.first, 596)
         XCTAssertEqual(value.ward(at: now)?.last, 598)
     }
+    func testExplicitErasureRemovesOnlyOwnedProtectionState() {
+        let suite = "noor.protection.erase." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Data([1, 2, 3]), forKey: NoorFocusPersistence.key)
+        defaults.set("keep", forKey: "unrelated")
+        XCTAssertTrue(NoorFocusPersistence.erase(defaults: defaults))
+        XCTAssertNil(defaults.data(forKey: NoorFocusPersistence.key))
+        XCTAssertEqual(defaults.string(forKey: "unrelated"), "keep")
+        XCTAssertTrue(NoorFocusPersistence.erase(defaults: defaults))
+        XCTAssertFalse(NoorFocusPersistence.erase(defaults: nil))
+    }
     func testMalformedScheduleDoesNotShield() {
         let original = contract()
         let invalid = NoorKhatmahWardContract(planID: original.planID, firstPage: 590, timeZone: "Asia/Riyadh",
