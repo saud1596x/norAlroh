@@ -36,6 +36,22 @@ final class MushafRepetitionTests: XCTestCase {
         try await Task.sleep(nanoseconds: 600_000_000)
         XCTAssertNil(sound.loadingKey); XCTAssertEqual(starts, 0)
     }
+    @MainActor func testPracticeHelpStartsOnlyWithActualPlaybackAndIgnoresOtherVerse() async throws {
+        var practice = MemorizationPracticeSession(chapter: 112, from: 1, to: 4, ayah: 1)
+        let missing = MushafVerseAudio(source: { _ in nil })
+        missing.onVerse = { _ = practice.recordPlaybackStart($0) }
+        missing.play(["112:1"])
+        XCTAssertNotNil(missing.error); XCTAssertEqual(practice.hints, 0); XCTAssertFalse(practice.usedHelp)
+        XCTAssertFalse(practice.recordPlaybackStart("112:2")); XCTAssertEqual(practice.hints, 0)
+        let url = try fixture(); defer { try? FileManager.default.removeItem(at: url) }
+        let audio = MushafVerseAudio(source: { _ in url }); defer { audio.stop() }
+        let started = expectation(description: "Actual AVPlayer start records assistance")
+        audio.onVerse = { key in _ = practice.recordPlaybackStart(key); started.fulfill() }
+        audio.play(["112:1"])
+        await fulfillment(of: [started], timeout: 10)
+        XCTAssertEqual(practice.hints, 1); XCTAssertTrue(practice.usedHelp)
+        XCTAssertTrue(practice.valid(corpus: try XCTUnwrap(QuranResources.corpus)))
+    }
     private func fixture() throws -> URL {
         // Silent AAC tests AVPlayer/end timing, never Quran pronunciation.
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
