@@ -5,6 +5,13 @@ import DeviceActivity
 import ManagedSettings
 #endif
 
+extension NoorKhatmahWardContract {
+    init(plan: KhatmahPlan) {
+        self.init(planID: plan.id, firstPage: plan.days.first?.first ?? plan.firstPage,
+            timeZone: plan.timeZone, days: plan.days.map { .init(date: $0.date, first: $0.first, last: $0.last) }, nextPage: plan.nextPage)
+    }
+}
+
 @MainActor final class NoorFocusController: ObservableObject {
     static let shared = NoorFocusController()
     @Published private(set) var enabled = false
@@ -43,8 +50,7 @@ import ManagedSettings
         var next = state
         next.selection = selection
         next.contract = nil
-        next.khatmahContract = NoorKhatmahWardContract(planID: plan.id, firstPage: plan.days.first!.first,
-            timeZone: plan.timeZone, days: plan.days.map { .init(date: $0.date, first: $0.first, last: $0.last) }, nextPage: plan.nextPage)
+        next.khatmahContract = NoorKhatmahWardContract(plan: plan)
         guard next.khatmahContract?.valid == true else { message = "اختر خطة ختمة صالحة أولًا."; return }
         next.enabled = true; next.completedDay = nil
         do {
@@ -111,6 +117,11 @@ struct NoorFocusView: View {
             Section("١ · خطة الختمة والورد المحمي") {
                 if let plan = journey.active {
                     Text("قرأت \(plan.completed.count) صفحة · المتابعة من الصفحة \(min(plan.nextPage, 604))")
+                    if !focus.enabled, let due = plan.due(on: .now) {
+                        let future = plan.calendar.startOfDay(for: due.date) > plan.calendar.startOfDay(for: .now)
+                        Text("\(future ? "ورد الختمة القادم" : "الورد المستحق"): الصفحات \(due.first)–\(due.last)").font(.headline)
+                        if future { Text("تكون التطبيقات متاحة حتى يوم هذا الورد؛ يمكنك القراءة مبكرًا وتأكيدها.").font(.caption) }
+                    }
                     if plan.paused { Text("الختمة متوقفة مؤقتًا؛ أوقف الحماية بشكل مستقل إذا أردت استراحة.") }
                 } else { Text("ابدأ خطة ختمة لتحديد صفحات وردك وأيام القراءة.") }
                 if let contract = focus.contract {
