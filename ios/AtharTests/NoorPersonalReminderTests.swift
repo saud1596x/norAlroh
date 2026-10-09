@@ -99,7 +99,8 @@ final class NoorPersonalReminderTests: XCTestCase {
         let started = expectation(description: "Real controller requested permission")
         client.permissionStarted = { started.fulfill() }
         var value = NoorReminderPreference(kind: .evening); value.enabled = true
-        let task = Task { await service.setReminder(.evening, preference: value, store: store) }
+        let enabling = value
+        let task = Task { await service.setReminder(.evening, preference: enabling, store: store) }
         await fulfillment(of: [started], timeout: 3)
         value.enabled = false; await service.setReminder(.evening, preference: value, store: store)
         client.permission?.resume(returning: true); await task.value
