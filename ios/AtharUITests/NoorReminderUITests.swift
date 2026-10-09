@@ -44,7 +44,9 @@ final class NoorReminderUITests: XCTestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 10))
         for _ in 0..<6 where !button.isHittable { app.swipeUp() }
         XCTAssertTrue(button.isHittable)
-        XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+        // XCTest can report 44 points as 43.999999999999986 after
+        // coordinate conversion; allow floating-point error only.
+        XCTAssertGreaterThanOrEqual(button.frame.height, 44 - 0.000001)
         button.tap()
     }
 }
