@@ -133,6 +133,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 5), .completed)
         if visible {
+            XCTAssertGreaterThanOrEqual(app.buttons["reader.jump"].frame.height, 44 - 0.000001,
+                                        "The actual page-counter hit label must remain at least 44 points")
             let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
             XCTAssertEqual(app.buttons["reader.jump"].frame.midX, page.frame.midX, accuracy: 1,
                            "Page counter and reading viewport must share one center")
@@ -162,6 +164,12 @@ final class NoorReaderComfortUITests: XCTestCase {
         let field = app.textFields["reader.pageNumber"]
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText(String(number))
         app.buttons["انتقل"].tap()
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let counter = app.buttons["reader.jump"]
+            return !field.exists && !app.keyboards.firstMatch.exists && counter.exists && counter.isHittable
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 10), .completed,
+                       "Page navigation must dismiss its sheet and keyboard before reader interaction resumes")
         requirePage(number, app: app)
     }
     private func requirePage(_ number: Int, app: XCUIApplication) {
