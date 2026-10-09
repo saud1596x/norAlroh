@@ -35,6 +35,12 @@ struct NoorKhatmahWardContract: Codable, Equatable {
         value.timeZone = TimeZone(identifier: timeZone) ?? .current
         return value
     }
+    var monitoringStart: DateComponents {
+        DateComponents(calendar: calendar, timeZone: calendar.timeZone, hour: 0, minute: 0, second: 0)
+    }
+    var monitoringEnd: DateComponents {
+        DateComponents(calendar: calendar, timeZone: calendar.timeZone, hour: 23, minute: 59, second: 59)
+    }
     var valid: Bool {
         guard (1...604).contains(firstPage), (firstPage...605).contains(nextPage),
               TimeZone(identifier: timeZone) != nil, !days.isEmpty,
