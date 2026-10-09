@@ -44,19 +44,25 @@ final class NoorReminderUITests: XCTestCase {
     private func requireVisible(_ element: XCUIElement, app: XCUIApplication) {
         // List may not create an off-screen row until the user scrolls.
         for _ in 0..<8 {
-            if element.exists && element.isHittable { break }
+            if isVisible(element, app: app) { break }
             app.swipeUp()
         }
-        if !(element.exists && element.isHittable) {
+        if !isVisible(element, app: app) {
             // Returning from an editor may preserve a List offset below the
             // desired row. Search back toward the top, rather than only down.
             for _ in 0..<8 {
-                if element.exists && element.isHittable { break }
+                if isVisible(element, app: app) { break }
                 app.swipeDown()
             }
         }
         XCTAssertTrue(element.waitForExistence(timeout: 10))
-        XCTAssertTrue(element.isHittable)
+        XCTAssertTrue(isVisible(element, app: app), "The complete target must be inside the actual app window")
+    }
+    private func isVisible(_ element: XCUIElement, app: XCUIApplication) -> Bool {
+        guard element.exists, element.isHittable else { return false }
+        // Run5 exposed an off-window Save row as hittable on large iPhone.
+        // Require real geometry as well, allowing coordinate rounding only.
+        return app.frame.insetBy(dx: -0.000001, dy: -0.000001).contains(element.frame)
     }
     private func setSwitch(_ element: XCUIElement, to expected: String, app: XCUIApplication) {
         requireVisible(element, app: app)
