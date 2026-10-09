@@ -5,7 +5,7 @@
     "scripts/test-personal-reminders.sh": "0c9ea7d4100ee0154751230d0b5d3c125900c1fa09f27b0f2007d676ae4cd830",
     "ios/Athar/NoorPersonalReminders.swift": "a2ddbbedd5f45744829bc10c60dd693e1f688cc837a6ad434d22c7bf131c7d88",
     "ios/Athar/NoorReminderSettings.swift": "2aa8aefc13f5b68067abc10fb0ba348abdd3c8110f8a857df130bffa6cee2e19",
-    "ios/Athar/Services.swift": "48f07ab1b19de60eb890f458735aa88a50ad1de2c1daf82cc23c069579bf31ab",
+    "ios/Athar/Services.swift": "725fdc617b842049c7df34898d74d72f04ec019aa786041fbc113d73c39a897b",
     "ios/Athar/FeatureViews.swift": "3e5912158e2eafe4d48370d6413dead1b78a998c78debfcaaf2b47c1576b5ab6",
     "ios/Athar/Store.swift": "fa2dd6ba4317f6c1802096e21d06e4a2211c8bf77fca55deb5bd01be71c43f24",
     "ios/Athar/PrayerNotificationSettings.swift": "4309e2a750e93bff953c593abd0aac1e8913bd50de8991d8f2f9ea59649474e0",
@@ -13,8 +13,9 @@
     "ios/Athar/AdhkarViews.swift": "93aadb08578d0c3213d53ee1e70fec947b782ce428faf3439e941a903d4d293f",
     "ios/Athar/AtharApp.swift": "f23e1045e493f85a0cf422d4206e287a7c6c4f7409c4e6abb4cb76845ab893e5",
     "ios/Athar/MemorizationViews.swift": "2276d1471e952eb682ee327ff7edc7b1147008a8c7d980b83fe476d789f8c6f7",
-    "ios/AtharTests/NoorPersonalReminderTests.swift": "6b4e301291f7fa339fd42fff2fef35126e4f2944bfcf220ade781e3eb5adae4e",
+    "ios/AtharTests/NoorPersonalReminderTests.swift": "0e4f64645b231a2200214c886f56430302bf8dfc0ca2ac4d08e80df43c446fdb",
     "ios/AtharTests/MushafRepetitionTests.swift": "7d0ccc9945dd155ee68809473a868a7a6be26436990b415e78a285efac5454de",
     "ios/AtharUITests/NoorReminderUITests.swift": "a38a93741548acaf0098511b242bde1b9f6648563d024ac70522835e3b37bd32"
-  }
+  },
+  "revision": "Cancel legacy delivered salawat when adopting the independent editor"
 }
