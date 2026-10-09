@@ -123,6 +123,7 @@ struct MushafReader: View {
     @State private var presented = false
     var body: some View {
         Color.clear
+            .toolbar(.hidden, for: .navigationBar, .tabBar)
             .onAppear { presented = true }
             .fullScreenCover(isPresented: $presented, onDismiss: { dismiss() }) {
                 InteractiveMushafReader(chapter: startingChapter, ayah: startingAyah, initialPage: startingPage, startsStudy: startsStudy, opensStudyScope: opensStudyScope)

@@ -21,7 +21,10 @@ struct NoorPressStyle: ButtonStyle {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.accessibilityReduceMotion) private var reduced
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(enabled ? (configuration.isPressed ? 0.85 : 1) : 0.45)
+        configuration.label
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(enabled ? (configuration.isPressed ? 0.85 : 1) : 0.45)
             .scaleEffect(configuration.isPressed && !reduced && !store.data.lowMotion ? 0.975 : 1)
             .animation(reduced || store.data.lowMotion ? nil : .spring(duration: 0.25, bounce: 0.1), value: configuration.isPressed)
     }

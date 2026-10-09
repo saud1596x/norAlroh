@@ -145,7 +145,7 @@ struct SaudiCityPicker: View {
                             }
                             Spacer()
                             if store.data.city.id == city.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.gold) }
-                        }.frame(minHeight: 48)
+                        }.frame(minHeight: 48).contentShape(Rectangle())
                     }.accessibilityIdentifier("city.\(city.id)")
                 }
                 if results.isEmpty { ContentUnavailableView.search(text: search) }
