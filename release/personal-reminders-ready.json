@@ -15,7 +15,7 @@
     "ios/Athar/MemorizationViews.swift": "2276d1471e952eb682ee327ff7edc7b1147008a8c7d980b83fe476d789f8c6f7",
     "ios/AtharTests/NoorPersonalReminderTests.swift": "0ba4300f7613b9966c9a1788891d95cc3843a2730bd439317274b28975fe5252",
     "ios/AtharTests/MushafRepetitionTests.swift": "7d0ccc9945dd155ee68809473a868a7a6be26436990b415e78a285efac5454de",
-    "ios/AtharUITests/NoorReminderUITests.swift": "78325d30922e0ee4f25fb2004fce7e44527c784d60c16933c2cbfd56d8205849"
+    "ios/AtharUITests/NoorReminderUITests.swift": "8f30b6659447459c36a51741859210ccd7118bacad3dfdecd107c59fe3507dd3"
   },
-  "revision": "Verify actual switch changes before Save, scroll virtual List rows before existence checks, immutable permission-test capture"
+  "revision": "Await actual editor dismissal, use observed native switch child, search List in both directions and log failure hierarchy"
 }
