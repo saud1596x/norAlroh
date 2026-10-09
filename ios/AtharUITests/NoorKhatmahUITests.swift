@@ -5,7 +5,7 @@ final class NoorKhatmahUITests: XCTestCase {
         let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30))
         openJourney(app)
-        XCTAssertTrue(app.buttons["khatmah.setup"].waitForExistence(timeout: 10)); app.buttons["khatmah.setup"].tap()
+        XCTAssertTrue(app.buttons["khatmah.setup"].waitForExistence(timeout: 10)); tapVisible(app, app.buttons["khatmah.setup"])
         app.swipeUp(); app.swipeUp()
         XCTAssertTrue(app.buttons["khatmah.preview"].waitForExistence(timeout: 10)); app.buttons["khatmah.preview"].tap()
         capture(app, "khatmah-plan-preview")
@@ -14,7 +14,7 @@ final class NoorKhatmahUITests: XCTestCase {
         XCTAssertTrue(app.buttons["khatmah.read"].waitForExistence(timeout: 10))
         assertProgress(app, pages: 0)
         capture(app, "khatmah-active-plan")
-        app.buttons["khatmah.read"].tap()
+        tapVisible(app, app.buttons["khatmah.read"])
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 20))
         XCTAssertFalse(app.buttons["reader.previous"].isEnabled)
@@ -22,13 +22,13 @@ final class NoorKhatmahUITests: XCTestCase {
         app.buttons["إغلاق المصحف"].tap()
         XCTAssertTrue(app.buttons["khatmah.read"].waitForExistence(timeout: 10))
         assertProgress(app, pages: 0)
-        app.buttons["khatmah.confirm"].tap()
+        tapVisible(app, app.buttons["khatmah.confirm"])
         XCTAssertTrue(app.buttons["khatmah.saveReading"].waitForExistence(timeout: 10)); app.buttons["khatmah.saveReading"].tap()
         assertProgress(app, pages: 20)
         capture(app, "khatmah-confirmed-progress")
-        app.buttons["khatmah.pause"].tap()
+        tapVisible(app, app.buttons["khatmah.pause"])
         XCTAssertTrue(app.staticTexts["الرحلة متوقفة مؤقتًا"].waitForExistence(timeout: 10))
-        app.buttons["khatmah.pause"].tap()
+        tapVisible(app, app.buttons["khatmah.pause"])
         app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30)); openJourney(app)
         assertProgress(app, pages: 20)
@@ -62,6 +62,12 @@ final class NoorKhatmahUITests: XCTestCase {
         app.buttons["journey.day.1"].tap()
         XCTAssertTrue(app.staticTexts["لا توجد قراءة مؤكدة في هذا اليوم."].waitForExistence(timeout: 10))
         capture(app, "my-journey-calendar-empty-day")
+    }
+    @MainActor private func tapVisible(_ app: XCUIApplication, _ button: XCUIElement) {
+        for _ in 0..<6 where !button.isHittable { app.swipeUp() }
+        XCTAssertTrue(button.waitForExistence(timeout: 10)); XCTAssertTrue(button.isHittable)
+        XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+        button.tap()
     }
     @MainActor private func openJourney(_ app: XCUIApplication) {
         let button = app.buttons["home.khatmah"]
