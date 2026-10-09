@@ -247,6 +247,7 @@ struct SettingsView: View {
                 guard await speech.eraseModel() else { exportMessage = speech.message; return }
                 guard NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
                 guard recitation.erase() else { exportMessage = recitation.message; return }
+                guard NoorFocusController.shared.erase() else { exportMessage = NoorFocusController.shared.message ?? "تعذّر مسح إعدادات حماية الورد."; return }
                 guard await KhatmahStore.shared.erase() else { exportMessage = KhatmahStore.shared.error; return }
                 guard salawat.erase() else { exportMessage = salawat.error; return }
                 do { try MushafRecordingArchive.erase() }

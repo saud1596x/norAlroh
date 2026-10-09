@@ -414,7 +414,6 @@ struct MemorizationArchive: Codable {
         } catch { self.error = "تعذر حفظ الخطة المتزامنة. بقيت خطتك المحلية."; return false }
     }
     func erase() {
-        NoorFocusController.shared.disable()
         defaults.removeObject(forKey: "noor.memorization.history"); defaults.removeObject(forKey: "noor.memorization.plan")
         defaults.removeObject(forKey: "noor.memorization.archive")
         defaults.removeObject(forKey: "noor.memorization.preRetentionFix")

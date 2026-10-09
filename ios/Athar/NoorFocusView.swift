@@ -65,6 +65,16 @@ import ManagedSettings
         do { try next.save(); state = next; NoorFocusState.apply(); objectWillChange.send() }
         catch { message = "تعذّر تحديث إنجاز الورد. أوقف الحماية من هذه الصفحة ثم أعد تفعيلها." }
     }
+    @discardableResult func erase() -> Bool {
+        DeviceActivityCenter().stopMonitoring([NoorFocusState.activity])
+        ManagedSettingsStore(named: NoorFocusState.storeName).clearAllSettings()
+        enabled = false
+        guard NoorFocusPersistence.erase() else {
+            message = "أزلنا الحجب، لكن تعذّر مسح إعدادات الحماية. حاول مجددًا."; return false
+        }
+        state = NoorFocusState(); selection = FamilyActivitySelection(); message = nil
+        return true
+    }
     // Hifz results do not unlock a protected khatmah.
     func sync(progress: MemorizationProgress) {}
     func disable() {
@@ -77,6 +87,7 @@ import ManagedSettings
     #else
     private init() {}
     var contract: NoorKhatmahWardContract? { nil }
+    @discardableResult func erase() -> Bool { NoorFocusPersistence.erase() }
     func sync(plan: KhatmahPlan?) {}
     func sync(progress: MemorizationProgress) {}
     func disable() {}
