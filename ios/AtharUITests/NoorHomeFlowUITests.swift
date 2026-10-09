@@ -53,8 +53,11 @@ final class NoorHomeFlowUITests: XCTestCase {
         XCTAssertTrue(bookmark.waitForExistence(timeout: 5))
         let alreadySaved = bookmark.label == "إزالة العلامة المرجعية"
         if !alreadySaved { bookmark.tap(); XCTAssertEqual(bookmark.label, "إزالة العلامة المرجعية") }
-        let closeVerse = app.buttons["verse.sheet.close"]
+        // Long press opens inline selection tools. Bookmarking does not open
+        // a modal; cancel the selection to reveal the reader's back button.
+        let closeVerse = app.buttons["verse.tools.close"]
         XCTAssertTrue(closeVerse.waitForExistence(timeout: 5)); closeVerse.tap()
+        XCTAssertFalse(bookmark.exists)
         let closeReader = app.buttons["إغلاق المصحف"]
         XCTAssertTrue(closeReader.waitForExistence(timeout: 5)); XCTAssertTrue(closeReader.isHittable)
         closeReader.tap()
