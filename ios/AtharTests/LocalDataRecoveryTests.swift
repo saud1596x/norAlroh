@@ -2,6 +2,22 @@ import XCTest
 @testable import Athar
 
 final class LocalDataRecoveryTests: XCTestCase {
+    @MainActor func testRetiredReflectionNotesAndBookmarksRemainInArchiveAndExportAfterRelaunch() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let note = JournalNote(text: "previous private note")
+        let store = AtharStore(directory: root)
+        XCTAssertTrue(store.update { $0.notes = [note]; $0.bookmarks = ["114:1"] })
+        let reopened = AtharStore(directory: root)
+        XCTAssertEqual(reopened.data.notes.first?.id, note.id)
+        XCTAssertEqual(reopened.data.notes.first?.text, note.text)
+        XCTAssertEqual(reopened.data.bookmarks, ["114:1"])
+        XCTAssertTrue(reopened.update { $0.largeQuran.toggle() })
+        let exported = try JSONDecoder().decode(DeviceData.self, from: JSONEncoder().encode(reopened.data))
+        XCTAssertEqual(exported.notes.first?.id, note.id)
+        XCTAssertEqual(exported.notes.first?.text, note.text)
+        XCTAssertEqual(exported.bookmarks, ["114:1"])
+    }
     func testCombinedExportRetainsBothJourneyAndStudyArchivesAndReadsEarlierExports() throws {
         let khatmah = Data([255, 8, 1])
         let damagedStudy = Data([0, 255, 9])
