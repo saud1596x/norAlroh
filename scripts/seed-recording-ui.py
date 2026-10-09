@@ -19,7 +19,9 @@ folder = root / session
 assert (folder / "session.json").is_file(), "Native reference header is missing"
 assert (folder / (take + ".caf")).stat().st_size > 0, "Native reference audio is missing"
 print("NOOR_UI_REFERENCE_VALIDATED:", folder)
-pathlib.Path("release/recitation-app/recording-ui-fixture.json").write_text(json.dumps({
+output = pathlib.Path("release/recitation-app/recording-ui-fixture.json")
+output.parent.mkdir(parents=True, exist_ok=True)
+output.write_text(json.dumps({
     "session": session, "take": take, "source": "112001.mp3", "repetitions": 20,
     "purpose": "Actual recording transport, restoration and relaunch UI checks",
     "createdBy": "Native AVAudioFile and production MushafRecordingArchive.root",
