@@ -27,6 +27,9 @@ extension NoorKhatmahWardContract {
         if enabled && state.khatmahContract == nil {
             disable(); message = "أوقفنا حماية الحفظ السابقة. اربط الحماية بختمتك من هذه الصفحة."
         }
+        // Reconcile this app's store even when a saved state is unreadable or
+        // disabled; an old shield must not outlive the contract that owns it.
+        NoorFocusState.apply()
     }
     func refreshAuthorization() {
         authorized = AuthorizationCenter.shared.authorizationStatus == .approved
@@ -51,12 +54,12 @@ extension NoorKhatmahWardContract {
         next.selection = selection
         next.contract = nil
         next.khatmahContract = NoorKhatmahWardContract(plan: plan)
-        guard next.khatmahContract?.valid == true else { message = "اختر خطة ختمة صالحة أولًا."; return }
+        guard let contract = next.khatmahContract, contract.valid else { message = "اختر خطة ختمة صالحة أولًا."; return }
         next.enabled = true; next.completedDay = nil
         do {
             // Register the background callback before making any restriction active.
             try DeviceActivityCenter().startMonitoring(NoorFocusState.activity, during: DeviceActivitySchedule(
-                intervalStart: DateComponents(timeZone: plan.calendar.timeZone, hour: 0, minute: 0), intervalEnd: DateComponents(timeZone: plan.calendar.timeZone, hour: 23, minute: 59), repeats: true))
+                intervalStart: contract.monitoringStart, intervalEnd: contract.monitoringEnd, repeats: true))
             try next.save(); state = next; enabled = true; NoorFocusState.apply()
         } catch {
             DeviceActivityCenter().stopMonitoring([NoorFocusState.activity])
@@ -154,7 +157,7 @@ struct NoorFocusView: View {
             }
             #endif
             Section("أنت تتحكم") {
-                Text("هذه حماية اختيارية، ويمكنك إيقافها هنا أو سحب الإذن من إعدادات الجهاز. لا تحجب الهاتف أو تطبيقات الطوارئ؛ اختر تطبيقات التواصل فقط.")
+                Text("هذه حماية اختيارية، ويمكنك إيقافها هنا أو سحب الإذن من إعدادات الجهاز. اختر تطبيقات التواصل التي تشتتك فقط، واترك نور الروح وتطبيقات الهاتف والطوارئ خارج اختياراتك.")
             }
         }.navigationTitle("حماية وقت الورد")
         #if NOOR_FOCUS_ENABLED
