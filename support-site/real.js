@@ -47,7 +47,7 @@ const path=$('#connection-path'),spark=$('#code-spark');
 function frame(time){const dt=Math.min((time-last)/1000,.05)||0;last=time;if(!paused&&!document.hidden)elapsed=(elapsed+dt)%34;
 const segment=Math.min(3,Math.floor(elapsed/6)),start=segment?ends[segment-1]:0,end=ends[segment],fraction=Math.min(1,Math.max(0,(elapsed-segment*6)/4.5));const chars=elapsed>=24?code.length:Math.floor(start+(end-start)*fraction);draw(chars);
 const build=ends.filter(e=>chars>=e).length;if(build!==buildBefore){buildBefore=build;mac.dataset.build=String(build);apps.forEach(app=>{app.dataset.build=String(build);app.classList.remove('build-pulse');void app.offsetWidth;app.classList.add('build-pulse')})}
-if(!paused&&!reduced.matches){px+=(pointer-px)*.025;const t=elapsed;if(phone)phone.style.transform=`translateY(${Math.sin(t*.65)*9}px) translateX(${Math.sin(t*.26)*5}px) rotate(${Math.sin(t*.3)*2+px}deg) rotateY(${Math.sin(t*.35)*4}deg) scale(${1+Math.sin(t*.22)*.025})`;mac.style.transform=`translateY(${Math.sin(t*.38)*4}px) rotate(${Math.sin(t*.2)*.35}deg)`}
+if(!paused&&!reduced.matches){px+=(pointer-px)*.025;mac.style.transform=`rotateY(${px*.8}deg)`}
 const a=$('.xcode-code').getBoundingClientRect(),b=$('.xcode-preview').getBoundingClientRect(),x1=a.right,y1=a.top+a.height*.75,x2=b.left,y2=b.top+b.height*.6;const origin=$('#experience').getBoundingClientRect();path.setAttribute('d',`M ${x1-origin.left} ${y1-origin.top} C ${x1+35-origin.left} ${y1-35-origin.top}, ${x2-35-origin.left} ${y2+35-origin.top}, ${x2-origin.left} ${y2-origin.top}`);if(!paused){const length=path.getTotalLength(),point=path.getPointAtLength((elapsed%3/3)*length);spark.setAttribute('cx',point.x);spark.setAttribute('cy',point.y)}
 requestAnimationFrame(frame)}requestAnimationFrame(frame);
 })();
