@@ -94,7 +94,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
-        XCTAssertTrue(page.waitForExistence(timeout: 120))
+        XCTAssertTrue(page.waitForExistence(timeout: 10))
         requirePage(151, app: app)
         capture(app, "stage1-151-restored-after-relaunch")
         XCUIDevice.shared.orientation = .landscapeLeft
