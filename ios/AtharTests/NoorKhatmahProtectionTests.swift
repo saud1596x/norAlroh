@@ -1,4 +1,5 @@
 import XCTest
+import DeviceActivity
 @testable import Athar
 
 final class NoorKhatmahProtectionTests: XCTestCase {
@@ -24,6 +25,16 @@ final class NoorKhatmahProtectionTests: XCTestCase {
         value.confirm(planID: value.planID, nextPage: 605)
         XCTAssertTrue(value.finished)
         XCTAssertNil(value.ward(at: date("2026-10-15T00:00:00Z")))
+    }
+    func testSystemMonitoringIntervalUsesTheRecordedKhatmahCalendarAndZone() throws {
+        let value = contract()
+        let schedule = DeviceActivitySchedule(intervalStart: value.monitoringStart, intervalEnd: value.monitoringEnd, repeats: true)
+        let interval = try XCTUnwrap(schedule.nextInterval)
+        let start = value.calendar.dateComponents([.hour, .minute, .second], from: interval.start)
+        let end = value.calendar.dateComponents([.hour, .minute, .second], from: interval.end)
+        XCTAssertEqual(start.hour, 0); XCTAssertEqual(start.minute, 0); XCTAssertEqual(start.second, 0)
+        XCTAssertEqual(end.hour, 23); XCTAssertEqual(end.minute, 59); XCTAssertEqual(end.second, 59)
+        XCTAssertEqual(interval.duration, 86399, accuracy: 1)
     }
     func testAnotherKhatmahBackwardProgressAndInvalidPagesCannotUnlock() {
         var value = contract()
