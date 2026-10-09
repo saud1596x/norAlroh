@@ -28,6 +28,53 @@ final class QCFV2ContentTests: XCTestCase {
         XCTAssertEqual(layout.pages[75].layout["15"]?.chapter, 4)
         XCTAssertEqual(layout.pages[76].layout["1"]?.type, "bismillah")
         XCTAssertEqual(layout.pages[76].words.first?.line, 2)
+        let keys = corpus.flatMap { chapter in chapter.ayahs.map { "\(chapter.number):\($0.number)" } }
+        let preparation = MushafReadingPreparation()
+        let prepared = try await preparation.prepare(entry.snapshot, keys: keys)
+        XCTAssertEqual(prepared.versePages.count, 6236)
+        XCTAssertEqual(prepared.versePages["1:1"], 1)
+        XCTAssertEqual(prepared.versePages["114:6"], 604)
+        XCTAssertEqual(prepared.studyIndex.words["1:1"]?.count,
+                       snapshot.records.filter { $0.verse_id == 1 && $0.char_type_name == "word" }.count)
+        do {
+            _ = try await preparation.prepare(Data("corrupt".utf8), keys: keys)
+            XCTFail("A new invalid payload must not reuse previously prepared Quran content")
+        } catch { }
+        var duplicateKeys = keys; duplicateKeys[1] = duplicateKeys[0]
+        do {
+            _ = try await preparation.prepare(entry.snapshot, keys: duplicateKeys)
+            XCTFail("Duplicate canonical keys must be rejected before indexing")
+        } catch { }
+        let restoredPreparation = try await preparation.prepare(entry.snapshot, keys: keys)
+        XCTAssertEqual(restoredPreparation.versePages, prepared.versePages)
+
+        // Hold the real snapshot fetch open: stale offline reading must return
+        // before network completion, while still starting the required refresh.
+        let networkStarted = expectation(description: "Connected refresh starts")
+        let readingReturned = expectation(description: "Offline reading does not wait for refresh")
+        let networkGate = SnapshotFetchGate()
+        let delayed = QCFV2ContentCache(file: file, endpoint: endpoint, fetch: { _ in
+            networkStarted.fulfill()
+            await networkGate.wait()
+            return entry.snapshot
+        })
+        let staleNow = now.addingTimeInterval(8 * 86400)
+        let reading = Task {
+            let value = try await delayed.readingEntry(now: staleNow)
+            readingReturned.fulfill()
+            return value
+        }
+        await fulfillment(of: [networkStarted, readingReturned], timeout: 10)
+        await networkGate.release()
+        let immediate = try await reading.value
+        XCTAssertEqual(immediate.downloadedAt, now)
+        XCTAssertEqual(immediate.snapshot, entry.snapshot)
+        let refreshed = try await delayed.refresh(now: staleNow)
+        XCTAssertEqual(refreshed.downloadedAt, staleNow)
+        XCTAssertEqual(refreshed.snapshot, entry.snapshot)
+        // Restore the original age for the following seven-day recovery checks.
+        try JSONEncoder().encode(entry).write(to: file, options: .atomic)
+
         let persisted = await cache.cached()
         XCTAssertEqual(persisted?.snapshot, entry.snapshot)
 
@@ -88,5 +135,41 @@ final class QCFV2ContentTests: XCTestCase {
         do { _ = try await missingWordCache.refresh(force: true); XCTFail("A missing verse word must be rejected even with contiguous page positions") } catch { }
         let preservedAfterMissingWord = await missingWordCache.cached()
         XCTAssertEqual(preservedAfterMissingWord?.snapshot, entry.snapshot)
+        // Even a same-timestamp replacement must invalidate memoized validation.
+        let originalAttributes = try FileManager.default.attributesOfItem(atPath: file.path)
+        let corruptFile = Data("invalid cached archive".utf8)
+        try corruptFile.write(to: file, options: .atomic)
+        if let modificationDate = originalAttributes[.modificationDate] {
+            try FileManager.default.setAttributes([.modificationDate: modificationDate], ofItemAtPath: file.path)
+        }
+        let afterDiskCorruption = await cache.cached()
+        XCTAssertNil(afterDiskCorruption)
+        let unreadable = QCFV2ContentCache(file: file, endpoint: endpoint,
+            fetch: { _ in throw URLError(.notConnectedToInternet) })
+        do {
+            _ = try await unreadable.readingEntry()
+            XCTFail("An invalid disk copy cannot satisfy offline reading")
+        } catch { }
+        XCTAssertEqual(try Data(contentsOf: file), corruptFile, "A failed fetch must preserve recoverable bytes")
+        let empty = QCFV2ContentCache(file: folder.appendingPathComponent("absent.json"), endpoint: endpoint,
+            fetch: { _ in throw URLError(.notConnectedToInternet) })
+        do {
+            _ = try await empty.readingEntry()
+            XCTFail("First-use offline reading must report unavailable original data honestly")
+        } catch { }
+
+    }
+}
+
+private actor SnapshotFetchGate {
+    private var released = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func wait() async {
+        if released { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+    func release() {
+        released = true
+        continuation?.resume(); continuation = nil
     }
 }
