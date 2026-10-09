@@ -152,8 +152,10 @@ final class NoorReaderComfortUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(app.buttons["reader.jump"].frame.height, 44 - 0.000001,
                                         "The actual page-counter hit label must remain at least 44 points")
             let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
-            XCTAssertEqual(app.buttons["reader.jump"].frame.midX, page.frame.midX, accuracy: 1,
-                           "Page counter and reading viewport must share one center")
+            XCTAssertEqual(app.buttons["reader.study"].frame.midX, page.frame.midX, accuracy: 1,
+                           "The primary microphone and reading viewport must share one center")
+            XCTAssertTrue(app.frame.contains(app.buttons["reader.jump"].frame),
+                          "The relocated page counter must remain fully accessible")
         }
     }
     private func requireStableReadingLayout(_ app: XCUIApplication, page: XCUIElement, landscape: Bool) {

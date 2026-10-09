@@ -107,7 +107,10 @@ final class NoorAllScreensTests: XCTestCase {
         tap(app.buttons["اختر الصلوات ووقت التنبيه"], in: app)
         XCTAssertTrue(app.navigationBars["تنبيهات الصلاة"].waitForExistence(timeout: 5))
         capture(app, "42-prayer-alert-settings")
-        tap(app.switches["تذكير هادئ"], in: app, performTap: false)
+        tap(app.buttons["الدعاء والأذكار والحفظ والصلاة على النبي"], in: app)
+        XCTAssertTrue(app.navigationBars["تذكيراتي"].waitForExistence(timeout: 5))
+        tap(app.buttons["reminders.salawat"], in: app)
+        XCTAssertTrue(app.navigationBars["الصلاة على النبي ﷺ"].waitForExistence(timeout: 5))
         capture(app, "43-salawat-settings")
         XCTAssertFalse(app.staticTexts["طريقة الحساب"].exists)
     }
