@@ -189,6 +189,7 @@ struct InteractiveMushafReader: View {
             }.padding(.horizontal, 10).transition(.opacity) }
         }
         .statusBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar, .tabBar)
         .onPreferenceChange(ReaderControlHeight.self) { heights in
             for (key, height) in heights where height.isFinite && height > 0 {
                 if abs((controlHeights[key] ?? 0) - height) > 0.5 { controlHeights[key] = height }

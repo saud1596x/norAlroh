@@ -92,14 +92,14 @@ struct NoorTodayView: View {
                             Text(plan.finished != nil ? "اكتملت رحلتك" : plan.paused ? "الرحلة متوقفة مؤقتًا" : "تابع من الصفحة \(plan.nextPage)").font(.subheadline).foregroundStyle(.secondary)
                         } else { Text("خطتك ووردك اليومي").font(.subheadline).foregroundStyle(.secondary) }
                     }
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.khatmah")
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.khatmah").noorEntrance(delay: 0.10)
                 NavigationLink { NoorSalawatView() } label: {
                     Card { Label("الصلاة على النبي ﷺ", systemImage: "plus.circle"); Text("عدادك اليومي وهدفك الشخصي").font(.subheadline).foregroundStyle(.secondary) }
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.salawat")
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.salawat").noorEntrance(delay: 0.12)
                 HStack {
                     Text("خطواتك اليوم").font(.title3.bold())
                     Spacer()
-                    NavigationLink { MemorizationPlanView() } label: { Label("هدفك", systemImage: "slider.horizontal.3").font(.caption).frame(minHeight: 44) }.accessibilityIdentifier("home.goal")
+                    NavigationLink { MemorizationPlanView() } label: { Label("هدفك", systemImage: "slider.horizontal.3").font(.caption).frame(minHeight: 44) }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.goal")
                 }
                 Card {
                     HStack(spacing: 16) {
@@ -113,17 +113,37 @@ struct NoorTodayView: View {
                             NavigationLink {
                                 MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
                             } label: { Text("ابدأ المراجعة").font(.subheadline).frame(minHeight: 44) }
+                                .buttonStyle(NoorPressStyle())
                                 .accessibilityIdentifier("home.review")
                         }
                         Spacer(minLength: 0)
                     }
-                }
+                }.noorEntrance(delay: 0.14)
                 Text("مساحاتك").font(.title3.bold())
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 14)], spacing: 14) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 14) {
                     NavigationLink { AdhkarView() } label: { tile("أذكارك", "حصن المسلم كاملًا", "sparkles") }
                     NavigationLink { LibraryView() } label: { tile("علاماتك", "\(store.data.bookmarks.count) علامات محفوظة", "bookmark") }.accessibilityIdentifier("home.library")
-                    NavigationLink { NoorMyJourneyView() } label: { tile("رحلتي", "قراءتك وحفظك ومراجعتك", "chart.bar") }.accessibilityIdentifier("home.myJourney")
+                    }
+                    VStack(spacing: 14) {
+                        NavigationLink { AdhkarView() } label: { tile("أذكارك", "حصن المسلم كاملًا", "sparkles") }
+                        NavigationLink { LibraryView() } label: { tile("علاماتك", "\(store.data.bookmarks.count) علامات محفوظة", "bookmark") }.accessibilityIdentifier("home.library")
+                    }
                 }.buttonStyle(NoorPressStyle())
+                NavigationLink { NoorMyJourneyView() } label: {
+                    HStack(spacing: 14) {
+                        NoorAnimatedSymbol(name: "chart.bar").font(.title2).foregroundStyle(Theme.gold)
+                            .frame(width: 44, height: 44).background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 13))
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text("رحلتي").font(.headline)
+                            Text("قراءتك وحفظك ومراجعتك").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.left").font(.caption).foregroundStyle(Theme.gold).accessibilityHidden(true)
+                    }.padding(18).foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+                        .overlay { RoundedRectangle(cornerRadius: 22).stroke(Theme.gold.opacity(0.12), lineWidth: 1).allowsHitTesting(false) }
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.myJourney").noorEntrance(delay: 0.20)
                 HStack(spacing: 8) {
                     Image(systemName: "lock.shield")
                     Text("مساحة لك. المزامنة السحابية اختيارية من صفحة حسابك.")

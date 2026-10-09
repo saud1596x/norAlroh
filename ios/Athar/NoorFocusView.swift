@@ -159,7 +159,7 @@ struct NoorFocusView: View {
             Section("أنت تتحكم") {
                 Text("هذه حماية اختيارية، ويمكنك إيقافها هنا أو سحب الإذن من إعدادات الجهاز. اختر تطبيقات التواصل التي تشتتك فقط، واترك نور الروح وتطبيقات الهاتف والطوارئ خارج اختياراتك.")
             }
-        }.navigationTitle("حماية وقت الورد")
+        }.noorScreenChrome().navigationTitle("حماية وقت الورد")
         #if NOOR_FOCUS_ENABLED
             .familyActivityPicker(isPresented: $choosing, selection: $focus.selection)
             .onAppear { focus.sync(plan: journey.active) }

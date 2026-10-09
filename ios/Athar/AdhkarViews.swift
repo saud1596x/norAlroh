@@ -153,7 +153,7 @@ struct AdhkarView: View {
                     }.padding(20)
                 }
             } else { ContentUnavailableView("تعذر تحميل الأذكار", systemImage: "book.closed") }
-        }.background(Theme.background).navigationTitle("الأذكار")
+        }.background(Theme.background).noorScreenChrome().navigationTitle("الأذكار")
             .searchable(text: $search, prompt: "ابحث في الأبواب والنصوص")
             .tint(Theme.gold)
     }
@@ -190,7 +190,7 @@ struct DhikrListView: View {
                             .accessibilityIdentifier("dhikr.card.\(entry.id)").noorEntrance()
                 }
             }.padding(20)
-        }.background(Theme.background).navigationTitle(group.name).navigationBarTitleDisplayMode(.inline)
+        }.background(Theme.background).noorScreenChrome().navigationTitle(group.name).navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -217,7 +217,7 @@ struct DhikrReadingSession: View {
                         }.buttonStyle(NoorPressStyle()).frame(minHeight: 48).padding(.horizontal, 20).background(Theme.panel)
                     }
             } else { ContentUnavailableView("لا يوجد ذكر", systemImage: "book.closed") }
-        }.navigationTitle(group.name).navigationBarTitleDisplayMode(.inline)
+        }.noorScreenChrome().navigationTitle(group.name).navigationBarTitleDisplayMode(.inline)
     }
     private func move(_ step: Int) {
         guard entries.indices.contains(index + step) else { return }

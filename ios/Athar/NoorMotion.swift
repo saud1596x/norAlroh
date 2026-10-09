@@ -11,20 +11,34 @@ struct NoorEntrance: ViewModifier {
             .onAppear {
                 withAnimation(reduced || store.data.lowMotion ? nil : .spring(duration: 0.55, bounce: 0.08).delay(delay)) { visible = true }
             }
-            .onDisappear { visible = false }
     }
 }
 extension View {
     func noorEntrance(delay: Double = 0) -> some View { modifier(NoorEntrance(delay: delay)) }
 }
 struct NoorPressStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
     @EnvironmentObject private var store: AtharStore
     @Environment(\.accessibilityReduceMotion) private var reduced
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.85 : 1)
+        configuration.label.opacity(enabled ? (configuration.isPressed ? 0.85 : 1) : 0.45)
             .scaleEffect(configuration.isPressed && !reduced && !store.data.lowMotion ? 0.975 : 1)
             .animation(reduced || store.data.lowMotion ? nil : .spring(duration: 0.25, bounce: 0.1), value: configuration.isPressed)
     }
+}
+
+/// Shared screen chrome preserves the existing palette and native navigation.
+struct NoorScreenChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .toolbarBackground(Theme.panel, for: .navigationBar)
+            .buttonStyle(NoorPressStyle())
+    }
+}
+extension View {
+    func noorScreenChrome() -> some View { modifier(NoorScreenChrome()) }
 }
 struct NoorAmbientOrnament: View {
     @EnvironmentObject private var store: AtharStore

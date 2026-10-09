@@ -61,7 +61,7 @@ struct NoorMyJourneyView: View {
                         }
                         PrimaryButton(title: "افتح بداية المقطع", icon: "book") { pendingReaderPage = event.session.first; selectedEvent = nil }
                         Spacer()
-                    }.padding(24).navigationTitle("تفاصيل القراءة")
+                    }.padding(24).noorScreenChrome().navigationTitle("تفاصيل القراءة")
                         .toolbar { Button("إغلاق") { selectedEvent = nil } }
                 }.presentationDetents([.medium, .large])
             }

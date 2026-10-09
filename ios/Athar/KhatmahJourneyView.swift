@@ -80,7 +80,7 @@ struct KhatmahJourneyView: View {
                             actionButton("تأكيد ورد اليوم حتى الصفحة \(due.last)") { if journey.confirm(first: plan.nextPage, last: due.last) { confirmation = false } }
                             PrimaryButton(title: "حفظ قراءتي", icon: "checkmark") { if journey.confirm(first: plan.nextPage, last: confirmedLast) { confirmation = false } }.accessibilityIdentifier("khatmah.saveReading")
                             Spacer()
-                        }.padding(24).navigationTitle("تأكيد القراءة").toolbar { Button("إلغاء") { confirmation = false } }
+                        }.padding(24).noorScreenChrome().navigationTitle("تأكيد القراءة").toolbar { Button("إلغاء") { confirmation = false } }
                     }.presentationDetents([.medium, .large])
                 }
             }
@@ -162,7 +162,7 @@ struct KhatmahSetupView: View {
             }
             if let error { Section { Text(error).foregroundStyle(.red) } }
             Section { Button("معاينة الخطة") { prepare() }.accessibilityIdentifier("khatmah.preview") }
-        }.navigationTitle(existing == nil ? "إعداد الختمة" : "تعديل الختمة")
+        }.noorScreenChrome().navigationTitle(existing == nil ? "إعداد الختمة" : "تعديل الختمة")
             .toolbar { Button("إلغاء") { dismiss() } }
             .onAppear {
                 guard let existing else { return }
@@ -218,7 +218,7 @@ struct KhatmahPlanPreview: View {
                 if plan.days.count > 7 { Text("تستمر الخطة بالتوزيع نفسه؛ آخر يوم ينتهي عند الصفحة 604.").font(.caption).foregroundStyle(.secondary) }
                 PrimaryButton(title: "اعتماد الخطة", icon: "checkmark") { accept() }.accessibilityIdentifier("khatmah.adopt")
             }.padding(20)
-        }.background(Theme.background).navigationTitle("معاينة الختمة")
+        }.background(Theme.background).noorScreenChrome().navigationTitle("معاينة الختمة")
     }
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "ar_SA"); formatter.calendar = plan.calendar; formatter.timeZone = plan.calendar.timeZone; formatter.dateStyle = .medium

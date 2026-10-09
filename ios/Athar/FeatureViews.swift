@@ -40,7 +40,7 @@ struct QuranView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("القرآن الكريم")
+        .noorScreenChrome().navigationTitle("القرآن الكريم")
         .toolbar(.visible, for: .tabBar)
         .searchable(text: $search, prompt: "ابحث عن سورة")
     }
@@ -84,7 +84,7 @@ struct QuranReader: View {
             }.padding(20)
         }
         .background(Theme.background)
-        .navigationTitle(surah.name)
+        .noorScreenChrome().navigationTitle(surah.name)
         .sensoryFeedback(.selection, trigger: store.data.bookmarks.count)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -118,7 +118,7 @@ struct LibraryView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("علاماتي")
+        .noorScreenChrome().navigationTitle("علاماتي")
         .accessibilityIdentifier("library.bookmarks")
     }
 }
@@ -202,7 +202,7 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .navigationTitle("الإعدادات")
+        .noorScreenChrome().navigationTitle("الإعدادات")
         // Pulling a long settings list must not dismiss the entire sheet.
         // Users can still leave explicitly with the Done button.
         .interactiveDismissDisabled()

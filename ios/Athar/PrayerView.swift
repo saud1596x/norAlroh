@@ -106,7 +106,7 @@ struct PrayerView: View {
                     }.frame(minHeight: 44)
                 }
             }.padding(20)
-        }.background(Theme.background).navigationTitle("مواقيت الصلاة")
+        }.background(Theme.background).noorScreenChrome().navigationTitle("مواقيت الصلاة")
             .sheet(isPresented: $choosingCity) { NavigationStack { SaudiCityPicker() } }
 
     }
@@ -151,7 +151,7 @@ struct SaudiCityPicker: View {
                 if results.isEmpty { ContentUnavailableView.search(text: search) }
             }
         }.searchable(text: $search, prompt: "ابحث عن مدينة سعودية")
-            .navigationTitle("اختيار المدينة")
+            .noorScreenChrome().navigationTitle("اختيار المدينة")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("تم") { dismiss() } } }
             .tint(Theme.gold)
     }

@@ -91,7 +91,7 @@ struct NoorSalawatView: View {
                     NavigationLink("إعداد تذكير الصلاة على النبي") { PrayerNotificationSettings() }.frame(minHeight: 44)
                 }
             }.padding(20)
-        }.background(Theme.background).navigationTitle("عداد الصلاة على النبي")
+        }.background(Theme.background).noorScreenChrome().navigationTitle("عداد الصلاة على النبي")
             .onAppear { goal = counter.counts.goal.map(String.init) ?? "" }
             .confirmationDialog("تصفير عداد اليوم؟", isPresented: $reset, titleVisibility: .visible) {
                 Button("تصفير اليوم", role: .destructive) { _ = counter.setCount(0) }

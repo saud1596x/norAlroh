@@ -3,11 +3,15 @@ import AVFoundation
 
 struct MushafStudyButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @EnvironmentObject private var store: AtharStore
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.caption).lineLimit(2)
             .frame(maxWidth: .infinity).frame(minHeight: 44)
             .background(Color.primary.opacity(configuration.isPressed ? 0.15 : 0.06), in: RoundedRectangle(cornerRadius: 10))
             .opacity(enabled ? 1 : 0.45)
+            .scaleEffect(configuration.isPressed && !reduced && !store.data.lowMotion ? 0.98 : 1)
+            .animation(reduced || store.data.lowMotion ? nil : .spring(duration: 0.25, bounce: 0.05), value: configuration.isPressed)
     }
 }
 
@@ -83,7 +87,7 @@ struct MushafStudySetup: View {
                 }
                 if let error = memorization.error { Section { Text(error).foregroundStyle(.red) } }
             }
-            .navigationTitle("الحفظ والتسميع")
+            .noorScreenChrome().navigationTitle("الحفظ والتسميع")
             .toolbar { Button("إغلاق") { dismiss() }.accessibilityIdentifier("study.setup.close") }
             .onChange(of: chapter) { _, _ in from = 1; to = 1 }
             .onChange(of: from) { _, value in if to < value { to = value } }
@@ -116,7 +120,7 @@ struct MushafStudyResultView: View {
     var body: some View {
         NavigationStack {
             ScrollView { MushafStudySummaryContent().padding().frame(maxWidth: .infinity, alignment: .leading) }
-                .navigationTitle("نتيجة التسميع")
+                .noorScreenChrome().navigationTitle("نتيجة التسميع")
                 .toolbar { Button("متابعة القراءة") { dismiss() }.accessibilityIdentifier("study.result.close") }
         }
     }
@@ -207,7 +211,7 @@ struct MushafRecordingList: View {
                     }
                 }.padding(20)
             }
-            .navigationTitle("تسجيلات الجلسة")
+            .noorScreenChrome().navigationTitle("تسجيلات الجلسة")
             .toolbar { Button("إغلاق") { recorder.stop(); dismiss() }.accessibilityIdentifier("study.recordings.close") }
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
@@ -313,7 +317,7 @@ struct MushafRecordingBrowser: View {
                 }
             }.padding(20)
         }.background(Theme.background)
-        .navigationTitle("تسجيلات التسميع")
+        .noorScreenChrome().navigationTitle("تسجيلات التسميع")
         .task { await reloadSessions() }
         .refreshable { await reloadSessions() }
         .sheet(item: $selected, onDismiss: { Task { await reloadSessions() } }) { selection in

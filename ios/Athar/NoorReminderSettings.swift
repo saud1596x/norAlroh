@@ -31,7 +31,7 @@ struct NoorReminderSettings: View {
                 Text("التذكيرات صامتة، وبحسب توقيت جهازك. نجدد أقرب مواعيد 7 أيام عند فتح التطبيق وتغير الوقت وفي تحديث الخلفية إذا سمح النظام. عند امتلاء المساحة نعرض أقرب المواعيد المتاحة؛ افتح التطبيق دوريًا لتجديدها.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        }.navigationTitle("تذكيراتي").tint(Theme.gold)
+        }.noorScreenChrome().navigationTitle("تذكيراتي").tint(Theme.gold)
     }
 }
 
@@ -105,7 +105,7 @@ struct NoorReminderEditor: View {
                     .padding(.horizontal, 20).padding(.vertical, 10)
                 }.background(Theme.background)
             }
-            .navigationTitle(kind.title).tint(Theme.gold)
+            .noorScreenChrome().navigationTitle(kind.title).tint(Theme.gold)
             .onChange(of: draft.startMinute) { _, value in draft.endMinute = max(value, draft.endMinute) }
     }
     private func time(_ title: String, value: Binding<Int>, id: String) -> some View {

@@ -56,7 +56,7 @@ struct PrayerNotificationSettings: View {
                 if notifications.enabled { Text("\(notifications.scheduledCount) تنبيه مجدول").foregroundStyle(.secondary) }
             }
         }
-        .navigationTitle("تنبيهات الصلاة")
+        .noorScreenChrome().navigationTitle("تنبيهات الصلاة")
         .tint(Theme.gold)
     }
 }

@@ -469,7 +469,7 @@ struct MemorizationView: View {
                     NavigationLink("حماية وقت الورد") { NoorFocusView() }.accessibilityIdentifier("hifz.focus")
                 }
             }.padding(20)
-        }.background(Theme.background).navigationTitle("الحفظ")
+        }.background(Theme.background).noorScreenChrome().navigationTitle("الحفظ")
     }
     private func stat(_ count: Int, _ title: String) -> some View {
         VStack(alignment: .leading, spacing: 5) { Text("\(count)").font(.title2.bold()); Text(title).font(.caption).foregroundStyle(.secondary) }
@@ -530,7 +530,7 @@ struct MemorizationPracticeView: View {
                 Text(current.usedHelp ? "استُخدمت مساعدة؛ يُسجّل التدريب كمراجعة مع مساعدة." : "قيّم استرجاعك بعد المقارنة. فتح الصفحة وحده لا يُكمل الورد.")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 6)
             } else { ProgressView("استعادة موضع التدريب…") }
-        }.background(Theme.panel).navigationTitle("تثبيت الآيات")
+        }.background(Theme.panel).noorScreenChrome().navigationTitle("تثبيت الآيات")
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 let plan = memorization.plan
@@ -643,7 +643,7 @@ struct MemorizationInsightsView: View {
                     }
                 }
             }
-        }.navigationTitle("خريطة الإتقان")
+        }.noorScreenChrome().navigationTitle("خريطة الإتقان")
     }
 }
 
@@ -662,7 +662,7 @@ struct MemorizationPlanView: View {
             Stepper("هدف المراجعة اليومي \(draft.daily) آيات", value: $draft.daily, in: 1...50)
             Text("تبدأ المراجعة بالآيات التي احتجت فيها مساعدة، ثم المستحقة والجديدة. هدف اليوم لا يتجاوز عدد آيات نطاقك.").font(.caption).foregroundStyle(.secondary)
             Button("حفظ الخطة") { if memorization.configure(draft, corpus: store.quran) { dismiss() } else { invalid = true } }.accessibilityIdentifier("hifz.savePlan")
-        }.navigationTitle("خطة الحفظ").onAppear { draft = memorization.plan }
+        }.noorScreenChrome().navigationTitle("خطة الحفظ").onAppear { draft = memorization.plan }
             .onChange(of: draft.chapter) { _, _ in draft.from = 1; draft.to = min(7, maxAyah) }
             .onChange(of: draft.from) { _, value in if draft.to < value { draft.to = value } }
             .onChange(of: draft.to) { _, value in if draft.from > value { draft.from = value } }
@@ -735,11 +735,11 @@ struct MemorizationTestView: View {
                 ContentUnavailableView("تعذّر بدء المراجعة", systemImage: "book.closed", description: Text("اختر خطة حفظ صحيحة ثم أعد المحاولة."))
                 Button("إعادة المحاولة") { start() }
             }
-        }.background(Theme.panel).navigationTitle("اختبار الاسترجاع").navigationBarTitleDisplayMode(.inline)
+        }.background(Theme.panel).noorScreenChrome().navigationTitle("اختبار الاسترجاع").navigationBarTitleDisplayMode(.inline)
             .toolbar { Button { recording = true } label: { Image(systemName: "mic") }.accessibilityLabel("تسجيل تسميع للمراجعة").accessibilityIdentifier("hifz.recording") }
             .sheet(isPresented: $recording) {
                 NavigationStack { ScrollView { RecitationRecordingControls(recordingAllowed: !paused).padding(20) }
-                    .navigationTitle("تسجيل التسميع").toolbar { Button("إغلاق") { recording = false }.accessibilityIdentifier("hifz.recording.close") } }
+                    .noorScreenChrome().navigationTitle("تسجيل التسميع").toolbar { Button("إغلاق") { recording = false }.accessibilityIdentifier("hifz.recording.close") } }
             }
             .onAppear { if keys.isEmpty { start() } }
             .onDisappear { persistSession(); audio.stop() }
@@ -794,6 +794,6 @@ struct MemorizationHistoryView: View {
                     }
                 }
             }
-        }.navigationTitle("سجل المراجعة")
+        }.noorScreenChrome().navigationTitle("سجل المراجعة")
     }
 }

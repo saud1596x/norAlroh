@@ -22,6 +22,7 @@ struct AtharApp: App {
     var body: some Scene {
         WindowGroup {
             NoorLaunchGate()
+                .buttonStyle(NoorPressStyle())
                 .environmentObject(store)
                 .task { await retiredFriday.cleanup(); await khatmah.refreshReminders() }
                 .environmentObject(notifications)
@@ -116,6 +117,7 @@ struct Card<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+            .overlay { RoundedRectangle(cornerRadius: 22).stroke(Theme.gold.opacity(0.08), lineWidth: 1).allowsHitTesting(false) }
             .noorEntrance()
     }
 }
