@@ -1,0 +1,48 @@
+name: Cached original Mushaf reading acceptance
+on:
+  workflow_dispatch:
+  push:
+    paths: ['release/mushaf-cache-ready.json']
+permissions:
+  contents: read
+concurrency:
+  group: mushaf-cache-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  progress:
+    runs-on: macos-15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        display: [compact, large]
+    env:
+      NOOR_DISPLAY_CLASS: ${{ matrix.display }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify complete source batch
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          marker=json.loads(Path('release/mushaf-cache-ready.json').read_text())
+          for name, expected in marker['sha256'].items():
+              assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==expected, 'Incomplete progress source: '+name
+          print('Complete source batch verified; Simulator evidence does not authorize bundled content or physical-device publication.')
+          PY
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ios/RecitationModel
+            ios/Athar/Fonts
+          key: noor-quran-resources-${{ hashFiles('content-sources/recitation-model-manifest.json', 'release/qcf-v2-manifest.json', 'scripts/prepare-qcf-v2.py', 'scripts/prepare-mushaf-companion.py') }}
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Verify offline opening, original pages and reader regression
+        run: bash scripts/test-mushaf-cache.sh
+      - name: Retain native test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mushaf-cache-${{ matrix.display }}
+          path: release/mushaf-cache
