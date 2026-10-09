@@ -111,7 +111,10 @@ struct InteractiveMushafReader: View {
                 } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
-                        readingMagnification: store.data.largeQuran ? 1.15 : 1,
+                        // Fit the complete page instead of automatically zooming
+                        // past its edges. The larger-text preference uses a little
+                        // less side padding while preserving the authored layout.
+                        readingMagnification: 1,
                         hiddenTextAccessibilityHint: "نص الآية مخفي للتسميع؛ يظهر عندما يتعرف النظام على تلاوتك.",
                         onVerse: { key in
                             guard !studyOpen else { return }
@@ -126,7 +129,7 @@ struct InteractiveMushafReader: View {
                             if manualSelection != nil { clearManualSelection() }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() } }
                         })
-                        .padding(.horizontal, 2)
+                        .padding(.horizontal, store.data.largeQuran ? 10 : 16)
                         .padding(.top, 44)
                         .padding(.bottom, 60)
                         .frame(width: geometry.size.width, height: geometry.size.height)
