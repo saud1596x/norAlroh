@@ -14,18 +14,24 @@ import Combine
     @Published var message: String?
     private let worker = QuranRecognitionWorker.shared
     private let drainTimeout: Double
+    private let recognitionTimeout: Double
+    private let recognizeWindow: (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result
     private let requestPermission: () async -> Bool
     private let archiveRoot: URL?
     private let makeCapture: (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture
     private let setSessionActive: (Bool) throws -> Void
     init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
-         archiveRoot: URL? = nil, drainTimeout: Double = 8,
+         archiveRoot: URL? = nil, drainTimeout: Double = 8, recognitionTimeout: Double = 20,
+         recognizeWindow: @escaping (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result = {
+             try await QuranRecognitionWorker.shared.recognize($0)
+         },
          makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
              try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
          }) {
         self.requestPermission = requestPermission; self.drainTimeout = drainTimeout
+        self.recognitionTimeout = recognitionTimeout; self.recognizeWindow = recognizeWindow
         self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
     private var capture: (any QuranAudioCapture)?
@@ -224,13 +230,23 @@ import Combine
             next.takes[takeIndex].frames = max(next.takes[takeIndex].frames, window.endFrame)
             record = next
             let recognized: QuranRecognitionWorker.Result
-            do { recognized = try await worker.recognize(window) }
+            do {
+                recognized = try await NoorOperationDeadline.run(seconds: recognitionTimeout) {
+                    try await self.recognizeWindow(window)
+                }
+            }
             catch is CancellationError { return }
             catch {
                 guard revision == token, var current = record else { return }
                 current.recognitionUnavailable = true; record = current; uncertain = true; recognitionAvailable = false
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
+                if (error as? URLError)?.code == .timedOut {
+                    message = "تعذّر التتبع الآن. التسجيل مستمر ومحفوظ؛ يمكنك إنهاء الجلسة ومراجعة الصوت."
+                    // A Core ML call can ignore cancellation. Do not queue more
+                    // recognition behind it or accept its eventual late result.
+                    return
+                }
                 continue // Recording remains independent of model failure.
             }
             guard revision == token, !Task.isCancelled, var current = record, var updatedTracker = tracker else { return }
