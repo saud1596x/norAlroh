@@ -2,6 +2,7 @@
 Xcode performs signing. This gate prevents uploading a local-only or incomplete app.
 """
 import glob
+import hashlib
 import importlib.util
 import json
 import plistlib
@@ -17,6 +18,23 @@ EXTENSIONS = {
     BUNDLE + '.focus-shield': 'com.apple.ManagedSettingsUI.shield-configuration-service',
     BUNDLE + '.focus-action': 'com.apple.ManagedSettings.shield-action-service',
 }
+
+def verify_recitation_resources(ipa, root):
+    manifest = json.loads((ROOT / 'content-sources/recitation-model-manifest.json').read_text())
+    if manifest.get('schema') != 1 or not manifest.get('files'):
+        raise ValueError('Invalid pinned recognition manifest')
+    for entry in manifest['files']:
+        data = ipa.read(root + 'RecitationModel/' + entry['path'])
+        if len(data) != entry['bytes'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
+            raise ValueError('Incorrect bundled recognition resource: ' + entry['path'])
+    for bundled, source in [('Whisper-LICENSE.txt', 'WHISPER-MODEL-LICENSE.txt'),
+                            ('Tarteel-LICENSE.txt', 'TARTEEL-MODEL-LICENSE.txt'),
+                            ('NOTICE.txt', 'RECITATION-MODEL-NOTICE.txt')]:
+        if ipa.read(root + 'RecitationModel/' + bundled) != (ROOT / 'docs' / source).read_bytes():
+            raise ValueError('Missing or incorrect recognition notice: ' + bundled)
+    if ipa.read(root + 'recitation-word-script.json') != (ROOT / 'content-sources/recitation-word-script.json').read_bytes():
+        raise ValueError('Incorrect bundled recognition word script')
+    return len(manifest['files'])
 
 def verify(path):
     spec = importlib.util.spec_from_file_location('noor_firebase', ROOT / 'scripts/configure-firebase.py')
@@ -65,8 +83,10 @@ def verify(path):
                 raise ValueError('Missing extension distribution profile: ' + identifier)
         if found != set(EXTENSIONS):
             raise ValueError('Missing required extensions: ' + ', '.join(sorted(set(EXTENSIONS) - found)))
+        recognition_count = verify_recitation_resources(ipa, root)
     return {'version': version[0], 'build': version[1], 'extensions': sorted(found),
-            'accountConfigurationIncluded': True, 'deviceTested': False}
+            'accountConfigurationIncluded': True, 'recognitionResourcesVerified': recognition_count,
+            'deviceTested': False}
 
 def main():
     paths = glob.glob(str(ROOT / 'build/ios/ipa/*.ipa'))
@@ -77,7 +97,7 @@ def main():
     except (ValueError, KeyError, zipfile.BadZipFile) as error:
         raise SystemExit('RELEASE_PAYLOAD_BLOCKED: ' + str(error))
     (ROOT / 'release/release-payload-report.json').write_text(json.dumps(report, indent=2) + '\n')
-    print('RELEASE_PAYLOAD_VERIFIED: account configuration and four extensions; not a device acceptance result')
+    print('RELEASE_PAYLOAD_VERIFIED: account configuration, four extensions and pinned offline recognition resources; not a device acceptance result')
 
 if __name__ == '__main__':
     main()
