@@ -1,0 +1,65 @@
+name: Export current passed native review evidence
+on:
+  push:
+    paths: ['.github/workflows/native-evidence-export.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  export:
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify successful original run and exact tested app source
+        run: |
+          mkdir -p work/native-evidence release/native-review-export
+          gh api repos/saud1596x/norAlroh/actions/runs/37933543324 > work/native-evidence/run.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          source = json.loads(Path('work/native-evidence/run.json').read_text())
+          assert source['conclusion'] == 'success'
+          assert source['head_sha'] == '714ea30563149210ae3cae180fdd4a898e2ffbd4'
+          print('Exporting existing successful native evidence; no new app build or release approval.')
+          PY
+      - name: Export original compact and large native attachments
+        run: |
+          set -euo pipefail
+          for display in compact large; do
+            gh run download 37933543324 --repo saud1596x/norAlroh --name "home-flow-$display" --dir "work/native-evidence/$display"
+            for result in data ui welcome; do
+              xcrun xcresulttool export attachments --path "work/native-evidence/$display/$result.xcresult" --output-path "release/native-review-export/$display/$result"
+            done
+          done
+          python3 - <<'PY'
+          import hashlib,json,re
+          from pathlib import Path
+          root = Path('release/native-review-export')
+          inventory = []
+          for manifest in root.rglob('manifest.json'):
+              for test in json.loads(manifest.read_text()):
+                  for attachment in test.get('attachments', []):
+                      file = manifest.parent / attachment['exportedFileName']
+                      if file.is_file():
+                          inventory.append({'name':attachment.get('suggestedHumanReadableName',''),
+                                            'file':str(file.relative_to(root)),
+                                            'sha256':hashlib.sha256(file.read_bytes()).hexdigest()})
+          pages = {int(m.group(1)) for row in inventory if row['file'].startswith('compact/data/')
+                   for m in [re.search(r'QCF-V2-shaped-page-(\d{3})',row['name'])] if m}
+          assert pages == set(range(1,605)), 'Incomplete original604 page export'
+          report = {'nativeSourceCommit':'714ea30563149210ae3cae180fdd4a898e2ffbd4',
+                    'nativeRun':37933543324,'all604CompactPagesExported':True,
+                    'visualApproval':False,'physicalDeviceAcceptance':False,'attachments':inventory}
+          (root/'inventory.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print('All604 original page attachments exported; visual review remains pending.')
+          PY
+      - name: Retain original attachments and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-native-review-export
+          path: release/native-review-export
+          if-no-files-found: error
