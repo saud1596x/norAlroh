@@ -263,6 +263,9 @@ final class PrayerNotifications: ObservableObject {
             client.removePending(pending.filter(owns))
             let personalEnabled = personal.values.values.contains { $0.enabled }
             let retiredDelivered = delivered.filter { id in
+                if id.hasPrefix(SalawatNotificationPlan.prefix) {
+                    return !salawat.enabled || personal.values[NoorReminderKind.salawat.rawValue] != nil
+                }
                 guard id.hasPrefix(NoorPersonalReminderPlan.prefix) else { return false }
                 return !NoorReminderKind.allCases.contains { kind in
                     id.hasPrefix(NoorPersonalReminderPlan.prefix + kind.rawValue + ".") && personal.values[kind.rawValue]?.enabled == true
