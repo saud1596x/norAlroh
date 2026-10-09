@@ -60,7 +60,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
         let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
         func controller() -> QuranRecitationController {
-            QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            QuranRecitationController(requestPermission: { true }, archiveRoot: root, drainTimeout: 120,
                 makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) },
                 setSessionActive: { _ in })
         }

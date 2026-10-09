@@ -91,6 +91,21 @@ import UIKit
             XCTAssertEqual(viewport.contentOffset, offset, "Layout must not drift")
         }
     }
+    func testLargerReadingPreferenceEnlargesWholePageAndRetainsScrollAccess() {
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 370, height: 660))
+        viewport.layoutIfNeeded()
+        let initial = viewport.zoomScale
+        viewport.readingMagnification = 1.15
+        viewport.resetToFittedPage()
+        XCTAssertEqual(viewport.zoomScale, initial * 1.15, accuracy: 0.001)
+        XCTAssertEqual(viewport.canvas.transform.a, viewport.canvas.transform.d, accuracy: 0.001)
+        XCTAssertGreaterThan(viewport.canvas.frame.height, viewport.bounds.height)
+        viewport.setContentOffset(CGPoint(x: 0, y: viewport.canvas.frame.height - viewport.bounds.height), animated: false)
+        XCTAssertGreaterThan(viewport.contentOffset.y, 0)
+        viewport.readingMagnification = 1
+        viewport.resetToFittedPage()
+        assertFitted(viewport)
+    }
     func testTurningAfterZoomAndPanRestoresCenteredPage() {
         let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
         viewport.layoutIfNeeded()

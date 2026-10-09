@@ -35,12 +35,19 @@ import UIKit
         try metadata.validate(snapshot)
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let indexed = OriginalPageData.index(snapshot: snapshot, rows: metadata, keys: keys)
+        XCTAssertEqual(indexed.count, 604)
         let fonts = MushafFonts()
         // Start with the acceptance reference and still validate every page.
         for number in [560,603,604] + Array(1...602).filter({ $0 != 560 }) {
             await fonts.load(String(format: "QCF2%03d", number))
             XCTAssertNil(fonts.error, "Page \(number)")
             let page = OriginalPageData.page(number, snapshot: snapshot, rows: metadata, keys: keys)
+            let cached = try XCTUnwrap(indexed[number])
+            XCTAssertEqual(cached.words.map(\.id), page.words.map(\.id))
+            XCTAssertEqual(cached.words.map(\.code), page.words.map(\.code))
+            XCTAssertEqual(cached.words.map(\.verse), page.words.map(\.verse))
+            XCTAssertEqual(cached.rows.map(\.line), page.rows.map(\.line))
             let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
             canvas.configure(page: page, corpus: corpus)
             XCTAssertTrue(canvas.renderedSuccessfully, "Page \(number): \(canvas.failureReason ?? "unknown")")
