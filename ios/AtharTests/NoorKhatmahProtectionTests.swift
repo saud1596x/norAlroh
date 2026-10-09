@@ -43,8 +43,7 @@ final class NoorKhatmahProtectionTests: XCTestCase {
         let plan = try KhatmahCalculator.make(first: 590, date: now, weekdays: Set(1...7), daily: 6, deadline: nil, reminder: nil, calendar: calendar)
         let read = try KhatmahCalculator.confirm(plan, first: 590, last: 595, date: now)
         let revised = try KhatmahCalculator.revised(read, date: now, weekdays: Set(1...7), daily: 3, deadline: nil, reminder: nil)
-        let value = NoorKhatmahWardContract(planID: revised.id, firstPage: revised.days.first!.first, timeZone: revised.timeZone,
-            days: revised.days.map { .init(date: $0.date, first: $0.first, last: $0.last) }, nextPage: revised.nextPage)
+        let value = NoorKhatmahWardContract(plan: revised)
         XCTAssertTrue(value.valid)
         XCTAssertEqual(value.ward(at: now)?.first, 596)
         XCTAssertEqual(value.ward(at: now)?.last, 598)
