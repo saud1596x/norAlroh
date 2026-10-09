@@ -1,9 +1,13 @@
 """Distribution regressions using synthetic payloads, never signing evidence."""
 import importlib.util
+import hashlib
+import json
+import shutil
 from pathlib import Path
 import plistlib
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -15,7 +19,27 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
 class ReleasePayloadTests(unittest.TestCase):
-    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False, missing_name=None):
+    def setUp(self):
+        self.resources = tempfile.TemporaryDirectory()
+        self.addCleanup(self.resources.cleanup)
+        root = Path(self.resources.name)
+        for directory in ['scripts', 'content-sources', 'docs']:
+            (root / directory).mkdir()
+        shutil.copyfile(gate.ROOT / 'scripts/configure-firebase.py', root / 'scripts/configure-firebase.py')
+        self.model_files = {'model/AudioEncoder.mlmodelc/weights/weight.bin': b'synthetic-model',
+                            'tokenizer/tokenizer.json': b'synthetic-tokenizer'}
+        (root / 'content-sources/recitation-model-manifest.json').write_text(json.dumps({
+            'schema': 1, 'files': [{'path': name, 'bytes': len(data),
+                                   'sha256': hashlib.sha256(data).hexdigest()}
+                                  for name, data in self.model_files.items()]}))
+        (root / 'content-sources/recitation-word-script.json').write_bytes(b'synthetic-word-script')
+        for name in ['WHISPER-MODEL-LICENSE.txt', 'TARTEEL-MODEL-LICENSE.txt', 'RECITATION-MODEL-NOTICE.txt']:
+            (root / 'docs' / name).write_bytes(name.encode())
+        self.root_patch = patch.object(gate, 'ROOT', root)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
+
+    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False, missing_name=None, corrupt=None):
         path = Path(folder) / 'test.ipa'
         config = {'PROJECT_ID': 'wrong' if wrong_project else 'noor-alruh',
                   'BUNDLE_ID': gate.BUNDLE,
@@ -23,6 +47,14 @@ class ReleasePayloadTests(unittest.TestCase):
                   'API_KEY': 'synthetic-not-a-real-key'}
         root = 'Payload/Athar.app/'
         with zipfile.ZipFile(path, 'w') as archive:
+            resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
+            resources.update({'RecitationModel/Whisper-LICENSE.txt': b'WHISPER-MODEL-LICENSE.txt',
+                              'RecitationModel/Tarteel-LICENSE.txt': b'TARTEEL-MODEL-LICENSE.txt',
+                              'RecitationModel/NOTICE.txt': b'RECITATION-MODEL-NOTICE.txt',
+                              'recitation-word-script.json': b'synthetic-word-script'})
+            for name, data in resources.items():
+                if name != omit:
+                    archive.writestr(root + name, b'x' * len(data) if name == corrupt else data)
             archive.writestr(root + 'Info.plist', plistlib.dumps({
                 'CFBundleIdentifier': gate.BUNDLE, 'CFBundleShortVersionString': '1.0',
                 'CFBundleVersion': '14', 'CFBundleURLTypes': [{'CFBundleURLSchemes': ['nooralruh']}]}))
@@ -51,6 +83,28 @@ class ReleasePayloadTests(unittest.TestCase):
             result = gate.verify(self.payload(folder))
             self.assertEqual(len(result['extensions']), 4)
             self.assertFalse(result['deviceTested'])
+            self.assertEqual(result['recognitionResourcesVerified'], len(self.model_files))
+
+    def test_missing_model_or_tokenizer_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in self.model_files:
+                with self.subTest(name=name), self.assertRaises(KeyError):
+                    gate.verify(self.payload(folder, omit='RecitationModel/' + name))
+
+    def test_same_size_corrupted_model_or_tokenizer_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in self.model_files:
+                with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'Incorrect bundled recognition resource'):
+                    gate.verify(self.payload(folder, corrupt='RecitationModel/' + name))
+
+    def test_model_notices_and_word_script_must_match(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in ['RecitationModel/Whisper-LICENSE.txt', 'RecitationModel/Tarteel-LICENSE.txt',
+                         'RecitationModel/NOTICE.txt', 'recitation-word-script.json']:
+                with self.subTest(name=name), self.assertRaises(KeyError):
+                    gate.verify(self.payload(folder, omit=name))
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    gate.verify(self.payload(folder, corrupt=name))
 
     def test_each_extension_requires_a_nonempty_display_name(self):
         with tempfile.TemporaryDirectory() as folder:
