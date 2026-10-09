@@ -1,6 +1,6 @@
 {
   "sha256": {
-    "ios/Athar/AtharApp.swift": "371c44ea62dc6bcd6f1c35b1a10d825e2567c4cfb4a3f2075686ff909a603cf8",
+    "ios/Athar/AtharApp.swift": "ba4444458a786cb0d58cb12b8e0cc54387f629f1efbc0740445b722256ea1695",
     "ios/Athar/KhatmahJourneyView.swift": "5594f7ab7f01aced8f3b8ab2c5d6f8bad1240fb78d91a88fa65d84b2314aa50b",
     "ios/Athar/NoorFocusView.swift": "72a43b51379cef22e33db9c1fde0ec2a451e94590ce67ad5a6a519bcd08a0d9b",
     "ios/Athar/NoorTodayView.swift": "4384c1c1018a15a61b7c2e3d6133321f0d5e307a053080d1c5c3ead29b701c53",
