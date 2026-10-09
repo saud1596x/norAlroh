@@ -48,7 +48,7 @@ import WidgetKit
         if Self.retiredHosts.contains(host) {
             destination = .init(host: "reading", page: savedPage); return true
         }
-        guard ["prayers", "dhikr"].contains(host) else { return false }
+        guard ["prayers", "dhikr", "dua", "morning", "evening", "review", "salawat"].contains(host) else { return false }
         destination = .init(host: host, page: nil)
         return true
     }
@@ -60,7 +60,7 @@ import WidgetKit
         if Self.retiredHosts.contains(host) {
             destination = .init(host: "reading", page: savedPage); return true
         }
-        guard ["reading", "prayers", "dhikr", "ward", "review", "khatmah", "salawat"].contains(host) else { return false }
+        guard ["reading", "prayers", "dhikr", "ward", "review", "khatmah", "salawat", "dua", "morning", "evening"].contains(host) else { return false }
         let page = Int(url.lastPathComponent)
         if host == "reading", let page, !(1...604).contains(page) { return false }
         destination = .init(host: host, page: page); return true

@@ -169,7 +169,7 @@ struct RootView: View {
             case "reading": selectedTab = 1; widgetDestination = destination
             case "review": selectedTab = 4; widgetDestination = destination
             case "khatmah": selectedTab = 0; widgetDestination = destination
-            case "salawat": selectedTab = 3; widgetDestination = destination
+            case "salawat", "dua", "morning", "evening": selectedTab = 3; widgetDestination = destination
             default: selectedTab = 4
             }
             widgetRouter.destination = nil
@@ -182,6 +182,11 @@ struct RootView: View {
                     Group {
                         if destination.host == "khatmah" { KhatmahJourneyView() }
                         else if destination.host == "salawat" { NoorSalawatView() }
+                        else if destination.host == "dua" { AdhkarView(initialSearch: "دعاء") }
+                        else if ["morning", "evening"].contains(destination.host), let content = AdhkarContent.shared,
+                                let group = content.groups.first(where: { $0.id == "hisn-27" }) {
+                            DhikrListView(group: group, entries: content.entries(in: group))
+                        }
                         else { MemorizationTestView() }
                     }
                         .toolbar {

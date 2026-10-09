@@ -65,6 +65,11 @@ final class PrayerNotifications: ObservableObject {
     @Published var message: String?
     @Published private(set) var salawat = SalawatPreferences()
     @Published private(set) var salawatCount = 0
+    @Published private(set) var personal = NoorReminderArchive()
+    @Published private(set) var personalCounts: [String: Int] = [:]
+    @Published private(set) var personalUnreadable = false
+    private let personalKey = "noor.personalReminders.v1"
+    var personalExport: Data? { defaults.data(forKey: personalKey) }
     private let client: any PrayerNotificationClient
     private let defaults: UserDefaults
     private let now: () -> Date
@@ -83,6 +88,10 @@ final class PrayerNotifications: ObservableObject {
            let saved = try? JSONDecoder().decode(PrayerNotificationPreferences.self, from: bytes) {
             preferences = saved
         }
+        if let bytes = defaults.data(forKey: personalKey) {
+            if let saved = try? JSONDecoder().decode(NoorReminderArchive.self, from: bytes), saved.valid { personal = saved }
+            else { personalUnreadable = true }
+        }
         if let bytes = defaults.data(forKey: "noor.salawat.preferences.v1"),
            let saved = try? JSONDecoder().decode(SalawatPreferences.self, from: bytes), saved.valid { salawat = saved }
     }
@@ -93,6 +102,44 @@ final class PrayerNotifications: ObservableObject {
     }
     private func persist() {
         if let data = try? JSONEncoder().encode(preferences) { defaults.set(data, forKey: preferencesKey) }
+    }
+
+    func reminder(_ kind: NoorReminderKind) -> NoorReminderPreference {
+        if let value = personal.values[kind.rawValue] { return value }
+        var value = NoorReminderPreference(kind: kind)
+        if kind == .salawat {
+            value.enabled = salawat.enabled; value.startMinute = 540; value.endMinute = 1260
+            value.intervalMinutes = salawat.intervalHours * 60
+        }
+        return value
+    }
+    func setReminder(_ kind: NoorReminderKind, preference: NoorReminderPreference, store: AtharStore) async {
+        guard preference.valid, !personalUnreadable else {
+            message = "تعذر حفظ التذكير. صدّر الإعدادات المحفوظة قبل إصلاحها."; return
+        }
+        // Every edit invalidates an in-flight permission request, including disabling.
+        authorizationRevision += 1
+        let attempt = authorizationRevision
+        if preference.enabled && !reminder(kind).enabled {
+            guard !requestingPermission else { return }
+            requestingPermission = true
+            defer { requestingPermission = false }
+            do {
+                let allowed = try await client.requestAuthorization()
+                guard attempt == authorizationRevision else { return }
+                guard allowed else { message = "إذن الإشعارات غير متاح. افتح إعدادات iPhone."; return }
+            } catch { message = "تعذر طلب إذن الإشعارات."; return }
+        }
+        guard attempt == authorizationRevision else { return }
+        var next = personal; next.values[kind.rawValue] = preference
+        guard let bytes = try? JSONEncoder().encode(next) else { return }
+        defaults.set(bytes, forKey: personalKey)
+        guard defaults.data(forKey: personalKey) == bytes else { message = "تعذر حفظ إعدادات التذكير."; return }
+        personal = next
+        // Explicitly editing salawat adopts the new independent schedule, preserving
+        // untouched legacy preferences until that action. Never schedule both.
+        if kind == .salawat { salawat.enabled = false; persistSalawat() }
+        await refresh(store: store)
     }
 
     func setPrayer(_ id: String, enabled value: Bool, store: AtharStore) async {
@@ -181,14 +228,16 @@ final class PrayerNotifications: ObservableObject {
         preferences = PrayerNotificationPreferences()
         defaults.removeObject(forKey: preferencesKey)
         salawat = SalawatPreferences(); defaults.removeObject(forKey: "noor.salawat.preferences.v1")
+        personal = .init(); personalUnreadable = false; personalCounts = [:]
+        defaults.removeObject(forKey: personalKey)
         revision += 1
         Task {
             let ids = await client.pendingIdentifiers()
-            guard !salawat.enabled else { return }
-            client.removePending(ids.filter { $0.hasPrefix(SalawatNotificationPlan.prefix) })
+            guard !salawat.enabled && !personal.values.values.contains(where: { $0.enabled }) else { return }
+            client.removePending(ids.filter { $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) })
             let delivered = await client.deliveredIdentifiers()
-            guard !salawat.enabled else { return }
-            client.removeDelivered(delivered.filter { $0.hasPrefix(SalawatNotificationPlan.prefix) })
+            guard !salawat.enabled && !personal.values.values.contains(where: { $0.enabled }) else { return }
+            client.removeDelivered(delivered.filter { $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) })
         }
         message = nil
     }
@@ -210,14 +259,24 @@ final class PrayerNotifications: ObservableObject {
             let delivered = Set(await client.deliveredIdentifiers())
             guard generation == revision else { continue }
             guard !Task.isCancelled else { return }
-            let owns: (String) -> Bool = { self.isOwned($0) || $0.hasPrefix(SalawatNotificationPlan.prefix) }
+            let owns: (String) -> Bool = { self.isOwned($0) || $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) }
             client.removePending(pending.filter(owns))
-            scheduledCount = 0; salawatCount = 0
-            guard allowed && (requested || salawat.enabled) else {
-                message = (requested || salawat.enabled) && !allowed ? "تنبيهات النظام غير مفعلة. افتح إعدادات iPhone لتغيير الإذن." : nil
+            let personalEnabled = personal.values.values.contains { $0.enabled }
+            let retiredDelivered = delivered.filter { id in
+                guard id.hasPrefix(NoorPersonalReminderPlan.prefix) else { return false }
+                return !NoorReminderKind.allCases.contains { kind in
+                    id.hasPrefix(NoorPersonalReminderPlan.prefix + kind.rawValue + ".") && personal.values[kind.rawValue]?.enabled == true
+                }
+            }
+            client.removeDelivered(Array(retiredDelivered))
+            scheduledCount = 0; salawatCount = 0; personalCounts = [:]
+            guard allowed && (requested || salawat.enabled || personalEnabled) else {
+                message = (requested || salawat.enabled || personalEnabled) && !allowed ? "تنبيهات النظام غير مفعلة. افتح إعدادات iPhone لتغيير الإذن." : nil
                 return
             }
-            let slots = SalawatNotificationPlan.slots(salawat)
+            let slots = personal.values[NoorReminderKind.salawat.rawValue] == nil ? SalawatNotificationPlan.slots(salawat) : []
+            let personalEvents = NoorPersonalReminderPlan.make(personal, now: now())
+                .filter { !delivered.contains($0.id) }
             let foreignCount = pending.filter { !owns($0) }.count
             let prayerCapacity = max(0, min(PrayerNotificationPlan.maximumRequests, 64 - foreignCount))
             // Travel or a clock change can move an already delivered prayer
@@ -260,7 +319,29 @@ final class PrayerNotifications: ObservableObject {
                     guard generation == revision else { break }
                     salawatCount += 1
                 }
+                let personalCapacity = max(0, 64 - foreignCount - scheduledCount - salawatCount)
+                for event in personalEvents.prefix(personalCapacity) {
+                    guard generation == revision, !Task.isCancelled else { break }
+                    guard event.date > now() else { continue }
+                    let content = UNMutableNotificationContent()
+                    content.title = event.kind.title
+                    content.body = "موعدك مع " + event.kind.title
+                    content.threadIdentifier = "noor.personal." + event.kind.rawValue
+                    content.userInfo = ["destination": event.kind.destination]; content.sound = nil
+                    var local = Calendar(identifier: .gregorian); local.timeZone = .current
+                    var components = local.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.date)
+                    components.calendar = local; components.timeZone = local.timeZone
+                    try await client.add(.init(identifier: event.id, content: content,
+                        trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
+                    guard generation == revision else { break }
+                    personalCounts[event.kind.rawValue, default: 0] += 1
+                }
                 if generation == revision {
+                    if personalEnabled && personalEvents.isEmpty {
+                        message = "لا يوجد موعد قادم خلال 7 أيام؛ راجع أيام القراءة وأوقات الهدوء."
+                    } else if personalCounts.values.reduce(0, +) < personalEvents.count {
+                        message = "جُدولت أقرب التذكيرات حسب المساحة المتاحة. افتح التطبيق لتجديدها؛ الأولوية لتنبيهات الصلاة."
+                    }
                     if enabled && plan.isEmpty { message = "لم تتوفر مواقيت صالحة أو مساحة لجدولة الصلاة. حدّث الموقع وراجع التذكيرات." }
                     else if salawat.enabled && salawatCount < slots.count {
                         message = "مساحة الإشعارات ممتلئة. قلّل التذكيرات الأخرى ثم أعد المحاولة؛ أعطينا أولوية لتنبيهات الصلاة."
@@ -269,8 +350,8 @@ final class PrayerNotifications: ObservableObject {
                 }
             } catch {
                 if generation != revision { continue }
-                client.removePending(plan.map(\.id) + slots.map(\.id))
-                enabled = false; scheduledCount = 0; salawatCount = 0
+                client.removePending(plan.map(\.id) + slots.map(\.id) + personalEvents.map(\.id))
+                enabled = false; scheduledCount = 0; salawatCount = 0; personalCounts = [:]
                 message = "تعذرت جدولة التنبيهات. حاول مجددًا من إعدادات التنبيهات."
                 return
             }

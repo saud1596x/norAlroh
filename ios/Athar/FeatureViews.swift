@@ -187,6 +187,10 @@ struct SettingsView: View {
                         .disabled(retiredFriday.busy)
                 }
             }
+            Section("القراءة والتذكيرات") {
+                NavigationLink("تذكيراتي") { NoorReminderSettings() }.accessibilityIdentifier("settings.reminders")
+                NavigationLink("حماية وقت الورد") { NoorFocusView() }
+            }
             Section("مساحة تحترم خصوصيتك") {
                 Text(account.available
                      ? "الحساب اختياري، ولا إعلانات أو تتبع. بياناتك محفوظة على جهازك؛ لا تُرفع بيانات تقدمك إلا باختيارك من صفحة الحساب. المزامنة لا تتضمن التسجيلات والتأملات والموقع."
@@ -206,7 +210,7 @@ struct SettingsView: View {
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: try MushafRecordingArchive.exportMetadata(), salawatArchive: salawat.exportBytes)
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: try MushafRecordingArchive.exportMetadata(), salawatArchive: salawat.exportBytes, personalReminderArchive: notifications.personalExport)
                         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                         document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
                     }

@@ -22,6 +22,10 @@ struct MemorizationPracticeSession: Codable {
     var hints = 0
     var revealAll = false
     var usedHelp = false
+    @discardableResult mutating func recordPlaybackStart(_ key: String) -> Bool {
+        guard key == "\(chapter):\(ayah)", hints < 100000 else { return false }
+        usedHelp = true; hints += 1; return true
+    }
     func valid(corpus: [Surah]) -> Bool {
         corpus.indices.contains(chapter - 1) && from > 0 && to >= from
             && to <= corpus[chapter - 1].ayahs.count && (from...to).contains(ayah)
@@ -515,7 +519,7 @@ struct MemorizationPracticeView: View {
                     Spacer()
                     Button(audio.playing != nil || audio.loadingKey != nil ? "إيقاف" : "استمع") {
                         if audio.playing != nil || audio.loadingKey != nil { audio.stop() }
-                        else { change { $0.usedHelp = true; $0.hints += 1 }; audio.play(["\(current.chapter):\(current.ayah)"]) }
+                        else { audio.play(["\(current.chapter):\(current.ayah)"]) }
                     }.accessibilityIdentifier("hifz.listen")
                 }.frame(minHeight: 44).padding(.horizontal, 16)
                 HStack {
@@ -536,7 +540,13 @@ struct MemorizationPracticeView: View {
                     current = value; _ = memorization.savePractice(value)
                 }
             }
-            .onDisappear { audio.stop() }
+            .onAppear {
+                audio.onVerse = { key in
+                    guard !saved, let current, key == "\(current.chapter):\(current.ayah)" else { return }
+                    change { _ = $0.recordPlaybackStart(key) }
+                }
+            }
+            .onDisappear { audio.onVerse = nil; audio.stop() }
             .alert("التدريب", isPresented: Binding(get: { audio.error != nil || memorization.error != nil }, set: { if !$0 { audio.error = nil; memorization.error = nil } })) {
                 Button("حسنًا") { audio.error = nil; memorization.error = nil }
             } message: { Text(audio.error ?? memorization.error ?? "") }

@@ -99,6 +99,7 @@ struct AdhkarView: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.accessibilityReduceMotion) private var reduced
     @State private var search = ""
+    init(initialSearch: String = "") { _search = State(initialValue: initialSearch) }
     @State private var favoritesOnly = false
     private let content = AdhkarContent.shared
     private var groups: [DhikrGroup] {

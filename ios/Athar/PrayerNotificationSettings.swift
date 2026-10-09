@@ -48,20 +48,8 @@ struct PrayerNotificationSettings: View {
                 Text("مقطع الأذان 24 ثانية. إذا تعذر تشغيله نستخدم صوت النظام. الصوت يخضع لإعدادات الصامت والتركيز في iPhone.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("الصلاة على النبي ﷺ") {
-                Toggle("تذكير هادئ", isOn: Binding(get: { notifications.salawat.enabled }, set: { value in
-                    Task { await notifications.setSalawatEnabled(value, store: store) }
-                })).disabled(notifications.requestingPermission)
-                Picker("التكرار", selection: Binding(get: { notifications.salawat.intervalHours }, set: { value in
-                    Task { await notifications.setSalawatInterval(value, store: store) }
-                })) {
-                    Text("كل ساعتين").tag(2)
-                    Text("كل 4 ساعات").tag(4)
-                    Text("كل 6 ساعات").tag(6)
-                    Text("مرة يوميًا").tag(12)
-                }
-                Text("تذكيرات صامتة بين 09:00 و21:00، بحد أقصى 7 يوميًا.")
-                    .font(.caption).foregroundStyle(.secondary)
+            Section("تذكيرات أخرى") {
+                NavigationLink("الدعاء والأذكار والحفظ والصلاة على النبي") { NoorReminderSettings() }
             }
             Section("الموقع المحفوظ") {
                 Label(store.data.city.name, systemImage: "mappin.and.ellipse")

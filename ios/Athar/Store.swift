@@ -257,7 +257,7 @@ enum QuranText {
 }
 
 struct NoorPrivacyExport: Codable {
-    var schemaVersion = 10
+    var schemaVersion = 11
     var exportedAt = Date()
     let device: DeviceData
     let adhkarCounters: [String: Int]
@@ -285,5 +285,6 @@ struct NoorPrivacyExport: Codable {
     var unreadableMushafStudy: Data? = nil
     var mushafRecordings: [MushafRecordingExport]? = nil
     var salawatArchive: Data? = nil
+    var personalReminderArchive: Data? = nil
 
 }
