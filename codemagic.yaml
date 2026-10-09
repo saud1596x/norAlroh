@@ -72,15 +72,17 @@ workflows:
       - release/native-screens.zip
       - release/native-screens/capture-report.json
       - release/content-audit.json
-  ios-testflight:
+  ios-testflight: &signed_ios
     name: Noor Alruh signed iOS / TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 120
     integrations:
       app_store_connect: noor-alruh-publisher
-    environment:
+    environment: &signed_ios_environment
       groups:
         - noor_release
+      vars:
+        NOOR_RELEASE_CHANNEL: TESTFLIGHT_PREVIEW
       xcode: latest
       ios_signing:
         provisioning_profiles:
@@ -92,9 +94,14 @@ workflows:
         certificates:
           - noor-alruh-distribution
     scripts:
-      - name: Verify user-authorized TestFlight preview and tested reader source
+      - name: Verify approved publication channel and tested reader source
         script: |
-          python3 scripts/check-mushaf-publication.py --testflight-preview
+          set -euo pipefail
+          case "$NOOR_RELEASE_CHANNEL" in
+            TESTFLIGHT_PREVIEW) python3 scripts/check-mushaf-publication.py --testflight-preview ;;
+            APP_STORE) python3 scripts/check-mushaf-publication.py ;;
+            *) echo "Unknown publication channel; refusing upload"; exit 1 ;;
+          esac
       - name: Verify Xcode and SDK
         script: |
           python3 scripts/check-upload-toolchain.py
@@ -160,6 +167,20 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
+  ios-appstore:
+    <<: *signed_ios
+    name: Noor Alruh signed iOS / App Store release
+    environment:
+      <<: *signed_ios_environment
+      vars:
+        NOOR_RELEASE_CHANNEL: APP_STORE
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: true
+        cancel_previous_submissions: false
+        release_type: AFTER_APPROVAL
   ios-ipad-quality:
     name: Noor Alruh iPad Release checks and screenshots
     instance_type: mac_mini_m2
