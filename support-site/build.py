@@ -20,7 +20,7 @@ for doc in content["documents"]:
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <title>{e(doc['title'])} — {e(content['app'])}</title>
 <meta name="description" content="{e(doc['intro'])}">
 <link rel="stylesheet" href="site.css">
@@ -29,12 +29,42 @@ for doc in content["documents"]:
 <a class="skip" href="#content">انتقل إلى المحتوى</a>
 <header class="site-header"><div class="wrap header-inner"><a class="brand" href="support.html" aria-label="نور الروح — الدعم والمساعدة">{symbol}<span>نور الروح<span class="brand-small">مساحة للقراءة والذكر</span></span></a><nav class="nav" aria-label="صفحات المساعدة">{nav}</nav></div></header>
 <main class="wrap" id="content">
-<section class="campaign" aria-label="نور الروح"><div class="campaign-halo" aria-hidden="true"></div><div class="campaign-copy"><span class="campaign-kicker">نــور الــروح</span><h2 class="campaign-title">وردك.<br><span>مساحة للروح.</span></h2><p>القرآن والأذكار، في تجربة واحدة.<br>خطوة صغيرة تضيء يومك.</p><a class="campaign-button" href="#policy-start">{e(doc['title'])} <span aria-hidden="true">↓</span></a></div><div class="phone-scene" aria-label="عرض هوية تطبيق نور الروح"><div class="phone-orbit" aria-hidden="true"></div><div class="phone-frame"><div class="phone-screen"><div class="phone-island" aria-hidden="true"></div><div class="screen-glow" aria-hidden="true"></div><img class="phone-app-icon" src="app-icon.png" width="120" height="120" alt="أيقونة تطبيق نور الروح"><strong class="phone-app-name">نور الروح</strong><span class="phone-tagline">مساحة للقراءة والذكر</span><div class="screen-line" aria-hidden="true"></div><span class="phone-caption">عرض لهوية التطبيق</span><div class="phone-home" aria-hidden="true"></div></div></div><span class="scene-label">N O O R &nbsp; A L R U H</span></div></section><div class="document-heading" id="policy-start"><span class="eyebrow">{e(doc['eyebrow'])}</span><h1>{e(doc['title'])}</h1><p>{e(doc['intro'])}</p><div class="updated">آخر تحديث <time datetime="{e(content['updated'])}">9 أكتوبر 2026</time></div></div>
+<section class="motion-film" aria-label="عرض نور الروح"><div class="film-grain" aria-hidden="true"></div><div class="film-aura" aria-hidden="true"></div>
+<div class="film-top"><span dir="ltr">NOOR ALRUH / THE EXPERIENCE</span><button class="motion-toggle" type="button" aria-pressed="false">إيقاف الحركة</button></div>
+<div class="film-copy"><span class="film-eyebrow">نــور الــروح</span><h2>من سطر كود.<br><em>إلى نورٍ في يومك.</em></h2><p>تجربةٌ تُصنع بعناية. لتقرأ بطمأنينة.</p><a class="film-link" href="#policy-start">{e(doc['title'])}</a></div>
+<div class="film-stage">
+<div class="code-card code-card-back" dir="ltr" aria-hidden="true"><span>Reader.swift</span><pre><i>import</i> SwiftUI
+
+<i>struct</i> NoorReader: View {{
+  <i>var</i> body: some View {{
+    MushafView()
+      .readingComfort(.calm)
+  }}
+}}</pre></div>
+<div class="laptop-visual" aria-label="عرض أكواد التصميم داخل جهاز ماك بوك"><div class="laptop-image"><img src="macbook.png" alt="جهاز MacBook Pro" width="860" height="900"></div><div class="laptop-code" dir="ltr"><div class="editor-toolbar"><span class="editor-lights">● ● ●</span><span>NoorAlruh / Reader.swift</span></div><div class="editor-sidebar">⌘<br>⌑<br>⏣</div><pre><span class="syntax-comment">// A little light, every day.</span>
+
+<span class="syntax-keyword">import</span> SwiftUI
+
+<span class="syntax-keyword">struct</span> <span class="syntax-name">NoorAlruh</span>: App {{
+  <span class="syntax-keyword">var</span> body: some Scene {{
+    WindowGroup {{
+      <span class="syntax-name">MushafReader</span>()
+        .environment(\\.layoutDirection, .rightToLeft)
+    }}
+  }}
+}}<span class="code-cursor">▎</span></pre><div class="editor-status">Swift · SwiftUI <span>نور الروح</span></div></div></div>
+<div class="film-phone"><div class="film-phone-inner"><img class="reader-screen" src="reader.png" alt="لقطة فعلية للمصحف داخل تطبيق نور الروح" width="945" height="2048"><div class="phone-intro"><img src="app-icon.png" alt="" width="100" height="100"><strong>نور الروح</strong><span>مساحة للقراءة والذكر</span></div></div></div>
+<div class="floating-language lang-swift" dir="ltr">Swift</div><div class="floating-language lang-ui" dir="ltr">SwiftUI</div><div class="floating-language lang-python" dir="ltr">Python</div><div class="floating-language lang-js" dir="ltr">JavaScript</div>
+<span class="orbit-word" dir="ltr">CRAFTED WITH CARE</span></div>
+<div class="film-bottom"><span class="film-caption">كود. عناية. سكينة.</span><div class="film-progress" aria-hidden="true"><span></span></div><span dir="ltr">01 — 03</span></div></section>
+<section class="experience-strip"><div><span>01 / القراءة</span><h2>مساحة للكلمة.<br>وراحة للعين.</h2><p>لقطة من المصحف داخل نور الروح.</p></div><div class="screen-detail"><img src="reader.png" alt="المصحف في تطبيق نور الروح" width="945" height="2048" loading="lazy"></div><div class="experience-mark" aria-hidden="true">نور<br>الروح</div></section>
+<div class="document-heading" id="policy-start"><span class="eyebrow">{e(doc['eyebrow'])}</span><h1>{e(doc['title'])}</h1><p>{e(doc['intro'])}</p><div class="updated">آخر تحديث <time datetime="{e(content['updated'])}">9 أكتوبر 2026</time></div></div>
 {summaries}
 <div class="layout"><aside><details class="toc" open><summary>في هذه الصفحة</summary><ol>{toc}</ol></details></aside><article class="reading" aria-label="{e(doc['title'])}">{sections}</article></div>
 <section class="contact-band" aria-label="التواصل مع الدعم"><div><h2>تحتاج مساعدة؟</h2><p>يسعدنا استقبال ملاحظتك أو سؤالك عن بياناتك.</p></div><a class="contact-button" href="mailto:{e(content['email'])}">تواصل مع الدعم <span aria-hidden="true">&nbsp;←</span></a></section>
 </main>
 <footer class="footer"><div class="wrap footer-inner"><div><div class="footer-brand">نور الروح</div><p>خطوات هادئة، ومعرفة واضحة بخياراتك.</p></div><div class="footer-links"><a href="privacy.html">الخصوصية</a><a href="terms.html">الشروط</a><a href="support.html">المساعدة</a></div></div></footer>
+<script src="motion.js" defer></script>
 </body></html>
 '''
     (ROOT / (doc['id'] + '.html')).write_text(page)
