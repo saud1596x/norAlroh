@@ -69,6 +69,7 @@ struct InteractiveMushafReader: View {
     @EnvironmentObject private var memorization: MemorizationStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var fonts = MushafFonts()
     @StateObject private var audio: MushafVerseAudio = {
         #if DEBUG || NOOR_ACCEPTANCE_TESTING
@@ -212,15 +213,15 @@ struct InteractiveMushafReader: View {
                 Spacer()
                 Group {
                     if let selection = manualSelection { verseActions(selection) }
-                    else { ZStack {
+                    else { VStack(spacing: 4) {
+                        // Keep the microphone centered. Accessibility text needs
+                        // its own row instead of expanding beneath the overlay.
+                        if dynamicTypeSize.isAccessibilitySize { pageJumpControl }
+                        ZStack {
                     HStack {
                     Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
-                        Button { input = ""; picker = true } label: {
-                            Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption)
-                                .frame(minWidth: 70, minHeight: 44).contentShape(Rectangle())
-                        }.buttonStyle(.plain).foregroundStyle(Theme.gold)
-                            .accessibilityLabel("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤").accessibilityIdentifier("reader.jump")
+                        if !dynamicTypeSize.isAccessibilitySize { pageJumpControl }
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                     }
                         Button { showStudySetup() } label: {
@@ -230,7 +231,7 @@ struct InteractiveMushafReader: View {
                         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
                             .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
                             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
-                    } }
+                    } } }
                 }.background { readerControlMeasurement("footer") }
             }.padding(.horizontal, 10).transition(.opacity) }
         }
@@ -416,6 +417,14 @@ struct InteractiveMushafReader: View {
         GeometryReader { geometry in
             Color.clear.preference(key: ReaderControlHeight.self, value: [key: geometry.size.height])
         }
+    }
+    private var pageJumpControl: some View {
+        Button { input = ""; picker = true } label: {
+            Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption)
+                .frame(minWidth: 70, minHeight: 44).contentShape(Rectangle())
+        }.buttonStyle(.plain).foregroundStyle(Theme.gold)
+            .accessibilityLabel("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤")
+            .accessibilityIdentifier("reader.jump")
     }
     private func clearManualSelection() {
         manualSelection = nil
