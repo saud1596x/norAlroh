@@ -1,11 +1,11 @@
 {
-  "sourceCommit": "2de74115bf816733d6783048831335590273dc1a",
-  "nativeRun": 37964348586,
-  "url": "https://github.com/saud1596x/norAlroh/actions/runs/37964348586",
-  "logArchiveSHA256": "dffa298247908aa4406b32867e4e95bcb9c330b9072bc02b3110eff6c9799a8b",
+  "sourceCommit": "72cf9dcabad0efb38b112f8233b8461f4626aa87",
+  "nativeRun": 38055315831,
+  "url": "https://github.com/saud1596x/norAlroh/actions/runs/38055315831",
+  "logArchiveSHA256": "5a7b94b12571cf6148fbee1a728da0ffda72ff31aeeef8d03a818d58ee864793",
   "displays": {
     "compact": {
-      "unitTests": 193,
+      "unitTests": 194,
       "unitSkipped": 1,
       "welcomeTests": 2,
       "uiTests": 16,
@@ -178,6 +178,7 @@
         "AtharTests.QuranRecognitionIntegrationTests testBundledOfflineModelProducesTimedQuranAnchorsAndRejectsSilence",
         "AtharTests.QuranRecognitionIntegrationTests testCaptureStartupFailureClosesAudioAndRetainsResumableSession",
         "AtharTests.QuranRecognitionIntegrationTests testDeniedMicrophoneDoesNotCreateOrHideSession",
+        "AtharTests.QuranRecognitionIntegrationTests testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords",
         "AtharTests.QuranRecognitionIntegrationTests testInterruptedPermissionCannotStartLateSession",
         "AtharTests.QuranRecognitionIntegrationTests testRecitationBuildContainsCompleteMushafResources",
         "AtharTests.QuranRecognitionIntegrationTests testRecognizedRevealKeepsActualPageAndAccessibleTextStable",
@@ -224,7 +225,7 @@
       ]
     },
     "large": {
-      "unitTests": 193,
+      "unitTests": 194,
       "unitSkipped": 1,
       "welcomeTests": 2,
       "uiTests": 16,
@@ -397,6 +398,7 @@
         "AtharTests.QuranRecognitionIntegrationTests testBundledOfflineModelProducesTimedQuranAnchorsAndRejectsSilence",
         "AtharTests.QuranRecognitionIntegrationTests testCaptureStartupFailureClosesAudioAndRetainsResumableSession",
         "AtharTests.QuranRecognitionIntegrationTests testDeniedMicrophoneDoesNotCreateOrHideSession",
+        "AtharTests.QuranRecognitionIntegrationTests testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords",
         "AtharTests.QuranRecognitionIntegrationTests testInterruptedPermissionCannotStartLateSession",
         "AtharTests.QuranRecognitionIntegrationTests testRecitationBuildContainsCompleteMushafResources",
         "AtharTests.QuranRecognitionIntegrationTests testRecognizedRevealKeepsActualPageAndAccessibleTextStable",
