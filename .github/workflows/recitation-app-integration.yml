@@ -32,6 +32,8 @@ on:
       - scripts/test-recitation-app.sh
       - scripts/seed-recording-ui.py
       - scripts/verify-recording-ui-removal.py
+      - scripts/recording_ui_evidence.py
+      - scripts/tests/test_recording_ui_evidence.py
       - ios/AtharTests/QuranRecognitionWorkerLifecycleTests.swift
       - ios/AtharTests/NoorAccountDeletionStateTests.swift
       - ios/AtharTests/PrayerLocationLifecycleTests.swift
