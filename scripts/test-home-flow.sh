@@ -48,5 +48,7 @@ xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
-  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testPersistedReferenceRecordingTransportRemovalAndRelaunch \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRenderingFailureWithHiddenToolsHasAccessibleRecovery \
   -resultBundlePath release/home-flow/ui.xcresult
+python3 scripts/verify-recording-ui-removal.py "$noor_home_device"

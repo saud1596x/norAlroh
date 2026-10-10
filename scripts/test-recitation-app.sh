@@ -70,7 +70,10 @@ else
   noor_gate=1
 fi
 [[ "$noor_gate" == 0 ]] || exit "$noor_gate"
-native_tests=(-only-testing:AtharTests/QuranRecognitionIntegrationTests -only-testing:AtharTests/MushafRecordingTests)
+native_tests=(-only-testing:AtharTests/QuranRecognitionIntegrationTests -only-testing:AtharTests/MushafRecordingTests
+  -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests -only-testing:AtharTests/NoorAccountDeletionStateTests
+  -only-testing:AtharTests/PrayerLocationLifecycleTests -only-testing:AtharTests/NotificationReconciliationTests
+  -only-testing:AtharTests/NoorPersonalReminderTests)
 if [[ "${NOOR_ALL_NATIVE_TESTS:-0}" == 1 ]]; then native_tests=(-only-testing:AtharTests); fi
 xcodebuild test-without-building "${common[@]}" \
   "${native_tests[@]}" \
@@ -84,8 +87,10 @@ xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
-  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testPersistedReferenceRecordingTransportRemovalAndRelaunch \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRenderingFailureWithHiddenToolsHasAccessibleRecovery \
   -resultBundlePath release/recitation-app/microphone-denial.xcresult || noor_gate=$?
+python3 scripts/verify-recording-ui-removal.py "$noor_recitation_device" || noor_gate=1
 stop_video
 trap - EXIT
 if [[ -d release/recitation-app/microphone-denial.xcresult ]]; then
