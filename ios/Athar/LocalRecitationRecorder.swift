@@ -5,6 +5,13 @@ import Combine
 import UniformTypeIdentifiers
 
 enum RecitationArchive {
+    /// An open take may need to finalize during an interruption after locking.
+    /// Completed legacy exports retain the stronger complete protection below.
+    static func protectOpenCapture(_ url: URL) throws {
+        try FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: url.path)
+    }
     /// Decode before replacing the saved take. An interrupted or empty capture must preserve it.
     static func save(capture: URL, destination: URL) throws {
         let check = try AVAudioPlayer(contentsOf: capture)
@@ -62,7 +69,9 @@ enum RecitationArchive {
             let audio = try AVAudioRecorder(url: temporary, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: 44100, AVNumberOfChannelsKey: 1, AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue])
             audio.delegate = self; audio.isMeteringEnabled = true; recorder = audio
-            guard audio.prepareToRecord(), audio.record(forDuration: 300) else { throw CocoaError(.fileWriteUnknown) }
+            guard audio.prepareToRecord() else { throw CocoaError(.fileWriteUnknown) }
+            try RecitationArchive.protectOpenCapture(temporary)
+            guard audio.record(forDuration: 300) else { throw CocoaError(.fileWriteUnknown) }
             message = nil; elapsed = 0; level = 0; recording = true
         } catch { stop(saveCapture: false); message = "تعذّر بدء التسجيل. تأكد من مساحة الجهاز والميكروفون." }
     }
