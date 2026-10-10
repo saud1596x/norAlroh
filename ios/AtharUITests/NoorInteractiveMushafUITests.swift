@@ -2,72 +2,33 @@ import XCTest
 
 final class NoorInteractiveMushafUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    func testPersistedReferenceRecordingTransportRemovalAndRelaunch() {
-        // A native test writes authentic reference audio through the production
-        // archive; seed-recording-ui.py verifies it. No live capture/ASR claim.
+    func testExplicitRecitationRemovalAndMicrophoneSettings() {
         let app = XCUIApplication(); launchNoorApp(app)
-        let session = "A1662B68-55BB-4A4B-9441-761EF83DCF54"
-        let take = "50CC9A34-A7A3-44B5-A7A7-39671AC60968"
-        func open() {
+        func openSettings() {
             XCTAssertTrue(app.buttons["app.settings"].waitForExistence(timeout: 20))
             app.buttons["app.settings"].tap()
-            let recordings = app.buttons["settings.recordings"]
-            for _ in 0..<8 {
-                // A partly visible Form row can report isHittable while its
-                // default tap point sits under the sheet's bottom safe area.
-                // Scroll the actual settings list until the full row is clear.
-                if recordings.exists && recordings.isHittable &&
-                    recordings.frame.maxY < app.frame.maxY - 44 { break }
-                app.collectionViews.firstMatch.swipeUp()
-            }
-            XCTAssertTrue(recordings.waitForExistence(timeout: 5))
-            XCTAssertTrue(recordings.isHittable)
-            XCTAssertLessThan(recordings.frame.maxY, app.frame.maxY - 44)
-            recordings.tap()
-            let row = app.buttons["study.recording.session.\(session)"]
-            XCTAssertTrue(row.waitForExistence(timeout: 10), "Persisted reference absent: \(app.debugDescription)"); capture(app, "reference-recording-session-history")
-            row.tap()
         }
-        open()
-        XCTAssertTrue(app.staticTexts["study.recordings.range"].waitForExistence(timeout: 5),
-            "Session detail did not load: \(app.debugDescription)")
-        let play = app.buttons["study.recording.play.\(take)"]
-        XCTAssertTrue(play.waitForExistence(timeout: 5)); play.tap()
-        let seek = app.sliders["study.recording.seek"]
-        XCTAssertTrue(seek.waitForExistence(timeout: 5)); capture(app, "reference-recording-playing")
-        play.tap(); XCTAssertTrue(play.label.contains("استماع"))
-        seek.adjust(toNormalizedSliderPosition: 0.45)
-        capture(app, "reference-recording-paused-and-seeked")
-        play.tap(); XCTAssertTrue(play.label.contains("إيقاف مؤقت"))
-        app.buttons["study.recording.replay.\(take)"].tap()
-        XCTAssertTrue(seek.exists); capture(app, "reference-recording-replayed")
-        app.buttons["study.recording.options.\(take)"].tap()
-        let remove = app.buttons["study.recording.remove.\(take)"]
+        openSettings()
+        let remove = app.buttons["settings.recitation.erase"]
+        for _ in 0..<8 {
+            if remove.exists && remove.isHittable && remove.frame.maxY < app.frame.maxY - 44 { break }
+            app.collectionViews.firstMatch.swipeUp()
+        }
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
-        app.buttons["إلغاء"].tap()
-        XCTAssertTrue(remove.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(play.exists, "Canceling removal must retain the original recording")
-        XCTAssertTrue(play.label.contains("استماع"), "Options pause playback without discarding it")
-        app.buttons["study.recording.options.\(take)"].tap()
-        XCTAssertTrue(remove.waitForExistence(timeout: 5))
-        XCTAssertTrue(remove.isHittable)
-        XCTAssertGreaterThanOrEqual(remove.frame.height, 44)
+        XCTAssertTrue(app.staticTexts["settings.microphone.status"].exists)
+        XCTAssertFalse(app.buttons["settings.recordings"].exists)
         remove.tap()
-        XCTAssertFalse(play.exists)
-        app.buttons["study.recordings.deleted"].tap()
-        XCTAssertTrue(app.buttons["study.recording.restore.\(take)"].waitForExistence(timeout: 5))
-        capture(app, "reference-recording-recoverable-removal")
-        app.terminate(); launchNoorApp(app); open()
-        XCTAssertFalse(app.buttons["study.recording.play.\(take)"].exists)
-        app.buttons["study.recordings.deleted"].tap()
-        let restore = app.buttons["study.recording.restore.\(take)"]
-        XCTAssertTrue(restore.waitForExistence(timeout: 5)); restore.tap()
-        app.buttons["study.recordings.deleted"].tap()
-        let restoredPlay = app.buttons["study.recording.play.\(take)"]
-        XCTAssertTrue(restoredPlay.waitForExistence(timeout: 5)); restoredPlay.tap()
-        XCTAssertTrue(app.sliders["study.recording.seek"].waitForExistence(timeout: 5))
-        capture(app, "reference-recording-restored-playback-after-relaunch")
-        app.buttons["study.recordings.close"].tap()
+        XCTAssertTrue(app.buttons["إلغاء"].waitForExistence(timeout: 5))
+        app.buttons["إلغاء"].tap()
+        XCTAssertFalse(app.staticTexts["settings.recitation.erased"].exists)
+        remove.tap()
+        let confirm = app.buttons["حذف تسجيلات التسميع"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5)); confirm.tap()
+        XCTAssertTrue(app.staticTexts["settings.recitation.erased"].waitForExistence(timeout: 15))
+        capture(app, "20-recitation-privacy-and-microphone")
+        app.terminate(); launchNoorApp(app); openSettings()
+        XCTAssertFalse(app.buttons["settings.recordings"].exists)
+        XCTAssertTrue(app.buttons["settings.recitation.erase"].exists)
     }
     func test604ActualReaderEveryVerseToolsAndZoom() {
         let app = XCUIApplication(); launchNoorApp(app)

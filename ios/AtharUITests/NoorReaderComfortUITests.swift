@@ -2,6 +2,23 @@ import XCTest
 import UIKit
 
 final class NoorReaderComfortUITests: XCTestCase {
+    func testUserReferencePage14IsCenteredAndFullyVisible() {
+        let app = XCUIApplication(); acceptanceApp = app; launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        jump(14, app: app)
+        let first = app.buttons["reader.verse.2:89"]
+        let last = app.buttons["reader.verse.2:93"]
+        XCTAssertTrue(first.waitForExistence(timeout: 20))
+        XCTAssertTrue(last.exists)
+        XCTAssertTrue(app.frame.contains(first.frame), "Reference page must not crop its first verse")
+        XCTAssertTrue(app.frame.contains(last.frame), "Reference page must not crop its last verse")
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.navigationBars.firstMatch.exists)
+        XCTAssertFalse(app.buttons["reader.fullscreen"].exists)
+        capture(app, "user-reference-balanced-page-14")
+    }
     func testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone() {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))

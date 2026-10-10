@@ -72,10 +72,9 @@ final class NoorAllScreensTests: XCTestCase {
 
         tap(app.buttons["app.settings"], in: app)
         capture(app, "21-settings")
-        tap(app.buttons["settings.recordings"], in: app)
-        XCTAssertTrue(app.navigationBars["تسجيلات التسميع"].waitForExistence(timeout: 10))
-        capture(app, "20-recitation-recordings")
-        back(app)
+        XCTAssertFalse(app.buttons["settings.recordings"].exists)
+        XCTAssertTrue(app.staticTexts["settings.microphone.status"].exists)
+        capture(app, "20-recitation-privacy-and-microphone")
         tap(app.buttons["settings.downloads"], in: app)
         XCTAssertTrue(app.buttons["downloads.range"].waitForExistence(timeout: 5))
         capture(app, "40-downloads")
