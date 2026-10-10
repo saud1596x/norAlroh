@@ -51,10 +51,10 @@
     "nativeVisualAcceptance": false
   },
   "currentNativeRun": {
-    "id": 38055315831,
-    "sourceCommit": "72cf9dcabad0efb38b112f8233b8461f4626aa87",
+    "id": 38078097459,
+    "sourceCommit": "e4af7f70c51d26208d74ff9e8182fadf06bfe6e0",
     "state": "success",
-    "url": "https://github.com/saud1596x/norAlroh/actions/runs/38055315831"
+    "url": "https://github.com/saud1596x/norAlroh/actions/runs/38078097459"
   },
   "nativeFindings": {
     "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
@@ -105,6 +105,12 @@
       "sourceCommit": "2de74115bf816733d6783048831335590273dc1a",
       "state": "success",
       "url": "https://github.com/saud1596x/norAlroh/actions/runs/37964348586"
+    },
+    {
+      "id": 38055315831,
+      "sourceCommit": "72cf9dcabad0efb38b112f8233b8461f4626aa87",
+      "state": "success",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/38055315831"
     }
   ],
   "currentPreviewEvidence": "release/current-native-preview-evidence.json"
