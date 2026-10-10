@@ -76,6 +76,11 @@ public struct QuranRecitationJournal {
             throw QuranJournalFailure.existingSession
         }
         try FileManager.default.createDirectory(at: folder(record.id), withIntermediateDirectories: true)
+        #if os(iOS)
+        try FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: folder(record.id).path)
+        #endif
         try write(record)
     }
     public func load(_ id: UUID) throws -> QuranRecitationRecord {
