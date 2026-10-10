@@ -273,12 +273,12 @@ import FirebaseFirestore
             Task { @MainActor in
                 guard let self else { return }
                 guard Auth.auth().currentUser?.uid == user?.uid else { return }
-                if uid != user?.uid { identityGeneration = UUID() }
-                let pending = user.map { deletionState.committed(owner: $0.uid) || deletionState.awaitingVerification(owner: $0.uid) } ?? false
-                let sameIdentity = uid == user?.uid && user != nil
-                deletionNeedsCompletion = pending; deletionRequested = pending || (sameIdentity && deletionRequested)
-                signedIn = user != nil; uid = user?.uid; name = user?.displayName ?? "حسابك"
-                if pending { disconnectLocalSync(); message = "حذف الحساب قيد الإكمال أو التحقق. بيانات جهازك محفوظة؛ أعد تأكيد الدخول لإكماله." }
+                if self.uid != user?.uid { self.identityGeneration = UUID() }
+                let pending = user.map { self.deletionState.committed(owner: $0.uid) || self.deletionState.awaitingVerification(owner: $0.uid) } ?? false
+                let sameIdentity = self.uid == user?.uid && user != nil
+                self.deletionNeedsCompletion = pending; self.deletionRequested = pending || (sameIdentity && self.deletionRequested)
+                self.signedIn = user != nil; self.uid = user?.uid; self.name = user?.displayName ?? "حسابك"
+                if pending { self.disconnectLocalSync(); self.message = "حذف الحساب قيد الإكمال أو التحقق. بيانات جهازك محفوظة؛ أعد تأكيد الدخول لإكماله." }
             }
         }
     }
