@@ -5,9 +5,20 @@ import AVFoundation
 /// Actual iOS filesystem attributes and identified audio, not a simulated lock
 /// or microphone test. Device lock/interruption behavior needs a device run.
 final class AudioFileProtectionTests: XCTestCase {
-    private func protection(_ url: URL) throws -> FileProtectionType {
+    private func assertProtection(_ url: URL, _ expected: FileProtectionType,
+                                  file: StaticString = #filePath, line: UInt = #line) throws {
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-        return try XCTUnwrap(attributes[.protectionKey] as? FileProtectionType)
+        // Apple's NSFileProtectionKey contract returns NSString, not a boxed
+        // Swift FileProtectionType. Accept either bridge without inventing data.
+        let value = (attributes[.protectionKey] as? FileProtectionType)
+            ?? (attributes[.protectionKey] as? String).map { FileProtectionType(rawValue: $0) }
+        if value == nil {
+            // Only existence and runtime type; no path or private file content.
+            let raw = attributes[.protectionKey]
+            print("NOOR_PROTECTION_ATTRIBUTE_DIAGNOSTIC: present=\(raw != nil) type=\(raw.map { String(describing: type(of: $0)) } ?? "absent")")
+        }
+        let actual = try XCTUnwrap(value, "File must expose its requested protection attribute", file: file, line: line)
+        XCTAssertEqual(actual, expected, file: file, line: line)
     }
     private func directory() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -20,9 +31,9 @@ final class AudioFileProtectionTests: XCTestCase {
         let record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
         try journal.create(record)
         let folder = journal.folder(record.id)
-        XCTAssertEqual(try protection(folder), .completeUntilFirstUserAuthentication)
-        XCTAssertEqual(try protection(folder.appendingPathComponent("recognized-session.json")),
-                       .completeUntilFirstUserAuthentication)
+        try assertProtection(folder, .completeUntilFirstUserAuthentication)
+        try assertProtection(folder.appendingPathComponent("recognized-session.json"),
+                             .completeUntilFirstUserAuthentication)
         XCTAssertEqual(try folder.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
         let input = try AVAudioFile(forReading: reference)
@@ -46,7 +57,7 @@ final class AudioFileProtectionTests: XCTestCase {
         let output = journal.audio(session: record.id, take: UUID())
         let writer = try QuranPCMWriter(url: output, onWindow: { _ in },
             onFailure: { _ in XCTFail("Reference PCM write failed") })
-        XCTAssertEqual(try protection(output), .completeUntilFirstUserAuthentication)
+        try assertProtection(output, .completeUntilFirstUserAuthentication)
         for start in stride(from: 0, to: samples.count, by: 16_000) {
             writer.append(Array(samples[start..<min(samples.count, start + 16_000)]))
         }
@@ -55,7 +66,7 @@ final class AudioFileProtectionTests: XCTestCase {
         }
         XCTAssertEqual(try result.get(), Int64(samples.count))
         XCTAssertEqual(try AVAudioFile(forReading: output).length, Int64(samples.count))
-        XCTAssertEqual(try protection(output), .completeUntilFirstUserAuthentication)
+        try assertProtection(output, .completeUntilFirstUserAuthentication)
         XCTAssertEqual(try journal.load(record.id).id, record.id)
     }
     func testActualLegacyCaptureProtectionDoesNotWeakenCompletedArchive() throws {
@@ -66,10 +77,10 @@ final class AudioFileProtectionTests: XCTestCase {
         try FileManager.default.copyItem(at: reference, to: capture)
         let original = try Data(contentsOf: capture)
         try RecitationArchive.protectOpenCapture(capture)
-        XCTAssertEqual(try protection(capture), .completeUntilFirstUserAuthentication)
+        try assertProtection(capture, .completeUntilFirstUserAuthentication)
         XCTAssertEqual(try Data(contentsOf: capture), original)
         try RecitationArchive.save(capture: capture, destination: saved)
-        XCTAssertEqual(try protection(saved), .complete)
+        try assertProtection(saved, .complete)
         XCTAssertEqual(try Data(contentsOf: saved), original)
         XCTAssertTrue(try AVAudioPlayer(contentsOf: saved).prepareToPlay())
     }
