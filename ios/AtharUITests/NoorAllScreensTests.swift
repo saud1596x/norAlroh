@@ -49,8 +49,9 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "09-adhkar")
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("النوم")
-        let sleepChapter = app.staticTexts["أذكار النوم"].firstMatch
+        let sleepChapter = app.buttons["adhkar.group.hisn-28"]
         XCTAssertTrue(sleepChapter.waitForExistence(timeout: 10), "Sleep adhkar search result must appear before scrolling.")
+        XCTAssertTrue((search.value as? String)?.contains("النوم") == true, "The typed search query must remain intact before chapter navigation.")
         tap(sleepChapter, in: app)
         capture(app, "10-dhikr-chapter")
         tap(app.buttons["ابدأ جلسة الذكر"], in: app)
@@ -120,16 +121,32 @@ final class NoorAllScreensTests: XCTestCase {
         // though the List itself is still present (CI144). Resolve the current
         // scrolling surface independently of the row on every gesture.
         func scrollingSurface() -> XCUIElement {
-            if app.collectionViews.firstMatch.exists { return app.collectionViews.firstMatch }
-            if app.scrollViews.firstMatch.exists { return app.scrollViews.firstMatch }
-            return app
+            // Search keyboards expose their prediction strip as a ScrollView.
+            // CI72 selected its 45pt surface, swiped the keyboard and changed
+            // the search text rather than scrolling the actual chapter list.
+            let candidates = app.collectionViews.allElementsBoundByIndex + app.scrollViews.allElementsBoundByIndex
+            return candidates.filter { $0.exists }.max { left, right in
+                let lhs = left.frame.intersection(app.frame)
+                let rhs = right.frame.intersection(app.frame)
+                return lhs.width * lhs.height < rhs.width * rhs.height
+            } ?? app
+        }
+        func visibleViewport(_ surface: XCUIElement) -> CGRect {
+            var viewport = surface.frame.intersection(app.frame)
+            for keyboard in app.keyboards.allElementsBoundByIndex {
+                let bounds = keyboard.frame.intersection(app.frame)
+                if !bounds.isEmpty, bounds.width > 0, bounds.minY < viewport.maxY {
+                    viewport.size.height = max(0, bounds.minY - viewport.minY)
+                }
+            }
+            return viewport
         }
         func scroll(up: Bool) {
             // SwiftUI may replace its List between an exists check and a swipe
             // (CI151). Gesture against the stable app, within the observed
             // viewport, rather than resolving that transient List a second time.
             let surface = scrollingSurface()
-            let visible = surface.frame.intersection(app.frame)
+            let visible = visibleViewport(surface)
             guard !visible.isEmpty, visible.width > 0, visible.height > 0 else { return }
             let low = CGPoint(x: visible.midX, y: visible.minY + visible.height * 0.75)
             let high = CGPoint(x: visible.midX, y: visible.minY + visible.height * 0.25)
@@ -155,7 +172,7 @@ final class NoorAllScreensTests: XCTestCase {
                 // Use the actual scroll/window intersection. A fixed 60pt
                 // window inset rejected the fully visible last license row
                 // in CI150 (row bottom 902, window bottom 956, inset 896).
-                let viewport = container.frame.intersection(app.frame)
+                let viewport = visibleViewport(container)
                 guard !viewport.isEmpty, viewport.contains(frame) else { return false }
                 // Visible navigation/tab chrome is a real obstruction, unlike
                 // an assumed safe-area margin. Ignore bars behind a sheet.
@@ -189,7 +206,8 @@ final class NoorAllScreensTests: XCTestCase {
             let description = app.debugDescription
             let hierarchy = XCTAttachment(string: description)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
-            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(element.frame) viewport=\(scrollingSurface().frame.intersection(app.frame))\n\(description)")
+            let selected = scrollingSurface()
+            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(element.frame) scrollSurface=\(selected.frame) viewport=\(visibleViewport(selected)) keyboards=\(app.keyboards.allElementsBoundByIndex.map { $0.frame })\n\(description)")
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
