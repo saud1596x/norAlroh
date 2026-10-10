@@ -5,11 +5,10 @@ import SwiftUI
 struct QuranSessionResult: View {
     let record: QuranRecitationRecord
     let wordIDs: [String: [Int]]
-    let onRecordings: () -> Void
     let onReview: (String) -> Void
     private let coverageCounts: [String: Int]
-    init(record: QuranRecitationRecord, wordIDs: [String: [Int]], onRecordings: @escaping () -> Void, onReview: @escaping (String) -> Void) {
-        self.record = record; self.wordIDs = wordIDs; self.onRecordings = onRecordings; self.onReview = onReview
+    init(record: QuranRecitationRecord, wordIDs: [String: [Int]], onReview: @escaping (String) -> Void) {
+        self.record = record; self.wordIDs = wordIDs; self.onReview = onReview
         let evidence = Dictionary(grouping: record.evidence, by: \.verse).mapValues { Set($0.map(\.nativeID)) }
         coverageCounts = Dictionary(uniqueKeysWithValues: record.keys.map { key in
             (key, (evidence[key] ?? []).intersection(Set(wordIDs[key] ?? [])).count)
@@ -46,13 +45,6 @@ struct QuranSessionResult: View {
                         metric("مدة التسجيل", value: MushafAudioTime.text(record.duration))
                         metric("كلمات متتبّعة", value: String(trackedCount))
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                    if record.takes.contains(where: { $0.frames > 0 }) {
-                        Button(action: onRecordings) {
-                            Label("استمع إلى تسجيلك", systemImage: "play.fill").frame(maxWidth: .infinity, minHeight: 48)
-                        }.buttonStyle(.borderedProminent).tint(Theme.gold).accessibilityIdentifier("study.result.recordings")
-                    } else {
-                        Text("لم يُحفظ تسجيل صوتي لهذه الجلسة.").font(.subheadline).foregroundStyle(.secondary)
-                    }
                     if let key = unresolved.first {
                         Button { onReview(key) } label: {
                             Label("راجع المقاطع غير المتتبّعة", systemImage: "book").frame(maxWidth: .infinity, minHeight: 44)

@@ -1,5 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AVFoundation
+import UIKit
 
 struct QuranView: View {
     @EnvironmentObject var store: AtharStore
@@ -140,6 +142,11 @@ struct SettingsView: View {
     @State private var document = ExportDocument(bytes: Data())
     @State private var exportMessage: String?
     @State private var erasing = false
+    @State private var microphonePermission = AVAudioApplication.shared.recordPermission
+    @State private var requestingMicrophone = false
+    @State private var eraseRecitation = false
+    @State private var erasingRecitation = false
+    @State private var recitationRemovalMessage: String?
     var body: some View {
         Form {
             Section("حسابي") {
@@ -155,6 +162,32 @@ struct SettingsView: View {
             Section("القراءة والتذكيرات") {
                 NavigationLink("تذكيراتي") { NoorReminderSettings() }.accessibilityIdentifier("settings.reminders")
                 NavigationLink("حماية وقت الورد") { NoorFocusView() }
+            }
+            Section("الميكروفون والتسميع") {
+                Text(microphonePermission == .granted ? "الميكروفون مسموح" : microphonePermission == .denied ? "إذن الميكروفون مرفوض" : "لم يُطلب إذن الميكروفون بعد")
+                    .accessibilityIdentifier("settings.microphone.status")
+                if microphonePermission == .undetermined {
+                    Button("السماح بالميكروفون") {
+                        Task { @MainActor in
+                            guard !requestingMicrophone else { return }
+                            requestingMicrophone = true
+                            _ = await AVAudioApplication.requestRecordPermission()
+                            microphonePermission = AVAudioApplication.shared.recordPermission
+                            requestingMicrophone = false
+                        }
+                    }.disabled(requestingMicrophone)
+                    .accessibilityIdentifier("settings.microphone.request")
+                } else {
+                    Button("فتح إعدادات الميكروفون") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    }.accessibilityIdentifier("settings.microphone.open")
+                }
+                Text("يُستخدم الميكروفون عند بدء التسميع. السماح به لا يضمن دقة التعرّف على القراءة.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("حذف تسجيلات وسجلات التسميع", role: .destructive) { eraseRecitation = true }
+                    .disabled(erasingRecitation).accessibilityIdentifier("settings.recitation.erase")
+                if erasingRecitation { ProgressView("حذف تسجيلات التسميع…") }
+                if let recitationRemovalMessage { Text(recitationRemovalMessage).font(.footnote).accessibilityIdentifier(recitationRemovalMessage == "حُذفت تسجيلات وسجلات التسميع." ? "settings.recitation.erased" : "settings.recitation.eraseError") }
             }
             Section("مساحة تحترم خصوصيتك") {
                 Text(account.available
@@ -181,14 +214,13 @@ struct SettingsView: View {
                     }
                     catch { exportMessage = "تعذر تجهيز ملف التصدير." }
                 }
-                Text("ملف التصدير غير مشفر. احفظه في مكان خاص. يتضمن معلومات تسجيلات التسميع؛ احفظ ملفات الصوت نفسها من قائمة التسجيلات.").font(.subheadline).foregroundStyle(.secondary)
+                Text("ملف التصدير غير مشفر. احفظه في مكان خاص. يمكن حذف ملفات التسميع من قسم الميكروفون والتسميع.").font(.subheadline).foregroundStyle(.secondary)
                 Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing)
                 if erasing { ProgressView("حذف البيانات والنموذج المحلي…") }
                 NavigationLink("سياسة الخصوصية") { PrivacyView() }.accessibilityIdentifier("settings.privacy")
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
-                NavigationLink("تسجيلات التسميع") { MushafRecordingBrowser() }.accessibilityIdentifier("settings.recordings")
                 NavigationLink("التنزيلات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
             }
@@ -203,6 +235,25 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .noorScreenChrome().navigationTitle("الإعدادات")
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            microphonePermission = AVAudioApplication.shared.recordPermission
+        }
+        .confirmationDialog("حذف تسجيلات وسجلات التسميع نهائيًا؟ تبقى بيانات الحفظ والعلامات والحساب.", isPresented: $eraseRecitation, titleVisibility: .visible) {
+            Button("حذف تسجيلات التسميع", role: .destructive) {
+                Task { @MainActor in
+                    guard !erasingRecitation else { return }
+                    erasingRecitation = true
+                    defer { erasingRecitation = false }
+                    guard recitation.erase() else { recitationRemovalMessage = recitation.message; return }
+                    do {
+                        try await Task.detached(priority: .userInitiated) { try MushafRecordingArchive.erase() }.value
+                        speech.eraseSavedPosition()
+                        recitationRemovalMessage = "حُذفت تسجيلات وسجلات التسميع."
+                    } catch { recitationRemovalMessage = "تعذّر إكمال حذف التسجيلات. أعد المحاولة بعد فتح قفل الجهاز." }
+                }
+            }
+            Button("إلغاء", role: .cancel) {}
+        }
         // Pulling a long settings list must not dismiss the entire sheet.
         // Users can still leave explicitly with the Done button.
         .interactiveDismissDisabled()

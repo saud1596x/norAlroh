@@ -55,9 +55,6 @@ struct InteractiveMushafReader: View {
     @StateObject private var recitation = QuranRecitationController()
     @AppStorage("noor.recitation.pending") private var pendingRecitation = ""
     @EnvironmentObject private var legacyRecorder: LocalRecitationRecorder
-    @State private var recordingSheet: MushafRecordingSelection?
-    @State private var recordingsAfterResult = false
-    @State private var recordingSession: UUID?
     let chapter: Int; let ayah: Int; let initialPage: Int?
     let startsStudy: Bool
     let opensStudyScope: Bool
@@ -231,19 +228,9 @@ struct InteractiveMushafReader: View {
                 initialKey: studyStartKey ?? visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
         }
         .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
-        .sheet(item: $recordingSheet) { selection in
-            MushafRecordingList(session: selection.id, recorder: studyRecorder)
-        }
-        .sheet(isPresented: $studySummary, onDismiss: {
-            if recordingsAfterResult {
-                recordingsAfterResult = false
-                if let recordingSession { recordingSheet = MushafRecordingSelection(id: recordingSession) }
-            }
-        }) {
+        .sheet(isPresented: $studySummary) {
             if let record = recitation.record {
-                QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onRecordings: {
-                    recordingSession = record.id; recordingsAfterResult = true; studySummary = false
-                }, onReview: { key in
+                QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onReview: { key in
                     studySummary = false; selected = key; manualSelection = VerseSelection(key: key)
                     if let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
                 })
@@ -306,12 +293,6 @@ struct InteractiveMushafReader: View {
             HStack {
                 Menu {
                     Button("العودة للقراءة") { Task { await recitation.pause(); dismiss() } }
-                    Button("تسجيلات الجلسة") {
-                        Task {
-                            await recitation.pause()
-                            if let id = recitation.record?.id { recordingSheet = MushafRecordingSelection(id: id) }
-                        }
-                    }
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                     .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
                 Spacer(minLength: 8)
