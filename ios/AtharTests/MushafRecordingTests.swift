@@ -254,10 +254,25 @@ final class MushafRecordingTests: XCTestCase {
         let legacy = container.appendingPathComponent("latest-recitation.m4a")
         let bytes = Data([1, 2, 3]); try bytes.write(to: legacy)
         let root = container.appendingPathComponent("NoorMushafRecordings")
-        _ = try MushafRecordingArchive.register(session(), base: root)
+        let value = session()
+        _ = try MushafRecordingArchive.register(value, base: root)
+        let directory = try MushafRecordingArchive.directory(session: value.id, base: root)
+        let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let audioBytes = try Data(contentsOf: source)
+        XCTAssertGreaterThan(audioBytes.count, 0)
+        let recording = directory.appendingPathComponent("reference.mp3")
+        try audioBytes.write(to: recording)
+        XCTAssertGreaterThan(try AVAudioFile(forReading: recording).length, 0)
+        let journal = directory.appendingPathComponent("recognized-session.json")
+        try Data("{}".utf8).write(to: journal)
+        let retained = ["bookmarks.json", "memorization.json", "account.json"]
+        for name in retained { try bytes.write(to: container.appendingPathComponent(name)) }
         try MushafRecordingArchive.erase(base: root)
         XCTAssertFalse(FileManager.default.fileExists(atPath: root.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: recording.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: journal.path))
         XCTAssertEqual(try Data(contentsOf: legacy), bytes)
+        for name in retained { XCTAssertEqual(try Data(contentsOf: container.appendingPathComponent(name)), bytes) }
     }
     func testDurationFormattingRejectsNonfiniteValuesAndKeepsEnglishDigits() {
         XCTAssertEqual(MushafAudioTime.text(301), "5:01")

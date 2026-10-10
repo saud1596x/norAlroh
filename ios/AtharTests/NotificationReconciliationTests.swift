@@ -9,22 +9,107 @@ import UserNotifications
     var pending: [String: UNNotificationRequest] = [:]
     var delivered: [String] = []
     var failAdding = false
+    var added: ((UNNotificationRequest) -> Void)?
     func requestAuthorization() async throws -> Bool {
         if !holdPermission { return true }
         return await withCheckedContinuation { permission = $0; permissionStarted?() }
     }
     func isAuthorized() async -> Bool { true }
     func pendingIdentifiers() async -> [String] { Array(pending.keys) }
+    func pendingRequests() async -> [UNNotificationRequest] { Array(pending.values) }
     func deliveredIdentifiers() async -> [String] { delivered }
     func add(_ request: UNNotificationRequest) async throws {
         if failAdding { throw CocoaError(.fileWriteUnknown) }
         pending[request.identifier] = request
+        added?(request)
     }
     func removePending(_ ids: [String]) { for id in ids { pending.removeValue(forKey: id) } }
     func removeDelivered(_ ids: [String]) { delivered.removeAll { ids.contains($0) } }
 }
 
 final class NotificationReconciliationTests: XCTestCase {
+    @MainActor func testCancelledRefreshRestoresOriginalPayloadAndForeignRequests() async throws {
+        let suite = "NoorNotifications." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let client = TestNotificationClient()
+        let foreign = UNNotificationRequest(identifier: "foreign.keep", content: UNMutableNotificationContent(), trigger: nil)
+        client.pending[foreign.identifier] = foreign
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-04T10:00:00Z"))
+        let service = PrayerNotifications(client: client, defaults: defaults, now: { now })
+        let store = AtharStore(directory: folder)
+        await service.enable(store: store)
+        let original = client.pending
+        var past = DateComponents(); past.year = 2026; past.month = 10; past.day = 3
+        past.hour = 12; past.timeZone = TimeZone(identifier: "Asia/Riyadh")
+        client.pending["noor.prayer.expired"] = .init(identifier: "noor.prayer.expired", content: UNMutableNotificationContent(),
+            trigger: UNCalendarNotificationTrigger(dateMatching: past, repeats: false))
+        var task: Task<Void, Never>?
+        var cancelled = false
+        client.added = { _ in
+            if !cancelled { cancelled = true; task?.cancel() }
+        }
+        task = Task { await service.setSound(false, store: store) }
+        await task?.value
+        XCTAssertTrue(cancelled)
+        XCTAssertFalse(service.enabled)
+        XCTAssertTrue(service.message?.contains("أعدنا المواعيد السابقة") == true)
+        XCTAssertEqual(Set(client.pending.keys), Set(original.keys))
+        XCTAssertNil(client.pending["noor.prayer.expired"], "Rollback must not resubmit a past fire")
+        for (id, request) in original {
+            XCTAssertEqual(client.pending[id]?.content, request.content)
+            XCTAssertEqual(client.pending[id]?.trigger, request.trigger)
+        }
+        XCTAssertTrue(client.pending[foreign.identifier] === foreign)
+    }
+    @MainActor func testRollbackFailureReportsIncompleteScheduleWithoutRemovingForeignRequests() async throws {
+        let suite = "NoorNotifications." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let client = TestNotificationClient()
+        client.pending["foreign.keep"] = .init(identifier: "foreign.keep", content: UNMutableNotificationContent(), trigger: nil)
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-04T10:00:00Z"))
+        let service = PrayerNotifications(client: client, defaults: defaults, now: { now })
+        let store = AtharStore(directory: folder)
+        await service.enable(store: store)
+        var task: Task<Void, Never>?
+        client.added = { _ in client.failAdding = true; task?.cancel() }
+        task = Task { await service.refresh(store: store) }
+        await task?.value
+        XCTAssertFalse(service.enabled)
+        XCTAssertTrue(service.message?.contains("قد تكون الجدولة ناقصة") == true)
+        XCTAssertEqual(Set(client.pending.keys), ["foreign.keep"])
+    }
+    @MainActor func testDisablingDuringRollbackCannotRestoreRetiredPrayerSchedule() async throws {
+        let suite = "NoorNotifications." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let client = TestNotificationClient()
+        client.pending["foreign.keep"] = .init(identifier: "foreign.keep", content: UNMutableNotificationContent(), trigger: nil)
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-04T10:00:00Z"))
+        let service = PrayerNotifications(client: client, defaults: defaults, now: { now })
+        let store = AtharStore(directory: folder)
+        await service.enable(store: store)
+        var task: Task<Void, Never>?
+        var adds = 0
+        client.added = { _ in
+            adds += 1
+            if adds == 1 { task?.cancel() }
+            else if adds == 2 { service.disable() }
+        }
+        task = Task { await service.refresh(store: store) }
+        await task?.value
+        let deadline = Date().addingTimeInterval(3)
+        while client.pending.keys.contains(where: { $0.hasPrefix(PrayerNotificationPlan.prefix) }) && Date() < deadline {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertEqual(adds, 2)
+        XCTAssertFalse(service.enabled)
+        XCTAssertEqual(Set(client.pending.keys), ["foreign.keep"])
+    }
     @MainActor func testDisablingDuringPermissionDoesNotReenableNotifications() async throws {
         let suite = "NoorNotifications." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

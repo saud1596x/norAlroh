@@ -17,6 +17,7 @@ import UserNotifications
     }
     func isAuthorized() async -> Bool { allowed }
     func pendingIdentifiers() async -> [String] { Array(pending.keys) }
+    func pendingRequests() async -> [UNNotificationRequest] { Array(pending.values) }
     func deliveredIdentifiers() async -> [String] { delivered }
     func add(_ request: UNNotificationRequest) async throws {
         if fail { throw CocoaError(.fileWriteUnknown) }; pending[request.identifier] = request

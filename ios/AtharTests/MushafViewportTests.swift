@@ -3,6 +3,73 @@ import UIKit
 @testable import Athar
 
 @MainActor final class MushafViewportTests: XCTestCase {
+    func testMeasuredReaderInsetsKeepReferenceDefaultsAndFitLargeControls() {
+        XCTAssertEqual(MushafReaderInsets.reserved(nil, minimum: 44), 44)
+        XCTAssertEqual(MushafReaderInsets.reserved(44, minimum: 44), 44)
+        XCTAssertEqual(MushafReaderInsets.reserved(60, minimum: 60), 60)
+        XCTAssertEqual(MushafReaderInsets.reserved(.nan, minimum: 44), 44)
+        XCTAssertEqual(MushafReaderInsets.reserved(-1, minimum: 60), 60)
+        let top = MushafReaderInsets.reserved(96, minimum: 44)
+        let bottom = MushafReaderInsets.reserved(84, minimum: 60)
+        XCTAssertEqual(top, 96); XCTAssertEqual(bottom, 84)
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: top, width: 370, height: 660 - top - bottom))
+        viewport.layoutIfNeeded()
+        assertFitted(viewport)
+    }
+    func testQueuedFailureCannotReplaceNewPageOrRetryGeneration() async {
+        let original = UUID()
+        let oldPageFailure = MushafRenderIdentity(page: 14, generation: original)
+        var currentPage = 14; var generation = original; var failed = false
+        let queued = Task { @MainActor in
+            if oldPageFailure.isCurrent(page: currentPage, generation: generation) { failed = true }
+        }
+        currentPage = 15; generation = UUID()
+        await queued.value
+        XCTAssertFalse(failed, "A delayed failure from page14 cannot hide page15")
+        currentPage = 14
+        let afterRetry = Task { @MainActor in
+            if oldPageFailure.isCurrent(page: currentPage, generation: generation) { failed = true }
+        }
+        await afterRetry.value
+        XCTAssertFalse(failed, "Returning to page14 or retrying it cannot accept its old drawing result")
+        let currentFailure = MushafRenderIdentity(page: currentPage, generation: generation)
+        XCTAssertTrue(currentFailure.isCurrent(page: currentPage, generation: generation), "A genuine current failure remains reportable")
+    }
+    func testVerifiedFontRecoveryClearsFailureOnlyAfterSuccessfulRegistration() async throws {
+        let fonts = MushafFonts()
+        await fonts.load("not-a-page-font")
+        XCTAssertNotNil(fonts.error); XCTAssertTrue(fonts.names.isEmpty)
+        await fonts.load("still-not-a-page-font")
+        XCTAssertNotNil(fonts.error, "An unsuccessful retry must retain the visible error")
+        await fonts.load("QCF2001")
+        XCTAssertEqual(fonts.names["QCF2001"], "QCF2001")
+        XCTAssertNotNil(UIFont(name: "QCF2001", size: 24), "Success uses the actual verified bundled font")
+        XCTAssertNil(fonts.error)
+        await fonts.load("not-a-page-font")
+        XCTAssertNotNil(fonts.error)
+        await fonts.load("QCF2001")
+        XCTAssertNil(fonts.error, "Returning to a verified cached page must recover the display state")
+    }
+    func testInitialEntryRetriesAfterReadyPageAndConsumesScopeOnlyOnce() {
+        var entry = MushafInitialEntry()
+        XCTAssertNil(entry.consume(requestScope: true, startStudy: true, ready: false, visible: true, cancelled: false))
+        XCTAssertFalse(entry.consumed, "A failed first load must remain retryable")
+        XCTAssertEqual(entry.consume(requestScope: true, startStudy: true, ready: true, visible: true, cancelled: false), .scope)
+        XCTAssertNil(entry.consume(requestScope: true, startStudy: true, ready: true, visible: true, cancelled: false),
+            "Closing the scope or another retry must not start a second entry or microphone request")
+    }
+    func testCancelledOrInvisibleInitialEntryCannotStartLateRecitation() {
+        var entry = MushafInitialEntry()
+        XCTAssertNil(entry.consume(requestScope: false, startStudy: true, ready: true, visible: false, cancelled: false))
+        XCTAssertNil(entry.consume(requestScope: false, startStudy: true, ready: true, visible: true, cancelled: true))
+        XCTAssertFalse(entry.consumed)
+        entry.cancel()
+        XCTAssertNil(entry.consume(requestScope: false, startStudy: true, ready: true, visible: true, cancelled: false),
+            "A completed load from a dismissed reader must not request microphone access")
+        var freshEntry = MushafInitialEntry()
+        XCTAssertEqual(freshEntry.consume(requestScope: false, startStudy: true, ready: true, visible: true, cancelled: false), .study)
+        XCTAssertNil(freshEntry.consume(requestScope: false, startStudy: true, ready: true, visible: true, cancelled: false))
+    }
     func testAuthoredInkAndHeadingAlignmentAtReferencePages() async throws {
         try OriginalMushafCompanion.register()
         let metadata = try OriginalMushafRows.load()
