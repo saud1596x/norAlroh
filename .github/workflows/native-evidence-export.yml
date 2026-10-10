@@ -1,7 +1,5 @@
 name: Export current passed native review evidence
 on:
-  push:
-    paths: ['.github/workflows/native-evidence-export.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,20 +15,20 @@ jobs:
       - name: Verify successful original run and exact tested app source
         run: |
           mkdir -p work/native-evidence release/native-review-export
-          gh api repos/saud1596x/norAlroh/actions/runs/37933543324 > work/native-evidence/run.json
+          gh api repos/saud1596x/norAlroh/actions/runs/38055315831 > work/native-evidence/run.json
           python3 - <<'PY'
           import json
           from pathlib import Path
           source = json.loads(Path('work/native-evidence/run.json').read_text())
           assert source['conclusion'] == 'success'
-          assert source['head_sha'] == '714ea30563149210ae3cae180fdd4a898e2ffbd4'
+          assert source['head_sha'] == '72cf9dcabad0efb38b112f8233b8461f4626aa87'
           print('Exporting existing successful native evidence; no new app build or release approval.')
           PY
       - name: Export original compact and large native attachments
         run: |
           set -euo pipefail
           for display in compact large; do
-            gh run download 37933543324 --repo saud1596x/norAlroh --name "home-flow-$display" --dir "work/native-evidence/$display"
+            gh run download 38055315831 --repo saud1596x/norAlroh --name "recitation-app-integration-$display" --dir "work/native-evidence/$display"
             for result in data ui welcome; do
               xcrun xcresulttool export attachments --path "work/native-evidence/$display/$result.xcresult" --output-path "release/native-review-export/$display/$result"
             done
@@ -51,8 +49,8 @@ jobs:
           pages = {int(m.group(1)) for row in inventory if row['file'].startswith('compact/data/')
                    for m in [re.search(r'QCF-V2-shaped-page-(\d{3})',row['name'])] if m}
           assert pages == set(range(1,605)), 'Incomplete original604 page export'
-          report = {'nativeSourceCommit':'714ea30563149210ae3cae180fdd4a898e2ffbd4',
-                    'nativeRun':37933543324,'all604CompactPagesExported':True,
+          report = {'nativeSourceCommit':'72cf9dcabad0efb38b112f8233b8461f4626aa87',
+                    'nativeRun':38055315831,'all604CompactPagesExported':True,
                     'visualApproval':False,'physicalDeviceAcceptance':False,'attachments':inventory}
           (root/'inventory.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
           print('All604 original page attachments exported; visual review remains pending.')
@@ -60,7 +58,7 @@ jobs:
       - name: Retain original attachments and provenance
         uses: actions/upload-artifact@v4
         with:
-          name: current-native-review-export
+          name: noor-final-store-native-export
           path: release/native-review-export
           if-no-files-found: error
       - name: Prepare smaller review overview from original captures
@@ -86,6 +84,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: current-native-review-overview
+          name: noor-final-store-native-overview
           path: release/native-review-overview
           if-no-files-found: error
