@@ -35,6 +35,19 @@ public final class QuranPCMWriter {
                                         channels: 1, interleaved: false) else { throw QuranCaptureFailure.invalidSamples }
         self.format = format
         file = try AVAudioFile(forWriting: url, settings: format.settings)
+        #if os(iOS)
+        // Keep an active take writable while iOS drains it after a lock or
+        // interruption. This protects it before first unlock, not after every
+        // lock; it is not equivalent to complete protection of a closed file.
+        do {
+            try FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: url.path)
+        } catch {
+            file = nil // Close the new file; never erase potentially saved PCM.
+            throw error
+        }
+        #endif
         ring.reserveCapacity(128_000)
     }
     public func append(_ samples: [Float]) {
