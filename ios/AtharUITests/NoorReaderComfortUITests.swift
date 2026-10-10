@@ -2,6 +2,33 @@ import XCTest
 import UIKit
 
 final class NoorReaderComfortUITests: XCTestCase {
+    func testPage14LargeDynamicTypeControlsDoNotCoverVerses() {
+        let app = XCUIApplication(); acceptanceApp = app
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120))
+        jump(14, app: app)
+        requireStableReadingLayout(app, page: page, landscape: false)
+        let title = app.staticTexts["reader.title"]
+        XCTAssertGreaterThan(title.frame.height, 44, "The test must exercise an actually enlarged header")
+        let footer = ["reader.study", "reader.jump", "reader.next", "reader.previous"].map { app.buttons[$0] }
+        XCTAssertTrue(footer.allSatisfy { $0.exists && $0.isHittable })
+        XCTAssertFalse(app.buttons["reader.study"].frame.intersects(app.buttons["reader.jump"].frame),
+            "The enlarged page counter must not cover the microphone")
+        let footerTop = footer.map { $0.frame.minY }.min() ?? app.frame.maxY
+        for ayah in 89...93 {
+            let verse = app.buttons["reader.verse.2:\(ayah)"]
+            XCTAssertTrue(verse.exists)
+            XCTAssertTrue(app.frame.contains(verse.frame), "Every reference verse must remain fully onscreen")
+            XCTAssertGreaterThanOrEqual(verse.frame.minY, title.frame.maxY - 1, "The enlarged header must not cover Quran ink")
+            XCTAssertLessThanOrEqual(verse.frame.maxY, footerTop + 1, "The enlarged footer must not cover Quran ink")
+        }
+        XCTAssertFalse(app.buttons["reader.fullscreen"].exists)
+        capture(app, "user-reference-page14-accessibility-text-controls")
+    }
     func testUserReferencePage14IsCenteredAndFullyVisible() {
         let app = XCUIApplication(); acceptanceApp = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))

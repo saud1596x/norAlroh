@@ -2,6 +2,26 @@ import XCTest
 
 final class NoorInteractiveMushafUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    func testRenderingFailureWithHiddenToolsHasAccessibleRecovery() {
+        let app = XCUIApplication()
+        // A negative UI fault after real resource loading verifies the recovery
+        // button. It does not replace the actual 604-page rendering checks.
+        app.launchArguments += ["-NoorAcceptanceReaderRenderFailure"]
+        launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let retry = app.buttons["reader.render.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 120), app.debugDescription)
+        XCTAssertTrue(retry.isHittable, "Recovery cannot depend on the hidden reader toolbar")
+        XCTAssertFalse(app.buttons["reader.study"].exists)
+        capture(app, "reader-render-error-hidden-tools")
+        retry.tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120), app.debugDescription)
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
+        XCTAssertFalse(retry.exists)
+        capture(app, "reader-render-recovered-with-real-resources")
+    }
     func testExplicitRecitationRemovalAndMicrophoneSettings() {
         let app = XCUIApplication(); launchNoorApp(app)
         func openSettings() {
