@@ -131,6 +131,8 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         await reopened.restore(id: first.id, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(reopened.state, .paused); XCTAssertNil(reopened.message)
         XCTAssertEqual(reopened.revealed, Set(first.evidence.map(\.nativeID)))
+        XCTAssertEqual(reopened.hiddenIDs, original.hiddenIDs,
+            "Restoring a session must preserve the same hidden-word scope and durable progress")
         let recoverable = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: first.id, base: root).first)
         XCTAssertEqual(try Data(contentsOf: recoverable.url), firstAudio)
         try MushafRecordingArchive.moveAudio(recoverable, toDeleted: false, base: root)
