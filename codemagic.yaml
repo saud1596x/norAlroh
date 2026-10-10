@@ -234,3 +234,81 @@ workflows:
       - release/native-screens.zip
       - release/native-screens/capture-report.json
       - release/content-audit.json
+  ios-simulator-preview-verified:
+    name: Noor Alruh verified native Simulator preview
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: mushaf-recitation-correction-20261008
+          include: true
+          source: true
+      cancel_previous_builds: false
+    when:
+      condition: event.head_commit.message == "Build verified Noor Simulator preview"
+      changeset:
+        includes:
+          - codemagic.yaml
+    instance_type: mac_mini_m2
+    max_build_duration: 35
+    environment:
+      xcode: "26.5"
+      vars:
+        NOOR_PREVIEW_SOURCE: e4af7f70c51d26208d74ff9e8182fadf06bfe6e0
+        NOOR_PREVIEW_NATIVE_RUN: '38078097459'
+    scripts:
+      - name: Verify complete native success and pin actual application source
+        script: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, urllib.request
+          url = 'https://api.github.com/repos/saud1596x/norAlroh/actions/runs/' + os.environ['NOOR_PREVIEW_NATIVE_RUN']
+          request = urllib.request.Request(url, headers={'Accept':'application/vnd.github+json', 'User-Agent':'noor-verified-preview'})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              run = json.load(response)
+          assert run['status'] == 'completed' and run['conclusion'] == 'success', 'Pinned complete native test run has not passed'
+          assert run['head_sha'] == os.environ['NOOR_PREVIEW_SOURCE'], 'Native source mismatch'
+          PY
+          git fetch origin "$NOOR_PREVIEW_SOURCE"
+          git checkout --detach "$NOOR_PREVIEW_SOURCE"
+          test "$(git rev-parse HEAD)" = "$NOOR_PREVIEW_SOURCE"
+      - name: Generate native app and verified bundled Quran resources
+        script: |
+          set -euo pipefail
+          brew install xcodegen
+          # The existing preGenCommand prepares the pinned model/font resources.
+          # No production Firebase keys, signing groups or acceptance hooks.
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Build real Release application for iOS Simulator
+        script: |
+          set -euo pipefail
+          xcodebuild build \
+            -project ios/Athar.xcodeproj -scheme Athar \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/noor-preview-derived-data \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, plistlib
+          app = pathlib.Path('build/noor-preview-derived-data/Build/Products/Release-iphonesimulator/Athar.app')
+          assert app.is_dir(), 'Native Simulator app missing'
+          with (app/'Info.plist').open('rb') as stream:
+              info = plistlib.load(stream)
+          assert info['CFBundleIdentifier'] == 'com.saud1596x.nooralruh'
+          assert 'iPhoneSimulator' in info['CFBundleSupportedPlatforms']
+          executable = app/info['CFBundleExecutable']
+          report = {'sourceCommit':os.environ['NOOR_PREVIEW_SOURCE'],
+                    'nativeRun':int(os.environ['NOOR_PREVIEW_NATIVE_RUN']),
+                    'applicationBundle':str(app),
+                    'executableSha256':hashlib.sha256(executable.read_bytes()).hexdigest(),
+                    'buildConfiguration':'Release', 'acceptanceHooksEnabled':False,
+                    'accountBackendIncluded':False, 'signedDeviceBuild':False,
+                    'physicalDeviceAcceptance':False,
+                    'scope':'Actual native guest app in Simulator; not production account or microphone-device acceptance'}
+          pathlib.Path('build/noor-preview-provenance.json').write_text(json.dumps(report,indent=2)+'\n')
+          PY
+    artifacts:
+      # Official App Preview integration detects the .app artifact directly.
+      - build/noor-preview-derived-data/Build/Products/Release-iphonesimulator/Athar.app
+      - build/noor-preview-provenance.json
+
