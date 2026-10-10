@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 -m unittest discover -s scripts/tests -p test_recording_ui_evidence.py -v
 mkdir -p release/recitation-app
 noor_configuration="${NOOR_TEST_CONFIGURATION:-Debug}"
 [[ "$noor_configuration" == Debug || "$noor_configuration" == Release ]] || { echo 'NOOR_TEST_CONFIGURATION must be Debug or Release.' >&2; exit 2; }

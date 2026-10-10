@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 -m unittest discover -s scripts/tests -p test_recording_ui_evidence.py -v
 mkdir -p release/home-flow
 python3 scripts/select-xcode.py > release/home-flow/xcode.env
 source release/home-flow/xcode.env
