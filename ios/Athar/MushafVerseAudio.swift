@@ -32,30 +32,35 @@ import Foundation
         let item = player.currentItem
         return "player=\(player.status.rawValue), item=\(item?.status.rawValue ?? -1), timeControl=\(player.timeControlStatus.rawValue), waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "none"), seconds=\(player.currentTime().seconds), duration=\(item?.duration.seconds ?? .nan), itemError=\((item?.error as NSError?)?.code ?? 0), outputs=\(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","))"
     }
-    private let source: (String) -> URL?
+    private let source: ((String) -> URL?)?
+    private let resolveSource: (String) async -> URL?
+    private var resolvingSource: Task<Void, Never>?
     var onVerse: ((String) -> Void)?
-    init(source: ((String) -> URL?)? = nil, loadTimeoutSeconds: Double = 15) {
-        self.source = source ?? Self.recitationURL
+    init(source: ((String) -> URL?)? = nil, loadTimeoutSeconds: Double = 15,
+         resolveSource: ((String) async -> URL?)? = nil) {
+        self.source = source
+        self.resolveSource = resolveSource ?? Self.recitationURL
         loadTimeout = UInt64(max(0.05, min(60, loadTimeoutSeconds.isFinite ? loadTimeoutSeconds : 15)) * 1_000_000_000)
     }
-    static func recitationURL(_ key: String) -> URL? {
+    static func recitationURL(_ key: String) async -> URL? {
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, let corpus = QuranResources.corpus,
               corpus.indices.contains(parts[0] - 1), corpus[parts[0] - 1].ayahs.indices.contains(parts[1] - 1),
               key == "\(parts[0]):\(parts[1])" else { return nil }
-        return NoorAudioDownloads.shared.localURL(key) ?? URL(string: String(format:
+        return await NoorAudioDownloads.shared.localURL(key) ?? URL(string: String(format:
             "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1]))
     }
     func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0) {
         stop(); error = nil; lastPlaybackDiagnostic = ""
         guard !keys.isEmpty, (1...20).contains(repetitions), (0...30).contains(delaySeconds),
-              keys.allSatisfy({ source($0) != nil }) else {
+              keys.allSatisfy({ key in source.map { $0(key) != nil } ?? (NoorAudioIntegrity.url(key) != nil) }) else {
             error = "تعذّر تشغيل نطاق التلاوة أو خيارات التكرار."; return
         }
         self.keys = keys; count = repetitions; gap = delaySeconds
         advance()
     }
     private func releasePlayer() {
+        resolvingSource?.cancel(); resolvingSource = nil
         loadDeadline?.cancel(); loadDeadline = nil
         if player != nil { lastPlaybackDiagnostic = playbackDiagnostic }
         player?.pause(); player = nil; observation = nil; playbackObservation = nil
@@ -79,9 +84,26 @@ import Foundation
         }
     }
     private func advance() {
-        guard index < keys.count, let url = source(keys[index]) else { stop(); return }
+        guard index < keys.count else { stop(); return }
         releasePlayer()
         let key = keys[index]; let token = revision
+        loadingKey = key
+        startLoadDeadline(key: key, token: token)
+        if let source {
+            guard let url = source(key) else { stop(); return }
+            startPlayer(url: url, key: key, token: token)
+        } else {
+            resolvingSource = Task { [weak self] in
+                guard let self else { return }
+                let url = await self.resolveSource(key)
+                guard !Task.isCancelled, self.revision == token, self.loadingKey == key else { return }
+                self.resolvingSource = nil
+                guard let url else { self.stop(); return }
+                self.startPlayer(url: url, key: key, token: token)
+            }
+        }
+    }
+    private func startPlayer(url: URL, key: String, token: UUID) {
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback)
             try AVAudioSession.sharedInstance().setActive(true)
@@ -137,6 +159,7 @@ import Foundation
         releasePlayer(); keys = []; index = 0; pass = 0
     }
     deinit {
+        resolvingSource?.cancel()
         delay?.cancel()
         loadDeadline?.cancel()
         if let end { NotificationCenter.default.removeObserver(end) }

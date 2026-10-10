@@ -154,6 +154,7 @@ import os
             let restoredTracker = try QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) }, restoring: restored.evidence)
             try journal.save(restored)
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
+            recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
             currentVerse = restored.evidence.last?.verse ?? restored.keys.first
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
@@ -211,7 +212,10 @@ import os
                 }
             })
             capture = microphone; self.mailbox = mailbox; capturing = true
-            try microphone.start(); started = true; recognitionAvailable = true; state = .listening
+            try microphone.start(); started = true
+            // A new audio take does not prove that previously failed inference
+            // has recovered. Keep text visible until a successful decode.
+            recognitionAvailable = !next.recognitionUnavailable; state = .listening
             pump = Task { [weak self] in await self?.processWindows(mailbox, take: take.id, token: token) }
         } catch {
             capturing = false
@@ -267,11 +271,13 @@ import os
                 for run in recognized.runs {
                     additions += try updatedTracker.consume(run, takeID: take, offset: window.offset)
                 }
-                current.evidence += additions; recognitionAvailable = true
+                let available = recognitionAvailable || !additions.isEmpty
+                current.evidence += additions; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
                 record = current; tracker = updatedTracker
                 try save(current)
+                recognitionAvailable = available
                 revealed = Set(current.evidence.map(\.nativeID))
                 if let last = additions.last { currentVerse = last.verse }
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
@@ -316,6 +322,7 @@ import os
             // before saving so it cannot change a paused or resumed session.
             revision = UUID(); pending?.cancel()
             if var current = record { current.recognitionUnavailable = true; record = current }
+            recognitionAvailable = false; uncertain = true
         }
         pump = nil; mailbox = nil
         if var current = record {

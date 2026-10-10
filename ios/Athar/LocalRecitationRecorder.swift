@@ -122,6 +122,11 @@ enum RecitationArchive {
         guard hasRecording, let file else { return nil }
         return try Data(contentsOf: file)
     }
+    func exportRecordingAsync() async throws -> Data? {
+        stop()
+        guard hasRecording, let file else { return nil }
+        return try await Task.detached(priority: .userInitiated) { try Data(contentsOf: file) }.value
+    }
     nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         Task { @MainActor [weak self] in
             guard let self, self.recorder === recorder else { return }

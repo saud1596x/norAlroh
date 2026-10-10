@@ -9,6 +9,9 @@ import Combine
     private let manager = CLLocationManager()
     private let geocoder = CLGeocoder()
     private let defaults: UserDefaults
+    private let reverseGeocode: (@MainActor (CLLocation) async throws -> City)?
+    private let geocodeTimeoutSeconds: Double
+    private let managesLocationUpdates: Bool
     private weak var store: AtharStore?
     private var active = false
     private var generation = 0
@@ -17,8 +20,13 @@ import Combine
     private var timeout: Task<Void, Never>?
     private let key = "noor.prayer.automaticLocation"
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard,
+         geocodeTimeoutSeconds: Double = 20,
+         managesLocationUpdates: Bool = true,
+         reverseGeocode: (@MainActor (CLLocation) async throws -> City)? = nil) {
         self.defaults = defaults
+        self.geocodeTimeoutSeconds = geocodeTimeoutSeconds; self.reverseGeocode = reverseGeocode
+        self.managesLocationUpdates = managesLocationUpdates
         automatic = defaults.bool(forKey: key)
         super.init()
         manager.delegate = self
@@ -51,6 +59,9 @@ import Combine
         startIfAllowed()
     }
     private func startIfAllowed() {
+        // Unit lifecycle tests feed location callbacks explicitly without
+        // requesting permission or starting physical location updates.
+        guard managesLocationUpdates else { locating = true; message = nil; return }
         guard CLLocationManager.locationServicesEnabled() else {
             message = "خدمات الموقع متوقفة. نستخدم آخر موقع محفوظ أو المدينة المختارة."; return
         }
@@ -86,15 +97,10 @@ import Combine
             guard let self else { return }
             defer { if revision == self.generation { self.resolving = false; self.locating = false; self.timeout?.cancel() } }
             do {
-                let places = try await self.geocoder.reverseGeocodeLocation(location, preferredLocale: Locale(identifier: "ar"))
-                guard revision == self.generation, self.active, self.automatic else { return }
-                guard let place = places.first, let code = place.isoCountryCode?.uppercased(), code.count == 2,
-                      let zone = place.timeZone else {
-                    self.message = "تعذر تحديد البلد أو المنطقة. أبقينا آخر موقع صالح؛ حاول مجددًا."; return
+                let city = try await NoorOperationDeadline.run(seconds: self.geocodeTimeoutSeconds) {
+                    try await self.resolveCity(location)
                 }
-                let city = City(id: "location.current", name: place.locality ?? place.administrativeArea ?? place.country ?? "الموقع الحالي",
-                    latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
-                    timeZone: zone.identifier, region: place.administrativeArea, countryCode: code, sourceID: nil)
+                guard revision == self.generation, self.active, self.automatic else { return }
                 guard City.normalized(city) == city else { return }
                 guard self.store?.update({ $0.city = city; $0.locationUpdatedAt = location.timestamp }) == true else {
                     self.message = "تعذر حفظ الموقع الجديد. لم نغيّر المواقيت السابقة."; return
@@ -102,9 +108,20 @@ import Combine
                 self.lastResolved = location; self.message = nil
             } catch {
                 guard revision == self.generation else { return }
+                self.generation += 1; self.geocoder.cancelGeocode()
+                self.resolving = false; self.locating = false; self.timeout?.cancel()
                 self.message = "تعذر تحديد البلد أو المنطقة. نستخدم آخر موقع صالح؛ أعد المحاولة عند توفر الاتصال."
             }
         }
+    }
+    private func resolveCity(_ location: CLLocation) async throws -> City {
+        if let reverseGeocode { return try await reverseGeocode(location) }
+        let places = try await geocoder.reverseGeocodeLocation(location, preferredLocale: Locale(identifier: "ar"))
+        guard let place = places.first, let code = place.isoCountryCode?.uppercased(), code.count == 2,
+              let zone = place.timeZone else { throw CocoaError(.coderInvalidValue) }
+        return City(id: "location.current", name: place.locality ?? place.administrativeArea ?? place.country ?? "الموقع الحالي",
+                    latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
+                    timeZone: zone.identifier, region: place.administrativeArea, countryCode: code, sourceID: nil)
     }
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         guard active, automatic else { return }

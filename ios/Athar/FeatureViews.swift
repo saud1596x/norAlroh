@@ -147,6 +147,7 @@ struct SettingsView: View {
     @State private var eraseRecitation = false
     @State private var erasingRecitation = false
     @State private var recitationRemovalMessage: String?
+    @State private var preparingExport = false
     var body: some View {
         Form {
             Section("حسابي") {
@@ -185,7 +186,7 @@ struct SettingsView: View {
                 Text("يُستخدم الميكروفون عند بدء التسميع. السماح به لا يضمن دقة التعرّف على القراءة.")
                     .font(.footnote).foregroundStyle(.secondary)
                 Button("حذف تسجيلات وسجلات التسميع", role: .destructive) { eraseRecitation = true }
-                    .disabled(erasingRecitation).accessibilityIdentifier("settings.recitation.erase")
+                    .disabled(erasingRecitation || erasing || preparingExport).accessibilityIdentifier("settings.recitation.erase")
                 if erasingRecitation { ProgressView("حذف تسجيلات التسميع…") }
                 if let recitationRemovalMessage { Text(recitationRemovalMessage).font(.footnote).accessibilityIdentifier(recitationRemovalMessage == "حُذفت تسجيلات وسجلات التسميع." ? "settings.recitation.erased" : "settings.recitation.eraseError") }
             }
@@ -200,22 +201,35 @@ struct SettingsView: View {
                     get: { store.data.largeQuran }, set: { value in store.update { $0.largeQuran = value } }
                 ))
                 Button("تصدير بياناتي") {
+                    Task { @MainActor in
+                    guard !preparingExport, !erasing, !erasingRecitation else { return }
+                    preparingExport = true; exportMessage = nil; defer { preparingExport = false }
                     do {
+                        let recording = try await recitation.exportRecordingAsync()
+                        let recordingMetadata = try await Task.detached(priority: .userInitiated) {
+                            try MushafRecordingArchive.exportMetadata()
+                        }.value
                         let snapshot = NoorPrivacyExport(device: store.data, adhkarCounters: dhikrCounters.counts, adhkarFavorites: Array(dhikrCounters.favorites).sorted(),
                             memorizationPlan: memorization.plan, memorizationHistory: memorization.history, memorizationSession: memorization.session,
-                            prayerPreferences: notifications.preferences, localRecording: try recitation.exportRecording(),
+                            prayerPreferences: notifications.preferences, localRecording: recording,
                             lastMushafPage: max(1, min(604, UserDefaults.standard.integer(forKey: "noor.mushaf.lastPage"))),
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: try MushafRecordingArchive.exportMetadata(), salawatArchive: salawat.exportBytes, personalReminderArchive: notifications.personalExport)
-                        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-                        document = ExportDocument(bytes: try encoder.encode(snapshot)); exporting = true
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: recordingMetadata, salawatArchive: salawat.exportBytes, personalReminderArchive: notifications.personalExport)
+                        let bytes = try await Task.detached(priority: .userInitiated) {
+                            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+                            return try encoder.encode(snapshot)
+                        }.value
+                        document = ExportDocument(bytes: bytes); exporting = true
                     }
                     catch { exportMessage = "تعذر تجهيز ملف التصدير." }
+                    }
                 }
+                .disabled(preparingExport || erasing || erasingRecitation)
+                if preparingExport { ProgressView("تجهيز ملف التصدير…") }
                 Text("ملف التصدير غير مشفر. احفظه في مكان خاص. يمكن حذف ملفات التسميع من قسم الميكروفون والتسميع.").font(.subheadline).foregroundStyle(.secondary)
-                Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing)
+                Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing || erasingRecitation || preparingExport)
                 if erasing { ProgressView("حذف البيانات والنموذج المحلي…") }
                 NavigationLink("سياسة الخصوصية") { PrivacyView() }.accessibilityIdentifier("settings.privacy")
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
@@ -225,7 +239,7 @@ struct SettingsView: View {
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
             }
             Section("عن نور الروح") {
-                Text("مصحف كامل، وأذكار ومواقيت الصلاة. الحفظ والتسميع داخل المصحف بتقييم ذاتي، مع تسجيل محلي اختياري للاستماع إلى قراءتك. لا يوجد تصحيح صوتي آلي مفعّل.")
+                Text("مصحف كامل، وأذكار ومواقيت الصلاة. التسميع يحاول تحديد موضع التلاوة داخل المصحف، وقد يتعذّر التتبع. لا يقيس صحة النطق أو التجويد. يمكن حذف الصوت وبيانات التسميع المحلية من الإعدادات.")
                     .accessibilityIdentifier("settings.studyCapability")
                 Text("النص القرآني مضمّن في التطبيق. مواقيت الصلاة محسوبة محليًا. لا يقدم نور الروح فتاوى أو تفسيرًا مولدًا.")
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · البناء \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
@@ -241,7 +255,7 @@ struct SettingsView: View {
         .confirmationDialog("حذف تسجيلات وسجلات التسميع نهائيًا؟ تبقى بيانات الحفظ والعلامات والحساب.", isPresented: $eraseRecitation, titleVisibility: .visible) {
             Button("حذف تسجيلات التسميع", role: .destructive) {
                 Task { @MainActor in
-                    guard !erasingRecitation else { return }
+                    guard !erasingRecitation, !erasing, !preparingExport else { return }
                     erasingRecitation = true
                     defer { erasingRecitation = false }
                     guard recitation.erase() else { recitationRemovalMessage = recitation.message; return }
@@ -261,16 +275,16 @@ struct SettingsView: View {
         .confirmationDialog("سيُحذف سجل الرحلات والتأملات والعلامات والحفظ والأذكار والتسجيل والنموذج الصوتي المحلي والإعدادات المحلية نهائيًا وتتوقف المزامنة. تبقى بيانات حسابك السحابية حتى تحذف الحساب.", isPresented: $erase, titleVisibility: .visible) {
             Button("حذف كل بياناتي", role: .destructive) {
                 Task {
-                guard !erasing else { return }
+                guard !erasing, !erasingRecitation, !preparingExport else { return }
                 erasing = true; defer { erasing = false }
                 account.disconnectLocalSync()
                 guard await speech.eraseModel() else { exportMessage = speech.message; return }
-                guard NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
+                guard await NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
                 guard recitation.erase() else { exportMessage = recitation.message; return }
                 guard NoorFocusController.shared.erase() else { exportMessage = NoorFocusController.shared.message ?? "تعذّر مسح إعدادات حماية الورد."; return }
                 guard await KhatmahStore.shared.erase() else { exportMessage = KhatmahStore.shared.error; return }
                 guard salawat.erase() else { exportMessage = salawat.error; return }
-                do { try MushafRecordingArchive.erase() }
+                do { try await Task.detached(priority: .userInitiated) { try MushafRecordingArchive.erase() }.value }
                 catch { exportMessage = "تعذّر حذف تسجيلات التسميع. حاول بعد فتح قفل الجهاز."; return }
                 if store.erase() {
                     notifications.erasePreferences()

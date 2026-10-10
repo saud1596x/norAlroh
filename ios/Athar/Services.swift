@@ -36,6 +36,7 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
     func requestAuthorization() async throws -> Bool
     func isAuthorized() async -> Bool
     func pendingIdentifiers() async -> [String]
+    func pendingRequests() async -> [UNNotificationRequest]
     func deliveredIdentifiers() async -> [String]
     func add(_ request: UNNotificationRequest) async throws
     func removePending(_ identifiers: [String])
@@ -51,6 +52,7 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
         return status == .authorized || status == .provisional
     }
     func pendingIdentifiers() async -> [String] { await center.pendingNotificationRequests().map(\.identifier) }
+    func pendingRequests() async -> [UNNotificationRequest] { await center.pendingNotificationRequests() }
     func deliveredIdentifiers() async -> [String] { await center.deliveredNotifications().map { $0.request.identifier } }
     func add(_ request: UNNotificationRequest) async throws { try await center.add(request) }
     func removePending(_ ids: [String]) { center.removePendingNotificationRequests(withIdentifiers: ids) }
@@ -254,12 +256,20 @@ final class PrayerNotifications: ObservableObject {
             let allowed = await client.isAuthorized()
             guard generation == revision else { continue }
             enabled = requested && allowed
-            let pending = await client.pendingIdentifiers()
+            let oldRequests = await client.pendingRequests()
+            let pending = oldRequests.map(\.identifier)
             guard generation == revision else { continue }
             let delivered = Set(await client.deliveredIdentifiers())
             guard generation == revision else { continue }
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                enabled = false; message = "توقف تحديث التنبيهات قبل اكتماله. المواعيد السابقة لم تُحذف؛ أعد المحاولة."
+                return
+            }
             let owns: (String) -> Bool = { self.isOwned($0) || $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) }
+            let previousRequests = oldRequests.filter {
+                owns($0.identifier) && self.isUpcoming($0)
+                    && (($0.trigger as? UNCalendarNotificationTrigger)?.repeats == true || !delivered.contains($0.identifier))
+            }
             client.removePending(pending.filter(owns))
             let personalEnabled = personal.values.values.contains { $0.enabled }
             let retiredDelivered = delivered.filter { id in
@@ -291,7 +301,8 @@ final class PrayerNotifications: ObservableObject {
             message = nil
             do {
                 for event in plan {
-                    guard generation == revision, !Task.isCancelled else { break }
+                    try Task.checkCancellation()
+                    guard generation == revision else { break }
                     // A slow scheduler must not submit an already elapsed prayer.
                     guard event.fireDate > now() else { continue }
                     let content = UNMutableNotificationContent()
@@ -309,7 +320,8 @@ final class PrayerNotifications: ObservableObject {
                 }
                 let remaining = max(0, 64 - foreignCount - scheduledCount)
                 for slot in slots.prefix(remaining) {
-                    guard generation == revision, !Task.isCancelled else { break }
+                    try Task.checkCancellation()
+                    guard generation == revision else { break }
                     let content = UNMutableNotificationContent()
                     content.title = "الصلاة على النبي ﷺ"; content.body = slot.body
                     content.threadIdentifier = "noor.salawat"; content.sound = nil
@@ -324,7 +336,8 @@ final class PrayerNotifications: ObservableObject {
                 }
                 let personalCapacity = max(0, 64 - foreignCount - scheduledCount - salawatCount)
                 for event in personalEvents.prefix(personalCapacity) {
-                    guard generation == revision, !Task.isCancelled else { break }
+                    try Task.checkCancellation()
+                    guard generation == revision else { break }
                     guard event.date > now() else { continue }
                     let content = UNMutableNotificationContent()
                     content.title = event.kind.title
@@ -339,6 +352,7 @@ final class PrayerNotifications: ObservableObject {
                     guard generation == revision else { break }
                     personalCounts[event.kind.rawValue, default: 0] += 1
                 }
+                try Task.checkCancellation()
                 if generation == revision {
                     if personalEnabled && personalEvents.isEmpty {
                         message = "لا يوجد موعد قادم خلال 7 أيام؛ راجع أيام القراءة وأوقات الهدوء."
@@ -352,12 +366,50 @@ final class PrayerNotifications: ObservableObject {
                     return
                 }
             } catch {
-                if generation != revision { continue }
+                if generation != revision {
+                    if Task.isCancelled { Task { await self.refresh(store: store) }; return }
+                    continue
+                }
                 client.removePending(plan.map(\.id) + slots.map(\.id) + personalEvents.map(\.id))
+                // Restore only this feature's still-future requests, preserving
+                // their original content and calendar trigger. A separate task
+                // allows cleanup after the background refresh itself expires.
+                let rollback = Task { @MainActor in
+                    do {
+                        try await NoorOperationDeadline.run(seconds: 5) {
+                            let latestDelivered = Set(await self.client.deliveredIdentifiers())
+                            for request in previousRequests {
+                                try Task.checkCancellation()
+                                guard generation == self.revision else { throw CancellationError() }
+                                guard self.isUpcoming(request),
+                                      (request.trigger as? UNCalendarNotificationTrigger)?.repeats == true || !latestDelivered.contains(request.identifier) else { continue }
+                                try await self.client.add(request)
+                                if generation != self.revision {
+                                    Task { await self.refresh(store: store) }
+                                    throw CancellationError()
+                                }
+                            }
+                        }
+                        return true
+                    } catch { return false }
+                }
+                let restored = await rollback.value
+                guard generation == revision else {
+                    Task { await self.refresh(store: store) }; return
+                }
                 enabled = false; scheduledCount = 0; salawatCount = 0; personalCounts = [:]
-                message = "تعذرت جدولة التنبيهات. حاول مجددًا من إعدادات التنبيهات."
+                message = restored ? "لم يكتمل تحديث التنبيهات. أعدنا المواعيد السابقة التي لم يحن وقتها؛ أعد المحاولة."
+                    : "لم يكتمل تحديث التنبيهات ولا استعادة كل المواعيد السابقة. قد تكون الجدولة ناقصة؛ افتح إعدادات التنبيهات وأعد المحاولة."
                 return
             }
         }
+    }
+    private func isUpcoming(_ request: UNNotificationRequest) -> Bool {
+        guard let trigger = request.trigger as? UNCalendarNotificationTrigger else { return false }
+        if trigger.repeats { return true }
+        var calendar = trigger.dateComponents.calendar ?? Calendar(identifier: .gregorian)
+        calendar.timeZone = trigger.dateComponents.timeZone ?? .current
+        guard let date = calendar.date(from: trigger.dateComponents) else { return false }
+        return date > now()
     }
 }

@@ -58,14 +58,18 @@ struct MushafDatabase: Codable {
     @Published private(set) var names: [String: String] = [:]
     @Published var error: String?
     private var pending: [String: Task<String, Error>] = [:]
+    private var requestedFamily: String?
     func load(_ family: String) async {
-        guard names[family] == nil else { return }
+        requestedFamily = family
+        guard names[family] == nil else { error = nil; return }
         let task = pending[family] ?? Task { try await Self.register(family) }
         pending[family] = task
         defer { pending[family] = nil }
         do {
             names[family] = try await task.value
+            if requestedFamily == family { error = nil }
         } catch {
+            guard requestedFamily == family else { return }
             self.error = "تعذّر عرض صفحة المصحف. حاول مرة أخرى، أو أعد تثبيت نسخة موثوقة."
         }
     }
@@ -92,7 +96,7 @@ struct MushafDatabase: Codable {
         guard UIFont(name: family, size: 24) != nil else { throw CocoaError(.fileReadCorruptFile) }
         return family
     }
-    func load(page: MushafPage) async { error = nil; await load(page.font) }
+    func load(page: MushafPage) async { await load(page.font) }
     func ready(page: MushafPage) -> Bool { names[page.font] != nil }
 
 }

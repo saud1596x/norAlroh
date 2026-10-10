@@ -35,6 +35,35 @@ import Combine
     }
 }
 
+/// Consumes the original entry only when reading resources are ready. Failed
+/// loads remain retryable; a dismissed reader must never start its old intent.
+struct MushafInitialEntry {
+    enum Action: Equatable { case scope, study }
+    private(set) var consumed = false
+    mutating func cancel() { consumed = true }
+    mutating func consume(requestScope: Bool, startStudy: Bool, ready: Bool,
+                          visible: Bool, cancelled: Bool) -> Action? {
+        guard !consumed, ready, visible, !cancelled else { return nil }
+        guard requestScope || startStudy else { return nil }
+        consumed = true
+        return requestScope ? .scope : .study
+    }
+}
+
+enum MushafReaderInsets {
+    static func reserved(_ measured: CGFloat?, minimum: CGFloat) -> CGFloat {
+        guard let measured, measured.isFinite, measured > 0 else { return minimum }
+        return max(minimum, measured)
+    }
+}
+struct MushafRenderIdentity {
+    let page: Int
+    let generation: UUID
+    func isCurrent(page currentPage: Int, generation currentGeneration: UUID) -> Bool {
+        page == currentPage && generation == currentGeneration
+    }
+}
+
 struct InteractiveMushafReader: View {
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var memorization: MemorizationStore
@@ -78,12 +107,18 @@ struct InteractiveMushafReader: View {
     @State private var input = ""
     @State private var error: String?
     @State private var renderingFailed = false
+    @State private var renderGeneration = UUID()
     @State private var studyStartKey: String?
     @State private var studyRequestFromSheet = false
     @State private var studyIndex: MushafStudyWordIndex?
     @State private var studySummary = false
     @State private var scopeOpen = false
-    @State private var openedEntryScope = false
+    @State private var initialEntry = MushafInitialEntry()
+    @State private var readerVisible = false
+    @State private var retryingReader = false
+    #if DEBUG || NOOR_ACCEPTANCE_TESTING
+    @State private var acceptanceRenderFailureRecovered = false
+    #endif
     @State private var requestedScope: [String]?
     @Environment(\.scenePhase) private var scenePhase
     private var studyOpen: Bool { recitation.hasSession || recitation.state == .permission || recitation.state == .preparing }
@@ -106,6 +141,7 @@ struct InteractiveMushafReader: View {
                 if recitation.state == .preparing, UUID(uuidString: pendingRecitation) != nil, recitation.record == nil {
                     ProgressView("استعادة موضع التسميع…").frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
+                    let renderedIdentity = MushafRenderIdentity(page: page.number, generation: renderGeneration)
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
                         // Fit the complete page instead of automatically zooming
@@ -120,20 +156,30 @@ struct InteractiveMushafReader: View {
                                 selected = key; manualSelection = VerseSelection(key: key)
                                 withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools = true }
                             }
-                        }, onFailure: { DispatchQueue.main.async { renderingFailed = true } }, onTurn: { turn($0) },
+                        }, onFailure: { DispatchQueue.main.async {
+                            guard renderedIdentity.isCurrent(page: number, generation: renderGeneration) else { return }
+                            renderingFailed = true
+                        } }, onTurn: { turn($0) },
                         onToggleTools: {
                             if studyOpen { return }
                             if manualSelection != nil { clearManualSelection() }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() } }
                         })
                         .padding(.horizontal, store.data.largeQuran ? 10 : 16)
-                        .padding(.top, 44)
-                        .padding(.bottom, 60)
+                        .padding(.top, MushafReaderInsets.reserved(controlHeights["header"], minimum: 44))
+                        .padding(.bottom, MushafReaderInsets.reserved(controlHeights["footer"], minimum: 60))
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
-                    VStack(spacing: 18) { Text(message).accessibilityIdentifier("reader.load.error"); Button("إعادة المحاولة") { Task { await load() } } }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                    VStack(spacing: 18) { Text(message).accessibilityIdentifier("reader.load.error"); Button("إعادة المحاولة") { Task { await retryReader() } }.disabled(retryingReader).accessibilityIdentifier("reader.load.retry") }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if renderingFailed {
-                    ContentUnavailableView("تعذّر فتح الصفحة", systemImage: "book.closed", description: Text("حاول الانتقال إلى صفحة أخرى ثم العودة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة."))
+                    ContentUnavailableView {
+                        Label("تعذّر فتح الصفحة", systemImage: "book.closed")
+                    } description: {
+                        Text("أعد فتح الصفحة. إذا استمرت المشكلة، تواصل مع الدعم مع ذكر رقم الصفحة.")
+                    } actions: {
+                        Button("إعادة المحاولة") { Task { await retryReader() } }
+                            .disabled(retryingReader).accessibilityIdentifier("reader.render.retry")
+                    }
                 } else { ProgressView(needsFirstDownload ? "تنزيل بيانات المصحف لأول مرة…" : "فتح المصحف…")
                     .accessibilityIdentifier(needsFirstDownload ? "reader.downloading" : "reader.preparing")
                     .frame(maxWidth: .infinity, maxHeight: .infinity) }
@@ -200,21 +246,23 @@ struct InteractiveMushafReader: View {
         }
         .task {
             await load()
-            if opensStudyScope, snapshot != nil, error == nil, !openedEntryScope, !Task.isCancelled {
-                openedEntryScope = true
-                studyStartKey = "\(chapter):\(ayah)"
-                scopeOpen = true
-            } else if startsStudy, snapshot != nil, fonts.error == nil { showStudySetup() }
+            injectAcceptanceRenderFailureIfNeeded()
+            completeInitialEntryIfReady()
         }
-        .task(id: number) { renderingFailed = false; await fonts.load(String(format: "QCF2%03d", number)) }
-        .onDisappear { Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
+        .onAppear { readerVisible = true }
+        .task(id: number) {
+            renderingFailed = false
+            await fonts.load(String(format: "QCF2%03d", number))
+            injectAcceptanceRenderFailureIfNeeded()
+        }
+        .onDisappear { readerVisible = false; initialEntry.cancel(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
         .onChange(of: scenePhase) { _, value in
             if value == .background || (value == .inactive && recitation.state != .permission) { Task { await recitation.pause() } }
         }
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { event in
             if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { Task { await recitation.pause() } }
         }
-        .onChange(of: number) { _, value in lastPage = value }
+        .onChange(of: number) { _, value in renderGeneration = UUID(); lastPage = value }
         .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; showStudySetup(studyStartKey) } }) { selection in
             VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
                 studyStartKey = key; studyRequestFromSheet = true
@@ -278,15 +326,51 @@ struct InteractiveMushafReader: View {
     private func showStudySetup(_ key: String? = nil) {
         startRecitation(keys: key.map { [$0] } ?? visiblePageKeys)
     }
+    private func completeInitialEntryIfReady() {
+        let ready = snapshot != nil && page != nil && error == nil && fonts.error == nil
+            && fonts.names[String(format: "QCF2%03d", number)] != nil && !renderingFailed
+        switch initialEntry.consume(requestScope: opensStudyScope, startStudy: startsStudy,
+                                    ready: ready, visible: readerVisible, cancelled: Task.isCancelled) {
+        case .some(.scope):
+            studyStartKey = "\(chapter):\(ayah)"; scopeOpen = true
+        case .some(.study): showStudySetup()
+        case .none: break
+        }
+    }
+    private func retryReader() async {
+        guard readerVisible, !retryingReader else { return }
+        retryingReader = true; defer { retryingReader = false }
+        #if DEBUG || NOOR_ACCEPTANCE_TESTING
+        acceptanceRenderFailureRecovered = true
+        #endif
+        renderingFailed = false; tools = true
+        await load()
+        completeInitialEntryIfReady()
+    }
+    private func injectAcceptanceRenderFailureIfNeeded() {
+        #if DEBUG || NOOR_ACCEPTANCE_TESTING
+        // This deliberately creates a negative UI state after loading real
+        // resources. It tests access to recovery controls, not successful ink
+        // rendering or the cause of a user's rendering/recognition failure.
+        if ProcessInfo.processInfo.arguments.contains("-NoorAcceptanceReaderRenderFailure"),
+           !acceptanceRenderFailureRecovered, snapshot != nil, error == nil,
+           fonts.names[String(format: "QCF2%03d", number)] != nil {
+            tools = false; renderingFailed = true
+        }
+        #endif
+    }
     private var visiblePageKeys: [String] {
         let visible = Set(page?.words.map(\.verse) ?? [])
         return keys.filter { visible.contains($0) }
     }
     private func startRecitation(keys scope: [String]) {
-        guard let snapshot, !recitation.hasSession else { return }
+        guard readerVisible, let snapshot, !recitation.hasSession else { return }
         audio.stop(); studyRecorder.stop(); legacyRecorder.stop(); clearManualSelection()
         tools = true
-        Task { await recitation.start(keys: scope, page: number, snapshot: snapshot, corpus: store.quran) }
+        Task {
+            guard readerVisible, !Task.isCancelled else { return }
+            await recitation.start(keys: scope, page: number, snapshot: snapshot, corpus: store.quran)
+        }
     }
     private var recitationControls: some View {
         VStack(spacing: 0) {
@@ -380,7 +464,7 @@ struct InteractiveMushafReader: View {
         number = destination; selected = recitation.hasSession ? recitation.currentVerse : nil; manualSelection = nil
     }
     private func load() async {
-        error = nil; needsFirstDownload = false
+        renderGeneration = UUID(); error = nil; needsFirstDownload = false
         do {
             try OriginalMushafCompanion.register()
             let cache = try MushafReadingResources.cache()

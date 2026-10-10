@@ -3,11 +3,108 @@ import AVFoundation
 import CryptoKit
 import SwiftUI
 
-struct NoorAudioFile: Codable, Identifiable {
+struct NoorAudioFile: Codable, Identifiable, Sendable {
     let key: String
     let bytes: Int
     let sha256: String
     var id: String { key }
+}
+
+/// File bytes and checksums never run on the UI executor. The monotonically
+/// increasing epoch also prevents an old installation from recreating erased
+/// files after an AVAsset suspension or a queued callback.
+actor NoorAudioDiskStore {
+    private let directory: URL
+    private var epoch: UInt64 = 0
+    private let beforeCommit: @Sendable () async -> Void
+    private let writeIndex: @Sendable (Data, URL) throws -> Void
+    init(directory: URL, beforeCommit: @escaping @Sendable () async -> Void = {},
+         writeIndex: @escaping @Sendable (Data, URL) throws -> Void = {
+             try $0.write(to: $1, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+         }) {
+        self.directory = directory; self.beforeCommit = beforeCommit; self.writeIndex = writeIndex
+    }
+    private func file(_ key: String) -> URL { directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".mp3") }
+    func invalidate(_ next: UInt64) { epoch = max(epoch, next) }
+    func prepareResume(_ key: String, epoch next: UInt64) throws -> Data? {
+        guard next >= epoch else { throw CancellationError() }; epoch = next
+        guard try NoorAudioIntegrity.availableCapacity(at: directory) >= 50_000_000 else { throw CocoaError(.fileWriteOutOfSpace) }
+        return try? Data(contentsOf: directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".resume"))
+    }
+    func saveResume(_ bytes: Data?, key: String, epoch next: UInt64) {
+        guard next >= epoch else { return }; epoch = next
+        let url = directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".resume")
+        if let bytes { try? bytes.write(to: url, options: .atomic) }
+        else { try? FileManager.default.removeItem(at: url) }
+    }
+    func localURL(_ metadata: NoorAudioFile, epoch next: UInt64) -> URL? {
+        guard next >= epoch else { return nil }; epoch = next
+        let url = file(metadata.key)
+        guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size == metadata.bytes,
+              let bytes = try? Data(contentsOf: url, options: .mappedIfSafe),
+              NoorAudioIntegrity.valid(bytes, metadata: metadata) else { return nil }
+        return url
+    }
+    func install(_ temporary: URL, response: HTTPURLResponse?, key: String,
+                 files: [NoorAudioFile], epoch next: UInt64) async throws -> [NoorAudioFile]? {
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        guard next >= epoch else { return nil }; epoch = next
+        let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard NoorAudioIntegrity.completeResponse(response, bytes: size) else { throw CocoaError(.fileReadCorruptFile) }
+        let asset = AVURLAsset(url: temporary)
+        let duration = try await asset.load(.duration)
+        let tracks = try await asset.loadTracks(withMediaType: .audio)
+        guard next == epoch else { return nil }
+        guard duration.seconds.isFinite, duration.seconds > 0, !tracks.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
+        await beforeCommit()
+        guard next == epoch else { return nil }
+        let bytes = try Data(contentsOf: temporary, options: .mappedIfSafe)
+        guard !bytes.isEmpty, bytes.count <= NoorAudioIntegrity.maximumBytes else { throw CocoaError(.fileReadCorruptFile) }
+        let metadata = NoorAudioFile(key: key, bytes: bytes.count, sha256: NoorAudioIntegrity.digest(bytes))
+        let updated = files.filter { $0.key != key } + [metadata]
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let index = try JSONEncoder().encode(updated)
+        let destination = file(key)
+        let backup = directory.appendingPathComponent(".audio-replacement-" + UUID().uuidString + ".bak")
+        let hadPrevious = FileManager.default.fileExists(atPath: destination.path)
+        if hadPrevious { try FileManager.default.copyItem(at: destination, to: backup) }
+        var removeBackup = false
+        defer { if removeBackup { try? FileManager.default.removeItem(at: backup) } }
+        var installed = false
+        do {
+            try bytes.write(to: destination, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            installed = true
+            try writeIndex(index, directory.appendingPathComponent("index.json"))
+            removeBackup = true
+        } catch {
+            // A successful audio write is not an installation until its index
+            // commits. Keep the previous bytes until rollback has succeeded;
+            // a second filesystem failure leaves the backup recoverable.
+            if installed {
+                if hadPrevious {
+                    try Data(contentsOf: backup, options: .mappedIfSafe).write(to: destination,
+                        options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                } else { try FileManager.default.removeItem(at: destination) }
+            }
+            removeBackup = true
+            throw error
+        }
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".resume"))
+        return updated
+    }
+    func erase(epoch next: UInt64) throws {
+        epoch = max(epoch, next)
+        if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+    func remove(_ key: String, files: [NoorAudioFile], epoch next: UInt64) throws -> [NoorAudioFile]? {
+        guard next >= epoch else { return nil }; epoch = next
+        let updated = files.filter { $0.key != key }
+        if FileManager.default.fileExists(atPath: file(key).path) { try FileManager.default.removeItem(at: file(key)) }
+        try JSONEncoder().encode(updated).write(to: directory.appendingPathComponent("index.json"), options: .atomic)
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".resume"))
+        return updated
+    }
 }
 /// The digest detects changes to an installed file. It is not a publisher
 /// signature or an independent certification of the recitation's contents.
@@ -97,6 +194,10 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     private var task: URLSessionDownloadTask?
     private var session: URLSession?
     private var generation = UUID()
+    private var diskEpoch: UInt64 = 0
+    private let disk: NoorAudioDiskStore
+    private var planning = false
+    private var deleting = false
     private var queue: [String] = []
     private var paused = false
     private let directory: URL
@@ -105,6 +206,7 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     init(directory: URL? = nil, defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("NoorRecitations", isDirectory: true)
+        disk = NoorAudioDiskStore(directory: self.directory)
         try? FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
         var folder = self.directory; var value = URLResourceValues(); value.isExcludedFromBackup = true; try? folder.setResourceValues(value)
         var seen = Set<String>()
@@ -116,22 +218,37 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     var totalBytes: Int { files.reduce(0) { $0 + $1.bytes } }
     private func file(_ key: String) -> URL { directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".mp3") }
     private func resumeFile(_ key: String) -> URL { directory.appendingPathComponent(key.replacingOccurrences(of: ":", with: "-") + ".resume") }
-    func localURL(_ key: String) -> URL? {
-        guard let metadata = files.first(where: { $0.key == key }),
-              let size = try? file(key).resourceValues(forKeys: [.fileSizeKey]).fileSize, size == metadata.bytes,
-              let data = try? Data(contentsOf: file(key), options: .mappedIfSafe),
-              NoorAudioIntegrity.valid(data, metadata: metadata) else { return nil }
-        return file(key)
+    func localURL(_ key: String) async -> URL? {
+        guard !deleting, let metadata = files.first(where: { $0.key == key }) else { return nil }
+        let token = generation; let epoch = diskEpoch
+        let url = await disk.localURL(metadata, epoch: epoch)
+        guard token == generation, !deleting, files.contains(where: { $0.key == metadata.key && $0.sha256 == metadata.sha256 && $0.bytes == metadata.bytes }) else { return nil }
+        return url
     }
     func download(_ keys: [String]) {
-        guard active == nil, !cancelling else { return }
+        guard active == nil, !cancelling, !planning, !deleting else { return }
         let valid = keys.filter { NoorAudioIntegrity.url($0) != nil }
         guard !valid.isEmpty, valid.count <= 300 else { message = "اختر نطاقًا لا يزيد على ٣٠٠ آية للتنزيل."; return }
         var seen = Set<String>()
-        let combined = (pending + valid).filter { seen.insert($0).inserted && localURL($0) == nil }
-        guard combined.count <= 300 else { message = "استكمل التنزيلات المعلّقة قبل إضافة هذا النطاق."; return }
-        queue = combined
-        paused = false; persistPending(); next()
+        let previousPending = pending
+        let candidates = (previousPending + valid).filter { seen.insert($0).inserted }
+        planning = true; checking = true; active = candidates.first
+        queue = Array(candidates.dropFirst()); persistPending()
+        let token = generation
+        Task { [weak self] in
+            guard let self else { return }
+            var combined: [String] = []
+            for key in candidates {
+                if await self.localURL(key) == nil { combined.append(key) }
+                guard self.generation == token else { return }
+            }
+            self.planning = false; self.checking = false; self.active = nil
+            guard combined.count <= 300 else {
+                self.queue = previousPending; self.persistPending()
+                self.message = "استكمل التنزيلات المعلّقة قبل إضافة هذا النطاق."; return
+            }
+            self.queue = combined; self.paused = false; self.persistPending(); self.next()
+        }
     }
     func retry() { download(pending) }
     private func persistPending() {
@@ -145,61 +262,64 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         }
         let key = queue.removeFirst()
         guard let url = NoorAudioIntegrity.url(key) else { next(); return }
-        do {
-            let free = try NoorAudioIntegrity.availableCapacity(at: directory)
-            guard free >= 50_000_000 else { throw CocoaError(.fileWriteOutOfSpace) }
-            active = key; received = 0; expected = 0; checking = false; message = nil; generation = UUID(); let token = generation
-            persistPending()
-            let delegate = NoorAudioTransfer(progress: { [weak self] bytes, total in Task { @MainActor in
-                guard let self, token == self.generation else { return }; self.received = bytes; self.expected = total
-            } }, finish: { [weak self] temporary, response in Task { @MainActor in
-                guard let self else { if let temporary { try? FileManager.default.removeItem(at: temporary) }; return }
-                await self.install(temporary, response: response, key: key, token: token)
-            } }, failure: { [weak self] error in Task { @MainActor in
-                guard let self, token == self.generation else { return }
-                if let bytes = error.userInfo[NSURLSessionDownloadTaskResumeData] as? Data { try? bytes.write(to: self.resumeFile(key), options: .atomic) }
-                else { try? FileManager.default.removeItem(at: self.resumeFile(key)) }
-                self.fail("توقف التنزيل. تحقق من الاتصال والمساحة، ثم اختر إعادة المحاولة.")
-            } })
-            let config = URLSessionConfiguration.ephemeral; config.timeoutIntervalForRequest = 45; config.timeoutIntervalForResource = 600
-            let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil); self.session = session
-            if let resume = try? Data(contentsOf: resumeFile(key)) { task = session.downloadTask(withResumeData: resume) }
-            else { task = session.downloadTask(with: url) }
-            task?.resume()
-        } catch { queue.insert(key, at: 0); paused = true; persistPending(); message = "المساحة غير كافية. احذف تلاوات محفوظة أو حرّر مساحة ثم أعد المحاولة." }
+        active = key; received = 0; expected = 0; checking = false; message = nil; advanceGeneration()
+        let token = generation; let epoch = diskEpoch; persistPending()
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let resume = try await self.disk.prepareResume(key, epoch: epoch)
+                guard token == self.generation else { return }
+                let delegate = NoorAudioTransfer(progress: { [weak self] bytes, total in Task { @MainActor in
+                    guard let self, token == self.generation else { return }; self.received = bytes; self.expected = total
+                } }, finish: { [weak self] temporary, response in Task { @MainActor in
+                    guard let self else { if let temporary { try? FileManager.default.removeItem(at: temporary) }; return }
+                    await self.install(temporary, response: response, key: key, token: token)
+                } }, failure: { [weak self] error in Task { @MainActor in
+                    guard let self, token == self.generation else { return }
+                    await self.disk.saveResume(error.userInfo[NSURLSessionDownloadTaskResumeData] as? Data, key: key, epoch: self.diskEpoch)
+                    guard token == self.generation else { return }
+                    self.fail("توقف التنزيل. تحقق من الاتصال والمساحة، ثم اختر إعادة المحاولة.")
+                } })
+                let config = URLSessionConfiguration.ephemeral; config.timeoutIntervalForRequest = 45; config.timeoutIntervalForResource = 600
+                let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil); self.session = session
+                if let resume { task = session.downloadTask(withResumeData: resume) }
+                else { task = session.downloadTask(with: url) }
+                task?.resume()
+            } catch {
+                guard token == self.generation else { return }
+                self.fail("المساحة غير كافية. احذف تلاوات محفوظة أو حرّر مساحة ثم أعد المحاولة.")
+            }
+        }
     }
     private func install(_ temporary: URL?, response: HTTPURLResponse?, key: String, token: UUID) async {
         guard let temporary else { return }; defer { try? FileManager.default.removeItem(at: temporary) }
         guard token == generation else { return }
         checking = true
+        let epoch = diskEpoch
         do {
-            let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            guard NoorAudioIntegrity.completeResponse(response, bytes: size) else { throw CocoaError(.fileReadCorruptFile) }
-            let data = try Data(contentsOf: temporary, options: .mappedIfSafe)
-            guard !data.isEmpty, data.count <= NoorAudioIntegrity.maximumBytes else { throw CocoaError(.fileReadCorruptFile) }
-            let asset = AVURLAsset(url: temporary)
-            let duration = try await asset.load(.duration)
-            let tracks = try await asset.loadTracks(withMediaType: .audio)
-            guard token == generation else { return }
-            guard duration.seconds.isFinite, duration.seconds > 0, !tracks.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
-            let metadata = NoorAudioFile(key: key, bytes: data.count, sha256: NoorAudioIntegrity.digest(data))
-            let updated = files.filter { $0.key != key } + [metadata]
-            let index = try JSONEncoder().encode(updated)
-            try data.write(to: file(key), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-            try index.write(to: directory.appendingPathComponent("index.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-            files = updated; try? FileManager.default.removeItem(at: resumeFile(key))
+            guard let updated = try await disk.install(temporary, response: response, key: key, files: files, epoch: epoch), token == generation else { return }
+            files = updated
             session?.finishTasksAndInvalidate(); session = nil; task = nil; active = nil; checking = false
             persistPending(); next()
-        } catch { guard token == generation else { return }; try? FileManager.default.removeItem(at: resumeFile(key)); fail("لم ينجح التحقق من ملف التلاوة. أعد تنزيله؛ لا يستخدم التطبيق الملف الناقص.") }
+        } catch { guard token == generation else { return }; fail("لم ينجح التحقق من ملف التلاوة. أعد تنزيله؛ لا يستخدم التطبيق الملف الناقص.") }
+    }
+    private func advanceGeneration() {
+        generation = UUID(); diskEpoch += 1
+        let epoch = diskEpoch
+        Task { await disk.invalidate(epoch) }
     }
     private func fail(_ text: String) {
         if let key = active { queue.insert(key, at: 0) }
-        generation = UUID(); active = nil; checking = false; task = nil; session?.invalidateAndCancel(); session = nil
+        advanceGeneration(); planning = false; active = nil; checking = false; task = nil; session?.invalidateAndCancel(); session = nil
         paused = true; persistPending(); message = text
     }
     func cancel() {
+        if planning || (active != nil && task == nil) {
+            fail("أُوقف التحقق من التنزيل. يمكنك إعادة المحاولة.")
+            return
+        }
         guard let key = active, !cancelling, let stopped = task else { return }
-        generation = UUID(); let token = generation; cancelling = true
+        advanceGeneration(); let token = generation; cancelling = true
         if checking {
             cancelling = false
             fail("أُوقف التحقق من التنزيل. يمكنك إعادة المحاولة.")
@@ -207,32 +327,34 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         }
         stopped.cancel(byProducingResumeData: { [weak self] bytes in Task { @MainActor in
             guard let self, self.generation == token else { return }
-            if let bytes { try? bytes.write(to: self.resumeFile(key), options: .atomic) }
+            await self.disk.saveResume(bytes, key: key, epoch: self.diskEpoch)
+            guard self.generation == token else { return }
             self.cancelling = false
             self.fail("أُوقف التنزيل. يمكنك استئنافه؛ يبدأ من جديد إذا لم يدعم الخادم الاستئناف.")
         } })
     }
-    @discardableResult func erase() -> Bool {
-        generation = UUID(); session?.invalidateAndCancel(); session = nil; task = nil
+    @discardableResult func erase() async -> Bool {
+        guard !deleting else { return false }
+        advanceGeneration(); let token = generation; let epoch = diskEpoch
+        deleting = true; planning = false; session?.invalidateAndCancel(); session = nil; task = nil
         active = nil; queue = []; paused = true; cancelling = false; checking = false
         defaults.removeObject(forKey: pendingKey); remaining = 0
-        do { try FileManager.default.removeItem(at: directory); try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true); files = []; return true }
-        catch { message = "تعذّر حذف بعض ملفات التلاوة. أعد المحاولة."; return false }
-    }
-    func remove(_ key: String) {
-        guard active != key else { message = "أوقف تنزيل الآية أولًا."; return }
         do {
-            let updated = files.filter { $0.key != key }; let index = try JSONEncoder().encode(updated)
-            // Delete the bytes first: a failed deletion stays visible and retryable.
-            // A crash before the index update is safe: localURL rejects missing files.
-            if FileManager.default.fileExists(atPath: file(key).path) { try FileManager.default.removeItem(at: file(key)) }
-            try index.write(to: directory.appendingPathComponent("index.json"), options: .atomic)
-            files = updated
-            if active == nil { queue = pending }
-            queue.removeAll { $0 == key }; persistPending()
-            try? FileManager.default.removeItem(at: resumeFile(key))
-        } catch { message = "تعذّر حذف ملف التلاوة. أعد المحاولة." }
+            try await disk.erase(epoch: epoch)
+            guard generation == token else { return false }
+            files = []; deleting = false; return true
+        } catch { deleting = false; message = "تعذّر حذف بعض ملفات التلاوة. أعد المحاولة."; return false }
     }
+    func remove(_ key: String) async {
+        guard active == nil, !planning, !deleting else { message = "أوقف التنزيل أولًا."; return }
+        advanceGeneration(); let token = generation; let epoch = diskEpoch; deleting = true
+        do {
+            guard let updated = try await disk.remove(key, files: files, epoch: epoch), generation == token else { return }
+            files = updated; deleting = false
+            queue = pending; queue.removeAll { $0 == key }; persistPending()
+        } catch { deleting = false; message = "تعذّر حذف ملف التلاوة. أعد المحاولة." }
+    }
+
 }
 
 struct NoorAudioDownloadsView: View {
@@ -270,7 +392,7 @@ struct NoorAudioDownloadsView: View {
                 if downloads.files.isEmpty { Text("لا توجد تلاوات منزّلة بعد.").foregroundStyle(.secondary) }
                 ForEach(downloads.files) { recording in
                     HStack { Text("الآية \(recording.key)"); Spacer(); Text(ByteCountFormatter.string(fromByteCount: Int64(recording.bytes), countStyle: .file)).font(.caption) }
-                    .swipeActions { Button("حذف", role: .destructive) { downloads.remove(recording.key) } }
+                    .swipeActions { Button("حذف", role: .destructive) { Task { await downloads.remove(recording.key) } } }
                 }
             }
         }.navigationTitle("التنزيلات")
