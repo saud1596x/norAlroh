@@ -4,7 +4,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 35
     environment:
-      xcode: latest
+      xcode: "26.5"
     scripts:
       - name: Install native project generator
         script: brew install xcodegen
@@ -17,7 +17,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 25
     environment:
-      xcode: latest
+      xcode: "26.5"
     scripts:
       - name: Prepare reference audio decoder
         script: brew install ffmpeg
@@ -32,7 +32,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 90
     environment:
-      xcode: latest
+      xcode: "26.5"
     scripts:
       - name: Install native project generator
         script: brew install xcodegen
@@ -45,7 +45,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 90
     environment:
-      xcode: latest
+      xcode: "26.5"
     scripts:
       - name: Check Apple toolchain and install generator
         script: |
@@ -83,7 +83,7 @@ workflows:
         - noor_release
       vars:
         NOOR_RELEASE_CHANNEL: TESTFLIGHT_PREVIEW
-      xcode: latest
+      xcode: "26.5"
       ios_signing:
         provisioning_profiles:
           - noor-alruh-appstore-accounts
@@ -127,6 +127,10 @@ workflows:
           noor_latest_build=$(app-store-connect get-latest-testflight-build-number 6819365625 --platform=IOS)
           if [[ ! "$noor_latest_build" =~ ^[0-9]+$ ]]; then
             echo "Cannot assign release build: App Store Connect returned no valid build number."
+            exit 1
+          fi
+          if (( 10#$noor_latest_build < 18 )); then
+            echo "Cannot assign release build: Apple has not indexed the previously delivered build18."
             exit 1
           fi
           noor_next_build=$((10#$noor_latest_build + 1))
@@ -207,7 +211,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 90
     environment:
-      xcode: latest
+      xcode: "26.5"
     scripts:
       - name: Check Apple toolchain and install generator
         script: |
