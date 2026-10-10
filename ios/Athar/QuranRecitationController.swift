@@ -1,8 +1,11 @@
 import Foundation
 import AVFoundation
 import Combine
+import os
 
 @MainActor final class QuranRecitationController: ObservableObject {
+    // Instruments intervals contain no audio, transcript, verse or account data.
+    private static let performanceLog = OSLog(subsystem: "com.saud1596x.nooralruh", category: "RecitationPerformance")
     enum State: Equatable { case idle, permission, preparing, listening, paused, processing, stopped }
     @Published private(set) var state = State.idle
     @Published private(set) var record: QuranRecitationRecord?
@@ -39,6 +42,7 @@ import Combine
     private var pump: Task<Void, Never>?
     private var capturing = false
     private var tracker: QuranRecitationTracker?
+    private var expectedIDs = Set<Int>()
     private var words: [QuranAlignedWord] = []
     private var revision = UUID()
     private var finishRequest = false
@@ -48,6 +52,9 @@ import Combine
         return (try? MushafRecordingArchive.root()).map(QuranRecitationJournal.init(root:))
     }
     private func save(_ value: QuranRecitationRecord) throws {
+        let span = OSSignpostID(log: Self.performanceLog)
+        os_signpost(.begin, log: Self.performanceLog, name: "Recitation journal save", signpostID: span)
+        defer { os_signpost(.end, log: Self.performanceLog, name: "Recitation journal save", signpostID: span) }
         guard let journal else { throw QuranJournalFailure.invalidRecord }
         try journal.save(value)
     }
@@ -57,7 +64,7 @@ import Combine
         // Keep the reader usable until actual saved word evidence establishes
         // a position, and expose the text again if the engine becomes unavailable.
         guard hasSession, !revealed.isEmpty, recognitionAvailable else { return [] }
-        return Set(tracker?.expected.map(\.id) ?? []).subtracting(revealed)
+        return expectedIDs.subtracting(revealed)
     }
     var status: String {
         switch state {
@@ -76,7 +83,7 @@ import Combine
     func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
         let token = UUID(); revision = token; message = nil; permissionDenied = false
-        record = nil; tracker = nil; revealed = []; currentVerse = nil; recognitionAvailable = true
+        record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
         state = .permission
         guard await requestPermission() else {
             guard revision == token else { return }
@@ -95,6 +102,7 @@ import Combine
             guard revision == token, state == .preparing else { return }
             let scope = Set(keys)
             tracker = QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) })
+            expectedIDs = Set(tracker?.expected.map(\.id) ?? [])
             revealed = []; currentVerse = keys.first; uncertain = false; finishRequest = false
             let next = QuranRecitationRecord(keys: keys, originPage: page)
             try journal.create(next); record = next
@@ -146,6 +154,7 @@ import Combine
             let restoredTracker = try QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) }, restoring: restored.evidence)
             try journal.save(restored)
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
+            expectedIDs = Set(restoredTracker.expected.map(\.id))
             currentVerse = restored.evidence.last?.verse ?? restored.keys.first
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
@@ -227,6 +236,9 @@ import Combine
                 continue
             }
             guard var next = record, let takeIndex = next.takes.firstIndex(where: { $0.id == take }) else { return }
+            let span = OSSignpostID(log: Self.performanceLog)
+            os_signpost(.begin, log: Self.performanceLog, name: "Recitation window processing", signpostID: span)
+            defer { os_signpost(.end, log: Self.performanceLog, name: "Recitation window processing", signpostID: span) }
             next.takes[takeIndex].frames = max(next.takes[takeIndex].frames, window.endFrame)
             record = next
             let recognized: QuranRecognitionWorker.Result
