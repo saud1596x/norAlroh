@@ -1,5 +1,8 @@
 name: Export current passed native review evidence
 on:
+  push:
+    paths:
+      - .github/workflows/native-evidence-export.yml
   workflow_dispatch:
 permissions:
   contents: read
@@ -87,3 +90,4 @@ jobs:
           name: noor-final-store-native-overview
           path: release/native-review-overview
           if-no-files-found: error
+
