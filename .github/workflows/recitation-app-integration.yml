@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - ios/Athar/**
+      - ios/AtharTests/**
+      - tools/RecitationEngineProbe/Sources/RecitationCapture/**
+      - tools/RecitationEngineProbe/Sources/RecitationSessions/**
+      - release/legal-content*.json
       - .github/workflows/recitation-app-integration.yml
       - ios/Athar/InteractiveMushafReader.swift
       - ios/Athar/MushafSessionRecorder.swift
