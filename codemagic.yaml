@@ -107,6 +107,7 @@ workflows:
           python3 scripts/check-upload-toolchain.py
       - name: Install generator and licensed release fonts
         script: |
+          set -euo pipefail
           brew install xcodegen
           python3 scripts/prepare-mushaf-companion.py
           python3 scripts/prepare-qcf-v2.py --output ios/Athar/Fonts
