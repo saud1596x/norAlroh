@@ -72,6 +72,7 @@ else
 fi
 [[ "$noor_gate" == 0 ]] || exit "$noor_gate"
 native_tests=(-only-testing:AtharTests/QuranRecognitionIntegrationTests -only-testing:AtharTests/MushafRecordingTests
+  -only-testing:AtharTests/QuranRecitationPositionTests
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests -only-testing:AtharTests/NoorAccountDeletionStateTests
   -only-testing:AtharTests/PrayerLocationLifecycleTests -only-testing:AtharTests/NotificationReconciliationTests
   -only-testing:AtharTests/NoorPersonalReminderTests)

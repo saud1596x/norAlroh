@@ -304,8 +304,10 @@ struct InteractiveMushafReader: View {
         .onChange(of: recitation.currentVerse) { _, key in
             guard recitation.hasSession, let key else { return }
             selected = key; manualSelection = nil
-            if page?.words.contains(where: { $0.verse == key }) != true,
-               let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
+        }
+        .onChange(of: recitation.currentPage) { _, destination in
+            guard recitation.hasSession, let destination else { return }
+            number = destination; lastPage = destination
         }
         .onChange(of: recitation.state) { _, state in
             if state == .stopped { pendingRecitation = ""; selected = nil; studySummary = true }
@@ -501,7 +503,9 @@ struct InteractiveMushafReader: View {
                 await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
                 if recitation.hasSession {
                     selected = recitation.currentVerse
-                    if let key = recitation.currentVerse, let destination = versePages[key] { number = destination; lastPage = destination }
+                    if let destination = recitation.currentPage ?? recitation.currentVerse.flatMap({ versePages[$0] }) {
+                        number = destination; lastPage = destination
+                    }
                 }
             }
             await fonts.load(String(format: "QCF2%03d", number))

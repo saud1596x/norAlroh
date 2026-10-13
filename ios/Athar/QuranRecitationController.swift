@@ -11,6 +11,7 @@ import os
     @Published private(set) var record: QuranRecitationRecord?
     @Published private(set) var revealed = Set<Int>()
     @Published private(set) var currentVerse: String?
+    @Published private(set) var currentPage: Int?
     @Published private(set) var uncertain = false
     @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
@@ -83,7 +84,7 @@ import os
     func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
         let token = UUID(); revision = token; message = nil; permissionDenied = false
-        record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
+        record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; currentPage = nil; recognitionAvailable = true
         state = .permission
         guard await requestPermission() else {
             guard revision == token else { return }
@@ -157,6 +158,7 @@ import os
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
             currentVerse = restored.evidence.last?.verse ?? restored.keys.first
+            currentPage = QuranRecitationPosition.page(for: restored.evidence.last, in: words)
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
             guard revision == token else { return }
@@ -279,7 +281,10 @@ import os
                 try save(current)
                 recognitionAvailable = available
                 revealed = Set(current.evidence.map(\.nativeID))
-                if let last = additions.last { currentVerse = last.verse }
+                if let last = additions.last {
+                    currentVerse = last.verse
+                    currentPage = QuranRecitationPosition.page(for: last, in: words)
+                }
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
             } catch { stopForJournalFailure(); return }
 
@@ -343,4 +348,13 @@ import os
         catch { message = "تعذّر حفظ الملخص. التسجيلات محفوظة؛ أعد المحاولة." }
     }
     deinit { pump?.cancel() }
+}
+
+/// A verse may span pages. Navigation follows the actual saved native word,
+/// including a return to an earlier page, rather than the verse's first page.
+enum QuranRecitationPosition {
+    static func page(for evidence: QuranWordEvidence?, in words: [QuranAlignedWord]) -> Int? {
+        guard let evidence else { return nil }
+        return words.first { $0.id == evidence.nativeID && $0.verse == evidence.verse }?.page
+    }
 }
