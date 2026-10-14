@@ -27,6 +27,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         func openSettings() {
             XCTAssertTrue(app.buttons["app.settings"].waitForExistence(timeout: 20))
             app.buttons["app.settings"].tap()
+            openNoorSettingsSection("الميكروفون والتسجيلات", in: app)
         }
         openSettings()
         let remove = app.buttons["settings.recitation.erase"]

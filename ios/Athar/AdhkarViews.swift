@@ -112,13 +112,8 @@ struct AdhkarView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("ذكرٌ، وسكينة").font(.largeTitle.bold())
-                            Text("١٣٢ بابًا و٢٦٧ ذكرًا").font(.subheadline)
-                            HStack {
-                                Label("محفوظ على جهازك", systemImage: "checkmark.circle")
-                                Spacer()
-                                Text("دون اتصال")
-                            }.font(.caption)
+                            Text("أذكارك").font(.largeTitle.bold())
+                            Label("متاحة دون اتصال", systemImage: "checkmark.circle").font(.caption)
                         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
                             .foregroundStyle(Theme.buttonInk).background(Theme.gold, in: RoundedRectangle(cornerRadius: 26))
                             .overlay(alignment: .topLeading) { NoorAmbientOrnament(ink: Theme.buttonInk).frame(width: 95, height: 95).padding(12) }
@@ -137,7 +132,6 @@ struct AdhkarView: View {
                                             .frame(width: 46, height: 46).background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                                         VStack(alignment: .leading, spacing: 6) {
                                             Text(group.name).font(.headline).foregroundStyle(.primary)
-                                            Text(group.note).font(.caption).foregroundStyle(.secondary)
                                         }
                                         Spacer(); Image(systemName: "chevron.left").font(.caption).foregroundStyle(.secondary)
                                     }.frame(minHeight: 58)

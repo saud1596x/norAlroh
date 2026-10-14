@@ -23,6 +23,7 @@ final class NoorSalawatUITests: XCTestCase {
         capture(app, name: "salawat-counter-restored")
     }
     private func openCounter(_ app: XCUIApplication) {
+        openNoorHomeTools(app)
         let link = app.buttons["home.salawat"]
         for _ in 0..<6 {
             if link.exists && link.isHittable { break }

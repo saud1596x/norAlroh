@@ -7,6 +7,7 @@ struct NoorTodayView: View {
     @EnvironmentObject private var account: NoorAccountStore
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
+    @State private var toolsExpanded = false
     private var page: Int { max(1, min(lastPage, 604)) }
     private var reduced: Bool { systemReduce || store.data.lowMotion }
     private var city: PrayerLocation { PrayerCalculator.location(store.data.city) }
@@ -29,7 +30,6 @@ struct NoorTodayView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("نور الروح").font(.largeTitle.bold()).foregroundStyle(Theme.gold)
                                 Text(greeting(context.date)).font(.headline)
-                                Text(PrayerDisplay.gregorian(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
                                 Text(PrayerDisplay.hijri(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -56,7 +56,6 @@ struct NoorTodayView: View {
                         }
                     }
                 }
-                NoorKhatmahProtectionCard()
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Label("موعدك مع القرآن", systemImage: "book.closed").font(.subheadline)
@@ -84,6 +83,20 @@ struct NoorTodayView: View {
                     }
                     .overlay { RoundedRectangle(cornerRadius: 28).stroke(Theme.buttonInk.opacity(0.15), lineWidth: 1).allowsHitTesting(false) }
                     .noorEntrance(delay: 0.08)
+                NavigationLink {
+                    MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
+                } label: {
+                    Label("ابدأ التسميع", systemImage: "mic.fill")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.recitation")
+                NavigationLink { AdhkarView() } label: {
+                    Label("الأذكار", systemImage: "sparkles")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.adhkar")
+                DisclosureGroup("خطتي وأدواتي", isExpanded: $toolsExpanded) {
+                NoorKhatmahProtectionCard()
                 NavigationLink { KhatmahJourneyView() } label: {
                     Card {
                         Label("رحلة الختمة", systemImage: "book.closed")
@@ -144,12 +157,13 @@ struct NoorTodayView: View {
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
                         .overlay { RoundedRectangle(cornerRadius: 22).stroke(Theme.gold.opacity(0.12), lineWidth: 1).allowsHitTesting(false) }
                 }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.myJourney").noorEntrance(delay: 0.20)
+                }.accessibilityIdentifier("home.tools").accessibilityValue(toolsExpanded ? "مفتوح" : "مغلق")
                 HStack(spacing: 8) {
                     Image(systemName: "lock.shield")
-                    Text("مساحة لك. المزامنة السحابية اختيارية من صفحة حسابك.")
+                    Text("بياناتك على جهازك · المزامنة اختيارية")
                 }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8).accessibilityIdentifier("home.footer")
             }.padding(20)
-        }.background(Theme.background).navigationTitle("اليوم").navigationBarTitleDisplayMode(.inline)
+        }.background { NoorComfortBackdrop() }.navigationTitle("اليوم").navigationBarTitleDisplayMode(.inline)
             .animation(reduced ? nil : .spring(duration: 0.4, bounce: 0.1), value: reviewed)
     }
     private var accountCard: some View {
@@ -158,7 +172,7 @@ struct NoorTodayView: View {
                 Image(systemName: account.signedIn ? "person.crop.circle.fill" : "person.crop.circle")
                     .font(.title2).foregroundStyle(Theme.gold).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابي · الدخول بحساب Apple")
+                    Text(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابي")
                         .font(.headline)
                     Text(account.signedIn ? account.syncStatus : account.available
                          ? "اختياري؛ القراءة والأذكار متاحة دون حساب."

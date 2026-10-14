@@ -3,6 +3,7 @@ final class NoorKhatmahUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testPreviewConfirmationPauseAndRelaunch() throws {
         let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
+        openNoorHomeTools(app)
         XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30))
         openJourney(app)
         XCTAssertTrue(app.buttons["khatmah.setup"].waitForExistence(timeout: 10)); tapVisible(app, app.buttons["khatmah.setup"])
@@ -30,6 +31,7 @@ final class NoorKhatmahUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["الرحلة متوقفة مؤقتًا"].waitForExistence(timeout: 10))
         tapVisible(app, app.buttons["khatmah.pause"])
         app.terminate(); launchNoorApp(app)
+        openNoorHomeTools(app)
         XCTAssertTrue(app.buttons["home.khatmah"].waitForExistence(timeout: 30)); openJourney(app)
         assertProgress(app, pages: 20)
         capture(app, "khatmah-progress-restored")

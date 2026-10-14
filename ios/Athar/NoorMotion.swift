@@ -40,6 +40,18 @@ struct NoorScreenChrome: ViewModifier {
             .buttonStyle(NoorPressStyle())
     }
 }
+/// An opt-in backdrop for utility screens. Reading surfaces remain still.
+struct NoorComfortBackdrop: View {
+    var body: some View {
+        ZStack {
+            Theme.background
+            NoorMotionSurface()
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
 extension View {
     func noorScreenChrome() -> some View { modifier(NoorScreenChrome()) }
 }
@@ -51,11 +63,11 @@ struct NoorAmbientOrnament: View {
     @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
     var ink: Color = Theme.gold
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduced || store.data.lowMotion || lowPower || !visible || phase != .active)) { context in
-            let t = reduced || store.data.lowMotion ? 0 : context.date.timeIntervalSince1970
+        TimelineView(.animation(minimumInterval: 1 / 15, paused: reduced || store.data.lowMotion || lowPower || !visible || phase != .active)) { context in
+            let t = reduced || store.data.lowMotion || lowPower ? 0 : context.date.timeIntervalSince1970
             NoorRosette().stroke(ink.opacity(0.12), lineWidth: 1)
-                .rotationEffect(.degrees(sin(t / 12) * 12))
-                .scaleEffect(1 + CGFloat(sin(t / 6)) * 0.025)
+                .rotationEffect(.degrees(sin(t / 18) * 4))
+                .scaleEffect(1 + CGFloat(sin(t / 12)) * 0.01)
         }
         .onAppear { visible = true }.onDisappear { visible = false }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled }

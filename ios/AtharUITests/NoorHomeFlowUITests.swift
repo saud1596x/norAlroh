@@ -18,7 +18,7 @@ final class NoorHomeFlowUITests: XCTestCase {
         XCTAssertTrue(app.frame.contains(account.frame))
         account.tap()
         XCTAssertTrue(app.navigationBars["حسابي"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["تسجيل الدخول اختياري. يمكنك حفظ نسخة من خطة الحفظ وتقدمك واستعادتها عند تغيير الجهاز."].exists)
+        XCTAssertTrue(app.staticTexts["يمكنك استخدام التطبيق دون حساب."].exists)
         // This simulator build cannot pretend production Apple auth is enabled.
         XCTAssertTrue(app.staticTexts["الدخول بحساب Apple قيد التجهيز، ولم يُفعّل على هذه النسخة بعد."].exists)
         app.terminate(); launchNoorApp(app)
@@ -27,7 +27,7 @@ final class NoorHomeFlowUITests: XCTestCase {
     }
     func testReviewOpensScopeInMushafAndBookmarksPersistWithoutReflectionEditor() {
         let app = XCUIApplication(); launchNoorApp(app)
-        let review = app.buttons["home.review"]
+        let review = app.buttons["home.recitation"]
         reveal(review, app: app); review.tap()
         let closeScope = app.buttons["recitation.scope.close"]
         XCTAssertTrue(closeScope.waitForExistence(timeout: 120))
@@ -61,7 +61,8 @@ final class NoorHomeFlowUITests: XCTestCase {
         let closeReader = app.buttons["إغلاق المصحف"]
         XCTAssertTrue(closeReader.waitForExistence(timeout: 5)); XCTAssertTrue(closeReader.isHittable)
         closeReader.tap()
-        XCTAssertTrue(app.buttons["home.review"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["home.recitation"].waitForExistence(timeout: 10))
+        openNoorHomeTools(app)
         let library = app.buttons["home.library"]
         reveal(library, app: app); library.tap()
         XCTAssertTrue(app.navigationBars["علاماتي"].waitForExistence(timeout: 10))

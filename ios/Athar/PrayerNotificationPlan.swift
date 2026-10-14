@@ -6,6 +6,7 @@ struct PrayerNotificationPreferences: Codable, Equatable {
     var soundEnabled: Bool = true
     // Optional to decode existing v1 preferences without resetting any choice.
     var soundStyle: String? = "adhan"
+    var afterPrayerMinutes: Int? = nil
 }
 
 struct PlannedPrayerNotification: Identifiable {

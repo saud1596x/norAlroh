@@ -7,16 +7,15 @@ struct NoorReminderSettings: View {
         List {
             Section {
                 NavigationLink("تنبيهات الصلاة") { PrayerNotificationSettings() }
-                NavigationLink("تذكير الختمة") { KhatmahJourneyView() }
             }
             Section("تذكيرات مستقلة") {
-                ForEach(NoorReminderKind.allCases) { kind in
+                ForEach([NoorReminderKind.morning, .evening, .witr, .duha, .salawat]) { kind in
                     NavigationLink {
                         NoorReminderEditor(kind: kind, initial: notifications.reminder(kind))
                     } label: {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(kind.title)
-                            Text(notifications.reminder(kind).enabled ? "مفعّل · \(notifications.personalCounts[kind.rawValue, default: 0]) موعد قادم" : "متوقف")
+                            Text(notifications.reminder(kind).enabled ? "مفعّل" : "متوقف")
                                 .font(.caption).foregroundStyle(.secondary)
                         }.frame(minHeight: 44)
                     }.accessibilityIdentifier("reminders.\(kind.rawValue)")
@@ -28,7 +27,7 @@ struct NoorReminderSettings: View {
                 Button("إعدادات إشعارات iPhone") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
-                Text("التذكيرات صامتة، وبحسب توقيت جهازك. نجدد أقرب مواعيد 7 أيام عند فتح التطبيق وتغير الوقت وفي تحديث الخلفية إذا سمح النظام. عند امتلاء المساحة نعرض أقرب المواعيد المتاحة؛ افتح التطبيق دوريًا لتجديدها.")
+                Text("الصلوات بصوت حسب اختيارك، والأذكار والصلاة على النبي رسائل صامتة. يتحكم iPhone في ظهور التنبيهات عند تفعيل التركيز.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }.noorScreenChrome().navigationTitle("تذكيراتي").tint(Theme.gold)
@@ -43,14 +42,23 @@ struct NoorReminderEditor: View {
     @State private var saving = false
     @State private var draft: NoorReminderPreference
     init(kind: NoorReminderKind, initial: NoorReminderPreference) {
-        self.kind = kind; _draft = State(initialValue: initial)
+        self.kind = kind
+        var value = initial
+        if kind == .salawat {
+            value.intervalMinutes = 5; value.startMinute = 0; value.endMinute = 1439
+            value.weekdays = Set(1...7); value.quietEnabled = false
+        }
+        _draft = State(initialValue: value)
     }
     private let days = [(1,"الأحد"),(2,"الاثنين"),(3,"الثلاثاء"),(4,"الأربعاء"),(5,"الخميس"),(6,"الجمعة"),(7,"السبت")]
     var body: some View {
         Form {
             Section {
                 Toggle("تفعيل التذكير", isOn: $draft.enabled).accessibilityIdentifier("reminder.enabled")
-                time("وقت التذكير", value: $draft.startMinute, id: "start")
+                if kind != .salawat || draft.intervalMinutes != 5 {
+                    time("وقت التذكير", value: $draft.startMinute, id: "start")
+                }
+                if kind != .salawat {
                 Picker("التكرار", selection: $draft.intervalMinutes) {
                     Text("مرة يوميًا").tag(0)
                     Text("كل ساعتين").tag(120)
@@ -58,8 +66,14 @@ struct NoorReminderEditor: View {
                     Text("كل 6 ساعات").tag(360)
                     Text("كل 12 ساعة").tag(720)
                 }.accessibilityIdentifier("reminder.frequency")
-                if draft.intervalMinutes > 0 { time("نهاية التذكيرات", value: $draft.endMinute, id: "end") }
+                }
+                if draft.intervalMinutes > 5 { time("نهاية التذكيرات", value: $draft.endMinute, id: "end") }
+                if kind == .salawat && draft.intervalMinutes == 5 {
+                    Text("❀ اللهم صلِّ على نبينا محمد ﷺ ❀")
+                    Text("رسالة صامتة كل خمس دقائق طوال اليوم، حتى توقف هذا التذكير.").font(.caption).foregroundStyle(.secondary)
+                }
             }
+            if kind != .salawat || draft.intervalMinutes != 5 {
             Section("أيام التذكير") {
                 ForEach(days, id: \.0) { day, title in
                     Toggle(title, isOn: Binding(get: { draft.weekdays.contains(day) }, set: { value in
@@ -75,6 +89,7 @@ struct NoorReminderEditor: View {
                     time("نهاية الهدوء", value: $draft.quietEnd, id: "quietEnd")
                     Text("يمكن أن يمتد الهدوء إلى اليوم التالي. تطابق البداية والنهاية يعني هدوءًا طوال اليوم.").font(.caption)
                 }
+            }
             }
             Section {
                 if !draft.valid { Text("اجعل نهاية التذكيرات بعد بدايتها، واختر يومًا واحدًا على الأقل.") }
@@ -107,6 +122,12 @@ struct NoorReminderEditor: View {
             }
             .noorScreenChrome().navigationTitle(kind.title).tint(Theme.gold)
             .onChange(of: draft.startMinute) { _, value in draft.endMinute = max(value, draft.endMinute) }
+            .onChange(of: draft.intervalMinutes) { _, value in
+                if kind == .salawat && value == 5 {
+                    draft.startMinute = 0; draft.endMinute = 1439
+                    draft.weekdays = Set(1...7); draft.quietEnabled = false
+                }
+            }
     }
     private func time(_ title: String, value: Binding<Int>, id: String) -> some View {
         DatePicker(title, selection: Binding(get: {

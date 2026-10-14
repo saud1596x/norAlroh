@@ -478,8 +478,8 @@ struct NoorAccountView: View {
     var body: some View {
         Form {
             Section {
-                Text("حسابك في نور الروح").font(.title2.bold())
-                Text("تسجيل الدخول اختياري. يمكنك حفظ نسخة من خطة الحفظ وتقدمك واستعادتها عند تغيير الجهاز.")
+                Label(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابك في نور الروح", systemImage: "person.crop.circle").font(.title2.bold())
+                Text(account.signedIn ? "تقدمك ونسختك السحابية" : "يمكنك استخدام التطبيق دون حساب.").foregroundStyle(.secondary)
             }
             if account.busy || account.syncing {
                 Section { ProgressView(account.deletionRequested ? "جارٍ حذف الحساب…" : account.syncing ? "جارٍ مزامنة تقدمك…" : "جارٍ الاتصال بحسابك…")
@@ -498,11 +498,15 @@ struct NoorAccountView: View {
                         if syncJournal.enabled && syncJournal.record?.owner == account.uid {
                             Button("مزامنة الآن") { Task { await account.syncNow() } }.disabled(account.busy || account.syncing || !account.canUseCloudData)
                         }
-                        Text("آخر صفحة، العلامات، خطة الحفظ والتقدم وإعدادات القراءة. لا تُرفع التسجيلات أو التأملات أو موقعك. تُحفظ التغييرات دون اتصال وتُزامن عند فتح التطبيق والاتصال.").font(.caption)
+                        DisclosureGroup("ما الذي تتم مزامنته؟") {
+                            Text("آخر صفحة، العلامات، خطة الحفظ والتقدم وإعدادات القراءة. لا تُرفع التسجيلات أو التأملات أو موقعك. تُحفظ التغييرات دون اتصال وتُزامن عند فتح التطبيق والاتصال.").font(.caption)
+                        }
                     }
-                    Section(account.name) {
-                        Button("حفظ نسخة سحابية من تقدمي") { uploading = true }.disabled(account.busy || account.syncing || !account.canUseCloudData)
-                        Button("استعادة نسخة الحفظ") { restoring = true }.disabled(account.busy || account.syncing || !account.canUseCloudData)
+                    Section("النسخة السحابية") {
+                        Button("حفظ نسخة احتياطية") { uploading = true }.disabled(account.busy || account.syncing || !account.canUseCloudData)
+                        Button("استعادة نسخة احتياطية") { restoring = true }.disabled(account.busy || account.syncing || !account.canUseCloudData)
+                    }
+                    Section("إدارة الحساب") {
                         Button("حذف حسابي", role: .destructive) { deleting = true }.disabled(account.busy)
                             .accessibilityIdentifier("account.delete")
                         if account.deletionRequested {
@@ -515,7 +519,7 @@ struct NoorAccountView: View {
                             }
                         }
                         Button("تسجيل الخروج") { account.signOut() }.disabled(account.busy)
-                        Text("الحفظ السحابي اختياري؛ لا نرفع التسجيلات الصوتية أو التأملات. بيانات الجهاز تبقى بعد تسجيل الخروج.").font(.caption)
+                        Text("تسجيل الخروج لا يحذف بيانات الجهاز.").font(.caption).foregroundStyle(.secondary)
                     }
                 } else {
                     Section("تسجيل الدخول") {

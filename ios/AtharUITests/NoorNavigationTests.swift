@@ -49,6 +49,26 @@ final class NoorNavigationTests: XCTestCase {
 
 
 extension XCTestCase {
+    func openNoorHomeTools(_ app: XCUIApplication) {
+        let tools = app.buttons["home.tools"]
+        for _ in 0..<8 {
+            if tools.exists && tools.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(tools.exists && tools.isHittable, app.debugDescription)
+        if tools.value as? String != "مفتوح" { tools.tap() }
+    }
+
+    func openNoorSettingsSection(_ title: String, in app: XCUIApplication) {
+        let section = app.buttons[title].firstMatch
+        for _ in 0..<8 {
+            if section.exists && section.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(section.exists && section.isHittable, app.debugDescription)
+        section.tap()
+    }
+
     func launchNoorApp(_ app: XCUIApplication) {
         app.launch()
         let guest = app.buttons["welcome.continue"]

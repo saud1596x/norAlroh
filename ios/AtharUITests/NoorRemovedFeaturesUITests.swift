@@ -5,6 +5,7 @@ final class NoorRemovedFeaturesUITests: XCTestCase {
     @MainActor func testRetiredActionsAreAbsentAndJourneyRemainsReachable() {
         let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 30))
+        openNoorHomeTools(app)
         let footer = app.descendants(matching: .any).matching(identifier: "home.footer").firstMatch
         for _ in 0..<6 {
             if footer.exists && footer.isHittable { break }
