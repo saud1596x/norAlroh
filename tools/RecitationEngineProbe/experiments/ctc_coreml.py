@@ -17,6 +17,7 @@ import urllib.request
 
 import coremltools as ct
 import numpy as np
+from ctc_frames import observed_words
 
 ROOT=Path(__file__).resolve().parents[3]
 OUT=ROOT/'release/ctc-coreml-candidate'
@@ -125,7 +126,7 @@ def convert():
     print(json.dumps(dict(converted=True,packageBytes=sum(item['bytes'] for item in files),appleRuntimeVerified=False)),flush=True)
 
 
-def verify():
+def validated_manifest():
     if platform.system()!='Darwin':raise RuntimeError('Apple Core ML must execute on actual macOS')
     manifest=json.loads((OUT/'conversion.json').read_text())
     if manifest['sourceRevision']!=REV or manifest['sourceSHA256']!=SHA:raise ValueError('Candidate identity mismatch')
@@ -135,9 +136,20 @@ def verify():
         if path.stat().st_size!=item['bytes'] or digest(path)!=item['sha256']:raise ValueError('Converted model integrity failed')
     if digest(OUT/'vocab.json')!=manifest['vocabularySHA256']:raise ValueError('Vocabulary integrity failed')
     if digest(OUT/'preprocessor_config.json')!=manifest['preprocessorSHA256']:raise ValueError('Frontend integrity failed')
+    return manifest
+
+
+def compile_apple():
+    validated_manifest()
+    ct.models.utils.compile_model(str(OUT/'NoorCTC.mlpackage'),destination_path=str(OUT/'NoorCTC.mlmodelc'))
+
+
+def verify():
+    manifest=validated_manifest()
     vocab=json.loads((OUT/'vocab.json').read_text())
-    model=ct.models.MLModel(str(OUT/'NoorCTC.mlpackage'),compute_units=ct.ComputeUnit.CPU_ONLY)
-    results=[]
+    compiled=OUT/'NoorCTC.mlmodelc'
+    model=ct.models.CompiledMLModel(str(compiled),compute_units=ct.ComputeUnit.CPU_ONLY) if compiled.is_dir() else ct.models.MLModel(str(OUT/'NoorCTC.mlpackage'),compute_units=ct.ComputeUnit.CPU_ONLY)
+    results=[];word_cases=[]
     for row in manifest['cases']:
         path=OUT/row['input']
         if digest(path)!=row['inputSHA256']:raise ValueError('Input identity changed')
@@ -146,6 +158,12 @@ def verify():
         text=decode(logits[0].argmax(axis=-1).tolist(),vocab) if valid else ''
         same=valid and lexical(text)==lexical(row['rawSourceText'])
         if row['name']=='digital-silence':same=same and not text
+        if valid:
+            probabilities=np.exp(logits[0]-logits[0].max(axis=-1,keepdims=True))
+            probabilities/=probabilities.sum(axis=-1,keepdims=True)
+            words=observed_words(logits[0].argmax(axis=-1).tolist(),probabilities.max(axis=-1).tolist(),vocab,row['samples'])
+            if ' '.join(word['text'] for word in words)!=text:raise ValueError('Frame decoding changed actual observed text')
+            word_cases.append(dict(name=row['name'],samples=row['samples'],words=words))
         finite=np.isfinite(logits)
         results.append(dict(name=row['name'],seconds=time.monotonic()-before,shape=list(logits.shape),
             finiteValues=int(finite.sum()),totalValues=int(logits.size),
@@ -156,12 +174,15 @@ def verify():
     report=dict(schema=1,sourceRevision=REV,arithmetic=manifest.get('arithmetic','float32'),appleRuntimeExecuted=True,computeUnits='CPU_ONLY',lexicalParityPassed=passed,
         scope='Actual macOS Core ML on public fixtures; not iPhone microphone, learner-error accuracy, or Tajweed',
         coremltools=ct.__version__,cases=results,peakHostRSSBytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        precompiledRuntime=compiled.is_dir(),
         iPhoneVerified=False,productionPromoted=False)
+    (ROOT/'ctc-word-observations.json').write_text(json.dumps(word_cases,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     (ROOT/'ctc-apple-parity.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     if not passed:raise RuntimeError('Actual Apple lexical parity failed; do not promote candidate')
 
 
 if __name__=='__main__':
     if sys.argv[1:] == ['convert']:convert()
+    elif sys.argv[1:] == ['compile']:compile_apple()
     elif sys.argv[1:] == ['verify']:verify()
     else:raise SystemExit('Use convert on CPU, then verify on actual macOS')
