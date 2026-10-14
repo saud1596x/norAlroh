@@ -36,10 +36,12 @@ jobs:
           wanted=['stage1-604-single-tap-actions','stage1-604-tools-visible','09-adhkar-search-query']
           inventory=[]
           with zipfile.ZipFile('work/reader-diagnosis/artifact/native-screens.zip') as archive:
-              for name in archive.namelist():
-                  if name.lower().endswith('.png') and any(value in name for value in wanted):
-                      raw=archive.read(name)
-                      destination=output/(re.sub(r'[^a-zA-Z0-9._-]','_',Path(name).name)[:170]+'.png')
+              report=json.loads(archive.read('native-screens/capture-report.json'))
+              for row in report['screenshots']:
+                  name=row['title']
+                  if any(value in name for value in wanted):
+                      raw=archive.read('native-screens/'+row['file'])
+                      destination=output/(re.sub(r'[^a-zA-Z0-9._-]','_',name)[:170]+'.png')
                       destination.write_bytes(raw)
                       inventory.append(dict(name=name,file=destination.name,sha256=hashlib.sha256(raw).hexdigest()))
           assert any('single-tap-actions' in row['name'] for row in inventory), 'Missing actual failed screenshot'
