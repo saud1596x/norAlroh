@@ -8,6 +8,42 @@ import CryptoKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testPauseClosesActualAudioWhileAnalysisSaveIsDelayedWithoutReopeningTake() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
+        var saveReached = false
+        var shouldDelay = true
+        var releaseSave: CheckedContinuation<Void, Never>?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root, drainTimeout: 120,
+            analysisPersistence: { value in
+                if shouldDelay {
+                    await withCheckedContinuation { continuation in releaseSave = continuation; saveReached = true }
+                }
+                try QuranRecitationJournal(root: root).save(value)
+            }, makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        for _ in 0..<1000 where !saveReached { try await Task.sleep(nanoseconds: 20_000_000) }
+        guard saveReached else {
+            shouldDelay = false; await controller.pause()
+            XCTFail("Actual analysis did not reach persistence"); return
+        }
+        XCTAssertTrue(controller.revealed.isEmpty, "Uncommitted analysis must not reveal Quran words")
+        let pause = Task { @MainActor in await controller.pause() }
+        for _ in 0..<100 where controller.record?.takes.last?.closed != true { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertEqual(controller.record?.takes.last?.closed, true)
+        shouldDelay = false; releaseSave?.resume(); releaseSave = nil
+        await pause.value
+        XCTAssertEqual(controller.state, .paused)
+        let record = try XCTUnwrap(controller.record)
+        XCTAssertTrue(record.takes.allSatisfy(\.closed))
+        XCTAssertGreaterThanOrEqual(record.evidence.count, 2)
+        XCTAssertEqual(try QuranRecitationJournal(root: root).load(record.id).phase, .paused)
+        await controller.finish()
+    }
     @MainActor func testActualReferenceFindsItsVerseAcrossEntireQuranWithoutStartingPageHint() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

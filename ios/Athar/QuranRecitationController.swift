@@ -61,6 +61,7 @@ import os
     private let referenceBinder = QuranRecognitionWorker.shared
     private let drainTimeout: Double
     private let recognitionTimeout: Double
+    private let analysisPersistence: ((QuranRecitationRecord) async throws -> Void)?
     private let recognizeWindow: (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result
     private let requestPermission: () async -> Bool
     private let archiveRoot: URL?
@@ -69,6 +70,7 @@ import os
     init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
          archiveRoot: URL? = nil, drainTimeout: Double = 8, recognitionTimeout: Double = 20,
          recognizeWindow: ((QuranAudioWindow) async throws -> QuranRecognitionWorker.Result)? = nil,
+         analysisPersistence: ((QuranRecitationRecord) async throws -> Void)? = nil,
          recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared,
          makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
@@ -77,6 +79,7 @@ import os
          }) {
         self.requestPermission = requestPermission; self.drainTimeout = drainTimeout
         self.worker = recognitionProvider
+        self.analysisPersistence = analysisPersistence
         self.recognitionTimeout = recognitionTimeout
         self.recognizeWindow = recognizeWindow ?? { window in try await recognitionProvider.recognize(window) }
         self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
@@ -102,6 +105,21 @@ import os
         defer { os_signpost(.end, log: Self.performanceLog, name: "Recitation journal save", signpostID: span) }
         guard let journal else { throw QuranJournalFailure.invalidRecord }
         try journal.save(value)
+    }
+    private func saveAnalysis(_ value: QuranRecitationRecord) async throws {
+        if let analysisPersistence { try await analysisPersistence(value); return }
+        guard let journal else { throw QuranJournalFailure.invalidRecord }
+        // Large source histories must not freeze page turns while JSON is
+        // validated/encoded. The journal serializes this with pause/recovery.
+        try await Task.detached(priority: .utility) { try journal.save(value) }.value
+    }
+    private func mergeAnalysis(_ value: QuranRecitationRecord) {
+        guard var latest = record, latest.id == value.id else { return }
+        // pause() may already have closed the audio take while the save ran.
+        // Preserve its current frames, closed flag, and phase.
+        latest.observedSpeech = value.observedSpeech; latest.wordingEvents = value.wordingEvents
+        latest.evidence = value.evidence; latest.recognitionUnavailable = value.recognitionUnavailable
+        record = latest
     }
     var hasSession: Bool { record != nil && state != .stopped && state != .idle }
     var microphoneMeter: Double {
@@ -453,13 +471,19 @@ import os
                 current.evidence = updatedTracker.evidence; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
-                record = current; tracker = updatedTracker
-                try save(current)
+                do { try await saveAnalysis(current) }
+                catch {
+                    guard revision == token else { return }
+                    mergeAnalysis(current); tracker = updatedTracker
+                    throw error
+                }
+                guard revision == token, !Task.isCancelled else { return }
+                mergeAnalysis(current); tracker = updatedTracker
                 recognitionAvailable = available
                 revealed = Set(current.evidence.map(\.nativeID))
                 currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
-            } catch { stopForJournalFailure(); return }
+            } catch { guard revision == token else { return }; stopForJournalFailure(); return }
 
         }
     }

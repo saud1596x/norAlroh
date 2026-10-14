@@ -172,6 +172,10 @@ public enum QuranJournalFailure: Error { case invalidRecord, existingSession, id
 /// Atomic per-session metadata, alongside independent audio files. Loading a
 /// corrupt file throws; it never silently replaces user history with empty data.
 public struct QuranRecitationJournal {
+    // A timed-out background save must finish before a newer paused/finished
+    // snapshot is installed. Recursive because save validates the existing file
+    // through load; no callbacks or MainActor work run under this lock.
+    private static let accessLock = NSRecursiveLock()
     public let root: URL
     public init(root: URL) { self.root = root }
     public func folder(_ id: UUID) -> URL { root.appendingPathComponent(id.uuidString, isDirectory: true) }
@@ -180,6 +184,7 @@ public struct QuranRecitationJournal {
     }
     private func metadata(_ id: UUID) -> URL { folder(id).appendingPathComponent("recognized-session.json") }
     public func create(_ record: QuranRecitationRecord) throws {
+        Self.accessLock.lock(); defer { Self.accessLock.unlock() }
         try record.validate()
         guard !FileManager.default.fileExists(atPath: metadata(record.id).path) else {
             throw QuranJournalFailure.existingSession
@@ -193,6 +198,7 @@ public struct QuranRecitationJournal {
         try write(record)
     }
     public func load(_ id: UUID) throws -> QuranRecitationRecord {
+        Self.accessLock.lock(); defer { Self.accessLock.unlock() }
         let url = metadata(id)
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size > 0, size <= 64_000_000 else { throw QuranJournalFailure.invalidRecord }
@@ -201,6 +207,7 @@ public struct QuranRecitationJournal {
         try record.validate(); return record
     }
     public func save(_ record: QuranRecitationRecord) throws {
+        Self.accessLock.lock(); defer { Self.accessLock.unlock() }
         try record.validate()
         let original = try load(record.id)
         guard original.id == record.id, original.startedAt == record.startedAt,
@@ -211,6 +218,7 @@ public struct QuranRecitationJournal {
     }
     private func write(_ record: QuranRecitationRecord) throws {
         let bytes = try JSONEncoder().encode(record)
+        guard bytes.count <= 64_000_000 else { throw QuranJournalFailure.invalidRecord }
         #if os(iOS)
         try bytes.write(to: metadata(record.id), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         #else
