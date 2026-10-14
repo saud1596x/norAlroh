@@ -1,6 +1,6 @@
 import XCTest
 final class NoorKhatmahUITests: XCTestCase {
-    func testKhatmahControlInMushafOpensRealPlanWithoutHiddenHomeTools() {
+    @MainActor func testKhatmahControlInMushafOpensRealPlanWithoutHiddenHomeTools() {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
