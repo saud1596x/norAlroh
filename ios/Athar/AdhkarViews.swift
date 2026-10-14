@@ -158,33 +158,7 @@ struct DhikrListView: View {
     @EnvironmentObject private var counters: DhikrCounterStore
     let group: DhikrGroup; let entries: [DhikrEntry]
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                NavigationLink { DhikrReadingSession(group: group, entries: entries, start: 0) } label: {
-                    Label("ابدأ جلسة الذكر", systemImage: "play.fill").font(.headline).frame(maxWidth: .infinity, minHeight: 54)
-                        .foregroundStyle(Theme.buttonInk).background(Theme.gold, in: RoundedRectangle(cornerRadius: 18))
-                }.buttonStyle(NoorPressStyle()).noorEntrance()
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    let reading = DhikrReadingContent(entry: entry)
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(reading.title).font(.headline)
-                                    Text("الذكر \(index + 1) من \(entries.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text("\(counters.count(entry: reading.counterEntry, group: group, city: store.data.city)) / \(reading.counterEntry.target)").font(.caption.monospacedDigit()).foregroundStyle(Theme.gold)
-                            }
-                            DhikrReadingText(content: reading)
-                            NavigationLink { DhikrReadingSession(group: group, entries: entries, start: index) } label: {
-                                Label("اقرأ هذا الذكر مع العداد", systemImage: "hand.tap").font(.subheadline.bold()).frame(minHeight: 44)
-                            }.accessibilityIdentifier("dhikr.open.\(entry.id)")
-                        }.foregroundStyle(.primary).padding(20).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
-                            .accessibilityIdentifier("dhikr.card.\(entry.id)").noorEntrance()
-                }
-            }.padding(20)
-        }.background(Theme.background).noorScreenChrome().navigationTitle(group.name).navigationBarTitleDisplayMode(.inline)
+        DhikrReadingSession(group: group, entries: entries, start: 0)
     }
 }
 
@@ -234,38 +208,36 @@ struct DhikrSessionView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(reading.title).font(.title2.bold())
                     DhikrReadingText(content: reading)
-                }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                }.padding(.vertical, 20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
-                Button { change(count + 1) } label: {
-                    ZStack {
-                        Circle().fill(Theme.gold)
-                        Circle().stroke(Theme.buttonInk.opacity(0.18), lineWidth: 5).padding(14)
-                        Circle().trim(from: 0, to: Double(count) / Double(counterEntry.target))
-                            .stroke(Theme.buttonInk, style: StrokeStyle(lineWidth: 5, lineCap: .round)).rotationEffect(.degrees(-90)).padding(14)
-                        VStack(spacing: 8) {
-                            Text(count, format: .number).font(.system(size: 54, weight: .medium)).monospacedDigit().contentTransition(.numericText())
-                            Text(count == counterEntry.target ? "اكتمل الذكر" : "المس للعدّ").font(.headline)
-                            Text("من \(counterEntry.target)").font(.caption)
-                        }.foregroundStyle(Theme.buttonInk)
-                    }.frame(width: 224, height: 224)
-                }.buttonStyle(NoorPressStyle()).disabled(count >= counterEntry.target)
-                    .accessibilityLabel("زيادة عداد الذكر").accessibilityValue("\(count) من \(counterEntry.target)")
-                    .sensoryFeedback(.selection, trigger: count)
-                if count >= counterEntry.target {
-                    HStack { Image(systemName: "checkmark.circle.fill"); Text("أتممت هذا الذكر") }
-                        .font(.headline).foregroundStyle(Theme.gold)
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                DisclosureGroup("المصدر") {
+                    Text(entry.reference).font(.footnote).textSelection(.enabled)
                 }
-                HStack(spacing: 24) {
-                    Button("تراجع", systemImage: "arrow.uturn.backward") { change(count - 1) }.disabled(count == 0)
-                    Button("إعادة العدّ", systemImage: "arrow.counterclockwise") { change(0) }.disabled(count == 0)
-                }.buttonStyle(NoorPressStyle()).frame(minHeight: 44).font(.subheadline)
                 Text("عداد اليوم محفوظ على جهازك.").font(.caption).foregroundStyle(.secondary)
                 if reading.blocks.filter({ $0.quran != nil }).count > 1 {
                     Text("العداد لهذه المجموعة كاملة؛ اقرأ السور المعروضة ثم سجّل جولة واحدة.").font(.caption).foregroundStyle(.secondary)
                 }
             }.padding(20)
-        }.background(Theme.background).noorEntrance()
+        }.background(Theme.panel)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 4) {
+                    Button { change(count + 1) } label: {
+                        HStack {
+                            Text(count >= counterEntry.target ? "اكتمل الذكر" : "اضغط للعدّ")
+                            Spacer()
+                            Text("\(count) / \(counterEntry.target)").monospacedDigit()
+                        }.font(.headline).padding(.horizontal, 20).frame(minHeight: 56)
+                    }.buttonStyle(.borderedProminent).tint(Theme.gold).foregroundStyle(Theme.buttonInk)
+                        .disabled(count >= counterEntry.target)
+                        .accessibilityLabel("زيادة عداد الذكر").accessibilityValue("\(count) من \(counterEntry.target)")
+                        .sensoryFeedback(.selection, trigger: count)
+                    HStack {
+                        Button("تراجع") { change(count - 1) }.disabled(count == 0)
+                        Spacer()
+                        Button("إعادة العدّ") { change(0) }.disabled(count == 0)
+                    }.buttonStyle(NoorPressStyle()).font(.subheadline)
+                }.padding(.horizontal, 20).padding(.top, 8).background(Theme.panel)
+            }
             .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { counters.refreshDay(date: $0) }
     }
     private func change(_ value: Int) {

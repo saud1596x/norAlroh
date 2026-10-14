@@ -27,8 +27,11 @@ final class NoorHomeFlowUITests: XCTestCase {
     }
     func testReviewOpensScopeInMushafAndBookmarksPersistWithoutReflectionEditor() {
         let app = XCUIApplication(); launchNoorApp(app)
-        let review = app.buttons["home.recitation"]
+        let review = app.buttons["home.resume"]
         reveal(review, app: app); review.tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120))
+        app.buttons["reader.study"].press(forDuration: 0.6)
+        app.buttons["اختيار مقطع التسميع"].tap()
         let closeScope = app.buttons["recitation.scope.close"]
         XCTAssertTrue(closeScope.waitForExistence(timeout: 120))
         XCTAssertGreaterThanOrEqual(closeScope.frame.height, 44)
@@ -61,7 +64,8 @@ final class NoorHomeFlowUITests: XCTestCase {
         let closeReader = app.buttons["إغلاق المصحف"]
         XCTAssertTrue(closeReader.waitForExistence(timeout: 5)); XCTAssertTrue(closeReader.isHittable)
         closeReader.tap()
-        XCTAssertTrue(app.buttons["home.recitation"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["home.recitation"].exists)
         openNoorHomeTools(app)
         let library = app.buttons["home.library"]
         reveal(library, app: app); library.tap()

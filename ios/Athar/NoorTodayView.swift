@@ -83,20 +83,18 @@ struct NoorTodayView: View {
                     }
                     .overlay { RoundedRectangle(cornerRadius: 28).stroke(Theme.buttonInk.opacity(0.15), lineWidth: 1).allowsHitTesting(false) }
                     .noorEntrance(delay: 0.08)
-                NavigationLink {
-                    MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
-                } label: {
-                    Label("ابدأ التسميع", systemImage: "mic.fill")
-                        .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.recitation")
                 NavigationLink { AdhkarView() } label: {
                     Label("الأذكار", systemImage: "sparkles")
                         .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
                 }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.adhkar")
-                DisclosureGroup("خطتي وأدواتي", isExpanded: $toolsExpanded) {
+                NavigationLink { KhatmahJourneyView(currentPage: page) } label: {
+                    Label(khatmah.active == nil ? "ابدأ ختمة" : "ورد ختمتي", systemImage: "book.closed")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.startKhatmah")
                 NoorKhatmahProtectionCard()
+                DisclosureGroup("خطتي وأدواتي", isExpanded: $toolsExpanded) {
                 NavigationLink { KhatmahJourneyView() } label: {
                     Card {
                         Label("رحلة الختمة", systemImage: "book.closed")
@@ -123,11 +121,7 @@ struct NoorTodayView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(reviewed) من \(memorization.dailyTarget) آيات").font(.headline)
                             Text("مراجعتك الفعلية، خطوة بعد خطوة").font(.caption).foregroundStyle(.secondary)
-                            NavigationLink {
-                                MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
-                            } label: { Text("ابدأ المراجعة").font(.subheadline).frame(minHeight: 44) }
-                                .buttonStyle(NoorPressStyle())
-                                .accessibilityIdentifier("home.review")
+
                         }
                         Spacer(minLength: 0)
                     }

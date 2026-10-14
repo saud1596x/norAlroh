@@ -3,7 +3,7 @@ import SwiftUI
 struct DhikrReadingText: View {
     let content: DhikrReadingContent
     @EnvironmentObject private var store: AtharStore
-    @ScaledMetric(relativeTo: .title2) private var size = 26.0
+    @ScaledMetric(relativeTo: .title2) private var size = 30.0
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             ForEach(content.blocks) { block in
@@ -19,8 +19,7 @@ struct DhikrReadingText: View {
                             }
                             Text("\(chapter.name) · \(reference.from == reference.to ? "الآية \(reference.from)" : "الآيات \(reference.from)–\(reference.to)")")
                                 .font(.caption).foregroundStyle(.secondary)
-                        }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.gold.opacity(0.055), in: RoundedRectangle(cornerRadius: 18))
+                        }.padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         sourceText(block.sourceText)
                     }
@@ -42,7 +41,7 @@ struct DhikrReadingText: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func sourceText(_ text: String) -> some View {
-        Text(verbatim: text).font(.custom("Amiri-Regular", fixedSize: size)).lineSpacing(7)
+        Text(verbatim: text).font(.custom("Amiri-Regular", fixedSize: size)).lineSpacing(11)
             .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
     }
 }

@@ -22,8 +22,6 @@ final class NoorNavigationTests: XCTestCase {
         XCTAssertTrue(adhkarSearch.waitForExistence(timeout: 5)); adhkarSearch.tap(); adhkarSearch.typeText("النوم")
         let sleep = app.staticTexts["أذكار النوم"].firstMatch
         XCTAssertTrue(sleep.waitForExistence(timeout: 5)); sleep.tap()
-        let start = app.buttons["ابدأ جلسة الذكر"]
-        XCTAssertTrue(start.waitForExistence(timeout: 5)); start.tap()
         XCTAssertTrue(app.buttons["زيادة عداد الذكر"].waitForExistence(timeout: 5))
         attach(app, name: "جلسة أذكار النوم")
     }

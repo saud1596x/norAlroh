@@ -114,8 +114,9 @@ struct NoorFocusView: View {
         Form {
             Section {
                 Label("وردك قبل التواصل", systemImage: "lock.shield").font(.title2.bold())
-                Text("اربط حماية التطبيقات بختمتك. تُحجب التطبيقات التي تختارها حتى تؤكد قراءة صفحات الورد المستحقة، ثم يُرفع الحجب تلقائيًا.")
-                Text("فتح المصحف وحده لا يفتح التطبيقات. التأكيد يحفظ قراءتك، ولا يقيّم الحفظ أو التجويد.").font(.caption).foregroundStyle(.secondary)
+                Text("أوقف التطبيقات التي تشتتك حتى تُكمل وردك.")
+                Label("ابدأ ختمة ← اختر التطبيقات ← فعّل الحماية", systemImage: "checklist").font(.subheadline)
+                Text("بعد القراءة اضغط «تأكيد الصفحات» لرفع الحجب. فتح المصحف وحده لا يكفي.").font(.caption).foregroundStyle(.secondary)
             }
             Section("١ · خطة الختمة والورد المحمي") {
                 if let plan = journey.active {
@@ -148,8 +149,10 @@ struct NoorFocusView: View {
                         Button("٣ · تفعيل حماية ورد الختمة") { focus.enable(plan: journey.active) }
                     }
                 }
+                DisclosureGroup("كيف تعمل الحماية؟") {
                 Text("جدول الصفحات ثابت أثناء الحماية؛ تعديل الخطة أو إيقافها مؤقتًا لا يلغي الصفحات المحمية. أوقف الحماية لتغيير الجدول. في الأيام دون ورد مستحق تكون التطبيقات متاحة، ويبدأ الحجب مجددًا مع الورد التالي.")
                     .font(.caption).foregroundStyle(.secondary)
+                }
             }
             #else
             Section {
@@ -178,7 +181,7 @@ struct NoorKhatmahProtectionCard: View {
         NavigationLink { NoorFocusView() } label: {
             Card {
                 Label("حماية وقت الورد", systemImage: "lock.shield").font(.headline)
-                Text(focus.enabled ? "الحماية مفعّلة ومرتبطة بختمتك" : "أكمل ورد ختمتك قبل تطبيقات التواصل").font(.subheadline)
+                Text(focus.enabled ? "الحماية مفعّلة" : "إيقاف التطبيقات المشتتة حتى إكمال وردك").font(.subheadline)
                 if let ward = focus.contract?.ward(at: .now) {
                     Text("الصفحات \(ward.first)–\(ward.last) · التأكيد يفتح التطبيقات").font(.caption)
                 } else {

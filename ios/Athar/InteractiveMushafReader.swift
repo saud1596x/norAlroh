@@ -206,7 +206,10 @@ struct InteractiveMushafReader: View {
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else {
-                        Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
+                        Button { khatmah = true } label: {
+                            Label(KhatmahStore.shared.active == nil ? "ابدأ ختمة" : "ختمتي", systemImage: "book.closed")
+                                .font(.caption.bold()).frame(minWidth: 44, minHeight: 44)
+                        }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
                 }.background { readerControlMeasurement("header") }
@@ -281,7 +284,15 @@ struct InteractiveMushafReader: View {
             QuranRecitationScope(page: number, pageKeys: visiblePageKeys,
                 initialKey: studyStartKey ?? visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
         }
-        .sheet(isPresented: $khatmah) { NavigationStack { KhatmahJourneyView(currentPage: number) } }
+        .sheet(isPresented: $khatmah) {
+            NavigationStack {
+                if KhatmahStore.shared.active == nil {
+                    KhatmahSetupView(existing: nil, currentPage: number)
+                } else {
+                    KhatmahJourneyView(currentPage: number)
+                }
+            }
+        }
         .sheet(isPresented: $studySummary) {
             if let record = recitation.record {
                 QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onReview: { key in

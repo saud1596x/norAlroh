@@ -21,12 +21,6 @@ final class NoorFridayRetirementUITests: XCTestCase {
         XCTAssertTrue(dhikrSearch.waitForExistence(timeout: 10)); dhikrSearch.tap(); dhikrSearch.typeText("فضل الصلاة على النبي")
         let salawat = app.buttons["adhkar.group.hisn-107"]
         XCTAssertTrue(salawat.waitForExistence(timeout: 10)); salawat.tap()
-        let start = app.buttons["ابدأ جلسة الذكر"]
-        for _ in 0..<4 {
-            if start.exists && start.isHittable { break }
-            app.swipeUp()
-        }
-        XCTAssertTrue(start.exists && start.isHittable); start.tap()
         XCTAssertTrue(app.buttons["زيادة عداد الذكر"].waitForExistence(timeout: 10))
         capture(app, "salawat-content-and-counter-preserved")
         app.terminate(); launchNoorApp(app)

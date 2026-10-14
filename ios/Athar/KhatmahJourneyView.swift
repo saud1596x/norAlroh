@@ -147,8 +147,10 @@ struct KhatmahSetupView: View {
                 else { Stepper("\(daily) صفحة في اليوم", value: $daily, in: 1...604).accessibilityIdentifier("khatmah.daily") }
             }
             Section("أيام القراءة") {
+                DisclosureGroup("أيام القراءة · يوميًا افتراضيًا") {
                 ForEach(1...7, id: \.self) { day in
                     Toggle(names[day - 1], isOn: Binding(get: { weekdays.contains(day) }, set: { if $0 { weekdays.insert(day) } else { weekdays.remove(day) } }))
+                }
                 }
             }
             Section("تذكير اختياري") {

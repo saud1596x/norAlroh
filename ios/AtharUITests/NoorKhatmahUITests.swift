@@ -1,5 +1,26 @@
 import XCTest
 final class NoorKhatmahUITests: XCTestCase {
+    func testKhatmahControlInMushafOpensRealPlanWithoutHiddenHomeTools() {
+        let app = XCUIApplication(); launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let entry = app.buttons["reader.khatmah"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 120))
+        XCTAssertTrue(entry.isHittable)
+        XCTAssertGreaterThanOrEqual(entry.frame.height, 44)
+        entry.tap()
+        let setup = app.navigationBars["إعداد الختمة"]
+        let journey = app.staticTexts["رحلة الختمة"].firstMatch
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in setup.exists || journey.exists }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 10), .completed)
+        if setup.exists {
+            XCTAssertTrue(app.steppers["khatmah.daily"].exists)
+            XCTAssertTrue(app.buttons["khatmah.preview"].exists)
+        } else {
+            XCTAssertTrue(app.buttons["khatmah.read"].exists || app.staticTexts["khatmah.completedPages"].exists)
+        }
+        capture(app, "mushaf-direct-khatmah-control")
+    }
     override func setUpWithError() throws { continueAfterFailure = false }
     @MainActor func testPreviewConfirmationPauseAndRelaunch() throws {
         let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
