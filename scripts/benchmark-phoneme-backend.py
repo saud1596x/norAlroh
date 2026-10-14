@@ -9,6 +9,9 @@ from pathlib import Path
 import time
 import urllib.request
 import resource
+import csv
+import re
+from collections import Counter
 
 import av
 import numpy as np
@@ -91,6 +94,49 @@ cases.extend([
     ("composite-hesitation", np.concatenate([base[:last], np.zeros(32000, dtype=np.float32), base[last:]])),
 ])
 cases.append(("digital-silence-8s", np.zeros(128000, dtype=np.float32)))
+DATA_REV = "973b5ef1d1532bcbe7e9a5a5b0dce125cc4d0dac"
+DATA_BASE = f"https://huggingface.co/datasets/MuazAhmad7/Surah_Ikhlas-Labeled_Dataset/resolve/{DATA_REV}/"
+metadata_file = WORK / "learner-labels.csv"
+labels_hash = fetch(DATA_BASE + "metadata.csv", metadata_file)
+rows = list(csv.DictReader(metadata_file.read_text(encoding="utf-8-sig").splitlines()))
+if len(rows) != 1506 or Counter(r["label_name"] for r in rows) != {"error": 851, "correct": 655}:
+    raise ValueError("Unexpected published learner-label schema")
+selected_labels = {}
+for verse in [1, 2]:
+    for label in ["correct", "error"]:
+        chosen = []
+        for row in rows:
+            match = re.fullmatch(r"data/ID(\d+)V([1-4])([TF])\.wav", row["file_name"])
+            if not match or int(row["verse_number"]) != verse or row["label_name"] != label:
+                continue
+            # All samples from each participant stay in one fixed split.
+            if int(match[1]) % 5 in [0, 1]:
+                continue
+            if label == "error" and row["error_explanation"].strip() != "خطأ في قلقلة حرف الدال":
+                continue
+            chosen.append(row)
+            if len(chosen) == 12:
+                break
+        if len(chosen) != 12:
+            raise ValueError("Insufficient prespecified held-out category examples")
+        for row in chosen:
+            name = Path(row["file_name"]).name
+            path = WORK / name
+            sha = fetch(DATA_BASE + row["file_name"], path)
+            signal = decode_audio(path)
+            if not 0 < len(signal) <= 16000 * 60:
+                raise ValueError("Unexpected public recording duration")
+            case = "learner-" + name
+            cases.append((case, signal))
+            selected_labels[case] = dict(label=label, verse=verse, sha256=sha,
+                                         errorLocation=row["error_location"], explanation=row["error_explanation"])
+report["learnerDataset"] = dict(repository="MuazAhmad7/Surah_Ikhlas-Labeled_Dataset", revision=DATA_REV,
+    metadataSHA256=labels_hash, license="CC-BY-4.0", attribution="MuazAhmad7, Surah Ikhlas Labeled Dataset",
+    lineage="Published labels; byte-equivalence to Mendeley expert archive not established",
+    split="Held-out participant IDs modulo 5 in {2,3,4}; no fitting or threshold tuning",
+    policy="development-qalqla-tail-1: last nonblank qalqla head class; require final dal identity; no calibrated probabilities",
+    limitation="Only verse 1/2, correct versus single reported dal-qalqla error; not general Tajweed accuracy",
+    samples=selected_labels)
 for name, audio in cases:
     started = time.monotonic()
     features = extractor(audio, sampling_rate=16000, return_tensors="np")
@@ -124,8 +170,25 @@ for name, audio in cases:
                 inverse = {v: k for k, v in mapping.items()}
                 entry["decodedLabels"] = [inverse.get(i, f"unknown:{i}") for i in collapsed]
         heads.append(entry)
-    report["cases"].append(dict(name=name, audioSeconds=len(audio)/16000,
-                                wallSeconds=time.monotonic()-started, heads=heads))
+    measured = dict(name=name, audioSeconds=len(audio)/16000, wallSeconds=time.monotonic()-started, heads=heads)
+    if name in selected_labels:
+        phone = next(h for h in heads if h["output"] == "phonemes")["ctcTokenIDs"]
+        qalqla = next(h for h in heads if h["output"] == "qalqla")["ctcTokenIDs"]
+        tail_dal = 8 in phone[-3:]
+        prediction = ("correct" if qalqla[-1] == 1 else "error") if tail_dal and qalqla and qalqla[-1] in [1, 2] else "unassessable"
+        measured["publishedLabel"] = selected_labels[name]["label"]
+        measured["developmentPrediction"] = prediction
+    report["cases"].append(measured)
+    learner = [c for c in report["cases"] if "publishedLabel" in c]
+    if learner:
+        tp = sum(c["publishedLabel"] == "error" and c["developmentPrediction"] == "error" for c in learner)
+        fp = sum(c["publishedLabel"] == "correct" and c["developmentPrediction"] == "error" for c in learner)
+        positives = sum(c["publishedLabel"] == "error" for c in learner)
+        assessed = sum(c["developmentPrediction"] != "unassessable" for c in learner)
+        report["categoryMeasurements"] = dict(samples=len(learner), assessed=assessed,
+            precision=tp/(tp+fp) if tp+fp else None, recallIncludingAbstentions=tp/positives if positives else None,
+            coverage=assessed/len(learner), truePositives=tp, falsePositives=fp,
+            scope="Unfitted baseline versus published labels; not a production acceptance result")
     report["peakHostRSSKiB"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(f"Executed phonetic inference: {name}", flush=True)
