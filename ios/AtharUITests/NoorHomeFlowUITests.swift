@@ -75,6 +75,7 @@ final class NoorHomeFlowUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["دفتر التأمل"].exists)
         XCTAssertTrue(app.buttons["library.bookmark.114:1"].exists)
         app.terminate(); launchNoorApp(app)
+        openNoorHomeTools(app)
         reveal(library, app: app); library.tap()
         let saved = app.buttons["library.bookmark.114:1"]
         XCTAssertTrue(saved.waitForExistence(timeout: 10)); saved.tap()

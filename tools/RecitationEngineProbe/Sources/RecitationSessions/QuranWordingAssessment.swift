@@ -15,7 +15,7 @@ public struct QuranWordingEvent: Codable, Equatable, Sendable {
     public var revision: Int = 0
     public var resolution: String? = nil
     public var correctionObservationIDs: [UUID]? = nil
-    public let assessmentPolicyVersion: String = "context-dp-development-1"
+    public var assessmentPolicyVersion: String = "context-dp-development-1"
 }
 
 /// Edit costs rank sequence hypotheses; they are not correctness probabilities.

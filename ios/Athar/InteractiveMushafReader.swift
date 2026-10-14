@@ -533,7 +533,6 @@ struct InteractiveMushafReader: View {
             Label(label, systemImage: symbol).font(.footnote.weight(.semibold))
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: 48).padding(.horizontal, 4)
-                .background(Theme.gold.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
                 .contentShape(RoundedRectangle(cornerRadius: 12))
         }.accessibilityLabel(label).accessibilityIdentifier(identifier)

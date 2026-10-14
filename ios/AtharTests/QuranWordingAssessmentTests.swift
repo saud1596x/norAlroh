@@ -68,7 +68,7 @@ final class QuranWordingAssessmentTests: XCTestCase {
         let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
         let later = span(["قل", "هو", "الله", "أحد", "الله", "الصمد"], offset: 10)
         var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
-        record.takes = [.init(id: take, startedAt: record.startedAt, frames: 16_000 * 20, closed: true)]
+        record.takes = [.init(id: take, startedAt: record.startedAt, frames: 320_000, closed: true)]
         record.observedSpeech = [wrong, later]
         record.wordingEvents = QuranWordingAssessment.evaluate([wrong, wrong, later], expected: reference)
         XCTAssertEqual(record.wordingEvents?.count, 1)
