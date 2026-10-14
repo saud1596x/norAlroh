@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 
-public struct QuranAudioWindow {
+public struct QuranAudioWindow: Sendable {
     public let samples: [Float]
     public let startFrame: Int64
     public let endFrame: Int64

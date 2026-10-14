@@ -16,7 +16,8 @@ import os
     @Published private(set) var permissionDenied = false
     @Published private(set) var microphonePeak: Float?
     @Published var message: String?
-    private let worker = QuranRecognitionWorker.shared
+    private let worker: any QuranSpeechRecognitionProvider
+    private let referenceBinder = QuranRecognitionWorker.shared
     private let drainTimeout: Double
     private let recognitionTimeout: Double
     private let recognizeWindow: (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result
@@ -26,16 +27,17 @@ import os
     private let setSessionActive: (Bool) throws -> Void
     init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
          archiveRoot: URL? = nil, drainTimeout: Double = 8, recognitionTimeout: Double = 20,
-         recognizeWindow: @escaping (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result = {
-             try await QuranRecognitionWorker.shared.recognize($0)
-         },
+         recognizeWindow: ((QuranAudioWindow) async throws -> QuranRecognitionWorker.Result)? = nil,
+         recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared,
          makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
              try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
          }) {
         self.requestPermission = requestPermission; self.drainTimeout = drainTimeout
-        self.recognitionTimeout = recognitionTimeout; self.recognizeWindow = recognizeWindow
+        self.worker = recognitionProvider
+        self.recognitionTimeout = recognitionTimeout
+        self.recognizeWindow = recognizeWindow ?? { window in try await recognitionProvider.recognize(window) }
         self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
     private var capture: (any QuranAudioCapture)?
@@ -129,7 +131,7 @@ import os
     }
     private func bind(snapshot: QCFV2Snapshot, corpus: [Surah]) async throws {
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
-        words = try await worker.bind(snapshot: snapshot, verseKeys: verseKeys)
+        words = try await referenceBinder.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
     func restore(id: UUID, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
