@@ -8,7 +8,11 @@ final class QuranRecognitionAudioTests: XCTestCase {
         let conditioned = try QuranRecognitionAudio.conditioned(input)
         XCTAssertEqual(input, original, "Conditioning must not alter archived microphone PCM")
         XCTAssertEqual(conditioned.count, input.count, "Word timestamps must keep the original sample clock")
-        XCTAssertEqual(conditioned[20], input[20] * 8, accuracy: 0.000001)
+        let rms = sqrt(conditioned.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(conditioned.count))
+        XCTAssertEqual(rms, 0.06, accuracy: 0.000001)
+        let extremelyQuiet = input.map { $0 * 0.001 }
+        let bounded = try QuranRecognitionAudio.conditioned(extremelyQuiet)
+        XCTAssertEqual(bounded[20], extremelyQuiet[20] * 32, accuracy: 0.000001)
         XCTAssertEqual(try QuranRecognitionAudio.conditioned([Float](repeating: 0, count: 16000)),
                        [Float](repeating: 0, count: 16000))
         XCTAssertThrowsError(try QuranRecognitionAudio.conditioned([.nan]))

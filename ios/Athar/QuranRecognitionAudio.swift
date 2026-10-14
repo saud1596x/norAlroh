@@ -11,8 +11,10 @@ enum QuranRecognitionAudio {
         let peak = samples.reduce(Float(0)) { max($0, abs($1)) }
         guard peak > 0 else { return samples }
         let rms = sqrt(samples.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(samples.count))
-        // At most 18 dB; never clip or attenuate an already usable input.
-        let gain = max(1, min(8, min(0.06 / max(rms, 0.000001), 0.9 / Double(peak))))
+        // At most 30 dB; the measured quiet fixture remains below the acoustic
+        // gate at 8x gain. Preserve confidence/no-speech checks independently.
+        // Never clip or attenuate an already usable input.
+        let gain = max(1, min(32, min(0.06 / max(rms, 0.000001), 0.9 / Double(peak))))
         guard gain > 1 else { return samples }
         return samples.map { $0 * Float(gain) }
     }
