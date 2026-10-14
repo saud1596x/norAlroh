@@ -102,11 +102,15 @@ struct AtharApp: App {
 }
 
 enum Theme {
-    static let background = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.14, green: 0.10, blue: 0.07, alpha: 1) : UIColor(red: 0.945, green: 0.886, blue: 0.776, alpha: 1) })
-    static let panel = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.22, green: 0.16, blue: 0.10, alpha: 1) : UIColor(red: 1, green: 0.969, blue: 0.914, alpha: 1) })
-    static let gold = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.92, green: 0.76, blue: 0.52, alpha: 1) : UIColor(red: 0.45, green: 0.267, blue: 0.078, alpha: 1) })
+    // Figma Noor foundations. Historical accent aliases keep every feature
+    // on the same palette while the composed screens are rebuilt.
+    static let background = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.06, green: 0.11, blue: 0.10, alpha: 1) : .white })
+    static let panel = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.10, green: 0.16, blue: 0.14, alpha: 1) : UIColor(red: 246/255, green: 242/255, blue: 233/255, alpha: 1) })
+    static let gold = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.56, green: 0.83, blue: 0.70, alpha: 1) : UIColor(red: 20/255, green: 89/255, blue: 76/255, alpha: 1) })
+    static let soft = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.12, green: 0.22, blue: 0.18, alpha: 1) : UIColor(red: 230/255, green: 237/255, blue: 231/255, alpha: 1) })
+    static let hero = Color(red: 20/255, green: 89/255, blue: 76/255)
     static let mint = gold
-    static let buttonInk = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.14, green: 0.10, blue: 0.07, alpha: 1) : UIColor(red: 1, green: 0.973, blue: 0.914, alpha: 1) })
+    static let buttonInk = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.06, green: 0.11, blue: 0.10, alpha: 1) : .white })
 }
 
 struct Card<Content: View>: View {

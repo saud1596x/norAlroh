@@ -304,10 +304,8 @@ struct InteractiveMushafReader: View {
         .onChange(of: recitation.currentVerse) { _, key in
             guard recitation.hasSession, let key else { return }
             selected = key; manualSelection = nil
-        }
-        .onChange(of: recitation.currentPage) { _, destination in
-            guard recitation.hasSession, let destination else { return }
-            number = destination; lastPage = destination
+            if page?.words.contains(where: { $0.verse == key }) != true,
+               let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
         }
         .onChange(of: recitation.state) { _, state in
             if state == .stopped { pendingRecitation = ""; selected = nil; studySummary = true }
@@ -410,8 +408,11 @@ struct InteractiveMushafReader: View {
                     .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
                     .accessibilityIdentifier("study.pause")
                 Spacer()
-                Image(systemName: recitation.state == .listening ? "waveform" : "mic.slash")
-                    .foregroundStyle(Theme.gold).frame(width: 44, height: 44).accessibilityHidden(true)
+                ProgressView(value: recitation.microphoneMeter)
+                    .tint(Theme.gold).frame(width: 44, height: 44)
+                    .accessibilityLabel("إشارة صوت الميكروفون")
+                    .accessibilityValue("\(Int(recitation.microphoneMeter * 100)) بالمئة")
+                    .accessibilityIdentifier("study.microphoneLevel")
             }.background { readerControlMeasurement("footer") }
         }.padding(.horizontal, 10)
     }
@@ -503,9 +504,7 @@ struct InteractiveMushafReader: View {
                 await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
                 if recitation.hasSession {
                     selected = recitation.currentVerse
-                    if let destination = recitation.currentPage ?? recitation.currentVerse.flatMap({ versePages[$0] }) {
-                        number = destination; lastPage = destination
-                    }
+                    if let key = recitation.currentVerse, let destination = versePages[key] { number = destination; lastPage = destination }
                 }
             }
             await fonts.load(String(format: "QCF2%03d", number))

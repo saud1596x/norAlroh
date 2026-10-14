@@ -79,14 +79,22 @@ actor QuranRecognitionWorker {
         let options = DecodingOptions(language: "ar", temperatureFallbackCount: 0,
             skipSpecialTokens: true, withoutTimestamps: false, wordTimestamps: true,
             suppressBlank: true, concurrentWorkerCount: 1)
-        let output = try await engine.transcribe(audioArray: window.samples, decodeOptions: options)
+        let inferenceSamples = try QuranRecognitionAudio.conditioned(window.samples)
+        let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
         var runs: [[QuranHeardWord]] = [[]]
         var unresolved = false
         var rejectedAudio = 0, rejectedTiming = 0, rejectedConfidence = 0
         var rejectedQuiet = 0, rejectedTokenBoundary = 0, accepted = 0
-        for word in output.flatMap(\.allWords) {
+        for segment in output.flatMap(\.segments) {
+        // Amplification must not turn a decoder's no-speech segment into
+        // Quran progress. Missing/non-finite confidence stays unresolved.
+        guard segment.noSpeechProb.isFinite, (0...1).contains(segment.noSpeechProb),
+              segment.noSpeechProb < 0.6 else {
+            runs.append([]); unresolved = true; continue
+        }
+        for word in segment.words ?? [] {
             let evidence = AudioEvidenceGate.Evidence(start: word.start, end: word.end, probability: word.probability)
-            let rejection = AudioEvidenceGate.rejection(evidence, samples: window.samples)
+            let rejection = AudioEvidenceGate.rejection(evidence, samples: inferenceSamples)
             let invalidBoundary = QuranAlignedWord.tokens([word.word]).count != 1
             switch rejection {
             case .invalidAudio: rejectedAudio += 1
@@ -103,6 +111,7 @@ actor QuranRecognitionWorker {
                 runs[runs.count - 1].append(.init(text: word.word, start: Double(word.start),
                     end: Double(word.end), probability: Double(word.probability)))
             }
+        }
         }
         // Numeric counters only: no recognized text, samples, account or session
         // identifier. A listening UI cannot distinguish an acoustic rejection

@@ -339,6 +339,31 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertTrue(silent.runs.isEmpty, "No acoustic evidence means no progressive reveal.")
     }
 
+    func testQuietActualReferenceStillAnchorsWhileNoiseCannotRevealWords() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let quiet = original.map { $0 * 0.03 }
+        let expected = ["قل", "هو", "الله", "احد"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        }
+        let worker = QuranRecognitionWorker()
+        let result = try await worker.recognize(.init(samples: quiet, startFrame: 0, endFrame: Int64(quiet.count)))
+        var tracker = QuranRecitationTracker(expected: expected)
+        for run in result.runs { try tracker.consume(run, takeID: UUID()) }
+        XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, 2,
+            "Actual quiet speech must produce real timed Quran anchors; a working level meter is insufficient")
+        // Deterministic broadband acoustic control, not spoken fixture text.
+        var seed: UInt32 = 14
+        let noise: [Float] = (0..<128000).map { _ in
+            seed = 1664525 &* seed &+ 1013904223
+            return (Float(seed) / Float(UInt32.max) * 2 - 1) * 0.08
+        }
+        let control = try await worker.recognize(.init(samples: noise, startFrame: 0, endFrame: Int64(noise.count)))
+        var controlTracker = QuranRecitationTracker(expected: expected)
+        for run in control.runs { try controlTracker.consume(run, takeID: UUID()) }
+        XCTAssertTrue(controlTracker.revealedIDs.isEmpty, "Noise must not create Quran progress after conditioning")
+    }
+
     func testActualAudioAndSessionEvidenceSurviveIndependentReopening() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

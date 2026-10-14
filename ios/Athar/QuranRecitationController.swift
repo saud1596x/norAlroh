@@ -11,10 +11,10 @@ import os
     @Published private(set) var record: QuranRecitationRecord?
     @Published private(set) var revealed = Set<Int>()
     @Published private(set) var currentVerse: String?
-    @Published private(set) var currentPage: Int?
     @Published private(set) var uncertain = false
     @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
+    @Published private(set) var microphonePeak: Float?
     @Published var message: String?
     private let worker = QuranRecognitionWorker.shared
     private let drainTimeout: Double
@@ -60,6 +60,11 @@ import os
         try journal.save(value)
     }
     var hasSession: Bool { record != nil && state != .stopped && state != .idle }
+    var microphoneMeter: Double {
+        guard state == .listening, let peak = microphonePeak, peak > 0 else { return 0 }
+        let decibels = 20 * log10(Double(peak))
+        return min(1, max(0, (decibels + 60) / 60))
+    }
     var hiddenIDs: Set<Int> {
         // Starting a microphone session is not proof that recognition works.
         // Keep the reader usable until actual saved word evidence establishes
@@ -74,6 +79,10 @@ import os
         case .preparing: return "تجهيز الميكروفون…"
         case .listening:
             if !recognitionAvailable { return "التسجيل مستمر · التتبع متعذر" }
+            if microphonePeak == 0 { return "الميكروفون مفتوح · لا يصل صوت" }
+            if let microphonePeak, microphonePeak < Float(AudioEvidenceGate.minimumRMS) {
+                return "الصوت منخفض · قرّب الميكروفون"
+            }
             if revealed.isEmpty { return uncertain ? "أستمع · لم أتعرف على الموضع بعد" : "أستمع · أنتظر بداية التلاوة" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
         case .paused: return "متوقف مؤقتًا"
@@ -83,8 +92,8 @@ import os
     }
     func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
-        let token = UUID(); revision = token; message = nil; permissionDenied = false
-        record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; currentPage = nil; recognitionAvailable = true
+        let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
+        record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
         state = .permission
         guard await requestPermission() else {
             guard revision == token else { return }
@@ -158,7 +167,6 @@ import os
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
             currentVerse = restored.evidence.last?.verse ?? restored.keys.first
-            currentPage = QuranRecitationPosition.page(for: restored.evidence.last, in: words)
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
             guard revision == token else { return }
@@ -213,6 +221,13 @@ import os
                     await self.pause()
                 }
             })
+            microphonePeak = nil
+            microphone.observeLevel { [weak self] peak in
+                Task { @MainActor in
+                    guard let self, self.revision == token, self.capturing, peak.isFinite else { return }
+                    self.microphonePeak = peak
+                }
+            }
             capture = microphone; self.mailbox = mailbox; capturing = true
             try microphone.start(); started = true
             // A new audio take does not prove that previously failed inference
@@ -281,10 +296,7 @@ import os
                 try save(current)
                 recognitionAvailable = available
                 revealed = Set(current.evidence.map(\.nativeID))
-                if let last = additions.last {
-                    currentVerse = last.verse
-                    currentPage = QuranRecitationPosition.page(for: last, in: words)
-                }
+                if let last = additions.last { currentVerse = last.verse }
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
             } catch { stopForJournalFailure(); return }
 
@@ -350,11 +362,3 @@ import os
     deinit { pump?.cancel() }
 }
 
-/// A verse may span pages. Navigation follows the actual saved native word,
-/// including a return to an earlier page, rather than the verse's first page.
-enum QuranRecitationPosition {
-    static func page(for evidence: QuranWordEvidence?, in words: [QuranAlignedWord]) -> Int? {
-        guard let evidence else { return nil }
-        return words.first { $0.id == evidence.nativeID && $0.verse == evidence.verse }?.page
-    }
-}

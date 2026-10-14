@@ -6,6 +6,10 @@ import Foundation
 protocol QuranAudioCapture: AnyObject {
     func start() throws
     func stop() async -> Result<Int64, Error>
+    func observeLevel(_ observer: @escaping (Float) -> Void)
+}
+extension QuranAudioCapture {
+    func observeLevel(_ observer: @escaping (Float) -> Void) {}
 }
 
 final class QuranMicrophoneCapture: QuranAudioCapture {
@@ -32,6 +36,7 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         do { try engine.start() }
         catch { inputEvents.disarm(); engine.inputNode.removeTap(onBus: 0); installed = false; throw error }
     }
+    func observeLevel(_ observer: @escaping (Float) -> Void) { pipe.observeLevel(observer) }
     func stop() async -> Result<Int64, Error> {
         inputEvents.disarm()
         engine.stop()
@@ -48,6 +53,7 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         private let onFailure: (Error) -> Void
         private var stopped = false
         private var failure: Error?
+        private var levelObserver: ((Float) -> Void)?
         init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping (Error) -> Void) throws {
             resampler = try QuranPCMResampler(input: format); self.writer = writer; self.onFailure = onFailure
         }
@@ -56,8 +62,16 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
             guard !stopped else { return }
             do {
                 let samples = try resampler.convert(buffer)
-                if !samples.isEmpty { writer.append(samples) }
+                if !samples.isEmpty {
+                    // Read the converted microphone samples, independently of
+                    // model throughput. A decorative pulse is not input proof.
+                    levelObserver?(samples.reduce(Float(0)) { max($0, abs($1)) })
+                    writer.append(samples)
+                }
             } catch { stopped = true; failure = error; onFailure(error) }
+        }
+        func observeLevel(_ observer: @escaping (Float) -> Void) {
+            lock.lock(); levelObserver = observer; lock.unlock()
         }
         func finish(_ completion: @escaping (Result<Int64, Error>) -> Void) {
             lock.lock()
