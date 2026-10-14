@@ -10,6 +10,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = [
+    "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranInputQuality.swift",
     "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
     "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
     "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranWordingAssessment.swift",

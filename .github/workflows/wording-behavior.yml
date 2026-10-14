@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - tools/RecitationEngineProbe/Sources/RecitationCapture/QuranInputQuality.swift
       - tools/RecitationEngineProbe/Sources/RecitationAlignment/**
       - tools/RecitationEngineProbe/Sources/RecitationSessions/**
       - ios/AtharTests/QuranWordingAssessmentTests.swift
