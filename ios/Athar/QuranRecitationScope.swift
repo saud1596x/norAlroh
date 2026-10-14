@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Secondary setup. The main microphone still starts the visible page directly.
+/// Secondary setup. The main microphone starts automatic Quran-position lookup.
 struct QuranRecitationScope: View {
     let page: Int
     let pageKeys: [String]

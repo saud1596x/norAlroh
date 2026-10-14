@@ -196,6 +196,7 @@ import os
             let next = QuranRecitationRecord(keys: keys, originPage: page)
             var prepared = next
             prepared.closedTextRequested = closedText
+            prepared.textExposureOccurred = !closedText
             prepared.automaticScope = automaticScope
             prepared.referenceExposure = referenceExposure
             try journal.create(prepared); record = prepared

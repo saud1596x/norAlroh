@@ -90,7 +90,11 @@ struct QuranSessionResult: View {
                         metric("مدة التسجيل", value: MushafAudioTime.text(record.duration))
                         metric("كلمات متتبّعة", value: String(trackedCount))
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                    if record.textExposureOccurred == true || !(record.textHintIDs ?? []).isEmpty {
+                    if record.textExposureOccurred == true {
+                        Text("كان النص ظاهرًا خلال الجلسة؛ التتبع لا يثبت الاسترجاع من الذاكرة.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    if !(record.textHintIDs ?? []).isEmpty {
                         Text("استُخدمت تلميحات للقراءة؛ الكلمات المكشوفة لا تُحسب كتلاوة مسموعة.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
