@@ -97,7 +97,9 @@ def convert():
         traced=torch.jit.trace(Wrapper(original).eval(),torch.tensor(np.load(OUT/'input-3.npy')),strict=False,check_trace=False)
     model=ct.convert(traced,convert_to='mlprogram',minimum_deployment_target=ct.target.iOS17,
         inputs=[ct.TensorType(name='input_values',shape=(1,ct.RangeDim(lower_bound=1600,upper_bound=128000,default=32000)),dtype=np.float32)],
-        outputs=[ct.TensorType(name='logits',dtype=np.float32)],compute_precision=ct.precision.FLOAT16,skip_model_load=True)
+        # XLSR activations can overflow half precision despite finite weights.
+        # Keep arithmetic in float32; weight storage compression is separate.
+        outputs=[ct.TensorType(name='logits',dtype=np.float32)],compute_precision=ct.precision.FLOAT32,skip_model_load=True)
     del original,traced;gc.collect()
     optimization=ct.optimize.coreml.OptimizationConfig(global_config=ct.optimize.coreml.OpLinearQuantizerConfig(
         mode='linear_symmetric',dtype=np.int8,weight_threshold=512))
@@ -110,7 +112,7 @@ def convert():
     with urllib.request.urlopen('https://www.apache.org/licenses/LICENSE-2.0.txt',timeout=45) as response:(OUT/'APACHE-2.0.txt').write_bytes(response.read(100_000))
     manifest=dict(schema=1,sourceModel=REPO,sourceRevision=REV,sourceSHA256=SHA,sourceReceipt=receipt,
         coremltools=ct.__version__,torch=torch.__version__,minimumDeploymentTarget='iOS17',
-        compression='Core ML linear symmetric int8 weights, float16 compute',
+        compression='Core ML linear symmetric int8 weights, float32 compute',
         cases=rows,files=files,convKernel=config['conv_kernel'],convStride=config['conv_stride'],
         vocabularySHA256=receipt['vocab.json']['sha256'],preprocessorSHA256=receipt['preprocessor_config.json']['sha256'],
         converted=True,appleRuntimeVerified=False,iPhoneVerified=False,productionPromoted=False)
@@ -139,7 +141,10 @@ def verify():
         text=decode(logits[0].argmax(axis=-1).tolist(),vocab) if valid else ''
         same=valid and lexical(text)==lexical(row['rawSourceText'])
         if row['name']=='digital-silence':same=same and not text
+        finite=np.isfinite(logits)
         results.append(dict(name=row['name'],seconds=time.monotonic()-before,shape=list(logits.shape),
+            finiteValues=int(finite.sum()),totalValues=int(logits.size),
+            finiteAbsoluteMaximum=float(np.abs(logits[finite]).max()) if finite.any() else None,
             rawAppleText=text,rawSourceText=row['rawSourceText'],rawUTF8Equal=text==row['rawSourceText'],lexicalParity=same))
         print(json.dumps(results[-1],ensure_ascii=False),flush=True)
     passed=bool(results) and all(row['lexicalParity'] for row in results)
