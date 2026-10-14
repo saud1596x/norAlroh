@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import time
 import urllib.request
+import resource
 
 import av
 import numpy as np
@@ -71,12 +72,24 @@ def decode_audio(path):
 
 
 cases = []
-for name in ["112001.mp3", "112002.mp3", "114001.mp3"]:
+for name in ["001001.mp3", "001002.mp3", "001003.mp3", "112001.mp3", "112002.mp3", "112003.mp3", "112004.mp3", "114001.mp3", "114002.mp3", "114003.mp3"]:
     path = fixtures / name
     expected = next(s["sha256"] for s in sources if s["file"] == name)
     if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
         raise ValueError("Fixture digest mismatch")
     cases.append((name, decode_audio(path)))
+base = np.concatenate([decode_audio(fixtures / "112001.mp3"), decode_audio(fixtures / "112002.mp3")])
+# Same fixed source edit used by the independent text-ASR comparison. These
+# manipulated public recordings are diagnostics, not expert-labelled learners.
+first, last = 19200, 33920
+report["editDefinition"] = dict(source=["112001.mp3", "112002.mp3"], cutFrames=[first, last], samplingRate=16000,
+                                labels="Signal edits only; no expert learner-error ground truth")
+cases.extend([
+    ("composite-unaltered", base),
+    ("composite-cut", np.concatenate([base[:first], base[last:]])),
+    ("composite-repetition", np.concatenate([base[:last], base[first:last], base[last:]])),
+    ("composite-hesitation", np.concatenate([base[:last], np.zeros(32000, dtype=np.float32), base[last:]])),
+])
 cases.append(("digital-silence-8s", np.zeros(128000, dtype=np.float32)))
 for name, audio in cases:
     started = time.monotonic()
@@ -94,13 +107,17 @@ for name, audio in cases:
         entry = dict(output=node.name, shape=list(values.shape), finite=bool(np.isfinite(values).all()))
         if values.ndim == 3:
             ids = values.argmax(axis=-1)[0].tolist()
-            collapsed, previous = [], None
-            for token in ids:
+            collapsed, previous, occurrences = [], None, []
+            for frame, token in enumerate(ids):
                 if token != previous and token != 0:
                     collapsed.append(token)
+                    occurrences.append(dict(tokenID=token, startFrame=frame, endFrame=frame+1))
+                elif token != 0 and occurrences:
+                    occurrences[-1]["endFrame"] = frame + 1
                 previous = token
             # Head mapping remains explicit; never guess categories from dimensions.
             entry["ctcTokenIDs"] = collapsed
+            entry["ctcFrameOccurrences"] = occurrences
             key = node.name.removesuffix("_logits").removeprefix("logits_")
             mapping = vocabulary.get(key)
             if isinstance(mapping, dict) and all(isinstance(v, int) for v in mapping.values()):
@@ -109,5 +126,6 @@ for name, audio in cases:
         heads.append(entry)
     report["cases"].append(dict(name=name, audioSeconds=len(audio)/16000,
                                 wallSeconds=time.monotonic()-started, heads=heads))
+    report["peakHostRSSKiB"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(f"Executed phonetic inference: {name}", flush=True)
