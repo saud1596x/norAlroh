@@ -62,11 +62,11 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertTrue(page.waitForExistence(timeout: 120))
         capture(app, "text-reader-604-open")
         let originalFrame = page.frame
-        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
         XCTAssertTrue(app.buttons["reader.next"].waitForNonExistence(timeout: 5))
         XCTAssertEqual(page.frame, originalFrame, "Hiding tools must not resize or move the page")
         capture(app, "text-reader-604-tools-hidden")
-        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
         XCTAssertTrue(app.buttons["reader.next"].waitForExistence(timeout: 5))
         XCTAssertEqual(page.frame, originalFrame, "Restoring tools keeps the same viewport")
         capture(app, "text-reader-604-tools-restored")

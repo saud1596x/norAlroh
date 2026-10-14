@@ -519,6 +519,10 @@ struct OriginalPageData {
         }
     }
     @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
+        if allowsVerseSelection, let key = canvas.verse(at: tap.location(in: canvas)) {
+            canvas.onVerse?(key)
+            return
+        }
         if let onToggleTools { onToggleTools(); return }
         // UIKit applies zoom and offset when converting into the fixed canvas.
         // A margin tap stays blank; it never chooses a nearby verse.

@@ -100,8 +100,15 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
         XCTAssertEqual(verse.frame, frame, "Closing journey must preserve reader geometry")
         capture(app, "stage1-604-tools-visible")
-        // A tap on Quran ink, not just a margin, toggles tools without selection.
+        // An ordinary verse tap opens clearly labelled actions.
         verse.tap()
+        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["verse.play"].isHittable)
+        XCTAssertEqual(verse.frame, frame, "Opening verse actions must preserve Quran ink position")
+        capture(app, "stage1-604-single-tap-actions")
+        app.buttons["verse.tools.close"].tap()
+        let margin = page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5))
+        margin.tap()
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             // A missing control must be queried by existence. Resolving
             // isHittable on an unmounted element blocks with XCTest retries.
@@ -111,7 +118,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertFalse(app.buttons["verse.tafsir"].exists)
         XCTAssertEqual(verse.frame, frame, "Hiding controls must not move Quran ink")
         capture(app, "stage1-604-tools-hidden")
-        verse.tap()
+        margin.tap()
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 5))
         XCTAssertEqual(verse.frame, frame)
         page.swipeLeft()
@@ -148,8 +155,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         app.buttons["verse.sheet.close"].tap()
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 5))
         verse.press(forDuration: 0.6)
-        verse.tap()
-        XCTAssertFalse(app.buttons["verse.tafsir"].exists, "A normal tap cancels selection")
+        app.buttons["verse.tools.close"].tap()
+        XCTAssertFalse(app.buttons["verse.tafsir"].exists, "Explicit close cancels selection")
         XCTAssertTrue(app.buttons["reader.jump"].exists)
         XCTAssertEqual(verse.frame, frame)
         page.pinch(withScale: 1.6, velocity: 1)

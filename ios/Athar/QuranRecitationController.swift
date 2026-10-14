@@ -81,8 +81,11 @@ import os
         case .listening:
             if !recognitionAvailable { return "التسجيل مستمر · التتبع متعذر" }
             if microphonePeak == 0 { return "الميكروفون مفتوح · لا يصل صوت" }
-            if let microphonePeak, microphonePeak < Float(AudioEvidenceGate.minimumRMS) {
-                return "الصوت منخفض · قرّب الميكروفون"
+            // The model receives an amplified copy; raw microphone amplitude
+            // alone cannot classify an actively recognized voice as unusable.
+            if revealed.isEmpty, let microphonePeak,
+               microphonePeak * Float(QuranRecognitionAudio.maximumInferenceGain) < Float(AudioEvidenceGate.minimumRMS) {
+                return "الصوت ضعيف جدًا · قرّب الميكروفون"
             }
             if revealed.isEmpty { return uncertain ? "أستمع · لم أتعرف على الموضع بعد" : "أستمع · أنتظر بداية التلاوة" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"

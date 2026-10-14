@@ -212,7 +212,12 @@ struct InteractiveMushafReader: View {
                 }.background { readerControlMeasurement("header") }
                 Spacer()
                 Group {
-                    if let selection = manualSelection { verseActions(selection) }
+                    if let selection = manualSelection {
+                        // Float the action panel without refitting Quran ink.
+                        Color.clear.frame(height: 60).overlay(alignment: .bottom) {
+                            verseActions(selection)
+                        }
+                    }
                     else { VStack(spacing: 4) {
                         // Keep the microphone centered. Accessibility text needs
                         // its own row instead of expanding beneath the overlay.
@@ -439,25 +444,34 @@ struct InteractiveMushafReader: View {
         sheetAction = action; sheetVerse = selection
     }
     private func verseActions(_ selection: VerseSelection) -> some View {
-        HStack(spacing: 0) {
-            verseAction("تفسير", symbol: "book", identifier: "verse.tafsir") { openTools(selection, action: .tafsir) }
-            verseAction("استماع", symbol: "play.fill", identifier: "verse.play") {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+            verseAction("تفسير الآية", symbol: "book", identifier: "verse.tafsir") { openTools(selection, action: .tafsir) }
+            verseAction("استماع من الآية", symbol: "play.fill", identifier: "verse.play") {
                 let count = store.quran[selection.chapter - 1].ayahs.count
                 manualSelection = nil
                 audio.play((selection.ayah...count).map { "\(selection.chapter):\($0)" })
             }
-            verseAction("تكرار", symbol: "repeat", identifier: "verse.repeat") { openTools(selection, action: .repeatRange) }
+            verseAction("تكرار الآية", symbol: "repeat", identifier: "verse.repeat") { openTools(selection, action: .repeatRange) }
             let bookmarked = store.data.bookmarks.contains(selection.key)
-            verseAction(bookmarked ? "محفوظة" : "علامة", symbol: bookmarked ? "bookmark.fill" : "bookmark", identifier: "verse.bookmark") {
+            verseAction(bookmarked ? "إزالة العلامة" : "حفظ موضع الآية", symbol: bookmarked ? "bookmark.fill" : "bookmark", identifier: "verse.bookmark") {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
-            verseAction("حفظ", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) }
-        }
+            verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) }
+        }.padding(12)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
+            .shadow(color: .black.opacity(0.15), radius: 12, y: -3)
+            .padding(.horizontal, 12).padding(.bottom, 8)
+            .accessibilityIdentifier("verse.actions.panel")
     }
     private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) { Image(systemName: symbol).font(.system(size: 16)); Text(label).font(.caption2).lineLimit(1) }
-                .frame(maxWidth: .infinity).frame(height: 44).contentShape(Rectangle())
+            Label(label, systemImage: symbol).font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 48).padding(.horizontal, 8)
+                .background(Theme.gold.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
+                .contentShape(RoundedRectangle(cornerRadius: 12))
         }.accessibilityLabel(label).accessibilityIdentifier(identifier)
     }
     private var title: String {
