@@ -48,6 +48,7 @@ jobs:
           path: |
             release/native-unit.xcresult
             release/native-ui.xcresult
+            release/native-microphone-ui.xcresult
             release/native-build-report.json
             release/native-navigation.mp4
             release/native-screens.zip

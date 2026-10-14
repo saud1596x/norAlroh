@@ -57,6 +57,34 @@
     "split": "train participant<180; development 180..249; previously unprobed test>=250",
     "receiptSHA256": "166715625a381ca1ba4fcaaa2c94e7785da4276037aac85a0767e2df38e8f5c1"
   },
+  "independentPhoneticFeatureClassifier": {
+    "sourceCommit": "32c86587dd1585bcf15c3039d0f411da40559656",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38649543431/job/116144646847",
+    "execution": "success",
+    "qualityAcceptance": "failed",
+    "category": "Published single dal-qalqala errors versus correct labels; Ikhlas verses 1 and 2 only",
+    "samples": { "train": 338, "development": 136, "test": 247 },
+    "measurements": {
+      "testSamples": 247,
+      "assessed": 197,
+      "truePositives": 18,
+      "falsePositives": 7,
+      "precision": 0.72,
+      "recallIncludingAbstentions": 0.23376623376623376,
+      "coverage": 0.7975708502024291
+    },
+    "thresholdSelectedOnlyOnDevelopment": 0.6,
+    "scoresAreCalibratedProbabilities": false,
+    "peakHostRSSKiB": 2676600,
+    "runtime": "Pinned ONNX CPU; not iPhone or a microphone journey",
+    "datasetRevision": "973b5ef1d1532bcbe7e9a5a5b0dce125cc4d0dac",
+    "datasetLicense": "CC-BY-4.0",
+    "attribution": "MuazAhmad7, Surah Ikhlas Labeled Dataset",
+    "expertArchiveEquivalenceVerified": false,
+    "expectedTranscriptUsed": false,
+    "productionPromoted": false,
+    "receiptSHA256": "af3a0b36f29cb2e39831a841710f0d8756db42f7a00e772c3af6079949e3eb7c"
+  },
   "acceptanceTargets": {
     "precision": 0.97,
     "recallIncludingAbstentions": 0.9,

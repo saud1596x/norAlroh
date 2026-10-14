@@ -115,6 +115,9 @@ struct InteractiveMushafReader: View {
     @State private var studyRequestFromSheet = false
     @State private var studyIndex: MushafStudyWordIndex?
     @State private var studySummary = false
+    @State private var recordingSelection: MushafRecordingSelection?
+    @State private var recordingBrowserOpen = false
+    @State private var memorizationOpen = false
     @State private var scopeOpen = false
     @State private var initialEntry = MushafInitialEntry()
     @State private var readerVisible = false
@@ -272,8 +275,14 @@ struct InteractiveMushafReader: View {
                                 .background(Theme.gold, in: Circle())
                         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
                             .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
-                            .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
+                            .contextMenu {
+                                Button("اختيار مقطع التسميع") { scopeOpen = true }
+                                Button("تسجيلاتي") { recordingBrowserOpen = true }
+                                Button("الحفظ والمراجعة") { memorizationOpen = true }
+                            }
                             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
+                            .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }
+                            .accessibilityAction(named: "الحفظ والمراجعة") { memorizationOpen = true }
                             .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
                     }
                         if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
@@ -349,6 +358,21 @@ struct InteractiveMushafReader: View {
                 } else {
                     KhatmahJourneyView(currentPage: number)
                 }
+            }
+        }
+        .sheet(item: $recordingSelection) { selection in
+            MushafRecordingList(session: selection.id, recorder: studyRecorder)
+        }
+        .sheet(isPresented: $recordingBrowserOpen) {
+            NavigationStack {
+                MushafRecordingBrowser()
+                    .toolbar { Button("إغلاق") { recordingBrowserOpen = false } }
+            }
+        }
+        .sheet(isPresented: $memorizationOpen) {
+            NavigationStack {
+                MemorizationView()
+                    .toolbar { Button("إغلاق") { memorizationOpen = false }.accessibilityIdentifier("reader.memorization.close") }
             }
         }
         .sheet(isPresented: $studySummary) {
@@ -491,6 +515,12 @@ struct InteractiveMushafReader: View {
             HStack {
                 Menu {
                     Button("العودة للقراءة") { Task { await recitation.pause(); dismiss() } }
+                    Button("تسجيلات الجلسة") {
+                        Task {
+                            await recitation.pause()
+                            if let id = recitation.record?.id { recordingSelection = MushafRecordingSelection(id: id) }
+                        }
+                    }.accessibilityIdentifier("study.recordings")
                     if !followAudio {
                         Button("العودة إلى موضع التلاوة") { followCurrentAudio() }
                     }
@@ -536,7 +566,13 @@ struct InteractiveMushafReader: View {
             }.background { readerControlMeasurement("header") }
             Spacer(minLength: 0)
             HStack {
-                Text("الصفحة \(number)").font(.caption).monospacedDigit()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("الصفحة \(number)").font(.caption).monospacedDigit()
+                    if let record = recitation.record {
+                        Text("تسجيل محلي · \(MushafAudioTime.text(record.duration))")
+                            .font(.caption2).monospacedDigit().accessibilityIdentifier("study.elapsed")
+                    }
+                }
                 Spacer()
                 Button {
                     Task {
@@ -607,7 +643,6 @@ struct InteractiveMushafReader: View {
         }.padding(8)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
-            .shadow(color: .black.opacity(0.15), radius: 12, y: -3)
             .padding(.horizontal, 12).padding(.bottom, 8)
             .accessibilityIdentifier("verse.actions.panel")
     }

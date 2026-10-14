@@ -63,3 +63,9 @@ xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRenderingFailureWithHiddenToolsHasAccessibleRecovery \
   -resultBundlePath release/home-flow/ui.xcresult
 python3 scripts/verify-recording-ui-removal.py "$noor_home_device"
+# Verify the user-deletion action before intentionally creating fresh microphone
+# recordings. Both display classes then exercise the actual permitted OS route.
+xcrun simctl privacy "$noor_home_device" grant microphone com.saud1596x.nooralruh
+xcodebuild test-without-building "${common[@]}" \
+  -only-testing:AtharUITests/NoorMushafStudyUITests \
+  -resultBundlePath release/home-flow/microphone-ui.xcresult

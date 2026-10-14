@@ -5,7 +5,7 @@ from release_evidence import ios_source_hashes
 ROOT=Path(__file__).resolve().parents[1]
 if platform.system()!='Darwin':raise SystemExit('Native report requires macOS Xcode execution.')
 results={}
-for key,file in [('unit','native-unit.xcresult'),('ui','native-ui.xcresult')]:
+for key,file in [('unit','native-unit.xcresult'),('ui','native-ui.xcresult'),('microphoneUI','native-microphone-ui.xcresult')]:
  path=ROOT/'release'/file
  if not path.is_dir():raise SystemExit('Missing actual test result bundle: '+file)
  summary=json.loads(subprocess.check_output(['xcrun','xcresulttool','get','test-results','summary','--path',str(path)],text=True))

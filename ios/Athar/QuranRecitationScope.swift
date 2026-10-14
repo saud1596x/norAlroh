@@ -74,6 +74,7 @@ struct QuranRecitationScope: View {
                         .accessibilityIdentifier("recitation.scope.start")
                     DisclosureGroup("تدريب إضافي") {
                         Toggle("إخفاء النص من بداية الاختبار", isOn: $closedPracticeText)
+                            .accessibilityIdentifier("recitation.scope.closedText")
                         Button("اختبار من موضع عشوائي") {
                             guard !selectedKeys.isEmpty else { return }
                             let start = Int.random(in: selectedKeys.indices)

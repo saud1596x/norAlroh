@@ -4,6 +4,52 @@ import XCTest
 final class NoorAllScreensTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    func testMemorizationWorkspaceAndManualReviewAreReachableFromMushaf() {
+        let app = XCUIApplication(); launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120))
+        app.buttons["reader.study"].press(forDuration: 0.6)
+        app.buttons["الحفظ والمراجعة"].tap()
+        XCTAssertTrue(app.buttons["hifz.practice"].waitForExistence(timeout: 15))
+        capture(app, "12-hifz")
+        tap(app.buttons["hifz.plan"], in: app)
+        XCTAssertTrue(app.buttons["hifz.savePlan"].waitForExistence(timeout: 10))
+        capture(app, "13-hifz-plan")
+        tap(app.buttons["hifz.savePlan"], in: app)
+        tap(app.buttons["hifz.practice"], in: app)
+        XCTAssertTrue(app.staticTexts["hifz.mushafPage"].waitForExistence(timeout: 90))
+        let hintReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: app.buttons["hifz.revealPart"])
+        wait(for: [hintReady], timeout: 60)
+        capture(app, "37-practice-mushaf-hidden")
+        app.buttons["hifz.revealPart"].tap(); capture(app, "38-practice-mushaf-hint")
+        app.buttons["hifz.revealAll"].tap(); capture(app, "39-practice-mushaf-revealed")
+        back(app)
+        tap(app.buttons["hifz.test"], in: app)
+        XCTAssertTrue(app.buttons["hifz.pause"].waitForExistence(timeout: 90))
+        capture(app, "14-hifz-test")
+        app.buttons["hifz.pause"].tap()
+        XCTAssertFalse(app.buttons["hifz.remembered"].isEnabled)
+        capture(app, "15-hifz-paused")
+        app.buttons["hifz.pause"].tap(); app.buttons["hifz.reveal"].tap()
+        capture(app, "16-hifz-revealed")
+        // This is explicitly subjective review, never an invented ASR grade.
+        // Mark the demonstrated exposed passages as needing review.
+        for _ in 0..<50 {
+            if app.staticTexts["hifz.complete"].exists { break }
+            let review = app.buttons["تحتاج مراجعة"]
+            XCTAssertTrue(review.waitForExistence(timeout: 10))
+            let ready = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: review)
+            wait(for: [ready], timeout: 60); review.tap()
+        }
+        XCTAssertTrue(app.staticTexts["hifz.complete"].waitForExistence(timeout: 10))
+        capture(app, "18-hifz-result")
+        app.buttons["hifz.resultHistory"].tap(); capture(app, "19-hifz-history")
+        back(app); back(app)
+        tap(app.buttons["hifz.insights"], in: app); capture(app, "36-mastery-map")
+        back(app)
+        app.buttons["reader.memorization.close"].tap(); app.buttons["إغلاق المصحف"].tap()
+    }
+
     func testAllScreensWalkthrough() {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))

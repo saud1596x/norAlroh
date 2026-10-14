@@ -1,5 +1,43 @@
 import SwiftUI
+import UIKit
 import Foundation
+
+/// Keep Arabic marked-text composition in the native input control. SwiftUI
+/// filtering can redraw the list, but must never replace an in-flight edit.
+struct NoorArabicSearchField: UIViewRepresentable {
+    @Binding var text: String
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIView(context: Context) -> UISearchTextField {
+        let field = UISearchTextField()
+        field.placeholder = "ابحث في الأبواب والنصوص"
+        field.accessibilityLabel = "ابحث في الأبواب والنصوص"
+        field.accessibilityIdentifier = "adhkar.search"
+        field.text = text; field.delegate = context.coordinator
+        field.autocorrectionType = .no; field.spellCheckingType = .no
+        field.autocapitalizationType = .none; field.returnKeyType = .search
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.textAlignment = .right; field.semanticContentAttribute = .forceRightToLeft
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        return field
+    }
+    func updateUIView(_ field: UISearchTextField, context: Context) {
+        context.coordinator.parent = self
+        if !field.isFirstResponder, field.markedTextRange == nil, field.text != text { field.text = text }
+    }
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: NoorArabicSearchField
+        init(_ parent: NoorArabicSearchField) { self.parent = parent }
+        @objc func changed(_ field: UITextField) {
+            guard field.markedTextRange == nil else { return }
+            parent.text = field.text ?? ""
+        }
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            changed(textField); textField.resignFirstResponder(); return true
+        }
+        func textFieldDidEndEditing(_ textField: UITextField) { changed(textField) }
+    }
+}
 
 struct DhikrEntry: Codable, Identifiable {
     let id: String; let title: String; let text: String; let target: Int; let reference: String; let sourceURL: URL
@@ -111,6 +149,7 @@ struct AdhkarView: View {
             if let content {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
+                        NoorArabicSearchField(text: $search).frame(height: 48)
                         VStack(alignment: .leading, spacing: 12) {
                             Text("أذكارك").font(.largeTitle.bold())
                             Label("متاحة دون اتصال", systemImage: "checkmark.circle").font(.caption)
@@ -148,10 +187,6 @@ struct AdhkarView: View {
                 }
             } else { ContentUnavailableView("تعذر تحميل الأذكار", systemImage: "book.closed") }
         }.background(Theme.background).noorScreenChrome().navigationTitle("الأذكار")
-            .searchable(text: $search, prompt: "ابحث في الأبواب والنصوص")
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
-            .submitLabel(.search)
             .tint(Theme.gold)
     }
 }

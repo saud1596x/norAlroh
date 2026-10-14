@@ -457,6 +457,7 @@ struct MemorizationView: View {
                     action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")
                 }.accessibilityIdentifier("hifz.test")
                 Card {
+                    Text("تقدم المراجعة بتقييمك الذاتي").font(.caption).foregroundStyle(.secondary)
                     HStack {
                         stat(memorization.masteredCount, "آيات متقنة")
                         Spacer()
