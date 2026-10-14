@@ -136,6 +136,7 @@ struct MushafRecordingList: View {
     @State private var sessionTitle = ""
     @State private var removalCandidate: MushafRecordingTake?
     @State private var loadRevision = UUID()
+    @State private var observedSpeech: [QuranObservedSpeech] = []
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
@@ -157,6 +158,34 @@ struct MushafRecordingList: View {
                                 }.accessibilityLabel("مشاركة المقطع \(index + 1)")
                             }
                             Text(verbatim: MushafAudioTime.date(take.date)).font(.caption).foregroundStyle(.secondary)
+                            if !showingDeleted {
+                                DisclosureGroup("راجع الكلمات المسموعة") {
+                                    LazyVStack(alignment: .leading, spacing: 8) {
+                                        ForEach(observedSpeech.indices.filter { observedSpeech[$0].takeID == take.id }, id: \.self) { index in
+                                            let span = observedSpeech[index]
+                                            if let words = span.wordObservations {
+                                                ForEach(words, id: \.observationID) { word in
+                                                    Button {
+                                                        recorder.play(take, at: max(0, (word.startInTakeSeconds ?? span.start) - 0.75))
+                                                    } label: {
+                                                        HStack {
+                                                            Text(word.observedText)
+                                                            Spacer()
+                                                            Text(word.startInTakeSeconds.map(MushafAudioTime.text) ?? "توقيت المقطع").font(.caption)
+                                                            Image(systemName: "play.circle")
+                                                        }.frame(minHeight: 44)
+                                                    }.buttonStyle(.plain)
+                                                }
+                                            } else {
+                                                Button { recorder.play(take, at: span.start) } label: {
+                                                    Text(span.words.joined(separator: " ") + " · توقيت المقطع").frame(minHeight: 44)
+                                                }
+                                            }
+                                        }
+                                        Text("هذه كلمات استخرجها المحرك من تسجيلك؛ ليست حكمًا بصحة التلاوة.").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
                             if recorder.playing == take.id {
                                 TimelineView(.periodic(from: .now, by: 0.25)) { context in
                                     VStack(spacing: 8) {
@@ -250,8 +279,14 @@ struct MushafRecordingList: View {
             let result = try await Task.detached(priority: .userInitiated) {
                 try deleted ? MushafRecordingArchive.deletedTakes(session: id) : MushafRecordingArchive.takes(session: id)
             }.value
+            let speech = await Task.detached(priority: .userInitiated) {
+                guard let root = try? MushafRecordingArchive.root(),
+                      let record = try? QuranRecitationJournal(root: root).load(id) else { return [QuranObservedSpeech]() }
+                return record.observedSpeech ?? []
+            }.value
             guard loadRevision == token, !Task.isCancelled else { return }
             takes = result
+            observedSpeech = speech
             loadError = nil
         } catch { loadError = "تعذّر قراءة قائمة التسجيلات. احتُفظ بالملفات الأصلية؛ أعد المحاولة بعد فتح قفل الجهاز." }
     }
