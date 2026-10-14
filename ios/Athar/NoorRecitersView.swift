@@ -54,7 +54,7 @@ struct NoorRecitersView: View {
         }
         .scrollContentBackground(.hidden).background(Theme.background)
         .noorScreenChrome().navigationTitle("أئمة الحرمين")
-        .searchable(text: $search, prompt: "ابحث باسم القارئ")
+        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث باسم القارئ")
     }
 }
 
@@ -126,7 +126,7 @@ private struct NoorReciterSurahsView: View {
         }
         .scrollContentBackground(.hidden).background(Theme.background)
         .noorScreenChrome().navigationTitle(reciter.name).navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $search, prompt: "ابحث في السور المتاحة")
+        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث في السور المتاحة")
         .onDisappear { audio.stop() }
     }
 }

@@ -6,10 +6,12 @@ mkdir -p release/home-flow
 python3 scripts/select-xcode.py > release/home-flow/xcode.env
 source release/home-flow/xcode.env
 export DEVELOPER_DIR
+if [[ "${NOOR_RECITER_SMOKE_ONLY:-0}" != 1 ]]; then
 xcodegen generate --spec ios/project-accounts.yml --project ios
 xcodebuild -project ios/Athar.xcodeproj -scheme Athar -configuration Release -sdk iphoneos \
   -destination generic/platform=iOS -derivedDataPath release/home-flow-accounts-derived-data \
   CODE_SIGNING_ALLOWED=NO build
+fi
 xcodegen generate --spec ios/project.yml --project ios
 noor_home_device=$(python3 - <<'PY'
 import json, os, subprocess
@@ -29,6 +31,13 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Release
   ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO
   'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
 xcodebuild build-for-testing "${common[@]}"
+if [[ "${NOOR_RECITER_SMOKE_ONLY:-0}" == 1 ]]; then
+  xcodebuild test-without-building "${common[@]}" \
+    -only-testing:AtharTests/NoorReciterTests \
+    -only-testing:AtharUITests/NoorReciterLibraryTests \
+    -resultBundlePath release/home-flow/reciter-smoke.xcresult
+  exit 0
+fi
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorLaunchTests \
   -resultBundlePath release/home-flow/welcome.xcresult
