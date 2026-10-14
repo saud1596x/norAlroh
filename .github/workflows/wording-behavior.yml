@@ -1,0 +1,26 @@
+name: Fast production wording and evidence regression
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/RecitationEngineProbe/Sources/RecitationAlignment/**
+      - tools/RecitationEngineProbe/Sources/RecitationSessions/**
+      - ios/AtharTests/QuranWordingAssessmentTests.swift
+      - ios/AtharTests/QuranObservedSpeechTests.swift
+      - scripts/test-wording-behavior.py
+      - .github/workflows/wording-behavior.yml
+permissions:
+  contents: read
+concurrency:
+  group: wording-behavior-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  production-behavior:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record actual Swift runtime
+        run: swift --version
+      - name: Execute unchanged production Swift sources and behavioral tests
+        run: python3 scripts/test-wording-behavior.py
