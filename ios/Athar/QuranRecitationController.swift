@@ -372,18 +372,21 @@ import os
                 } else { spans.append(observed) }
                 let assessmentInput = Array(spans.suffix(16))
                 let referenceWords = updatedTracker.expected
+                let priorEvents = current.wordingEvents ?? []
+                let sessionTakes = current.takes
                 let events = await Task.detached(priority: .userInitiated) {
-                    QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
+                    let fresh = QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
+                    let older = priorEvents.filter { prior in
+                        prior.state == "provisional" && !assessmentInput.contains(where: { $0.takeID == prior.takeID })
+                    }
+                    return QuranWordingAssessment.linkLaterAttempts(fresh + older, spans: assessmentInput,
+                        takes: sessionTakes, expected: referenceWords)
                 }.value
                 guard revision == token, !Task.isCancelled, let latest = record else { return }
                 current = latest
                 current.observedSpeech = spans
-                var durableEvents = current.wordingEvents ?? []
-                if let earliest = assessmentInput.filter({ $0.takeID == take }).map(\.start).min() {
-                    durableEvents.removeAll { $0.takeID == take && $0.end >= earliest }
-                }
-                for event in events where !durableEvents.contains(where: { $0.eventID == event.eventID }) { durableEvents.append(event) }
-                current.wordingEvents = durableEvents
+                current.wordingEvents = QuranWordingAssessment.reconcile(previous: current.wordingEvents ?? [],
+                    incoming: events, reconsidered: assessmentInput)
                 current.evidence += additions; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.

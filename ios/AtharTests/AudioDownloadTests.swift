@@ -3,6 +3,67 @@ import AVFoundation
 @testable import Athar
 
 final class AudioDownloadTests: XCTestCase {
+    func testReciterDownloadIdentityRejectsDifferentRecordingAndPartialTransfers() throws {
+        let reciter = try XCTUnwrap(NoorReciterCatalog.reciters.first)
+        let other = try XCTUnwrap(NoorReciterCatalog.reciters.dropFirst().first)
+        let key = try XCTUnwrap(NoorAudioIntegrity.reciterKey(reciter, surah: 112))
+        let otherKey = try XCTUnwrap(NoorAudioIntegrity.reciterKey(other, surah: 112))
+        XCTAssertNotEqual(key, otherKey)
+        let url = try XCTUnwrap(NoorAudioIntegrity.url(key))
+        XCTAssertEqual(url, reciter.audioURL(surah: 112))
+        let complete = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+                                                   headerFields: ["Content-Length": "25000000"]))
+        XCTAssertTrue(NoorAudioIntegrity.completeResponse(complete, bytes: 25_000_000, key: key))
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(complete, bytes: 25_000_000, key: otherKey))
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(complete, bytes: 24_000_000, key: key))
+        XCTAssertFalse(NoorAudioIntegrity.completeResponse(complete, bytes: 251_000_000, key: key))
+        for invalid in [key + "/../", key.replacingOccurrences(of: ":112", with: ":0112"),
+                        "r:1:1:unknown:112", key.replacingOccurrences(of: ":112", with: ":115")] {
+            XCTAssertNil(NoorAudioIntegrity.url(invalid), invalid)
+        }
+    }
+    @MainActor func testInstalledReciterAudioReopensAndPlaysLocalBytesWithoutNetworkSource() async throws {
+        let reciter = try XCTUnwrap(NoorReciterCatalog.reciters.first)
+        let key = try XCTUnwrap(NoorAudioIntegrity.reciterKey(reciter, surah: 112))
+        let fixture = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp3")
+        try FileManager.default.copyItem(at: fixture, to: temporary)
+        defer { try? FileManager.default.removeItem(at: folder); try? FileManager.default.removeItem(at: temporary) }
+        let original = try Data(contentsOf: fixture)
+        let response = try XCTUnwrap(HTTPURLResponse(url: try XCTUnwrap(NoorAudioIntegrity.url(key)), statusCode: 200,
+                              httpVersion: nil, headerFields: ["Content-Length": String(original.count)]))
+        // Public short fixture exercises the real cache/media lifecycle, not a claim
+        // that this fixture belongs to the selected catalog reciter or a whole surah.
+        let worker = NoorAudioDiskStore(directory: folder)
+        let installed = try await worker.install(temporary, response: response, key: key, files: [], epoch: 1)
+        XCTAssertEqual(installed?.count, 1)
+        let defaultsName = "noor.audio.offline-test." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        let reopened = NoorAudioDownloads(directory: folder, defaults: defaults)
+        let local = await reopened.localURL(key)
+        XCTAssertTrue(try XCTUnwrap(local).isFileURL)
+        XCTAssertEqual(try Data(contentsOf: XCTUnwrap(local)), original)
+        var checkedLocal = false
+        let audio = MushafVerseAudio(source: { _ in URL(string: "https://offline-test.invalid/no-network.mp3") },
+            cacheKey: { _ in key }, cachedSource: { requested in
+                XCTAssertEqual(requested, key); checkedLocal = true
+                return await reopened.localURL(requested)
+            })
+        defer { audio.stop() }
+        audio.play(["112"])
+        let deadline = Date().addingTimeInterval(20)
+        while audio.playing == nil && audio.error == nil && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(checkedLocal)
+        XCTAssertEqual(audio.playing, "112", audio.playbackDiagnostic)
+        XCTAssertNil(audio.error, audio.playbackDiagnostic)
+        try Data(repeating: 0, count: original.count).write(to: try XCTUnwrap(local))
+        let corrupt = await reopened.localURL(key)
+        XCTAssertNil(corrupt, "Reopened cache must reject changed bytes even when their size matches")
+    }
     actor CommitGate {
         private var released = false
         private var continuation: CheckedContinuation<Void, Never>?
@@ -44,7 +105,7 @@ final class AudioDownloadTests: XCTestCase {
             }
             try writeTone(to: temporary, frequency: 880)
             let bytes = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            let url = try XCTUnwrap(URL(string: "https://everyayah.com/data/fixture.m4a"))
+            let url = try XCTUnwrap(NoorAudioIntegrity.url("1:1"))
             let response = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Length": String(bytes)]))
             let attempted = expectation(description: "Index commit fails after verified audio write")
             let worker = NoorAudioDiskStore(directory: folder, writeIndex: { _, _ in
@@ -75,7 +136,7 @@ final class AudioDownloadTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: folder); try? FileManager.default.removeItem(at: temporary) }
         try writeTone(to: temporary, frequency: 440)
         let bytes = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        let url = try XCTUnwrap(URL(string: "https://everyayah.com/data/fixture.m4a"))
+        let url = try XCTUnwrap(NoorAudioIntegrity.url("1:1"))
         let response = try XCTUnwrap(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Length": String(bytes)]))
         let gate = CommitGate(); let validated = expectation(description: "Actual asset is validated before installation")
         let worker = NoorAudioDiskStore(directory: folder, beforeCommit: { validated.fulfill(); await gate.wait() })

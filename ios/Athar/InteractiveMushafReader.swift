@@ -128,6 +128,7 @@ struct InteractiveMushafReader: View {
     private var studyOpen: Bool { recitation.hasSession || recitation.state == .permission || recitation.state == .preparing }
     private var hiddenStudyWords: Set<Int> { recitation.hiddenIDs }
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
+    @AppStorage("noor.mushaf.followAudio") private var followAudio = true
     private var keys: [String] { store.quran.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } } }
     private var page: OriginalPageData? {
         pageIndex[number]
@@ -147,7 +148,9 @@ struct InteractiveMushafReader: View {
                 } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     let renderedIdentity = MushafRenderIdentity(page: page.number, generation: renderGeneration)
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
-                        hiddenWordIDs: hiddenStudyWords, allowsVerseSelection: !studyOpen,
+                        hiddenWordIDs: hiddenStudyWords,
+                        reviewWordIDs: Set((recitation.record?.wordingEvents ?? []).filter { $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition" }.flatMap(\.referenceIDs)),
+                        allowsVerseSelection: !studyOpen,
                         // Fit the complete page instead of automatically zooming
                         // past its edges. The larger-text preference uses a little
                         // less side padding while preserving the authored layout.
@@ -243,6 +246,7 @@ struct InteractiveMushafReader: View {
                             .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
                             .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
                             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
+                            .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
                     }
                         if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
                             HStack {
@@ -291,7 +295,7 @@ struct InteractiveMushafReader: View {
         }
         .sheet(isPresented: $scopeOpen, onDismiss: {
             if let guided = requestedGuided {
-                requestedGuided = nil; guidedKeys = guided.0; audio.reciterDirectory = guided.1
+                requestedGuided = nil; guidedKeys = guided.0; audio.reciterDirectory = guided.1; followAudio = true
                 recitation.listenFirst(guided.0, audio: audio, repetitions: guided.2, responsePause: guided.3)
             } else if let scope = requestedScope { requestedScope = nil; startRecitation(keys: scope) }
         }) {
@@ -350,8 +354,12 @@ struct InteractiveMushafReader: View {
             if value == nil, audio.playing == nil, audio.waitingKey == nil,
                recitation.guidedPhase == .reference { recitation.cancelGuided() }
         }
+        .onChange(of: audio.playing) { _, value in
+            if value == nil, audio.loadingKey == nil, audio.waitingKey == nil,
+               recitation.guidedPhase == .reference { recitation.cancelGuided() }
+        }
         .onChange(of: recitation.currentVerse) { _, key in
-            guard recitation.hasSession, let key else { return }
+            guard followAudio, recitation.hasSession, let key else { return }
             selected = key; manualSelection = nil
             if page?.words.contains(where: { $0.verse == key }) != true,
                let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
@@ -415,6 +423,7 @@ struct InteractiveMushafReader: View {
     }
     private func startRecitation(keys scope: [String]) {
         guard readerVisible, let snapshot, !recitation.hasSession else { return }
+        followAudio = true
         audio.stop(); studyRecorder.stop(); legacyRecorder.stop(); clearManualSelection()
         tools = true
         Task {
@@ -427,6 +436,9 @@ struct InteractiveMushafReader: View {
             HStack {
                 Menu {
                     Button("العودة للقراءة") { Task { await recitation.pause(); dismiss() } }
+                    if !followAudio {
+                        Button("العودة إلى موضع التلاوة") { followCurrentAudio() }
+                    }
                     if !(recitation.record?.wordingEvents ?? []).isEmpty {
                         Button("راجع ملاحظات التلاوة") { Task { await recitation.pause(); studySummary = true } }
                     }
@@ -444,8 +456,15 @@ struct InteractiveMushafReader: View {
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                     .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
                 Spacer(minLength: 8)
-                Text(recitation.status).font(.subheadline).lineLimit(1)
-                    .accessibilityIdentifier("study.status").accessibilityAddTraits(.updatesFrequently)
+                if (recitation.record?.wordingEvents ?? []).contains(where: { $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition" }) {
+                    Button("ملاحظة غير محسومة · راجع الصوت") {
+                        Task { await recitation.pause(); studySummary = true }
+                    }.font(.caption).frame(minHeight: 44)
+                        .accessibilityIdentifier("study.reviewProvisional")
+                } else {
+                    Text(recitation.status).font(.subheadline).lineLimit(1)
+                        .accessibilityIdentifier("study.status").accessibilityAddTraits(.updatesFrequently)
+                }
                 Spacer(minLength: 8)
                 Button { Task { await recitation.finish() } } label: {
                     Text("إنهاء").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
@@ -512,7 +531,7 @@ struct InteractiveMushafReader: View {
             verseAction("تفسير الآية", symbol: "book", identifier: "verse.tafsir") { openTools(selection, action: .tafsir) }
             verseAction("استماع من الآية", symbol: "play.fill", identifier: "verse.play") {
                 let count = store.quran[selection.chapter - 1].ayahs.count
-                manualSelection = nil
+                manualSelection = nil; followAudio = true
                 audio.play((selection.ayah...count).map { "\(selection.chapter):\($0)" })
             }
             verseAction("تكرار الآية", symbol: "repeat", identifier: "verse.repeat") { openTools(selection, action: .repeatRange) }
@@ -543,14 +562,17 @@ struct InteractiveMushafReader: View {
     }
     private func turn(_ amount: Int) {
         guard (1...604).contains(number + amount) else { return }
-        if recitation.hasSession {
-            let scope = Set(recitation.record?.keys ?? [])
-            guard pageIndex[number + amount]?.words.contains(where: { scope.contains($0.verse) }) == true else { return }
-        }
+        followAudio = false
         let destination = number + amount
         // Persist before publishing the new page, including a quick close/background.
         lastPage = destination
-        number = destination; selected = recitation.hasSession ? recitation.currentVerse : nil; manualSelection = nil
+        number = destination; selected = nil; manualSelection = nil
+    }
+    private func followCurrentAudio() {
+        guard let key = recitation.hasSession ? recitation.currentVerse : audio.playing,
+              let destination = studyIndex?.pages[key]?.first else { return }
+        followAudio = true; manualSelection = nil; selected = key
+        lastPage = destination; number = destination
     }
     private func load() async {
         renderGeneration = UUID(); error = nil; needsFirstDownload = false
@@ -571,7 +593,7 @@ struct InteractiveMushafReader: View {
                 lastPage = number
             }
             audio.onVerse = { key in
-                guard !recitation.hasSession else { return }
+                guard followAudio, !recitation.hasSession else { return }
                 guard manualSelection == nil, sheetVerse == nil else { return }
                 selected = key
                 if page?.words.contains(where: { $0.verse == key }) != true,
@@ -579,7 +601,7 @@ struct InteractiveMushafReader: View {
             }
             if first, let pending = UUID(uuidString: pendingRecitation) {
                 await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
-                if recitation.hasSession {
+                if recitation.hasSession, followAudio {
                     selected = recitation.currentVerse
                     if let key = recitation.currentVerse, let destination = versePages[key] { number = destination; lastPage = destination }
                 }

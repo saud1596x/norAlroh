@@ -56,6 +56,8 @@ import MediaPlayer
         let item = player.currentItem
         return "player=\(player.status.rawValue), item=\(item?.status.rawValue ?? -1), timeControl=\(player.timeControlStatus.rawValue), waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "none"), seconds=\(player.currentTime().seconds), duration=\(item?.duration.seconds ?? .nan), itemError=\((item?.error as NSError?)?.code ?? 0), outputs=\(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","))"
     }
+    private let cacheKey: ((String) -> String?)?
+    private let cachedSource: (String) async -> URL?
     private let source: ((String) -> URL?)?
     private let resolveSource: (String) async -> URL?
     private var resolvingSource: Task<Void, Never>?
@@ -64,10 +66,12 @@ import MediaPlayer
     var reciterDirectory = "Abdul_Basit_Murattal_64kbps" {
         willSet { if newValue != reciterDirectory { stop() } }
     }
-    init(source: ((String) -> URL?)? = nil, loadTimeoutSeconds: Double = 15,
+    init(source: ((String) -> URL?)? = nil, cacheKey: ((String) -> String?)? = nil,
+         cachedSource: ((String) async -> URL?)? = nil, loadTimeoutSeconds: Double = 15,
          resolveSource: ((String) async -> URL?)? = nil, recordingIdentity: String? = nil,
          displayName: String = "تلاوة القرآن", keepAlive: Bool = false) {
-        self.source = source
+        self.source = source; self.cacheKey = cacheKey
+        self.cachedSource = cachedSource ?? { await NoorAudioDownloads.shared.localURL($0) }
         self.recordingIdentity = recordingIdentity
         self.displayName = displayName; self.keepAlive = keepAlive
         self.resolveSource = resolveSource ?? Self.recitationURL
@@ -206,7 +210,15 @@ import MediaPlayer
         startLoadDeadline(key: key, token: token)
         if let source {
             guard let url = source(key) else { stop(); return }
-            startPlayer(url: url, key: key, token: token)
+            if let cacheKey = cacheKey?(key) {
+                resolvingSource = Task { [weak self] in
+                    guard let self else { return }
+                    let local = await self.cachedSource(cacheKey)
+                    guard !Task.isCancelled, self.revision == token, self.loadingKey == key else { return }
+                    self.resolvingSource = nil
+                    self.startPlayer(url: local ?? url, key: key, token: token)
+                }
+            } else { startPlayer(url: url, key: key, token: token) }
         } else {
             resolvingSource = Task { [weak self] in
                 guard let self else { return }

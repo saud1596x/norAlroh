@@ -77,7 +77,12 @@ import UIKit
             }
             let originalRows = canvas.rowGeometry.map(\.ink)
             let originalOrnaments = canvas.ornamentBounds
+            canvas.reviewWordIDs = Set(page.words.prefix(1).map(\.id))
+            XCTAssertNotNil(canvas.reviewPath(), "A review marker must use the real word hit geometry")
+            XCTAssertEqual(canvas.rowGeometry.map(\.ink), originalRows, "Review never reshapes Quran text")
             canvas.hiddenWordIDs = Set(page.words.map(\.id))
+            XCTAssertNil(canvas.reviewPath(), "A provisional marker must never expose hidden practice words")
+            canvas.reviewWordIDs = []
             XCTAssertEqual(canvas.rowGeometry.map(\.ink), originalRows, "All hidden words retain original locations")
             XCTAssertEqual(canvas.ornamentBounds, originalOrnaments, "Training cannot move headings")
             canvas.hiddenWordIDs = []

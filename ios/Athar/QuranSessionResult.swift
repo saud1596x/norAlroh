@@ -73,9 +73,10 @@ struct QuranSessionResult: View {
                     DisclosureGroup("تفاصيل التتبع") {
                         if let events = record.wordingEvents, !events.isEmpty {
                             Text("ملاحظات تحتاج مراجعة الصوت؛ ليست أخطاء مؤكدة ولا تؤثر في تقدم الحفظ.").font(.footnote).foregroundStyle(.secondary)
-                            ForEach(events, id: \.eventID) { event in
+                            ForEach(events.filter { $0.state == "provisional" }, id: \.eventID) { event in
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text(event.resolution == nil ? "راجع هذا الموضع" : "ظهرت قراءة مطابقة لاحقًا في التسجيل")
+                                    Text(event.resolution == nil ? "راجع هذا الموضع" : event.resolution == "later-assisted-evidence"
+                                         ? "ظهرت قراءة مطابقة بعد الاستماع؛ محاولة بمساعدة" : "ظهرت قراءة مطابقة لاحقًا في التسجيل")
                                     HStack {
                                         Button("استمع لمحاولتك") {
                                             if let span = record.observedSpeech?.first(where: { $0.takeID == event.takeID && $0.start <= event.start && $0.end >= event.end }) {
@@ -83,6 +84,12 @@ struct QuranSessionResult: View {
                                                 replay(span, word: word)
                                             }
                                         }.frame(minHeight: 44)
+                                        if let ids = event.correctionObservationIDs,
+                                           let span = record.observedSpeech?.first(where: { source in
+                                               source.wordObservations?.contains(where: { ids.contains($0.observationID) }) == true
+                                           }), let word = span.wordObservations?.first(where: { ids.contains($0.observationID) }) {
+                                            Button("استمع للمحاولة اللاحقة") { replay(span, word: word) }.frame(minHeight: 44)
+                                        }
                                         if let key = wordIDs.first(where: { !Set($0.value).isDisjoint(with: event.referenceIDs) })?.key {
                                             Button("راجع الآية") { onReview(key) }.frame(minHeight: 44)
                                         }

@@ -100,6 +100,9 @@ struct OriginalPageData {
             refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
         }
     }
+    var reviewWordIDs: Set<Int> = [] {
+        didSet { if oldValue != reviewWordIDs { refreshAccessibilityLabels(); updateHighlight() } }
+    }
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة." {
         didSet { if oldValue != hiddenTextAccessibilityHint { refreshAccessibilityLabels() } }
     }
@@ -116,12 +119,17 @@ struct OriginalPageData {
     var reduceMotion = false
     var selected: String? { didSet { if oldValue != selected { updateHighlight() } } }
     private let highlight = CAShapeLayer()
+    private let reviewUnderline = CAShapeLayer()
     private var ink: OriginalMushafInk!
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear; isOpaque = false
         highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
         layer.addSublayer(highlight)
+        reviewUnderline.fillColor = nil
+        reviewUnderline.strokeColor = UIColor.secondaryLabel.cgColor
+        reviewUnderline.lineWidth = 1.5; reviewUnderline.lineDashPattern = [3, 3]
+        layer.addSublayer(reviewUnderline)
         ink = OriginalMushafInk(frame: CGRect(origin: .zero, size: Self.pageSize))
         ink.owner = self; ink.isUserInteractionEnabled = false; ink.backgroundColor = .clear
         ink.isOpaque = false; addSubview(ink)
@@ -256,6 +264,9 @@ struct OriginalPageData {
             element.action = allowsVerseSelection ? { [weak self] in self?.onVerse?(key) } : nil
             element.accessibilityLabel = element.heading + ". " + (hiddenVerses.contains(element.verseKey)
                 ? hiddenTextAccessibilityHint : element.fullText)
+            if regions.contains(where: { $0.verse == key && reviewWordIDs.contains($0.word) && !hiddenWordIDs.contains($0.word) }) {
+                element.accessibilityLabel = (element.accessibilityLabel ?? "") + ". توجد ملاحظة صوتية غير محسومة للمراجعة، وليست خطأ مؤكدًا."
+            }
         }
     }
     /// A title and its separate basmala share the space between actual body ink.
@@ -381,9 +392,20 @@ struct OriginalPageData {
             highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
         }
     }
+    func reviewPath() -> CGPath? {
+        let path = CGMutablePath()
+        for region in regions where reviewWordIDs.contains(region.word) && !hiddenWordIDs.contains(region.word) {
+            let y = min(Self.pageSize.height - 1, region.rect.maxY + 2)
+            path.move(to: CGPoint(x: region.rect.minX, y: y))
+            path.addLine(to: CGPoint(x: region.rect.maxX, y: y))
+        }
+        return path.isEmpty ? nil : path
+    }
     private func updateHighlight() {
         CATransaction.begin(); CATransaction.setDisableActions(true)
         highlight.path = selectionPath(for: selected)
+        reviewUnderline.strokeColor = UIColor.secondaryLabel.resolvedColor(with: traitCollection).cgColor
+        reviewUnderline.path = reviewPath()
         CATransaction.commit()
         if !reduceMotion && !UIAccessibility.isReduceMotionEnabled { let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1; fade.duration = 0.16; highlight.add(fade, forKey: "select") }
     }
@@ -574,6 +596,7 @@ struct OriginalPageData {
 struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
+    var reviewWordIDs: Set<Int> = []
     var allowsVerseSelection = true
     var readingMagnification: CGFloat = 1
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة."
@@ -597,6 +620,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
                 view.canvas.configure(page: self.page, corpus: self.corpus)
                 view.canvas.selected = self.selected
                 view.canvas.hiddenWordIDs = self.hiddenWordIDs
+                view.canvas.reviewWordIDs = self.reviewWordIDs
                 view.resetToFittedPage()
                 view.canvas.setNeedsDisplay(); view.canvas.layoutIfNeeded()
             }
@@ -617,6 +641,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
         view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
         view.canvas.selected = selected
         view.canvas.hiddenWordIDs = hiddenWordIDs
+        view.canvas.reviewWordIDs = reviewWordIDs
     }
     final class Coordinator { var page: Int? }
     func makeCoordinator() -> Coordinator { Coordinator() }

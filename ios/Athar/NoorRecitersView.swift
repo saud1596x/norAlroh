@@ -69,12 +69,17 @@ private struct NoorReciterSurahsView: View {
     @EnvironmentObject private var store: AtharStore
     let reciter: NoorReciter
     @StateObject private var audio: MushafVerseAudio
+    @ObservedObject private var downloads = NoorAudioDownloads.shared
+    @State private var downloadSurah: Int?
     @State private var search = ""
     init(reciter: NoorReciter) {
         self.reciter = reciter
         _audio = StateObject(wrappedValue: MushafVerseAudio(source: { key in
             guard let number = Int(key), key == String(number) else { return nil }
             return reciter.audioURL(surah: number)
+        }, cacheKey: { key in
+            guard let number = Int(key) else { return nil }
+            return NoorAudioIntegrity.reciterKey(reciter, surah: number)
         }, recordingIdentity: "mp3quran:\(reciter.recordingID):\(reciter.server)", displayName: reciter.name, keepAlive: true))
     }
     private var surahs: [Surah] {
@@ -92,6 +97,9 @@ private struct NoorReciterSurahsView: View {
     var body: some View {
         List {
             Section {
+                NavigationLink("التنزيلات المحفوظة وإدارة المساحة") { NoorAudioDownloadsView() }
+                if let message = downloads.message { Text(message).font(.caption) }
+                if downloads.active != nil { ProgressView("تنزيل التلاوة…") }
                 Text("حفص عن عاصم · تلاوة السورة كاملة")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button {
@@ -165,6 +173,13 @@ private struct NoorReciterSurahsView: View {
                         else { Image(systemName: audio.playing == key ? "stop.fill" : "play.fill") }
                     }.padding(.vertical, 8).frame(minHeight: 48)
                 }.buttonStyle(.plain).listRowBackground(Theme.panel)
+                    .contextMenu {
+                        Button("تنزيل السورة دون إنترنت", systemImage: "arrow.down.circle") { downloadSurah = surah.number }
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button("تنزيل", systemImage: "arrow.down.circle") { downloadSurah = surah.number }.tint(Theme.gold)
+                    }
+                    .accessibilityAction(named: "تنزيل السورة دون إنترنت") { downloadSurah = surah.number }
                     .accessibilityIdentifier("reciter.surah.\(surah.number)")
                     .accessibilityLabel("\(surah.name)، \(reciter.name)، \(audio.playing == key || audio.loadingKey == key ? "إيقاف" : "تشغيل")")
             }
@@ -175,6 +190,12 @@ private struct NoorReciterSurahsView: View {
         .scrollContentBackground(.hidden).background(Theme.background)
         .noorScreenChrome().navigationTitle(reciter.name).navigationBarTitleDisplayMode(.inline)
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث في السور المتاحة")
+        .confirmationDialog("تنزيل السورة لهذا القارئ؟ قد يستخدم بيانات الجوال.", isPresented: Binding(get: { downloadSurah != nil }, set: { if !$0 { downloadSurah = nil } }), titleVisibility: .visible) {
+            if let number = downloadSurah, let key = NoorAudioIntegrity.reciterKey(reciter, surah: number) {
+                Button("تنزيل") { downloads.download([key]); downloadSurah = nil }
+                Button("إلغاء", role: .cancel) { downloadSurah = nil }
+            }
+        }
         .onAppear {
             UserDefaults.standard.set(reciter.id, forKey: "noor.reciters.recent")
             audio.onVerse = { key in

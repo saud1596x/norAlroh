@@ -6,8 +6,8 @@ final class QuranWordingAssessmentTests: XCTestCase {
     private let reference = ["قل", "هو", "الله", "أحد", "الله", "الصمد"].enumerated().map {
         QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
     }
-    private func span(_ tokens: [String], offset: Double = 0, window: UUID = UUID()) -> QuranObservedSpeech {
-        var value = QuranObservedSpeech(takeID: take, start: offset, end: offset + Double(tokens.count),
+    private func span(_ tokens: [String], offset: Double = 0, window: UUID = UUID(), takeID: UUID? = nil) -> QuranObservedSpeech {
+        var value = QuranObservedSpeech(takeID: takeID ?? take, start: offset, end: offset + Double(tokens.count),
             words: tokens, unresolved: false, backendID: "test")
         value.evidenceVersion = 1; value.recognitionWindowID = window; value.recognitionRevision = 0
         value.wordObservations = tokens.enumerated().map {
@@ -21,6 +21,36 @@ final class QuranWordingAssessmentTests: XCTestCase {
         XCTAssertTrue(QuranWordingAssessment.evaluate([span(["قل", "هو", "الله", "أحد", "الله", "الصمد"])], expected: reference).isEmpty)
         XCTAssertTrue(QuranWordingAssessment.evaluate([], expected: reference).isEmpty)
     }
+    func testRecognizerRetractionPreservesPriorFindingAndIsNotSelfCorrection() throws {
+        let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
+        let correct = span(["قل", "هو", "الله", "أحد", "الله", "الصمد"])
+        let initial = QuranWordingAssessment.evaluate([wrong], expected: reference)
+        let revised = QuranWordingAssessment.reconcile(previous: initial,
+            incoming: QuranWordingAssessment.evaluate([wrong, correct], expected: reference), reconsidered: [wrong, correct])
+        XCTAssertEqual(revised.count, 1)
+        XCTAssertEqual(revised.first?.state, "superseded")
+        XCTAssertNil(revised.first?.resolution, "A changed interpretation of the same audio is not an acoustic correction")
+        XCTAssertEqual(revised.first?.supportingObservationIDs, initial.first?.supportingObservationIDs)
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        record.takes = [.init(id: take, startedAt: record.startedAt, frames: 320_000, closed: true)]
+        record.observedSpeech = [wrong, correct]; record.wordingEvents = revised
+        try record.validate()
+        let decoded = try JSONDecoder().decode(QuranRecitationRecord.self, from: JSONEncoder().encode(record))
+        XCTAssertEqual(decoded.wordingEvents, revised)
+    }
+    func testRealCorrectionCreatesRevisionAndRepeatedEvaluationIsIdempotent() {
+        let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
+        let later = span(["قل", "هو", "الله", "أحد", "الله", "الصمد"], offset: 10)
+        let initial = QuranWordingAssessment.evaluate([wrong], expected: reference)
+        let incoming = QuranWordingAssessment.evaluate([wrong, later], expected: reference)
+        let revised = QuranWordingAssessment.reconcile(previous: initial, incoming: incoming, reconsidered: [wrong, later])
+        XCTAssertEqual(revised.count, 2)
+        XCTAssertEqual(revised.map(\.state), ["superseded", "provisional"])
+        XCTAssertEqual(revised.map(\.revision), [0, 1])
+        XCTAssertEqual(revised.last?.resolution, "later-independent-evidence")
+        XCTAssertEqual(QuranWordingAssessment.reconcile(previous: revised, incoming: incoming,
+            reconsidered: [wrong, later]), revised)
+    }
     func testSubstitutionRetainsSpokenWordAndRequiresFollowingContext() {
         let source = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
         let events = QuranWordingAssessment.evaluate([source], expected: reference)
@@ -29,6 +59,27 @@ final class QuranWordingAssessmentTests: XCTestCase {
         XCTAssertEqual(events.first?.supportingObservationIDs, [source.wordObservations![2].observationID])
         XCTAssertEqual(events.first?.state, "provisional", "Uncalibrated acoustic evidence must never become a confirmed learner mistake")
         XCTAssertTrue(QuranWordingAssessment.evaluate([span(["قل", "هو", "شيء"])], expected: reference).isEmpty)
+    }
+    func testAssistedRetryUsesNewTakeAndNeverBecomesIndependentRecall() {
+        let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
+        let secondID = UUID()
+        let later = span(["قل", "هو", "الله", "أحد", "الله", "الصمد"], takeID: secondID)
+        let start = Date()
+        let first = QuranRecitationTake(id: take, startedAt: start, frames: 160_000, closed: true)
+        var assisted = QuranRecitationTake(id: secondID, startedAt: start.addingTimeInterval(20), frames: 160_000, closed: true)
+        assisted.referenceExposure = "Abdul_Basit_Murattal_64kbps"
+        let initial = QuranWordingAssessment.evaluate([wrong], expected: reference)
+        let linked = QuranWordingAssessment.linkLaterAttempts(initial, spans: [later], takes: [first, assisted], expected: reference)
+        XCTAssertEqual(linked.first?.resolution, "later-assisted-evidence")
+        XCTAssertEqual(linked.first?.state, "provisional")
+        XCTAssertTrue(Set(linked.first?.correctionObservationIDs ?? []).isSubset(of: Set(later.wordObservations!.map(\.observationID))))
+        let stored = QuranWordingAssessment.reconcile(previous: initial, incoming: linked, reconsidered: [later])
+        XCTAssertEqual(stored.filter { $0.state == "provisional" }.first?.resolution, "later-assisted-evidence")
+        XCTAssertEqual(stored.filter { $0.state == "superseded" }.count, 1)
+        XCTAssertNil(QuranWordingAssessment.linkLaterAttempts(initial, spans: [later], takes: [first], expected: reference).first?.resolution,
+                     "A playback-only source with no learner microphone take cannot resolve an incident")
+        let conflicting = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"], offset: 0.1, takeID: secondID)
+        XCTAssertNil(QuranWordingAssessment.linkLaterAttempts(initial, spans: [later, conflicting], takes: [first, assisted], expected: reference).first?.resolution)
     }
     func testOmissionRequiresLaterSpeechAndUnclearAudioAbstains() {
         let source = span(["قل", "هو", "أحد", "الله", "الصمد"])

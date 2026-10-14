@@ -50,7 +50,7 @@ actor NoorAudioDiskStore {
         defer { try? FileManager.default.removeItem(at: temporary) }
         guard next >= epoch else { return nil }; epoch = next
         let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        guard NoorAudioIntegrity.completeResponse(response, bytes: size) else { throw CocoaError(.fileReadCorruptFile) }
+        guard NoorAudioIntegrity.completeResponse(response, bytes: size, key: key) else { throw CocoaError(.fileReadCorruptFile) }
         let asset = AVURLAsset(url: temporary)
         let duration = try await asset.load(.duration)
         let tracks = try await asset.loadTracks(withMediaType: .audio)
@@ -59,7 +59,7 @@ actor NoorAudioDiskStore {
         await beforeCommit()
         guard next == epoch else { return nil }
         let bytes = try Data(contentsOf: temporary, options: .mappedIfSafe)
-        guard !bytes.isEmpty, bytes.count <= NoorAudioIntegrity.maximumBytes else { throw CocoaError(.fileReadCorruptFile) }
+        guard !bytes.isEmpty, bytes.count <= NoorAudioIntegrity.maximumBytes(for: key) else { throw CocoaError(.fileReadCorruptFile) }
         let metadata = NoorAudioFile(key: key, bytes: bytes.count, sha256: NoorAudioIntegrity.digest(bytes))
         let updated = files.filter { $0.key != key } + [metadata]
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -110,19 +110,49 @@ actor NoorAudioDiskStore {
 /// signature or an independent certification of the recitation's contents.
 enum NoorAudioIntegrity {
     static let maximumBytes = 20_000_000
+    static func maximumBytes(for key: String) -> Int {
+        reciterRecording(key) != nil ? 250_000_000 : maximumBytes
+    }
+    static func reciterKey(_ reciter: NoorReciter, surah: Int) -> String? {
+        guard reciter.audioURL(surah: surah) != nil,
+              NoorReciterCatalog.reciters.contains(reciter) else { return nil }
+        let identity = digest(Data(reciter.server.utf8))
+        return "r:\(reciter.id):\(reciter.recordingID):\(identity):\(surah)"
+    }
+    static func reciterRecording(_ key: String) -> (NoorReciter, Int)? {
+        let parts = key.split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count == 5, parts[0] == "r", let id = Int(parts[1]),
+              let recording = Int(parts[2]), let surah = Int(parts[4]),
+              let reciter = NoorReciterCatalog.reciters.first(where: { $0.id == id && $0.recordingID == recording }),
+              reciter.audioURL(surah: surah) != nil else { return nil }
+        let expected = "r:\(id):\(recording):\(digest(Data(reciter.server.utf8))):\(surah)"
+        return key == expected ? (reciter, surah) : nil
+    }
+    static func label(_ key: String) -> String {
+        if let (reciter, number) = reciterRecording(key) {
+            let name = QuranResources.corpus?.first(where: { $0.number == number })?.name ?? "\(number)"
+            return "\(name) · \(reciter.name)"
+        }
+        return "الآية \(key)"
+    }
     static func availableCapacity(at directory: URL) throws -> Int64 {
         let values = try directory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey])
         return values.volumeAvailableCapacityForImportantUsage ?? Int64(values.volumeAvailableCapacity ?? 0)
     }
     static func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
     static func valid(_ data: Data, metadata: NoorAudioFile) -> Bool {
-        data.count > 0 && data.count <= maximumBytes && data.count == metadata.bytes && digest(data) == metadata.sha256
+        data.count > 0 && data.count <= maximumBytes(for: metadata.key) && data.count == metadata.bytes && digest(data) == metadata.sha256
     }
     /// Resumed downloads contain the assembled file, not only the last range.
     /// Reject a playable prefix when the server declares a longer complete file.
-    static func completeResponse(_ response: HTTPURLResponse?, bytes: Int) -> Bool {
-        guard let response, bytes > 0, bytes <= maximumBytes,
-              response.url?.scheme == "https", response.url?.host == "everyayah.com" else { return false }
+    static func completeResponse(_ response: HTTPURLResponse?, bytes: Int, key: String? = nil) -> Bool {
+        guard let response, bytes > 0, bytes <= (key.map { maximumBytes(for: $0) } ?? maximumBytes),
+              response.url?.scheme == "https" else { return false }
+        if let key {
+            guard let expected = url(key), response.url == expected else { return false }
+        } else {
+            guard response.url?.host == "everyayah.com" else { return false }
+        }
         if response.statusCode == 200 {
             let encoding = response.value(forHTTPHeaderField: "Content-Encoding")?.lowercased()
             guard encoding == nil || encoding == "identity" else { return false }
@@ -142,6 +172,7 @@ enum NoorAudioIntegrity {
         return true
     }
     static func url(_ key: String) -> URL? {
+        if let (reciter, surah) = reciterRecording(key) { return reciter.audioURL(surah: surah) }
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, let corpus = QuranResources.corpus,
               corpus.indices.contains(parts[0] - 1), (1...corpus[parts[0] - 1].ayahs.count).contains(parts[1]),
@@ -151,17 +182,20 @@ enum NoorAudioIntegrity {
 }
 
 private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    let expectedURL: URL
+    let maximumBytes: Int
     let progress: @Sendable (Int64, Int64) -> Void
     let finish: @Sendable (URL?, HTTPURLResponse?) -> Void
     let failure: @Sendable (NSError) -> Void
-    init(progress: @escaping @Sendable (Int64, Int64) -> Void,
+    init(expectedURL: URL, maximumBytes: Int, progress: @escaping @Sendable (Int64, Int64) -> Void,
          finish: @escaping @Sendable (URL?, HTTPURLResponse?) -> Void,
          failure: @escaping @Sendable (NSError) -> Void) {
+        self.expectedURL = expectedURL; self.maximumBytes = maximumBytes
         self.progress = progress; self.finish = finish; self.failure = failure
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
                     totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        if totalBytesWritten > Int64(NoorAudioIntegrity.maximumBytes) || totalBytesExpectedToWrite > Int64(NoorAudioIntegrity.maximumBytes) {
+        if totalBytesWritten > Int64(maximumBytes) || totalBytesExpectedToWrite > Int64(maximumBytes) {
             downloadTask.cancel(); failure(NSError(domain: NSCocoaErrorDomain, code: CocoaError.fileReadTooLarge.rawValue)); return
         }
         progress(totalBytesWritten, totalBytesExpectedToWrite)
@@ -177,7 +211,7 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        completionHandler(request.url?.scheme == "https" && request.url?.host == "everyayah.com" ? request : nil)
+        completionHandler(request.url == expectedURL ? request : nil)
     }
 }
 
@@ -191,6 +225,9 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     @Published private(set) var checking = false
     @Published private(set) var cancelling = false
     @Published var message: String?
+    @Published var wifiOnly = true {
+        didSet { defaults.set(wifiOnly, forKey: "noor.audioDownloads.wifiOnly") }
+    }
     private var task: URLSessionDownloadTask?
     private var session: URLSession?
     private var generation = UUID()
@@ -211,8 +248,9 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         var folder = self.directory; var value = URLResourceValues(); value.isExcludedFromBackup = true; try? folder.setResourceValues(value)
         var seen = Set<String>()
         files = ((try? Data(contentsOf: self.directory.appendingPathComponent("index.json"))).flatMap { try? JSONDecoder().decode([NoorAudioFile].self, from: $0) } ?? [])
-            .filter { NoorAudioIntegrity.url($0.key) != nil && $0.bytes > 0 && $0.bytes <= NoorAudioIntegrity.maximumBytes && seen.insert($0.key).inserted }
+            .filter { NoorAudioIntegrity.url($0.key) != nil && $0.bytes > 0 && $0.bytes <= NoorAudioIntegrity.maximumBytes(for: $0.key) && seen.insert($0.key).inserted }
         remaining = pending.count
+        wifiOnly = defaults.object(forKey: "noor.audioDownloads.wifiOnly") as? Bool ?? true
     }
     var pending: [String] { (defaults.stringArray(forKey: pendingKey) ?? []).filter { NoorAudioIntegrity.url($0) != nil } }
     var totalBytes: Int { files.reduce(0) { $0 + $1.bytes } }
@@ -269,7 +307,7 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
             do {
                 let resume = try await self.disk.prepareResume(key, epoch: epoch)
                 guard token == self.generation else { return }
-                let delegate = NoorAudioTransfer(progress: { [weak self] bytes, total in Task { @MainActor in
+                let delegate = NoorAudioTransfer(expectedURL: url, maximumBytes: NoorAudioIntegrity.maximumBytes(for: key), progress: { [weak self] bytes, total in Task { @MainActor in
                     guard let self, token == self.generation else { return }; self.received = bytes; self.expected = total
                 } }, finish: { [weak self] temporary, response in Task { @MainActor in
                     guard let self else { if let temporary { try? FileManager.default.removeItem(at: temporary) }; return }
@@ -281,6 +319,9 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
                     self.fail("توقف التنزيل. تحقق من الاتصال والمساحة، ثم اختر إعادة المحاولة.")
                 } })
                 let config = URLSessionConfiguration.ephemeral; config.timeoutIntervalForRequest = 45; config.timeoutIntervalForResource = 600
+                config.allowsCellularAccess = !self.wifiOnly
+                config.allowsConstrainedNetworkAccess = !self.wifiOnly
+                config.waitsForConnectivity = true
                 let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil); self.session = session
                 if let resume { task = session.downloadTask(withResumeData: resume) }
                 else { task = session.downloadTask(with: url) }
@@ -367,6 +408,7 @@ struct NoorAudioDownloadsView: View {
     var body: some View {
         List {
             Section("تنزيل التلاوات") {
+                Toggle("التنزيل عبر Wi-Fi فقط", isOn: $downloads.wifiOnly).disabled(downloads.active != nil)
                 Text("عبد الباسط عبد الصمد — مرتّل").font(.headline)
                 Picker("السورة", selection: $chapter) {
                     ForEach(QuranResources.corpus ?? [], id: \.number) { Text($0.name).tag($0.number) }
@@ -377,11 +419,11 @@ struct NoorAudioDownloadsView: View {
                 Text("يعمل التنزيل أثناء فتح التطبيق. تُحفظ الملفات المكتملة؛ الاستئناف يعتمد على دعم الخادم. لا تتغير بيانات الحفظ عند حذف التلاوات.").font(.caption)
             }
             if let key = downloads.active {
-                Section("جاري تنزيل الآية \(key)") {
+                Section("جاري تنزيل · " + NoorAudioIntegrity.label(key)) {
                     if downloads.expected > 0 { ProgressView(value: Double(downloads.received), total: Double(max(downloads.received, downloads.expected))) }
                     else { ProgressView() }
                     Text(ByteCountFormatter.string(fromByteCount: downloads.received, countStyle: .file))
-                    Text(downloads.checking ? "التحقق من ملف الصوت…" : "متبقي \(downloads.remaining) آية")
+                    Text(downloads.checking ? "التحقق من ملف الصوت…" : "متبقي \(downloads.remaining) مقطع")
                     Button("إيقاف التنزيل") { downloads.cancel() }.disabled(downloads.cancelling).accessibilityIdentifier("downloads.cancel")
                 }
             } else if !downloads.pending.isEmpty {
@@ -391,7 +433,7 @@ struct NoorAudioDownloadsView: View {
             Section("المحفوظ على الجهاز · " + ByteCountFormatter.string(fromByteCount: Int64(downloads.totalBytes), countStyle: .file)) {
                 if downloads.files.isEmpty { Text("لا توجد تلاوات منزّلة بعد.").foregroundStyle(.secondary) }
                 ForEach(downloads.files) { recording in
-                    HStack { Text("الآية \(recording.key)"); Spacer(); Text(ByteCountFormatter.string(fromByteCount: Int64(recording.bytes), countStyle: .file)).font(.caption) }
+                    HStack { Text(NoorAudioIntegrity.label(recording.key)); Spacer(); Text(ByteCountFormatter.string(fromByteCount: Int64(recording.bytes), countStyle: .file)).font(.caption) }
                     .swipeActions { Button("حذف", role: .destructive) { Task { await downloads.remove(recording.key) } } }
                 }
             }

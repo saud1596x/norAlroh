@@ -123,7 +123,8 @@ public struct QuranRecitationRecord: Codable, Identifiable {
               (wordingEvents ?? []).allSatisfy({ event in
                   guard let take = knownTakes[event.takeID] else { return false }
                   return event.start.isFinite && event.end.isFinite && event.start >= 0 && event.end > event.start
-                      && event.end <= take.duration + 0.1 && event.state == "provisional"
+                      && event.end <= take.duration + 0.1 && ["provisional", "superseded"].contains(event.state)
+                      && event.revision >= 0
                       && ["substitution", "omission", "insertion", "repetition"].contains(event.category)
                       && event.referenceIDs.allSatisfy { $0 > 0 }
               }) else { throw QuranJournalFailure.invalidRecord }

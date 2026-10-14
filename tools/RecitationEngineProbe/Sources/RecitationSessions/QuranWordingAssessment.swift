@@ -22,6 +22,78 @@ public struct QuranWordingEvent: Codable, Equatable, Sendable {
 /// This policy has no calibrated acoustic confirmation and never issues a
 /// confirmed learner mistake. Reference text cannot replace source observations.
 public enum QuranWordingAssessment {
+    /// Cross-take retries require a fresh microphone occurrence and a unique
+    /// five-word context. Listening exposure remains assisted evidence.
+    public static func linkLaterAttempts(_ events: [QuranWordingEvent], spans: [QuranObservedSpeech],
+                                         takes: [QuranRecitationTake], expected: [QuranAlignedWord]) -> [QuranWordingEvent] {
+        guard expected.count >= 5, expected.count <= 77_429,
+              events.contains(where: { $0.state == "provisional" && $0.resolution == nil }) else { return events }
+        let known = Dictionary(uniqueKeysWithValues: takes.map { ($0.id, $0) })
+        let forms = expected.map { Set($0.aliases.filter { $0.count == 1 }.map { QuranAlignedWord.normalize($0[0]) }) }
+        var starts: [String: [Int]] = [:]
+        for start in 0..<(forms.count - 4) {
+            for left in forms[start] { for right in forms[start + 1] {
+                starts[left + " " + right, default: []].append(start)
+            } }
+        }
+        var result = events
+        for index in result.indices.suffix(256) where result[index].state == "provisional" && result[index].resolution == nil {
+            guard let target = result[index].referenceIDs.first,
+                  let position = expected.firstIndex(where: { $0.id == target }), position >= 2,
+                  position + 2 < expected.count, let original = known[result[index].takeID] else { continue }
+            for span in reconciledWindows(spans) where span.takeID != original.id {
+                guard let later = known[span.takeID], later.startedAt > original.startedAt else { continue }
+                for run in contiguousAcceptedSpans(span) {
+                    let words = run.wordObservations ?? []
+                    guard words.count >= 5 else { continue }
+                    for offset in 0...(words.count - 5) {
+                        let context = Array(words[offset..<(offset + 5)])
+                        let tokens = context.map { QuranAlignedWord.normalize($0.observedText) }
+                        let candidates = starts[tokens[0] + " " + tokens[1]] ?? []
+                        guard candidates.count <= 16 else { continue }
+                        let matches = Set(candidates.filter { start in
+                            (0..<5).allSatisfy { forms[start + $0].contains(tokens[$0]) }
+                        })
+                        guard matches == Set([position - 2]) else { continue }
+                        result[index].resolution = later.referenceExposure == nil ? "later-independent-evidence" : "later-assisted-evidence"
+                        result[index].correctionObservationIDs = context.map(\.observationID)
+                        break
+                    }
+                    if result[index].resolution != nil { break }
+                }
+                if result[index].resolution != nil { break }
+            }
+        }
+        return result
+    }
+    /// A newer recognizer hypothesis can retract a provisional finding. Keep
+    /// that prior interpretation auditable; it is not a learner correction.
+    public static func reconcile(previous: [QuranWordingEvent], incoming: [QuranWordingEvent],
+                                 reconsidered: [QuranObservedSpeech]) -> [QuranWordingEvent] {
+        let beginnings = Dictionary(grouping: reconsidered, by: \.takeID).mapValues { $0.map(\.start).min()! }
+        var updated = previous
+        var replacements = incoming
+        for index in updated.indices where updated[index].state == "provisional" {
+            let old = updated[index]
+            let replacementIndex = replacements.firstIndex(where: { $0.eventID == old.eventID })
+            let affected = beginnings[old.takeID].map { old.end >= $0 } ?? false
+            guard affected || replacementIndex != nil else { continue }
+            if let replacement = replacementIndex {
+                var compared = replacements[replacement]; compared.revision = old.revision
+                if compared == old { replacements.remove(at: replacement); continue }
+                replacements[replacement].revision = max(old.revision + 1, replacements[replacement].revision)
+            }
+            updated[index].state = "superseded"
+        }
+        for var event in replacements {
+            guard !updated.contains(where: { $0.eventID == event.eventID && $0.state == "provisional" }) else { continue }
+            if let prior = updated.filter({ $0.eventID == event.eventID }).map(\.revision).max() {
+                event.revision = max(event.revision, prior + 1)
+            }
+            updated.append(event)
+        }
+        return updated
+    }
     private struct Step { let kind: String; let reference: Int; let observed: Int }
     private struct Alignment { let steps: [Step]; let cost: Int }
     public static func evaluate(_ spans: [QuranObservedSpeech], expected: [QuranAlignedWord]) -> [QuranWordingEvent] {
@@ -38,31 +110,7 @@ public enum QuranWordingAssessment {
             }
         }
         var events: [QuranWordingEvent] = []
-        var used: [QuranObservedSpeech] = []
-        // A newer interpretation of the same audio replaces an older hypothesis
-        // for assessment, while every source window remains in the journal.
-        for span in spans.suffix(16) {
-            used.removeAll { $0.takeID == span.takeID && $0.start == span.start && $0.end == span.end }
-            used.append(span)
-        }
-        var conflicting = Set<Int>()
-        for left in used.indices {
-            for right in used.indices where right > left && used[left].takeID == used[right].takeID
-                && max(used[left].start, used[right].start) < min(used[left].end, used[right].end) {
-                let conflict = (used[left].wordObservations ?? []).contains { a in
-                    guard let start = a.startInTakeSeconds, let end = a.endInTakeSeconds else { return false }
-                    return (used[right].wordObservations ?? []).contains { b in
-                        guard let otherStart = b.startInTakeSeconds, let otherEnd = b.endInTakeSeconds else { return false }
-                        let overlap = min(end, otherEnd) - max(start, otherStart)
-                        return abs(start - otherStart) <= 0.25 && overlap > 0
-                            && overlap >= min(end - start, otherEnd - otherStart) * 0.5
-                            && QuranAlignedWord.normalize(a.observedText) != QuranAlignedWord.normalize(b.observedText)
-                    }
-                }
-                if conflict { conflicting.insert(left); conflicting.insert(right) }
-            }
-        }
-        for span in used.indices.filter({ !conflicting.contains($0) }).flatMap({ contiguousAcceptedSpans(used[$0]) }) {
+        for span in reconciledWindows(spans).flatMap({ contiguousAcceptedSpans($0) }) {
             guard let words = span.wordObservations, (4...160).contains(words.count),
                   words.allSatisfy({ $0.recognitionState == "accepted" && $0.startInTakeSeconds != nil && $0.endInTakeSeconds != nil }),
                   zip(words, words.dropFirst()).allSatisfy({ $0.startInTakeSeconds! <= $1.startInTakeSeconds! }) else { continue }
@@ -131,6 +179,33 @@ public enum QuranWordingAssessment {
             }
         }
         return events
+    }
+    private static func reconciledWindows(_ spans: [QuranObservedSpeech]) -> [QuranObservedSpeech] {
+        var used: [QuranObservedSpeech] = []
+        // A newer interpretation of the same audio replaces an older hypothesis
+        // for assessment, while every source window remains in the journal.
+        for span in spans.suffix(16) {
+            used.removeAll { $0.takeID == span.takeID && $0.start == span.start && $0.end == span.end }
+            used.append(span)
+        }
+        var conflicting = Set<Int>()
+        for left in used.indices {
+            for right in used.indices where right > left && used[left].takeID == used[right].takeID
+                && max(used[left].start, used[right].start) < min(used[left].end, used[right].end) {
+                let conflict = (used[left].wordObservations ?? []).contains { a in
+                    guard let start = a.startInTakeSeconds, let end = a.endInTakeSeconds else { return false }
+                    return (used[right].wordObservations ?? []).contains { b in
+                        guard let otherStart = b.startInTakeSeconds, let otherEnd = b.endInTakeSeconds else { return false }
+                        let overlap = min(end, otherEnd) - max(start, otherStart)
+                        return abs(start - otherStart) <= 0.25 && overlap > 0
+                            && overlap >= min(end - start, otherEnd - otherStart) * 0.5
+                            && QuranAlignedWord.normalize(a.observedText) != QuranAlignedWord.normalize(b.observedText)
+                    }
+                }
+                if conflict { conflicting.insert(left); conflicting.insert(right) }
+            }
+        }
+        return used.indices.filter { !conflicting.contains($0) }.map { used[$0] }
     }
     private static func contiguousAcceptedSpans(_ source: QuranObservedSpeech) -> [QuranObservedSpeech] {
         var result: [QuranObservedSpeech] = [], run: [QuranObservedWord] = []
