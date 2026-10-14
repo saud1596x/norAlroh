@@ -88,6 +88,14 @@ public enum QuranWordingAssessment {
         let beginnings = Dictionary(grouping: reconsidered, by: \.takeID).mapValues { $0.map(\.start).min()! }
         var updated = previous
         var replacements = incoming
+        for index in replacements.indices {
+            let event = replacements[index]
+            if let disputed = previous.last(where: { $0.userReview == "disputed" && $0.takeID == event.takeID
+                && $0.category == event.category && $0.referenceIDs == event.referenceIDs
+                && min($0.end, event.end) > max($0.start, event.start) }) {
+                replacements[index].userReview = disputed.userReview
+            }
+        }
         for index in updated.indices where updated[index].state == "provisional" {
             let old = updated[index]
             let replacementIndex = replacements.firstIndex(where: { $0.eventID == old.eventID })

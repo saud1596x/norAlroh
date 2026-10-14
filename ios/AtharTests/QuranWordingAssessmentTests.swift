@@ -45,6 +45,11 @@ final class QuranWordingAssessmentTests: XCTestCase {
         disputed[0].userReview = "disputed"
         let repeated = QuranWordingAssessment.reconcile(previous: disputed, incoming: incoming, reconsidered: [source])
         XCTAssertEqual(repeated, disputed, "Re-running ASR must not erase a learner's dispute")
+        let replacementSource = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"], offset: 0.1)
+        let replacement = QuranWordingAssessment.evaluate([replacementSource], expected: reference)
+        let reinterpreted = QuranWordingAssessment.reconcile(previous: disputed, incoming: replacement,
+            reconsidered: [replacementSource])
+        XCTAssertEqual(reinterpreted.last?.userReview, "disputed", "New observation IDs for the same incident must preserve the dispute")
         var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
         record.takes = [.init(id: take, startedAt: record.startedAt, frames: 160_000, closed: true)]
         record.observedSpeech = [source]; record.wordingEvents = repeated

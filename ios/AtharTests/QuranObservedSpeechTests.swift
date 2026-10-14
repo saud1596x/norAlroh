@@ -2,6 +2,39 @@ import XCTest
 @testable import Athar
 
 final class QuranObservedSpeechTests: XCTestCase {
+    func testHourEquivalentObservationJournalPreservesEverySourceOccurrence() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journal = QuranRecitationJournal(root: root)
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        try journal.create(record)
+        let take = QuranRecitationTake(startedAt: record.startedAt, frames: 57_600_000, closed: true)
+        record.takes = [take]
+        // Accelerated synthetic metadata only. This does not certify one hour
+        // of physical capture, recognition, temperature, or learner accuracy.
+        record.observedSpeech = (0..<1800).map { index in
+            let start = Double(index * 2), end = min(3600, start + 8)
+            let count = min(12, Int((end - start) / 0.4))
+            var span = QuranObservedSpeech(takeID: take.id, start: start, end: end,
+                words: Array(repeating: "قل", count: count), unresolved: false, backendID: "synthetic-load-test")
+            span.evidenceVersion = 1; span.recognitionWindowID = UUID(); span.recognitionRevision = 0
+            span.wordObservations = (0..<count).map { word in
+                QuranObservedWord(occurrenceIndex: word, runIndex: 0, observedText: "قل",
+                    startInTakeSeconds: start + Double(word) * 0.4,
+                    endInTakeSeconds: start + Double(word) * 0.4 + 0.3,
+                    backendConfidence: 0.9, recognitionState: "accepted", timingSource: "backend-word")
+            }
+            return span
+        }
+        let before = Date(); try journal.save(record)
+        let saveSeconds = Date().timeIntervalSince(before)
+        let loaded = try QuranRecitationJournal(root: root).load(record.id)
+        XCTAssertEqual(loaded.observedSpeech, record.observedSpeech)
+        XCTAssertEqual(loaded.duration, 3600)
+        let size = try Data(contentsOf: root.appendingPathComponent(record.id.uuidString)
+            .appendingPathComponent("recognized-session.json")).count
+        print("SYNTHETIC_HOUR_JOURNAL windows=1800 bytes=\(size) saveMs=\(Int(saveSeconds * 1000)) source=generated-metadata-not-device-audio")
+    }
     func testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes() {
         var quality = QuranInputQuality()
         XCTAssertTrue(quality.consume(Array(repeating: 0, count: 7999)).isEmpty)
