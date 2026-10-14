@@ -311,12 +311,19 @@ import os
                 let available = recognitionAvailable || !additions.isEmpty
                 // Persist only actually decoded, quality-accepted words. Missing
                 // speech remains unresolved; the Quran reference never fills it.
-                let observed = QuranObservedSpeech(takeID: take, start: window.offset,
+                var observed = QuranObservedSpeech(takeID: take, start: window.offset,
                     end: Double(window.endFrame) / 16_000,
                     words: recognized.runs.flatMap { $0.map(\.text) },
                     unresolved: recognized.hasUnresolvedSpeech,
                     backendID: worker.capabilities.backendID,
                     modelID: worker.capabilities.modelID, modelRevision: worker.capabilities.modelRevision)
+                if let observations = recognized.observations {
+                    observed.evidenceVersion = 1
+                    observed.recognitionWindowID = recognized.windowID
+                    observed.recognitionRevision = 0
+                    observed.wordObservations = observations
+                    observed.processingConfiguration = QuranRecognitionModelDescriptor.bundled?.configuration
+                }
                 var spans = current.observedSpeech ?? []
                 if let index = spans.firstIndex(where: { $0.takeID == take && $0.start == observed.start && $0.end == observed.end }) {
                     spans[index] = observed

@@ -36,7 +36,7 @@ class ReleasePayloadTests(unittest.TestCase):
         self.model_files = {'model/AudioEncoder.mlmodelc/weights/weight.bin': b'synthetic-model',
                             'tokenizer/tokenizer.json': b'synthetic-tokenizer'}
         (root / 'content-sources/recitation-model-manifest.json').write_text(json.dumps({
-            'schema': 1, 'files': [{'path': name, 'bytes': len(data),
+            'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision', 'files': [{'path': name, 'bytes': len(data),
                                    'sha256': hashlib.sha256(data).hexdigest()}
                                   for name, data in self.model_files.items()]}))
         (root / 'content-sources/recitation-word-script.json').write_bytes(b'synthetic-word-script')
@@ -56,6 +56,10 @@ class ReleasePayloadTests(unittest.TestCase):
         with zipfile.ZipFile(path, 'w') as archive:
             resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
             resources.update(self.quran_files)
+            resources['RecitationModel/verified-model.json'] = json.dumps({
+                'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision',
+                'configuration': 'ar;wordTimestamps=true;temperatureFallbackCount=0;concurrentWorkerCount=1'
+            }).encode()
             resources.update({'RecitationModel/Whisper-LICENSE.txt': b'WHISPER-MODEL-LICENSE.txt',
                               'RecitationModel/Tarteel-LICENSE.txt': b'TARTEEL-MODEL-LICENSE.txt',
                               'RecitationModel/NOTICE.txt': b'RECITATION-MODEL-NOTICE.txt',
@@ -108,7 +112,7 @@ class ReleasePayloadTests(unittest.TestCase):
     def test_model_notices_and_word_script_must_match(self):
         with tempfile.TemporaryDirectory() as folder:
             for name in ['RecitationModel/Whisper-LICENSE.txt', 'RecitationModel/Tarteel-LICENSE.txt',
-                         'RecitationModel/NOTICE.txt', 'recitation-word-script.json']:
+                         'RecitationModel/NOTICE.txt', 'RecitationModel/verified-model.json', 'recitation-word-script.json']:
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit=name))
                 with self.subTest(name=name), self.assertRaises(ValueError):

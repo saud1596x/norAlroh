@@ -8,6 +8,8 @@ actor QuranRecognitionWorker {
     struct Result: Sendable {
         let runs: [[QuranHeardWord]]
         let hasUnresolvedSpeech: Bool
+        var observations: [QuranObservedWord]? = nil
+        var windowID: UUID? = nil
     }
     private var engine: WhisperKit?
     private var loading: Task<WhisperKit, Error>?
@@ -43,6 +45,7 @@ actor QuranRecognitionWorker {
         guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
         }
+        guard QuranRecognitionModelDescriptor.bundled != nil else { throw CocoaError(.fileReadCorruptFile) }
         let task = Task { try await WhisperKit(WhisperKitConfig(
             modelFolder: root.appendingPathComponent("model").path,
             tokenizerFolder: root.appendingPathComponent("tokenizer", isDirectory: true),
@@ -83,6 +86,7 @@ actor QuranRecognitionWorker {
         let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
         var runs: [[QuranHeardWord]] = [[]]
         var unresolved = false
+        var observations: [QuranObservedWord] = []
         var rejectedAudio = 0, rejectedTiming = 0, rejectedConfidence = 0
         var rejectedQuiet = 0, rejectedTokenBoundary = 0, accepted = 0
         for segment in output.flatMap(\.segments) {
@@ -96,6 +100,18 @@ actor QuranRecognitionWorker {
             let evidence = AudioEvidenceGate.Evidence(start: word.start, end: word.end, probability: word.probability)
             let rejection = AudioEvidenceGate.rejection(evidence, samples: inferenceSamples)
             let invalidBoundary = QuranAlignedWord.tokens([word.word]).count != 1
+            let start = Double(word.start), end = Double(word.end)
+            let validTiming = start.isFinite && end.isFinite && start >= 0 && end > start
+                && end <= Double(window.samples.count) / 16_000
+            if !word.word.isEmpty {
+                observations.append(.init(occurrenceIndex: observations.count, runIndex: runs.count - 1,
+                    observedText: word.word,
+                    startInTakeSeconds: validTiming ? window.offset + start : nil,
+                    endInTakeSeconds: validTiming ? window.offset + end : nil,
+                    backendConfidence: word.probability.isFinite && (0...1).contains(word.probability) ? Double(word.probability) : nil,
+                    recognitionState: rejection == nil && !invalidBoundary ? "accepted" : "unassessable",
+                    timingSource: validTiming ? "backend-word" : "unavailable"))
+            }
             switch rejection {
             case .invalidAudio: rejectedAudio += 1
             case .invalidTiming: rejectedTiming += 1
@@ -119,7 +135,8 @@ actor QuranRecognitionWorker {
         os_signpost(.event, log: Self.diagnostics, name: "Recognition gate counts",
             "accepted=%{public}d invalidAudio=%{public}d timing=%{public}d confidence=%{public}d quiet=%{public}d tokenBoundary=%{public}d",
             accepted, rejectedAudio, rejectedTiming, rejectedConfidence, rejectedQuiet, rejectedTokenBoundary)
-        return Result(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved)
+        return Result(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved,
+                      observations: observations, windowID: UUID())
     }
 }
 

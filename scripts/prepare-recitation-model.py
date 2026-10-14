@@ -62,6 +62,11 @@ def prepare(output, cache=None, offline=False):
     shutil.copyfile(ROOT / "docs/WHISPER-MODEL-LICENSE.txt", output / "Whisper-LICENSE.txt")
     shutil.copyfile(ROOT / "docs/TARTEEL-MODEL-LICENSE.txt", output / "Tarteel-LICENSE.txt")
     shutil.copyfile(ROOT / "docs/RECITATION-MODEL-NOTICE.txt", output / "NOTICE.txt")
+    # Written only after every deployed artifact has passed its pinned hash.
+    (output / "verified-model.json").write_text(json.dumps({
+        "schema": 1, "model": manifest["model"], "revision": manifest["revision"],
+        "configuration": "ar;wordTimestamps=true;temperatureFallbackCount=0;concurrentWorkerCount=1"
+    }, indent=2) + "\n", encoding="utf-8")
     print(f"Verified {len(manifest['files'])} pinned offline recognition resources.")
 
 

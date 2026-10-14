@@ -287,6 +287,10 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(first.evidence.count, 2, "Actual reference speech must produce authentic native word evidence")
         let observed = try XCTUnwrap(first.observedSpeech)
         XCTAssertFalse(observed.isEmpty)
+        let timed = observed.flatMap { $0.wordObservations ?? [] }
+        XCTAssertFalse(timed.isEmpty, "Actual backend word evidence must reach the saved session")
+        XCTAssertTrue(timed.contains { $0.startInTakeSeconds != nil && $0.endInTakeSeconds != nil })
+        XCTAssertTrue(observed.allSatisfy { $0.evidenceVersion == 1 && $0.recognitionWindowID != nil && $0.processingConfiguration != nil })
         XCTAssertTrue(observed.contains { !$0.words.isEmpty }, "The real backend must persist its observed words, not only reference matches")
         XCTAssertTrue(observed.allSatisfy { $0.takeID == first.takes[0].id && $0.end <= first.duration + 0.1 })
         let independentlyLoaded = try QuranRecitationJournal(root: root).load(first.id)

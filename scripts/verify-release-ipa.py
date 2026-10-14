@@ -27,6 +27,10 @@ def verify_recitation_resources(ipa, root):
         data = ipa.read(root + 'RecitationModel/' + entry['path'])
         if len(data) != entry['bytes'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
             raise ValueError('Incorrect bundled recognition resource: ' + entry['path'])
+    descriptor = json.loads(ipa.read(root + 'RecitationModel/verified-model.json'))
+    if descriptor != {'schema': 1, 'model': manifest['model'], 'revision': manifest['revision'],
+                      'configuration': 'ar;wordTimestamps=true;temperatureFallbackCount=0;concurrentWorkerCount=1'}:
+        raise ValueError('Recognition descriptor does not match verified deployed artifacts')
     for bundled, source in [('Whisper-LICENSE.txt', 'WHISPER-MODEL-LICENSE.txt'),
                             ('Tarteel-LICENSE.txt', 'TARTEEL-MODEL-LICENSE.txt'),
                             ('NOTICE.txt', 'RECITATION-MODEL-NOTICE.txt')]:

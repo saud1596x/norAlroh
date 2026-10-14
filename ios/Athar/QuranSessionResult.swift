@@ -16,6 +16,26 @@ struct QuranSessionResult: View {
     }
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: AtharStore
+    @StateObject private var attemptAudio = MushafSessionRecorder()
+    @State private var replayNotice: String?
+    @State private var replayRevision = UUID()
+    private func replay(_ span: QuranObservedSpeech, word: QuranObservedWord? = nil) {
+        let token = UUID(); replayRevision = token
+        Task {
+            do {
+                let sessionID = record.id
+                let takes = try await Task.detached(priority: .userInitiated) {
+                    try MushafRecordingArchive.takes(session: sessionID)
+                }.value
+                guard replayRevision == token else { return }
+                guard let take = takes.first(where: { $0.id == span.takeID }) else {
+                    replayNotice = "التسجيل غير متاح؛ قد يكون محذوفًا أو نُقل إلى المحذوفات."; return
+                }
+                attemptAudio.play(take, at: max(0, (word?.startInTakeSeconds ?? span.start) - 0.75))
+                replayNotice = word?.startInTakeSeconds == nil ? "الاستماع من بداية المقطع؛ توقيت الكلمة غير متاح." : nil
+            } catch { replayNotice = "تعذّر فتح التسجيل. حاول بعد فتح قفل الجهاز." }
+        }
+    }
     private func coverage(_ key: String) -> Int {
         coverageCounts[key] ?? 0
     }
@@ -60,11 +80,30 @@ struct QuranSessionResult: View {
                                     Text("\(MushafAudioTime.text(span.start)) – \(MushafAudioTime.text(span.end))").font(.caption.monospacedDigit())
                                     Text(span.words.isEmpty ? "لم يتضح كلام قابل للتتبع" : span.words.joined(separator: " "))
                                         .font(.body).textSelection(.enabled)
+                                    if let words = span.wordObservations, !words.isEmpty {
+                                        ForEach(words, id: \.observationID) { word in
+                                            Button { replay(span, word: word) } label: {
+                                                HStack {
+                                                    Text(word.observedText)
+                                                    Spacer()
+                                                    Image(systemName: "play.circle")
+                                                    if word.recognitionState != "accepted" { Text("غير محسوم").font(.caption) }
+                                                }.frame(minHeight: 44)
+                                            }.buttonStyle(.plain)
+                                                .accessibilityLabel("استمع إلى \(word.observedText) في تسجيلك")
+                                        }
+                                    } else {
+                                        Button("استمع إلى المقطع") { replay(span) }.frame(minHeight: 44)
+                                    }
                                     if span.unresolved { Text("يوجد صوت غير محسوم في هذا المقطع").font(.caption).foregroundStyle(.secondary) }
                                 }.padding(.vertical, 8)
                             }
                             }
                         }
+                        if attemptAudio.playing != nil {
+                            Button("إيقاف الاستماع") { replayRevision = UUID(); attemptAudio.stop() }.frame(minHeight: 44)
+                        }
+                        if let notice = replayNotice ?? attemptAudio.message { Text(notice).font(.footnote) }
                         LazyVStack(alignment: .leading, spacing: 12) {
                             Text("التتبع يحدد موضع التلاوة؛ لا يقيس صحة النطق أو التجويد. المقاطع غير المتتبّعة ليست أخطاء مؤكدة.").font(.footnote).foregroundStyle(.secondary)
                             if record.recognitionUnavailable { Text("تعذّر التحليل في جزء من الجلسة؛ التسجيل الصوتي محفوظ.").font(.footnote) }
@@ -83,6 +122,7 @@ struct QuranSessionResult: View {
             }.background(Theme.panel)
                 .navigationTitle("نتيجة التسميع").navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button("متابعة القراءة") { dismiss() }.accessibilityIdentifier("study.result.close") }
+                .onDisappear { replayRevision = UUID(); attemptAudio.stop() }
         }
     }
     private func metric(_ title: String, value: String) -> some View {

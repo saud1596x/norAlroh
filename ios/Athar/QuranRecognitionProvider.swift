@@ -24,11 +24,26 @@ protocol QuranSpeechRecognitionProvider: Sendable {
 
 extension QuranRecognitionWorker: QuranSpeechRecognitionProvider {
     nonisolated var capabilities: QuranRecognitionCapabilities {
-        .init(backendID: "whisperkit-bundled",
-              modelID: "fazalshaikh123/ultra-fast-tarteel-coreml",
-              modelRevision: "0338074ac8d662f6f52c5d66b433cac74202158e", configuredLanguage: "ar",
+        let descriptor = QuranRecognitionModelDescriptor.bundled
+        return .init(backendID: "whisperkit-bundled",
+              modelID: descriptor?.model ?? "unavailable",
+              modelRevision: descriptor?.revision ?? "unavailable", configuredLanguage: "ar",
               delivery: .overlappingAudioWindows, processesLocally: true,
               wordTimestamps: true, wordConfidence: true, phonemeEvidence: false,
               calibratedWordingAssessment: false, validatedTajweedAssessment: false)
+    }
+}
+
+struct QuranRecognitionModelDescriptor: Decodable {
+    let schema: Int
+    let model: String
+    let revision: String
+    let configuration: String
+    static var bundled: Self? {
+        guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil),
+              let bytes = try? Data(contentsOf: root.appendingPathComponent("verified-model.json")),
+              let value = try? JSONDecoder().decode(Self.self, from: bytes), value.schema == 1,
+              !value.model.isEmpty, !value.revision.isEmpty else { return nil }
+        return value
     }
 }

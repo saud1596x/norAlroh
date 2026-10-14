@@ -14,6 +14,26 @@ public struct QuranRecitationTake: Codable, Equatable, Identifiable {
     }
 }
 
+public struct QuranObservedWord: Codable, Equatable, Sendable {
+    public let observationID: UUID
+    public let occurrenceIndex: Int
+    public let runIndex: Int
+    public let observedText: String
+    // Canonical timeline: seconds from the beginning of the associated take.
+    public let startInTakeSeconds: Double?
+    public let endInTakeSeconds: Double?
+    public let backendConfidence: Double?
+    public let recognitionState: String
+    public let timingSource: String
+    public init(observationID: UUID = UUID(), occurrenceIndex: Int, runIndex: Int, observedText: String,
+                startInTakeSeconds: Double?, endInTakeSeconds: Double?, backendConfidence: Double?,
+                recognitionState: String, timingSource: String) {
+        self.observationID = observationID; self.occurrenceIndex = occurrenceIndex; self.runIndex = runIndex
+        self.observedText = observedText; self.startInTakeSeconds = startInTakeSeconds
+        self.endInTakeSeconds = endInTakeSeconds; self.backendConfidence = backendConfidence
+        self.recognitionState = recognitionState; self.timingSource = timingSource
+    }
+}
 public struct QuranObservedSpeech: Codable, Equatable {
     public let takeID: UUID
     public let start: Double
@@ -23,6 +43,11 @@ public struct QuranObservedSpeech: Codable, Equatable {
     public let backendID: String
     public let modelID: String?
     public let modelRevision: String?
+    public var evidenceVersion: Int? = nil
+    public var recognitionWindowID: UUID? = nil
+    public var recognitionRevision: Int? = nil
+    public var wordObservations: [QuranObservedWord]? = nil
+    public var processingConfiguration: String? = nil
     public init(takeID: UUID, start: Double, end: Double, words: [String], unresolved: Bool, backendID: String,
                 modelID: String? = nil, modelRevision: String? = nil) {
         self.takeID = takeID; self.start = start; self.end = end; self.words = words
@@ -71,6 +96,24 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       && !span.backendID.isEmpty && span.backendID.utf8.count <= 256
                       && (span.modelID.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? true)
                       && (span.modelRevision.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? true)
+                      && (span.evidenceVersion == nil || span.evidenceVersion == 1)
+                      && (span.wordObservations == nil || (span.evidenceVersion == 1
+                          && span.recognitionWindowID != nil && (span.recognitionRevision ?? -1) >= 0))
+                      && (span.wordObservations.map { words in
+                          words.count <= 1000 && Set(words.map(\.observationID)).count == words.count
+                          && words.allSatisfy { word in
+                              guard word.occurrenceIndex >= 0, word.runIndex >= 0,
+                                    !word.observedText.isEmpty, word.observedText.utf8.count <= 1024,
+                                    word.backendConfidence.map({ $0.isFinite && (0...1).contains($0) }) ?? true else { return false }
+                              if let start = word.startInTakeSeconds, let end = word.endInTakeSeconds {
+                                  return start.isFinite && end.isFinite && start >= span.start && end > start
+                                      && end <= span.end + 0.001 && end <= take.duration + 0.1
+                                      && word.timingSource == "backend-word"
+                              }
+                              return word.startInTakeSeconds == nil && word.endInTakeSeconds == nil
+                                  && word.timingSource == "unavailable"
+                          }
+                      } ?? true)
               }) else { throw QuranJournalFailure.invalidRecord }
         let scope = Set(keys)
         guard evidence.allSatisfy({ word in
