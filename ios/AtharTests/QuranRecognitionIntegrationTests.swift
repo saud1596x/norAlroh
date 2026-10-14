@@ -285,6 +285,12 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertEqual(first.takes.count, 1); XCTAssertTrue(first.takes[0].closed)
         XCTAssertEqual(first.takes[0].frames, Int64(samples.count))
         XCTAssertGreaterThanOrEqual(first.evidence.count, 2, "Actual reference speech must produce authentic native word evidence")
+        let observed = try XCTUnwrap(first.observedSpeech)
+        XCTAssertFalse(observed.isEmpty)
+        XCTAssertTrue(observed.contains { !$0.words.isEmpty }, "The real backend must persist its observed words, not only reference matches")
+        XCTAssertTrue(observed.allSatisfy { $0.takeID == first.takes[0].id && $0.end <= first.duration + 0.1 })
+        let independentlyLoaded = try QuranRecitationJournal(root: root).load(first.id)
+        XCTAssertEqual(independentlyLoaded.observedSpeech, observed, "Decoded speech must survive a separate journal read")
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
         let verseID = try XCTUnwrap(verseKeys.firstIndex(of: "112:1")) + 1
         XCTAssertEqual(original.hiddenIDs, Set(snapshot.records.filter {

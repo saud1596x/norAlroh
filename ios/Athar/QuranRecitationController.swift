@@ -309,6 +309,18 @@ import os
                     additions += try updatedTracker.consume(run, takeID: take, offset: window.offset)
                 }
                 let available = recognitionAvailable || !additions.isEmpty
+                // Persist only actually decoded, quality-accepted words. Missing
+                // speech remains unresolved; the Quran reference never fills it.
+                let observed = QuranObservedSpeech(takeID: take, start: window.offset,
+                    end: Double(window.endFrame) / 16_000,
+                    words: recognized.runs.flatMap { $0.map(\.text) },
+                    unresolved: recognized.hasUnresolvedSpeech,
+                    backendID: worker.capabilities.backendID)
+                var spans = current.observedSpeech ?? []
+                if let index = spans.firstIndex(where: { $0.takeID == take && $0.start == observed.start && $0.end == observed.end }) {
+                    spans[index] = observed
+                } else { spans.append(observed) }
+                current.observedSpeech = spans
                 current.evidence += additions; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.

@@ -51,6 +51,17 @@ struct QuranSessionResult: View {
                         }.buttonStyle(.bordered).accessibilityIdentifier("study.result.review")
                     }
                     DisclosureGroup("تفاصيل التتبع") {
+                        if let spans = record.observedSpeech, !spans.isEmpty {
+                            Text("الكلمات المسموعة ليست حكمًا بصحة الحفظ أو النطق. المقاطع المتداخلة قد تكرر الكلمات.").font(.footnote).foregroundStyle(.secondary)
+                            ForEach(Array(spans.enumerated()), id: \.offset) { _, span in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("\(MushafAudioTime.text(span.start)) – \(MushafAudioTime.text(span.end))").font(.caption.monospacedDigit())
+                                    Text(span.words.isEmpty ? "لم يتضح كلام قابل للتتبع" : span.words.joined(separator: " "))
+                                        .font(.body).textSelection(.enabled)
+                                    if span.unresolved { Text("يوجد صوت غير محسوم في هذا المقطع").font(.caption).foregroundStyle(.secondary) }
+                                }.padding(.vertical, 8)
+                            }
+                        }
                         LazyVStack(alignment: .leading, spacing: 12) {
                             Text("التتبع يحدد موضع التلاوة؛ لا يقيس صحة النطق أو التجويد. المقاطع غير المتتبّعة ليست أخطاء مؤكدة.").font(.footnote).foregroundStyle(.secondary)
                             if record.recognitionUnavailable { Text("تعذّر التحليل في جزء من الجلسة؛ التسجيل الصوتي محفوظ.").font(.footnote) }

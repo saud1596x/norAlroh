@@ -14,6 +14,18 @@ public struct QuranRecitationTake: Codable, Equatable, Identifiable {
     }
 }
 
+public struct QuranObservedSpeech: Codable, Equatable {
+    public let takeID: UUID
+    public let start: Double
+    public let end: Double
+    public let words: [String]
+    public let unresolved: Bool
+    public let backendID: String
+    public init(takeID: UUID, start: Double, end: Double, words: [String], unresolved: Bool, backendID: String) {
+        self.takeID = takeID; self.start = start; self.end = end; self.words = words
+        self.unresolved = unresolved; self.backendID = backendID
+    }
+}
 public struct QuranRecitationRecord: Codable, Identifiable {
     public enum Phase: String, Codable { case recording, paused, interrupted, finished }
     public let version: Int
@@ -26,6 +38,7 @@ public struct QuranRecitationRecord: Codable, Identifiable {
     public var evidence: [QuranWordEvidence]
     public var recognitionUnavailable: Bool
     public var finishedAt: Date?
+    public var observedSpeech: [QuranObservedSpeech]? = nil
     public var duration: Double { takes.reduce(0) { $0 + $1.duration } }
     public init(keys: [String], originPage: Int, date: Date = Date()) {
         version = 1; id = UUID(); startedAt = date; self.keys = keys; self.originPage = originPage
@@ -45,6 +58,14 @@ public struct QuranRecitationRecord: Codable, Identifiable {
             throw QuranJournalFailure.invalidRecord
         }
         let knownTakes = Dictionary(uniqueKeysWithValues: takes.map { ($0.id, $0) })
+        guard (observedSpeech?.count ?? 0) <= 100_000,
+              (observedSpeech ?? []).allSatisfy({ span in
+                  guard let take = knownTakes[span.takeID] else { return false }
+                  return span.start.isFinite && span.end.isFinite && span.start >= 0 && span.end > span.start
+                      && span.end <= take.duration + 0.1 && span.words.count <= 1000
+                      && span.words.allSatisfy { !$0.isEmpty && $0.utf8.count <= 1024 }
+                      && !span.backendID.isEmpty && span.backendID.utf8.count <= 256
+              }) else { throw QuranJournalFailure.invalidRecord }
         let scope = Set(keys)
         guard evidence.allSatisfy({ word in
             guard let take = knownTakes[word.takeID] else { return false }
