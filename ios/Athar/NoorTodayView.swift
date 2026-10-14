@@ -94,7 +94,15 @@ struct NoorTodayView: View {
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
                 }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.startKhatmah")
                 NoorKhatmahProtectionCard()
-                DisclosureGroup("خطتي وأدواتي", isExpanded: $toolsExpanded) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Button { toolsExpanded.toggle() } label: {
+                        HStack {
+                            Text("خطتي وأدواتي")
+                            Spacer()
+                            Image(systemName: toolsExpanded ? "chevron.up" : "chevron.down")
+                        }.frame(minHeight: 44)
+                    }.accessibilityIdentifier("home.tools").accessibilityValue(toolsExpanded ? "مفتوح" : "مغلق")
+                    if toolsExpanded {
                 NavigationLink { KhatmahJourneyView() } label: {
                     Card {
                         Label("رحلة الختمة", systemImage: "book.closed")
@@ -151,7 +159,8 @@ struct NoorTodayView: View {
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
                         .overlay { RoundedRectangle(cornerRadius: 22).stroke(Theme.gold.opacity(0.12), lineWidth: 1).allowsHitTesting(false) }
                 }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.myJourney").noorEntrance(delay: 0.20)
-                }.accessibilityIdentifier("home.tools").accessibilityValue(toolsExpanded ? "مفتوح" : "مغلق")
+                    }
+                }
                 HStack(spacing: 8) {
                     Image(systemName: "lock.shield")
                     Text("بياناتك على جهازك · المزامنة اختيارية")

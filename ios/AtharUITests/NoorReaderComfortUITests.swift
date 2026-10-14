@@ -95,8 +95,11 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.study"].isHittable)
         XCTAssertTrue(app.buttons["reader.khatmah"].isHittable)
         app.buttons["reader.khatmah"].tap()
-        XCTAssertTrue(app.staticTexts["رحلة الختمة"].waitForExistence(timeout: 10))
-        app.buttons["إغلاق"].tap()
+        let setup = app.navigationBars["إعداد الختمة"]
+        let journey = app.staticTexts["رحلة الختمة"].firstMatch
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in setup.exists || journey.exists }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 10), .completed)
+        if setup.exists { app.buttons["إلغاء"].tap() } else { app.buttons["إغلاق"].tap() }
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
         XCTAssertEqual(verse.frame, frame, "Closing journey must preserve reader geometry")
         capture(app, "stage1-604-tools-visible")
