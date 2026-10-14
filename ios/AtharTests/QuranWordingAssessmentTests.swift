@@ -4,7 +4,8 @@ import XCTest
 final class QuranWordingAssessmentTests: XCTestCase {
     private let take = UUID()
     private let reference = ["قل", "هو", "الله", "أحد", "الله", "الصمد"].enumerated().map {
-        QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604,
+            aliases: [[QuranAlignedWord.normalize($0.element)]])
     }
     private func span(_ tokens: [String], offset: Double = 0, window: UUID = UUID(), takeID: UUID? = nil) -> QuranObservedSpeech {
         var value = QuranObservedSpeech(takeID: takeID ?? take, start: offset, end: offset + Double(tokens.count),
