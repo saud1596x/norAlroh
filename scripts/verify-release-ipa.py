@@ -84,8 +84,17 @@ def verify(path):
         if found != set(EXTENSIONS):
             raise ValueError('Missing required extensions: ' + ', '.join(sorted(set(EXTENSIONS) - found)))
         recognition_count = verify_recitation_resources(ipa, root)
+        for resource in ['quran.json', 'quran-basmalas.json', 'haramain-reciters.json']:
+            if ipa.read(root + resource) != (ROOT / 'ios/Athar' / resource).read_bytes():
+                raise ValueError('Incorrect bundled Quran or reciter resource: ' + resource)
+        catalog = json.loads(ipa.read(root + 'haramain-reciters.json'))
+        readers = catalog.get('reciters', [])
+        if catalog.get('schema') != 1 or not readers or any(
+                len(reader['surahs']) != 114 or set(reader['surahs']) != set(range(1, 115)) for reader in readers):
+            raise ValueError('Reciter catalog contains an incomplete Quran')
     return {'version': version[0], 'build': version[1], 'extensions': sorted(found),
             'accountConfigurationIncluded': True, 'recognitionResourcesVerified': recognition_count,
+            'quranTextResourcesMatchSource': True, 'completeReciterCatalogs': len(readers),
             'deviceTested': False}
 
 def main():

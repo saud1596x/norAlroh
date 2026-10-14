@@ -23,6 +23,13 @@ class ReleasePayloadTests(unittest.TestCase):
         self.resources = tempfile.TemporaryDirectory()
         self.addCleanup(self.resources.cleanup)
         root = Path(self.resources.name)
+        (root / 'ios/Athar').mkdir(parents=True)
+        self.quran_files = {'quran.json': b'synthetic-pinned-quran',
+                            'quran-basmalas.json': b'synthetic-pinned-basmalas',
+                            'haramain-reciters.json': json.dumps({'schema': 1, 'reciters': [
+                                {'id': 54, 'surahs': list(range(1, 115))}]}).encode()}
+        for name, data in self.quran_files.items():
+            (root / 'ios/Athar' / name).write_bytes(data)
         for directory in ['scripts', 'content-sources', 'docs']:
             (root / directory).mkdir()
         shutil.copyfile(gate.ROOT / 'scripts/configure-firebase.py', root / 'scripts/configure-firebase.py')
@@ -48,6 +55,7 @@ class ReleasePayloadTests(unittest.TestCase):
         root = 'Payload/Athar.app/'
         with zipfile.ZipFile(path, 'w') as archive:
             resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
+            resources.update(self.quran_files)
             resources.update({'RecitationModel/Whisper-LICENSE.txt': b'WHISPER-MODEL-LICENSE.txt',
                               'RecitationModel/Tarteel-LICENSE.txt': b'TARTEEL-MODEL-LICENSE.txt',
                               'RecitationModel/NOTICE.txt': b'RECITATION-MODEL-NOTICE.txt',
@@ -134,6 +142,24 @@ class ReleasePayloadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(ValueError, 'privacy policy still describes local-only'):
                 gate.verify(self.payload(folder, local_policy=True))
+
+    def test_missing_or_corrupted_quran_resources_are_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in self.quran_files:
+                with self.subTest(resource=name):
+                    with self.assertRaises(KeyError):
+                        gate.verify(self.payload(folder, omit=name))
+                    with self.assertRaisesRegex(ValueError, 'Incorrect bundled Quran or reciter resource'):
+                        gate.verify(self.payload(folder, corrupt=name))
+
+    def test_identical_but_incomplete_reciter_catalog_is_rejected(self):
+        name = 'haramain-reciters.json'
+        data = json.dumps({'schema': 1, 'reciters': [{'id': 54, 'surahs': list(range(1, 114))}]}).encode()
+        self.quran_files[name] = data
+        (gate.ROOT / 'ios/Athar' / name).write_bytes(data)
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(ValueError, 'incomplete Quran'):
+                gate.verify(self.payload(folder))
 
     def test_missing_or_local_only_privacy_manifest_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
