@@ -48,6 +48,11 @@ import Foundation
             if item.name == "digital-silence" || item.name == "public-composite" {
                 guard events.isEmpty else { throw NSError(domain: "CTCFalseBaselineEvent", code: 1) }
             }
+            if item.name == "public-cut" {
+                guard events.contains(where: { $0.category == "omission" && $0.referenceIDs == [3] }) else {
+                    throw NSError(domain: "CTCActualSpliceNotDetected", code: 1)
+                }
+            }
             results.append(.init(name: item.name, rawObservedWords: words.map(\.observedText), events: events))
         }
         guard results.count == 5 else { throw NSError(domain: "CTCCaseLoss", code: 1) }

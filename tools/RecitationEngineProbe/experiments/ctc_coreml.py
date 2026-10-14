@@ -161,7 +161,10 @@ def verify():
         if valid:
             probabilities=np.exp(logits[0]-logits[0].max(axis=-1,keepdims=True))
             probabilities/=probabilities.sum(axis=-1,keepdims=True)
-            words=observed_words(logits[0].argmax(axis=-1).tolist(),probabilities.max(axis=-1).tolist(),vocab,row['samples'])
+            # Full identified fixture files and completed signal edits are
+            # closed inputs; the deliberately cut streaming prefixes are not.
+            finalized=not row['name'].endswith('-first-2s')
+            words=observed_words(logits[0].argmax(axis=-1).tolist(),probabilities.max(axis=-1).tolist(),vocab,row['samples'],finalized=finalized)
             if ' '.join(word['text'] for word in words)!=text:raise ValueError('Frame decoding changed actual observed text')
             word_cases.append(dict(name=row['name'],samples=row['samples'],words=words))
         finite=np.isfinite(logits)

@@ -30,5 +30,18 @@ class FrameEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):observed_words([2, 1], [0.9, 0.9], self.vocab, 400)
         with self.assertRaises(ValueError):self.decode([99])
 
+    def test_only_closed_acoustically_ended_input_finalizes_existing_last_group(self):
+        ids = [2, 3] + [0]*20
+        count = (len(ids)-1)*320+400
+        live = observed_words(ids, [0.9]*len(ids), self.vocab, count)
+        closed = observed_words(ids, [0.9]*len(ids), self.vocab, count, finalized=True)
+        self.assertFalse(live[0]['complete'])
+        self.assertTrue(closed[0]['complete'])
+        self.assertEqual(live[0]['text'], closed[0]['text'])
+        self.assertEqual(live[0]['start'], closed[0]['start'])
+        self.assertEqual(live[0]['end'], closed[0]['end'])
+        self.assertEqual(observed_words([0]*20, [1.0]*20, self.vocab, 6480, finalized=True), [])
+        self.assertFalse(observed_words([2, 3, 0], [0.9]*3, self.vocab, 1040, finalized=True)[0]['complete'])
+
 
 if __name__ == '__main__':unittest.main()

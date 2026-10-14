@@ -2,7 +2,7 @@
 import math
 
 
-def observed_words(ids, posteriors, vocabulary, samples, stride=320, receptive=400):
+def observed_words(ids, posteriors, vocabulary, samples, stride=320, receptive=400, finalized=False):
     if len(ids) != len(posteriors) or samples < receptive or stride <= 0 or receptive <= 0:
         raise ValueError('Invalid CTC acoustic extent')
     if any(not math.isfinite(p) or not 0 <= p <= 1 for p in posteriors):
@@ -41,7 +41,10 @@ def observed_words(ids, posteriors, vocabulary, samples, stride=320, receptive=4
             flush(True)
         else:
             word.append(unit)
-    # A final character sequence can be a truncated word. A trailing blank
-    # cannot prove completion; preserve it without making it accepted speech.
-    flush(False)
+    # An overlapping window ending is not an utterance ending. Only an actual
+    # closed input with at least 300 ms after its last acoustic character may
+    # finalize that observed token group. This adds no letters, missing words,
+    # reference matches or correctness claims; partial live prefixes abstain.
+    tail = (samples - (word[-1]['last'] * stride + receptive)) / 16000 if word else 0
+    flush(finalized and tail >= 0.3)
     return result
