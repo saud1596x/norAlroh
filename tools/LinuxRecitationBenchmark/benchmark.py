@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import platform
+import shutil
 import time
 import unicodedata
 import urllib.request
@@ -48,7 +49,25 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     model_path = snapshot_download(MODEL, revision=REVISION,
                                   allow_patterns=['*.json', '*.bin', 'vocabulary.*'])
-    model = WhisperModel(model_path, device='cpu', compute_type='int8',
+    # Avoid the library's unpinned whisper-tiny tokenizer fallback. Use the
+    # same independently hash-verified multilingual tokenizer as the app.
+    model_directory = args.output / 'model'
+    model_directory.mkdir(exist_ok=True)
+    for file in Path(model_path).iterdir():
+        if file.is_file():
+            destination = model_directory / file.name
+            if not destination.is_file() or destination.stat().st_size != file.stat().st_size:
+                shutil.copyfile(file, destination)
+    manifest = json.loads((ROOT / 'content-sources/recitation-model-manifest.json').read_text())
+    tokenizer = next(e for e in manifest['files'] if e['path'] == 'tokenizer/tokenizer.json')
+    tokenizer_file = model_directory / 'tokenizer.json'
+    if not tokenizer_file.is_file() or hashlib.sha256(tokenizer_file.read_bytes()).hexdigest() != tokenizer['sha256']:
+        with urllib.request.urlopen(tokenizer['url'], timeout=60) as response:
+            raw = response.read(tokenizer['bytes'] + 1)
+        if len(raw) != tokenizer['bytes'] or hashlib.sha256(raw).hexdigest() != tokenizer['sha256']:
+            raise ValueError('Tokenizer integrity mismatch')
+        tokenizer_file.write_bytes(raw)
+    model = WhisperModel(str(model_directory), device='cpu', compute_type='int8',
                          cpu_threads=1, num_workers=1)
     fixtures = json.loads((ROOT / 'tools/RecitationEngineProbe/fixtures/sources.json').read_text())
     script = json.loads((ROOT / 'content-sources/recitation-word-script.json').read_text(encoding='utf-8'))
