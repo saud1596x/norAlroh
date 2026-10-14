@@ -51,10 +51,10 @@
     "nativeVisualAcceptance": false
   },
   "currentNativeRun": {
-    "id": 38078097459,
-    "sourceCommit": "e4af7f70c51d26208d74ff9e8182fadf06bfe6e0",
+    "id": 38583128429,
+    "sourceCommit": "19a1f96ee92af0e29c6f4c8811ca6bb898a2ed73",
     "state": "success",
-    "url": "https://github.com/saud1596x/norAlroh/actions/runs/38078097459"
+    "url": "https://github.com/saud1596x/norAlroh/actions/runs/38583128429"
   },
   "nativeFindings": {
     "run37519940663": "Native build succeeded; all604 test executed in39.626s. Original tall marks rejected by row cap; lower ink clipped by930 canvas on9 pages. UI query timed out opening604. No complete interaction proof.",
@@ -67,7 +67,8 @@
     "run37523178310": "All604 native audit passed. UI opened604 and first verse tools; title assertion failed before subsequent interaction checks.",
     "run37528605680": "Native review successful. Two UI tests passed161.625s and101.276s. Two unit tests passed52.159s, zero failures.",
     "run37618599248": "Native iOS checks189 succeeded in37m6s: native36m31s, account/four-extension Release build5m16s. All604 native bounds and hit-region test passed45.390s. Unit summary:102 executed,1 skipped,0 failures. Every-verse tools/zoom UI test passed111.834s. Actual-device and visual reference acceptance remain pending.",
-    "run37663422598": "Native iOS checks211 succeeded: native Release unit/UI checks19m33s, unsigned accounts/four-extension Release build4m22s; repaired p245 cmap and merged adhkar search included. Artifact11503735890 (787MB) sha256946bedc7cb8326162b2c1873aa4f3353b48ccefec91c8af7fb709a90d89a4737 produced; not downloaded or visually reviewed. Actual-device, reference and rights flags unchanged."
+    "run37663422598": "Native iOS checks211 succeeded: native Release unit/UI checks19m33s, unsigned accounts/four-extension Release build4m22s; repaired p245 cmap and merged adhkar search included. Artifact11503735890 (787MB) sha256946bedc7cb8326162b2c1873aa4f3353b48ccefec91c8af7fb709a90d89a4737 produced; not downloaded or visually reviewed. Actual-device, reference and rights flags unchanged.",
+    "run38583128429": "Both display classes passed account/four-extension unsigned compilation, 233 native unit tests (2 explicitly skipped), 2 welcome tests and 20 combined UI tests. Actual reference-audio matrix and all604 native bounds/hit regions passed. Physical-device and final visual/rights review remain unverified."
   },
   "crossPageAyahsInPinnedSnapshot": 0,
   "all604DataValidated": true,
@@ -111,6 +112,12 @@
       "sourceCommit": "72cf9dcabad0efb38b112f8233b8461f4626aa87",
       "state": "success",
       "url": "https://github.com/saud1596x/norAlroh/actions/runs/38055315831"
+    },
+    {
+      "id": 38078097459,
+      "sourceCommit": "e4af7f70c51d26208d74ff9e8182fadf06bfe6e0",
+      "state": "success",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/38078097459"
     }
   ],
   "currentPreviewEvidence": "release/current-native-preview-evidence.json"
