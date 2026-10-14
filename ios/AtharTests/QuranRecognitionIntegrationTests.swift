@@ -165,6 +165,17 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertFalse(try journal.load(interrupted.id).recognitionUnavailable)
         XCTAssertTrue(reopened.record?.evidence.allSatisfy { $0.verse == "112:1" } == true)
         XCTAssertEqual(try Data(contentsOf: journal.audio(session: interrupted.id, take: first.id)), originalBytes)
+        let beforeHint = reopened.record?.evidence
+        await reopened.revealNextWord(in: "112:2")
+        let hintIDs = try XCTUnwrap(reopened.record?.textHintIDs)
+        XCTAssertEqual(hintIDs.count, 1, "Graduated help reveals one authored word at a time")
+        XCTAssertEqual(reopened.record?.evidence, beforeHint, "Revealing Quran text cannot manufacture heard speech")
+        XCTAssertTrue(Set(hintIDs).isDisjoint(with: reopened.hiddenIDs))
+        XCTAssertEqual(try journal.load(interrupted.id).textHintIDs, hintIDs)
+        let withHints = QuranRecitationController(archiveRoot: root)
+        await withHints.restore(id: interrupted.id, snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(withHints.record?.textHintIDs, hintIDs)
+        XCTAssertTrue(Set(hintIDs).isDisjoint(with: withHints.hiddenIDs), "Saved assistance survives reopening")
     }
 
     @MainActor func testDrainTimeoutWithActualPriorEvidenceExposesTextAndRejectsLateDecode() async throws {

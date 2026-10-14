@@ -64,10 +64,10 @@ final class QCFV2ContentTests: XCTestCase {
         let restoredPreparation = try await preparation.prepare(entry.snapshot, keys: keys)
         XCTAssertEqual(restoredPreparation.versePages, prepared.versePages)
         var altered = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.snapshot) as? [String: Any])
-        var records = try XCTUnwrap(altered["records"] as? [[String: Any]])
-        let wordIndex = try XCTUnwrap(records.firstIndex { $0["char_type_name"] as? String == "word" })
-        records[wordIndex]["text"] = "ﱂ" // Valid edition glyph, incorrect canonical word.
-        altered["records"] = records
+        var alteredRecords = try XCTUnwrap(altered["records"] as? [[String: Any]])
+        let wordIndex = try XCTUnwrap(alteredRecords.firstIndex { $0["char_type_name"] as? String == "word" })
+        alteredRecords[wordIndex]["text"] = "ﱂ" // Valid edition glyph, incorrect canonical word.
+        altered["records"] = alteredRecords
         do {
             _ = try await preparation.prepare(JSONSerialization.data(withJSONObject: altered), keys: keys)
             XCTFail("A structurally valid snapshot cannot alter a canonical word glyph")

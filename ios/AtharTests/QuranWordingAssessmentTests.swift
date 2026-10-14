@@ -72,6 +72,10 @@ final class QuranWordingAssessmentTests: XCTestCase {
         let linked = QuranWordingAssessment.linkLaterAttempts(initial, spans: [later], takes: [first, assisted], expected: reference)
         XCTAssertEqual(linked.first?.resolution, "later-assisted-evidence")
         XCTAssertEqual(linked.first?.state, "provisional")
+        var textAssisted = assisted
+        textAssisted.referenceExposure = nil; textAssisted.textHintIDs = [3]
+        XCTAssertEqual(QuranWordingAssessment.linkLaterAttempts(initial, spans: [later], takes: [first, textAssisted],
+            expected: reference).first?.resolution, "later-assisted-evidence")
         XCTAssertTrue(Set(linked.first?.correctionObservationIDs ?? []).isSubset(of: Set(later.wordObservations!.map(\.observationID))))
         let stored = QuranWordingAssessment.reconcile(previous: initial, incoming: linked, reconsidered: [later])
         XCTAssertEqual(stored.filter { $0.state == "provisional" }.first?.resolution, "later-assisted-evidence")
@@ -102,6 +106,33 @@ final class QuranWordingAssessmentTests: XCTestCase {
         let source = span(["قل", "هو", "الله", "شيء", "أحد", "الله", "الصمد"])
         XCTAssertEqual(QuranWordingAssessment.evaluate([source], expected: reference).map(\.category), ["insertion"])
         XCTAssertEqual(source.wordObservations?[3].observedText, "شيء")
+    }
+    func testSwappedWordsRetainBothAcousticOccurrencesAndCanonicalTargets() {
+        let source = span(["قل", "هو", "أحد", "الله", "الله", "الصمد"])
+        let events = QuranWordingAssessment.evaluate([source], expected: reference)
+        XCTAssertEqual(events.map(\.category), ["transposition"])
+        XCTAssertEqual(events.first?.referenceIDs, [3, 4])
+        XCTAssertEqual(events.first?.supportingObservationIDs,
+                       source.wordObservations?[2...3].map(\.observationID))
+        XCTAssertEqual(events.first?.state, "provisional")
+        XCTAssertEqual(source.words, ["قل", "هو", "أحد", "الله", "الله", "الصمد"])
+    }
+    func testSkippedPassageNeedsBothAnchorsAndPartialRetryCannotResolveIt() {
+        let tokens = ["قل", "هو", "الله", "أحد", "الله", "الصمد", "لم", "يلد", "ولم", "يولد"]
+        let longer = tokens.enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        }
+        let skipped = span(["قل", "هو", "لم", "يلد"])
+        let initial = QuranWordingAssessment.evaluate([skipped], expected: longer)
+        XCTAssertEqual(initial.map(\.category), ["skipped-passage"])
+        XCTAssertEqual(initial.first?.referenceIDs, [3, 4, 5, 6])
+        let partial = span(Array(tokens.prefix(6)), offset: 10)
+        XCTAssertNil(QuranWordingAssessment.evaluate([skipped, partial], expected: longer).first?.resolution)
+        let full = span(tokens, offset: 10)
+        XCTAssertEqual(QuranWordingAssessment.evaluate([skipped, full], expected: longer).first?.resolution,
+                       "later-independent-evidence")
+        XCTAssertTrue(QuranWordingAssessment.evaluate([span(["قل", "هو"])], expected: longer).isEmpty,
+                      "A stopped or silent attempt cannot establish a skipped passage")
     }
     func testRepeatedWordInLaterUnrelatedContextDoesNotResolveIncident() {
         let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])

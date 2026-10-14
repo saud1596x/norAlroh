@@ -30,7 +30,7 @@ import os
         // Conservatively retain listening assistance for this entire session,
         // including interrupted reference playback and later microphone takes.
         referenceExposure = audio.reciterDirectory
-        if var current = record {
+        if var current = record, current.phase != .finished {
             current.referenceExposure = referenceExposure
             do { try save(current); record = current }
             catch { cancelGuided(); message = "تعذّر حفظ حالة المساعدة. أعد المحاولة."; return }
@@ -111,7 +111,20 @@ import os
         // Keep the reader usable until actual saved word evidence establishes
         // a position, and expose the text again if the engine becomes unavailable.
         guard hasSession, !revealed.isEmpty, recognitionAvailable else { return [] }
-        return expectedIDs.subtracting(revealed)
+        return expectedIDs.subtracting(revealed).subtracting(Set(record?.textHintIDs ?? []))
+    }
+    func revealNextWord(in verse: String, entireVerse: Bool = false) async {
+        guard state == .listening || state == .paused else { return }
+        await pause()
+        guard state == .paused, var current = record else { return }
+        guard current.keys.contains(verse) else { message = "هذه الآية خارج مقطع التسميع الحالي."; return }
+        let shown = revealed.union(Set(current.textHintIDs ?? []))
+        let candidates = words.filter { $0.verse == verse && expectedIDs.contains($0.id) && !shown.contains($0.id) }
+        let added = entireVerse ? candidates.map(\.id) : Array(candidates.prefix(1).map(\.id))
+        guard !added.isEmpty else { return }
+        current.textHintIDs = (current.textHintIDs ?? []) + added
+        do { try save(current); record = current }
+        catch { message = "تعذّر حفظ التلميح. لم تُحسب الكلمات كتلاوة." }
     }
     var status: String {
         if guidedPhase == .reference { return "استمع · الميكروفون مغلق" }
@@ -273,7 +286,8 @@ import os
         // A route rejecting gain adjustment must not prevent microphone capture.
         if audio.isInputGainSettable { try? audio.setInputGain(1.0) }
         var take = QuranRecitationTake()
-        take.referenceExposure = referenceExposure
+        take.referenceExposure = referenceExposure ?? next.referenceExposure
+        take.textHintIDs = next.textHintIDs
         if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,

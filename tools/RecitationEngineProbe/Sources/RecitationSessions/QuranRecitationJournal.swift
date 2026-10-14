@@ -9,6 +9,7 @@ public struct QuranRecitationTake: Codable, Equatable, Identifiable {
     public var frames: Int64
     public var closed: Bool
     public var referenceExposure: String? = nil
+    public var textHintIDs: [Int]? = nil
     public var duration: Double { Double(frames) / 16_000 }
     public init(id: UUID = UUID(), startedAt: Date = Date(), frames: Int64 = 0, closed: Bool = false) {
         self.id = id; self.startedAt = startedAt; self.frames = frames; self.closed = closed
@@ -71,6 +72,7 @@ public struct QuranRecitationRecord: Codable, Identifiable {
     public var observedSpeech: [QuranObservedSpeech]? = nil
     public var wordingEvents: [QuranWordingEvent]? = nil
     public var referenceExposure: String? = nil
+    public var textHintIDs: [Int]? = nil
     public var duration: Double { takes.reduce(0) { $0 + $1.duration } }
     public init(keys: [String], originPage: Int, date: Date = Date()) {
         version = 1; id = UUID(); startedAt = date; self.keys = keys; self.originPage = originPage
@@ -87,6 +89,10 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       && key == "\(parts[0]):\(parts[1])"
               }), takes.allSatisfy({ $0.frames >= 0 && $0.frames <= 16_000 * 86_400
                   && $0.startedAt >= startedAt && $0.startedAt.timeIntervalSince1970.isFinite }) else {
+            throw QuranJournalFailure.invalidRecord
+        }
+        guard (textHintIDs?.count ?? 0) <= 77_429, (textHintIDs ?? []).allSatisfy({ $0 > 0 }),
+              takes.allSatisfy({ ($0.textHintIDs?.count ?? 0) <= 77_429 && ($0.textHintIDs ?? []).allSatisfy { $0 > 0 } }) else {
             throw QuranJournalFailure.invalidRecord
         }
         let knownTakes = Dictionary(uniqueKeysWithValues: takes.map { ($0.id, $0) })
@@ -128,7 +134,8 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                   return event.start.isFinite && event.end.isFinite && event.start >= 0 && event.end > event.start
                       && event.end <= take.duration + 0.1 && ["provisional", "superseded"].contains(event.state)
                       && event.revision >= 0
-                      && ["substitution", "omission", "insertion", "repetition"].contains(event.category)
+                      && ["substitution", "omission", "insertion", "repetition", "transposition", "skipped-passage"].contains(event.category)
+                      && event.referenceIDs.count <= 128
                       && !event.supportingObservationIDs.isEmpty && event.supportingObservationIDs.count <= 160
                       && event.supportingObservationIDs.allSatisfy { id in
                           observedWords[id]?.contains(where: { observed in

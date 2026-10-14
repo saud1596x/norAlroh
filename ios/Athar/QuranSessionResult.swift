@@ -6,15 +6,27 @@ struct QuranSessionResult: View {
     let record: QuranRecitationRecord
     let wordIDs: [String: [Int]]
     let onReview: (String) -> Void
+    let onListenPractice: (([String]) -> Void)?
     private let coverageCounts: [String: Int]
-    init(record: QuranRecitationRecord, wordIDs: [String: [Int]], onReview: @escaping (String) -> Void) {
+    init(record: QuranRecitationRecord, wordIDs: [String: [Int]], onReview: @escaping (String) -> Void,
+         onListenPractice: (([String]) -> Void)? = nil) {
         self.record = record; self.wordIDs = wordIDs; self.onReview = onReview
+        self.onListenPractice = onListenPractice
         let evidence = Dictionary(grouping: record.evidence, by: \.verse).mapValues { Set($0.map(\.nativeID)) }
         coverageCounts = Dictionary(uniqueKeysWithValues: record.keys.map { key in
             (key, (evidence[key] ?? []).intersection(Set(wordIDs[key] ?? [])).count)
         })
     }
     @Environment(\.dismiss) private var dismiss
+    private var contextualPractice: [String] {
+        let pendingIDs = Set((record.wordingEvents ?? []).filter {
+            $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
+        }.flatMap(\.referenceIDs))
+        let focus = record.keys.first { !Set(wordIDs[$0] ?? []).isDisjoint(with: pendingIDs) }
+            ?? unresolved.first ?? record.keys.first
+        guard let focus, let index = record.keys.firstIndex(of: focus) else { return [] }
+        return Array(record.keys[max(0, index-1)...min(record.keys.count-1, index+1)])
+    }
     @EnvironmentObject private var store: AtharStore
     @StateObject private var attemptAudio = MushafSessionRecorder()
     @State private var replayNotice: String?
@@ -65,10 +77,20 @@ struct QuranSessionResult: View {
                         metric("مدة التسجيل", value: MushafAudioTime.text(record.duration))
                         metric("كلمات متتبّعة", value: String(trackedCount))
                     }.frame(maxWidth: .infinity, alignment: .leading)
+                    if !(record.textHintIDs ?? []).isEmpty {
+                        Text("استُخدمت تلميحات للقراءة؛ الكلمات المكشوفة لا تُحسب كتلاوة مسموعة.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     if let key = unresolved.first {
                         Button { onReview(key) } label: {
                             Label("راجع المقاطع غير المتتبّعة", systemImage: "book").frame(maxWidth: .infinity, minHeight: 44)
                         }.buttonStyle(.bordered).accessibilityIdentifier("study.result.review")
+                    }
+                    if let onListenPractice, !contextualPractice.isEmpty {
+                        Button { onListenPractice(contextualPractice) } label: {
+                            Label("استمع للمقطع ثم أعد التسميع", systemImage: "ear.and.waveform")
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }.buttonStyle(.bordered).accessibilityIdentifier("study.result.contextualPractice")
                     }
                     DisclosureGroup("تفاصيل التتبع") {
                         if let events = record.wordingEvents, !events.isEmpty {
@@ -76,7 +98,7 @@ struct QuranSessionResult: View {
                             ForEach(events.filter { $0.state == "provisional" }, id: \.eventID) { event in
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(event.resolution == nil ? "راجع هذا الموضع" : event.resolution == "later-assisted-evidence"
-                                         ? "ظهرت قراءة مطابقة بعد الاستماع؛ محاولة بمساعدة" : "ظهرت قراءة مطابقة لاحقًا في التسجيل")
+                                         ? "ظهرت قراءة مطابقة بمساعدة؛ ليست استرجاعًا مستقلًا" : "ظهرت قراءة مطابقة لاحقًا في التسجيل")
                                     HStack {
                                         Button("استمع لمحاولتك") {
                                             if let span = record.observedSpeech?.first(where: { $0.takeID == event.takeID && $0.start <= event.start && $0.end >= event.end }) {

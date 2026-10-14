@@ -149,6 +149,9 @@ struct AdhkarView: View {
             } else { ContentUnavailableView("تعذر تحميل الأذكار", systemImage: "book.closed") }
         }.background(Theme.background).noorScreenChrome().navigationTitle("الأذكار")
             .searchable(text: $search, prompt: "ابحث في الأبواب والنصوص")
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .submitLabel(.search)
             .tint(Theme.gold)
     }
 }

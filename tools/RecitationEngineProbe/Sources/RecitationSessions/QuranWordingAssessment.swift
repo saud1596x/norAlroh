@@ -15,7 +15,7 @@ public struct QuranWordingEvent: Codable, Equatable, Sendable {
     public var revision: Int = 0
     public var resolution: String? = nil
     public var correctionObservationIDs: [UUID]? = nil
-    public var assessmentPolicyVersion: String = "context-dp-development-1"
+    public var assessmentPolicyVersion: String = "context-dp-development-2"
 }
 
 /// Edit costs rank sequence hypotheses; they are not correctness probabilities.
@@ -33,7 +33,7 @@ public enum QuranWordingAssessment {
             let correctionTake = spans.first { span in
                 span.wordObservations?.contains(where: { ids.contains($0.observationID) }) == true
             }?.takeID
-            if let correctionTake, known[correctionTake]?.referenceExposure != nil {
+            if let correctionTake, known[correctionTake]?.referenceExposure != nil || !(known[correctionTake]?.textHintIDs ?? []).isEmpty {
                 result[index].resolution = "later-assisted-evidence"
             }
         }
@@ -48,6 +48,7 @@ public enum QuranWordingAssessment {
         }
         for index in result.indices.suffix(256) where result[index].state == "provisional" && result[index].resolution == nil {
             guard let target = result[index].referenceIDs.first,
+                  result[index].referenceIDs.count <= 2,
                   let position = expected.firstIndex(where: { $0.id == target }), position >= 2,
                   position + 2 < expected.count, let original = known[result[index].takeID] else { continue }
             for span in reconciledWindows(spans) where span.takeID != original.id {
@@ -64,7 +65,8 @@ public enum QuranWordingAssessment {
                             (0..<5).allSatisfy { forms[start + $0].contains(tokens[$0]) }
                         })
                         guard matches == Set([position - 2]) else { continue }
-                        result[index].resolution = later.referenceExposure == nil ? "later-independent-evidence" : "later-assisted-evidence"
+                        result[index].resolution = later.referenceExposure == nil && (later.textHintIDs ?? []).isEmpty
+                            ? "later-independent-evidence" : "later-assisted-evidence"
                         result[index].correctionObservationIDs = context.map(\.observationID)
                         break
                     }
@@ -124,6 +126,23 @@ public enum QuranWordingAssessment {
                   words.allSatisfy({ $0.recognitionState == "accepted" && $0.startInTakeSeconds != nil && $0.endInTakeSeconds != nil }),
                   zip(words, words.dropFirst()).allSatisfy({ $0.startInTakeSeconds! <= $1.startInTakeSeconds! }) else { continue }
             let tokens = words.map { QuranAlignedWord.normalize($0.observedText) }
+            // A multiword skip needs two individually unique spoken anchors on
+            // both sides. A pause, trailing silence or uncertain speech cannot
+            // create it. Keep the original bounding acoustic occurrences.
+            for offset in 0...(tokens.count - 4) {
+                let left = anchors[tokens[offset] + " " + tokens[offset + 1]] ?? []
+                let right = anchors[tokens[offset + 2] + " " + tokens[offset + 3]] ?? []
+                guard left.count == 1, right.count == 1, let before = left.first, let after = right.first,
+                      (2...128).contains(after - before - 2),
+                      words[offset + 2].startInTakeSeconds! - words[offset + 1].endInTakeSeconds! <= 2 else { continue }
+                let support = [words[offset + 1], words[offset + 2]]
+                let ids = expected[(before + 2)..<after].map(\.id)
+                if !events.contains(where: { $0.takeID == span.takeID && $0.referenceIDs == ids && max($0.start, support[0].startInTakeSeconds!) < min($0.end, support[1].endInTakeSeconds!) }) {
+                    events.append(QuranWordingEvent(eventID: support[0].observationID, takeID: span.takeID,
+                        referenceIDs: ids, supportingObservationIDs: support.map(\.observationID),
+                        start: support[0].startInTakeSeconds!, end: support[1].endInTakeSeconds!, category: "skipped-passage"))
+                }
+            }
             // Unique consecutive two-word anchors bound the local DP. Ambiguous
             // competing passages abstain rather than receiving a forced error.
             var candidateStarts = Set<Int>()
@@ -155,15 +174,21 @@ public enum QuranWordingAssessment {
                       steps[index - 1].kind == "match", steps[index - 2].kind == "match",
                       steps[index + 1].kind == "match", steps[index + 2].kind == "match" else { continue }
                 let before = words[steps[index - 1].observed], after = words[steps[index + 1].observed]
-                guard after.startInTakeSeconds! - before.endInTakeSeconds! <= 2 else { continue }
+                let transposition = step.kind == "transposition"
+                if transposition {
+                    guard words.indices.contains(step.observed + 1),
+                          words[step.observed].startInTakeSeconds! - before.endInTakeSeconds! <= 2,
+                          after.startInTakeSeconds! - words[step.observed + 1].endInTakeSeconds! <= 2 else { continue }
+                } else if after.startInTakeSeconds! - before.endInTakeSeconds! > 2 { continue }
                 let insertion = step.kind == "insertion"
                 let reference = base + step.reference
-                guard expected.indices.contains(reference) else { continue }
-                let support = step.kind == "omission" ? [before, after] : [words[step.observed]]
+                guard expected.indices.contains(reference), !transposition || expected.indices.contains(reference + 1) else { continue }
+                let support = step.kind == "omission" ? [before, after]
+                    : transposition ? [words[step.observed], words[step.observed + 1]] : [words[step.observed]]
                 var category = step.kind
                 if insertion && step.observed > 0 && tokens[step.observed] == tokens[step.observed - 1] { category = "repetition" }
                 let event = QuranWordingEvent(eventID: support[0].observationID, takeID: span.takeID,
-                    referenceIDs: insertion ? [] : [expected[reference].id],
+                    referenceIDs: insertion ? [] : transposition ? [expected[reference].id, expected[reference + 1].id] : [expected[reference].id],
                     supportingObservationIDs: support.map(\.observationID),
                     start: support[0].startInTakeSeconds!, end: support.last!.endInTakeSeconds!, category: category)
                 if !events.contains(where: { $0.takeID == event.takeID && $0.referenceIDs == event.referenceIDs && $0.category == event.category
@@ -179,7 +204,8 @@ public enum QuranWordingAssessment {
                             && steps[(position - 2)...(position + 2)].allSatisfy { $0.kind == "match" }
                             && events[index].referenceIDs.contains(expected[base + steps[position].reference].id)
                     }.map { steps[$0] }
-                    if !matching.isEmpty {
+                    let matchingIDs = Set(matching.map { expected[base + $0.reference].id })
+                    if !matching.isEmpty && Set(events[index].referenceIDs).isSubset(of: matchingIDs) {
                         events[index].resolution = "later-independent-evidence"
                         events[index].correctionObservationIDs = matching.map { words[$0.observed].observationID }
                         events[index].revision += 1
@@ -246,6 +272,10 @@ public enum QuranWordingAssessment {
         for i in 0...n {
             for j in 0...m {
                 if i < n && j < m {
+                    if i + 1 < n, j + 1 < m,
+                       forms[j].contains([tokens[i + 1]]), forms[j + 1].contains([tokens[i]]) {
+                        update(i + 2, j + 2, from: i, j, cost: 1, kind: "transposition")
+                    }
                     for form in forms[j] where !form.isEmpty && i + form.count <= n && Array(tokens[i..<(i + form.count)]) == form {
                         update(i + form.count, j + 1, from: i, j, cost: 0, kind: "match")
                     }

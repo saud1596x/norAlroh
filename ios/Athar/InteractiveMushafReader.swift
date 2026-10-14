@@ -97,6 +97,7 @@ struct InteractiveMushafReader: View {
     @State private var number = 1
     @State private var selected: String?
     @State private var manualSelection: VerseSelection?
+    @State private var practiceSelection: String?
     @State private var sheetVerse: VerseSelection?
     @State private var sheetAction = VerseToolAction.details
     @State private var tools = true
@@ -150,14 +151,14 @@ struct InteractiveMushafReader: View {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords,
                         reviewWordIDs: Set((recitation.record?.wordingEvents ?? []).filter { $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition" }.flatMap(\.referenceIDs)),
-                        allowsVerseSelection: !studyOpen,
+                        allowsVerseSelection: true,
                         // Fit the complete page instead of automatically zooming
                         // past its edges. The larger-text preference uses a little
                         // less side padding while preserving the authored layout.
                         readingMagnification: 1,
-                        hiddenTextAccessibilityHint: "نص الآية مخفي للتسميع؛ يظهر عندما يتعرف النظام على تلاوتك.",
+                        hiddenTextAccessibilityHint: "نص الآية مخفي للتسميع. اضغط لخيارات المساعدة؛ يُحفظ استخدام التلميح.",
                         onVerse: { key in
-                            guard !studyOpen else { return }
+                            if studyOpen { practiceSelection = key; return }
                             if let key {
                                 audio.stop()
                                 selected = key; manualSelection = VerseSelection(key: key)
@@ -328,7 +329,24 @@ struct InteractiveMushafReader: View {
                 QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onReview: { key in
                     studySummary = false; selected = key; manualSelection = VerseSelection(key: key)
                     if let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
+                }, onListenPractice: { keys in
+                    studySummary = false; guidedKeys = keys; followAudio = true
+                    Task {
+                        await recitation.pause()
+                        recitation.listenFirst(keys, audio: audio, repetitions: 1, responsePause: 3)
+                    }
                 })
+            }
+        }
+        .confirmationDialog("مساعدة في التسميع", isPresented: Binding(get: { practiceSelection != nil }, set: { if !$0 { practiceSelection = nil } }), titleVisibility: .visible) {
+            if let key = practiceSelection {
+                Button("كشف الكلمة التالية") { Task { await recitation.revealNextWord(in: key) }; practiceSelection = nil }
+                Button("كشف الآية كاملة") { Task { await recitation.revealNextWord(in: key, entireVerse: true) }; practiceSelection = nil }
+                Button("استمع ثم أعد المحاولة") {
+                    practiceSelection = nil
+                    Task { await recitation.pause(); recitation.listenFirst([key], audio: audio, repetitions: 1, responsePause: 3) }
+                }
+                Button("إلغاء", role: .cancel) { practiceSelection = nil }
             }
         }
         .sheet(isPresented: $picker, onDismiss: { pageInputFocused = false }) {
@@ -486,7 +504,8 @@ struct InteractiveMushafReader: View {
                         else { Image(systemName: recitation.state == .paused ? "mic.fill" : "pause.fill") }
                     }.font(.system(size: 24, weight: .semibold)).foregroundStyle(Theme.background)
                         .frame(width: 60, height: 60).background(Theme.gold, in: Circle())
-                }.disabled(recitation.state == .processing || recitation.state == .permission)
+                }.disabled(recitation.state == .processing || recitation.state == .permission
+                    || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
                     .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
                     .accessibilityIdentifier("study.pause")
                 Spacer()
@@ -541,7 +560,7 @@ struct InteractiveMushafReader: View {
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
             verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) }
         }.padding(8)
-            .background(Theme.background, in: RoundedRectangle(cornerRadius: 18))
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
             .shadow(color: .black.opacity(0.15), radius: 12, y: -3)
             .padding(.horizontal, 12).padding(.bottom, 8)

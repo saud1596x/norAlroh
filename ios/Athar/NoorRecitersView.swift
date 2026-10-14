@@ -71,6 +71,7 @@ private struct NoorReciterSurahsView: View {
     @StateObject private var audio: MushafVerseAudio
     @ObservedObject private var downloads = NoorAudioDownloads.shared
     @State private var downloadSurah: Int?
+    @State private var downloadAll = false
     @State private var search = ""
     init(reciter: NoorReciter) {
         self.reciter = reciter
@@ -98,6 +99,8 @@ private struct NoorReciterSurahsView: View {
         List {
             Section {
                 NavigationLink("التنزيلات المحفوظة وإدارة المساحة") { NoorAudioDownloadsView() }
+                Button("تنزيل المصحف كاملًا لهذا القارئ", systemImage: "arrow.down.circle") { downloadAll = true }
+                    .disabled(downloads.active != nil).frame(minHeight: 44)
                 if let message = downloads.message { Text(message).font(.caption) }
                 if downloads.active != nil { ProgressView("تنزيل التلاوة…") }
                 Text("حفص عن عاصم · تلاوة السورة كاملة")
@@ -190,8 +193,14 @@ private struct NoorReciterSurahsView: View {
         .scrollContentBackground(.hidden).background(Theme.background)
         .noorScreenChrome().navigationTitle(reciter.name).navigationBarTitleDisplayMode(.inline)
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث في السور المتاحة")
-        .confirmationDialog("تنزيل السورة لهذا القارئ؟ قد يستخدم بيانات الجوال.", isPresented: Binding(get: { downloadSurah != nil }, set: { if !$0 { downloadSurah = nil } }), titleVisibility: .visible) {
-            if let number = downloadSurah, let key = NoorAudioIntegrity.reciterKey(reciter, surah: number) {
+        .confirmationDialog(downloadAll ? "تنزيل ١١٤ سورة لهذا القارئ؟" : "تنزيل السورة لهذا القارئ؟ قد يستخدم بيانات الجوال.", isPresented: Binding(get: { downloadSurah != nil || downloadAll }, set: { if !$0 { downloadSurah = nil; downloadAll = false } }), titleVisibility: .visible) {
+            if downloadAll {
+                Button("تنزيل المصحف") {
+                    downloads.download(reciter.surahs.sorted().compactMap { NoorAudioIntegrity.reciterKey(reciter, surah: $0) })
+                    downloadAll = false
+                }
+                Button("إلغاء", role: .cancel) { downloadAll = false }
+            } else if let number = downloadSurah, let key = NoorAudioIntegrity.reciterKey(reciter, surah: number) {
                 Button("تنزيل") { downloads.download([key]); downloadSurah = nil }
                 Button("إلغاء", role: .cancel) { downloadSurah = nil }
             }
