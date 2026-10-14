@@ -24,6 +24,7 @@ jobs:
       - name: Convert verified public weights without changing the app
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
+          NOOR_CTC_PRECISION: linear-half
         run: python tools/RecitationEngineProbe/experiments/ctc_coreml.py convert
       - uses: actions/upload-artifact@v4
         with:

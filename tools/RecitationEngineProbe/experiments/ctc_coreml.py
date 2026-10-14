@@ -6,6 +6,7 @@ pronunciation acceptance. Never synthesize expected words into decoded audio.
 import gc
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import resource
@@ -95,11 +96,15 @@ def convert():
         def forward(self,input_values):return self.model(input_values=input_values,return_dict=False)[0]
     with torch.inference_mode():
         traced=torch.jit.trace(Wrapper(original).eval(),torch.tensor(np.load(OUT/'input-3.npy')),strict=False,check_trace=False)
+    precision=os.environ.get('NOOR_CTC_PRECISION','float32')
+    if precision not in {'float32','linear-half'}:raise ValueError('Unsupported arithmetic configuration')
+    arithmetic=ct.precision.FLOAT32 if precision=='float32' else ct.transform.FP16ComputePrecision(
+        op_selector=lambda op: op.op_type=='linear')
     model=ct.convert(traced,convert_to='mlprogram',minimum_deployment_target=ct.target.iOS17,
         inputs=[ct.TensorType(name='input_values',shape=(1,ct.RangeDim(lower_bound=1600,upper_bound=128000,default=32000)),dtype=np.float32)],
         # XLSR activations can overflow half precision despite finite weights.
         # Keep arithmetic in float32; weight storage compression is separate.
-        outputs=[ct.TensorType(name='logits',dtype=np.float32)],compute_precision=ct.precision.FLOAT32,skip_model_load=True)
+        outputs=[ct.TensorType(name='logits',dtype=np.float32)],compute_precision=arithmetic,skip_model_load=True)
     del original,traced;gc.collect()
     optimization=ct.optimize.coreml.OptimizationConfig(global_config=ct.optimize.coreml.OpLinearQuantizerConfig(
         mode='linear_symmetric',dtype=np.int8,weight_threshold=512))
@@ -112,7 +117,7 @@ def convert():
     with urllib.request.urlopen('https://www.apache.org/licenses/LICENSE-2.0.txt',timeout=45) as response:(OUT/'APACHE-2.0.txt').write_bytes(response.read(100_000))
     manifest=dict(schema=1,sourceModel=REPO,sourceRevision=REV,sourceSHA256=SHA,sourceReceipt=receipt,
         coremltools=ct.__version__,torch=torch.__version__,minimumDeploymentTarget='iOS17',
-        compression='Core ML linear symmetric int8 weights, float32 compute',
+        compression='Core ML linear symmetric int8 weights',arithmetic=precision,
         cases=rows,files=files,convKernel=config['conv_kernel'],convStride=config['conv_stride'],
         vocabularySHA256=receipt['vocab.json']['sha256'],preprocessorSHA256=receipt['preprocessor_config.json']['sha256'],
         converted=True,appleRuntimeVerified=False,iPhoneVerified=False,productionPromoted=False)
@@ -148,7 +153,7 @@ def verify():
             rawAppleText=text,rawSourceText=row['rawSourceText'],rawUTF8Equal=text==row['rawSourceText'],lexicalParity=same))
         print(json.dumps(results[-1],ensure_ascii=False),flush=True)
     passed=bool(results) and all(row['lexicalParity'] for row in results)
-    report=dict(schema=1,sourceRevision=REV,appleRuntimeExecuted=True,computeUnits='CPU_ONLY',lexicalParityPassed=passed,
+    report=dict(schema=1,sourceRevision=REV,arithmetic=manifest.get('arithmetic','float32'),appleRuntimeExecuted=True,computeUnits='CPU_ONLY',lexicalParityPassed=passed,
         scope='Actual macOS Core ML on public fixtures; not iPhone microphone, learner-error accuracy, or Tajweed',
         coremltools=ct.__version__,cases=results,peakHostRSSBytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         iPhoneVerified=False,productionPromoted=False)
