@@ -358,7 +358,7 @@
         "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "auditFinding": "Distinct later microphone occurrences can link provisional correction; assisted listening stays assisted. Native verification pending for current additions.",
       "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -392,7 +392,7 @@
         "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "auditFinding": "Superseded provisional findings and every decoder interpretation are retained; source/correction observation links are validated. Portable tests passed a76df6f; later hint additions pending.",
       "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -654,7 +654,7 @@
         "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "auditFinding": "Manual page turns pause following without stopping capture; return-to-recitation action restores canonical position. Current native run pending.",
       "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -671,7 +671,7 @@
         "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "auditFinding": "Neutral review underlines use actual word geometry and suppress hidden-word markers; no uncalibrated confirmed error colors. Native run pending.",
       "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -875,7 +875,7 @@
         "ios/AtharTests/MushafMemorizationTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "auditFinding": "One-word/full-verse hints connect to durable assistance and preserve heard evidence separately; local addition pending native execution.",
       "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -892,7 +892,7 @@
         "ios/AtharTests/MushafMemorizationTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "auditFinding": "Contextual authentic listen-and-retry action connected from session results; local addition pending native execution.",
       "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -1290,7 +1290,7 @@
         "ios/AtharTests/NoorOperationDeadlineTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "auditFinding": "Exact full V2 edition bundled from compressed pinned source; all 77429 lexical glyphs and 6236 verses matched existing script locally. Native first-use offline test pending.",
       "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -1644,7 +1644,7 @@
         "ios/AtharTests/AudioDownloadTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "auditFinding": "All catalog recordings use reciter+recording+server+surah cache identity and checksum/media validation, with explicit download confirmation and Wi-Fi preference. Native playback/reopen tests pending.",
       "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -1660,7 +1660,7 @@
         "ios/AtharTests/AudioDownloadTests.swift"
       ],
       "status": "partial_not_product_accepted",
-      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "auditFinding": "Existing resumable single download coordinator extended to whole-surah recordings; strict URL/length/cap and stale-callback protection retained. Native tests pending.",
       "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
       "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
     },
@@ -1979,5 +1979,14 @@
     "GitHub workflow recitation-app-integration.yml at an exact source SHA",
     "Codemagic ios-testflight after actual passing source-matched release gates"
   ],
-  "nextStage": "Repair current UI regressions and freeze representative baseline before enabling correctness or Tajweed scoring."
+  "nextStage": "Repair current UI regressions and freeze representative baseline before enabling correctness or Tajweed scoring.",
+  "implementationProgress": {
+    "latestPushedApplicationCommit": "a76df6fb4082f5fb5823362b8b16b9e39948ac07",
+    "nativeRunURL": "https://github.com/saud1596x/norAlroh/actions/runs/38643172369",
+    "nativeRunAtRecord": "in_progress",
+    "localAdditionalWork": "Graduated hints, contextual retry, full reciter download action and accelerated hour-equivalent PCM test; not yet native verified",
+    "acousticEvidence": "release/recitation-acoustic-investigations.json",
+    "fullScopeAccepted": false,
+    "distributionAfterBuild20": "not_started"
+  }
 }

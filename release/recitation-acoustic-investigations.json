@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "productionPromoted": false,
+  "validatedTajweedAssessment": false,
+  "phoneticBackend": {
+    "model": "Abddar/muaalem-v3-2-int8-android-onnx",
+    "revision": "5d5a3510728b3d02e4a84897c311a5d404505ee9",
+    "sha256": "3ef7f9760b54161d876b5866fccd19cbcc7b793386753f515395f2d5012e9f96",
+    "sourceCommit": "75d519ec43a1459a266debf094e65369f072962b",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38641824852/job/116118957029",
+    "inferenceJob": "success",
+    "overallWorkflow": "failure_original_expert_archive_HTTP403",
+    "cases": 63,
+    "peakHostRSSKiB": 1628348,
+    "qalqalaTailBaseline": {
+      "samples": 48,
+      "assessed": 38,
+      "precision": 0.8461538461538461,
+      "recallIncludingAbstentions": 0.4583333333333333,
+      "coverage": 0.7916666666666666,
+      "truePositives": 11,
+      "falsePositives": 2,
+      "scope": "Unfitted baseline versus published labels; not a production acceptance result"
+    },
+    "receiptSHA256": "9e48baebf0b69f74ff743dedb8a25ebe5c5152b0fa2220a93b308b179e5ad036"
+  },
+  "independentAcousticClassifier": {
+    "sourceCommit": "a76df6fb4082f5fb5823362b8b16b9e39948ac07",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38643172451/job/116123487600",
+    "execution": "success",
+    "qualityAcceptance": "failed",
+    "samples": {
+      "train": 338,
+      "development": 136,
+      "test": 247
+    },
+    "measurements": {
+      "testSamples": 247,
+      "assessed": 247,
+      "truePositives": 48,
+      "falsePositives": 102,
+      "precision": 0.32,
+      "recallIncludingAbstentions": 0.6233766233766234,
+      "coverage": 1.0
+    },
+    "runtime": {
+      "numpy": "2.2.6",
+      "sklearn": "1.7.2",
+      "av": "16.1.0",
+      "device": "CI CPU; not iPhone"
+    },
+    "dataset": "MuazAhmad7/Surah_Ikhlas-Labeled_Dataset",
+    "revision": "973b5ef1d1532bcbe7e9a5a5b0dce125cc4d0dac",
+    "license": "CC-BY-4.0",
+    "attribution": "MuazAhmad7, Surah Ikhlas Labeled Dataset",
+    "metadataSHA256": "ce3a98b32c4495860a5122b83a2b57d505035dca5aae2193bb0673c90a5931f2",
+    "split": "train participant<180; development 180..249; previously unprobed test>=250",
+    "receiptSHA256": "166715625a381ca1ba4fcaaa2c94e7785da4276037aac85a0767e2df38e8f5c1"
+  },
+  "acceptanceTargets": {
+    "precision": 0.97,
+    "recallIncludingAbstentions": 0.9,
+    "assessableCoverage": 0.9
+  },
+  "limitations": [
+    "Published mirror labels were used; equivalence to the original expert-reviewed Mendeley archive is not established.",
+    "Only one narrow pronunciation category and two verses were evaluated.",
+    "There is no independently reviewed word-omission/substitution benchmark or verified phonetic mobile runtime yet.",
+    "CI CPU timings do not establish physical iPhone microphone, route, thermal, 30/60-minute or p95 performance.",
+    "No private recordings uploaded. CPU calibration ran on public licensed data; no paid training service was purchased or provisioned."
+  ]
+}
