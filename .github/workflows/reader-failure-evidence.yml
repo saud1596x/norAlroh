@@ -1,0 +1,55 @@
+name: Diagnose exact failed reader and search captures
+on:
+  push:
+    paths: [.github/workflows/reader-failure-evidence.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect-failure:
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify failed-source identity without granting approval
+        run: |
+          mkdir -p work/reader-diagnosis release/reader-failure-overview
+          gh api repos/saud1596x/norAlroh/actions/runs/38637402952 > work/reader-diagnosis/run.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          run=json.loads(Path('work/reader-diagnosis/run.json').read_text())
+          assert run['head_sha']=='3c84c0eda58759744b9b2ad20265c48efbc9bd9a'
+          assert run['conclusion']=='failure'
+          PY
+      - name: Extract original failed UI captures on the build host
+        run: |
+          gh run download 38637402952 --repo saud1596x/norAlroh --name recitation-app-integration-compact --dir work/reader-diagnosis/artifact
+          xcrun xcresulttool export attachments --path work/reader-diagnosis/artifact/ui.xcresult --output-path work/reader-diagnosis/captures
+          python3 - <<'PY'
+          import hashlib,json,re,shutil
+          from pathlib import Path
+          root=Path('work/reader-diagnosis/captures')
+          output=Path('release/reader-failure-overview')
+          wanted=['stage1-604-single-tap-actions','stage1-604-open','09-adhkar-search-query']
+          inventory=[]
+          for manifest in root.rglob('manifest.json'):
+              for test in json.loads(manifest.read_text()):
+                  for attachment in test.get('attachments',[]):
+                      name=attachment.get('suggestedHumanReadableName','')
+                      file=manifest.parent/attachment['exportedFileName']
+                      if file.suffix.lower()=='.png' and any(value in name for value in wanted):
+                          destination=output/(re.sub(r'[^a-zA-Z0-9._-]','_',name)[:120]+'.png')
+                          shutil.copyfile(file,destination)
+                          inventory.append(dict(name=name,file=destination.name,sha256=hashlib.sha256(file.read_bytes()).hexdigest()))
+          assert any('single-tap-actions' in row['name'] for row in inventory), 'Missing actual failed screenshot'
+          (output/'provenance.json').write_text(json.dumps(dict(sourceCommit='3c84c0eda58759744b9b2ad20265c48efbc9bd9a',run=38637402952,scope='Failed-source diagnostic captures only; no visual or release approval',files=inventory),indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: failed-source-small-visual-diagnosis
+          path: release/reader-failure-overview
+          if-no-files-found: error
