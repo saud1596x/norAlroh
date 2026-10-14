@@ -11,10 +11,8 @@ final class MushafTypesettingTests: XCTestCase {
     @MainActor func testAll604PagesFitInkBoundsAtPhoneAndTabletWidths() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let cache = QCFV2ContentCache(file: directory.appendingPathComponent("snapshot.json"),
-            endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        let entry = try await cache.refresh()
-        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let database = try QCFV2PageLayout.database(snapshot: snapshot, corpus: corpus)
         XCTAssertTrue(QuranTypography.available)

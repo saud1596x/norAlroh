@@ -110,9 +110,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testInterruptedActualReferenceProgressStaysVisibleThroughEmptyResumeUntilFreshRecognition() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -172,8 +170,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testDrainTimeoutWithActualPriorEvidenceExposesTextAndRejectsLateDecode() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, _) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -211,9 +208,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -272,9 +267,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testCaptureStartupFailureClosesAudioAndRetainsResumableSession() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
-        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         var activations: [Bool] = []
@@ -296,9 +289,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testActualRecognitionSessionPausesRestoresResumesAndFinishesWithoutReplacingAudio() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
-        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -374,9 +365,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertEqual(finishedReopened.record?.evidence.count, finished.evidence.count)
     }
     @MainActor func testRecognizedRevealKeepsActualPageAndAccessibleTextStable() async throws {
-        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
-        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let rows = try OriginalMushafRows.load(); try rows.validate(snapshot)
         try OriginalMushafCompanion.register()

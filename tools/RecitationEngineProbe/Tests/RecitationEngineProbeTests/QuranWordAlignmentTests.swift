@@ -1,4 +1,5 @@
 import XCTest
+import CryptoKit
 @testable import RecitationAlignment
 
 final class QuranWordAlignmentTests: XCTestCase {
@@ -13,9 +14,9 @@ final class QuranWordAlignmentTests: XCTestCase {
             let chapter = surah["number"] as! Int
             return (surah["ayahs"] as! [[String: Any]]).map { "\(chapter):\($0["number"] as! Int)" }
         }
-        let (data, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let data = try Data(contentsOf: root.appendingPathComponent("ios/Athar/mushaf-snapshot.json"))
+        XCTAssertEqual(SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
+                       "125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d")
         let snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(snapshot["resource_id"] as? Int, 1)
         XCTAssertEqual(snapshot["resource_content_id"] as? Int, 382)

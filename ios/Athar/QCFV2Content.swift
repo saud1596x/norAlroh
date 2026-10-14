@@ -4,8 +4,8 @@ import CryptoKit
 import FoundationNetworking
 #endif
 
-/// Content Sync's full-copy contract. Glyphs are never bundled or substituted
-/// into the QCF4 renderer. A font and its positioned words must share an edition.
+/// Content Sync's full-copy contract. The approved V2 edition can be bundled;
+/// a font and its positioned words must always share that exact edition.
 struct QCFV2Snapshot: Decodable, Sendable {
     let resource_group: String
     let resource_id: Int
@@ -109,13 +109,28 @@ actor QCFV2ContentCache {
     private let file: URL
     private let endpoint: URL
     private let fetch: @Sendable (URL) async throws -> Data
+    private let packaged: @Sendable () throws -> Data?
     private var pending: Task<Entry, Error>?
     private var verifiedFile: SHA256.Digest?
     private var verifiedEntry: Entry?
 
     init(file: URL, endpoint: URL,
-         fetch: @escaping @Sendable (URL) async throws -> Data = QCFV2ContentCache.download) {
+         fetch: @escaping @Sendable (URL) async throws -> Data = QCFV2ContentCache.download,
+         packaged: @escaping @Sendable () throws -> Data? = { nil }) {
         self.file = file; self.endpoint = endpoint; self.fetch = fetch
+        self.packaged = packaged
+    }
+
+    static func bundledSnapshot() throws -> Data? {
+        guard let url = Bundle.main.url(forResource: "mushaf-snapshot", withExtension: "json") else { return nil }
+        let bytes = try Data(contentsOf: url, options: .mappedIfSafe)
+        guard bytes.count == 23_212_238,
+              SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined()
+                == "125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d" else {
+            throw QCFV2Snapshot.Invalid.edition
+        }
+        _ = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        return bytes
     }
 
     func cached() -> Entry? {
@@ -139,6 +154,14 @@ actor QCFV2ContentCache {
     func readingEntry(now: Date = Date(),
                       onDownload: @MainActor @Sendable () -> Void = {}) async throws -> Entry {
         if let entry = cached() {
+            Task { _ = try? await self.refresh(now: now) }
+            return entry
+        }
+        if let bytes = try packaged() {
+            _ = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+            let entry = Entry(downloadedAt: .distantPast, snapshot: bytes)
+            // Reading the packaged copy does not depend on writable storage or
+            // a connection. A failed background refresh cannot replace it.
             Task { _ = try? await self.refresh(now: now) }
             return entry
         }
@@ -208,7 +231,8 @@ actor QCFV2ContentCache {
         let directory = try FileManager.default.url(for: .applicationSupportDirectory,
             in: .userDomainMask, appropriateFor: nil, create: true)
         let value = QCFV2ContentCache(file: directory.appendingPathComponent("qcf-v2-cache.json"),
-            endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+            endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!,
+            packaged: QCFV2ContentCache.bundledSnapshot)
         contentCache = value
         return value
     }
@@ -234,6 +258,14 @@ actor MushafReadingPreparation {
         guard keys.count == 6236, Set(keys).count == 6236 else { throw QCFV2Snapshot.Invalid.verse }
         if source == bytes, corpusKeys == keys, let prepared { return prepared }
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        guard let scriptURL = Bundle.main.url(forResource: "recitation-word-script", withExtension: "json") else {
+            throw QCFV2Snapshot.Invalid.edition
+        }
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: scriptURL))
+        _ = try script.bind(native: snapshot.records.filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }.map {
+            QuranNativeWord(id: $0.id, verse: keys[$0.verse_id! - 1], position: $0.position_in_verse!,
+                            page: $0.page_number!, glyph: $0.text!)
+        }, verseKeys: keys)
         let rows = try OriginalMushafRows.load()
         try rows.validate(snapshot)
         let index = MushafStudyWordIndex(snapshot: snapshot, keys: keys)

@@ -73,9 +73,7 @@ import UIKit
     func testAuthoredInkAndHeadingAlignmentAtReferencePages() async throws {
         try OriginalMushafCompanion.register()
         let metadata = try OriginalMushafRows.load()
-        let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
-        let (data, response) = try await URLSession.shared.data(from: url)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
         try metadata.validate(snapshot)
         let corpus = try XCTUnwrap(QuranResources.corpus)

@@ -25,6 +25,7 @@ class ReleasePayloadTests(unittest.TestCase):
         root = Path(self.resources.name)
         (root / 'ios/Athar').mkdir(parents=True)
         self.quran_files = {'quran.json': b'synthetic-pinned-quran',
+                            'mushaf-snapshot.json': b'synthetic-pinned-mushaf-edition',
                             'quran-basmalas.json': b'synthetic-pinned-basmalas',
                             'haramain-reciters.json': json.dumps({'schema': 1, 'reciters': [
                                 {'id': 54, 'surahs': list(range(1, 115))}]}).encode()}
@@ -32,6 +33,9 @@ class ReleasePayloadTests(unittest.TestCase):
             (root / 'ios/Athar' / name).write_bytes(data)
         for directory in ['scripts', 'content-sources', 'docs']:
             (root / directory).mkdir()
+        snapshot = self.quran_files['mushaf-snapshot.json']
+        (root / 'content-sources/mushaf-snapshot-manifest.json').write_text(json.dumps({
+            'bytes': len(snapshot), 'sha256': hashlib.sha256(snapshot).hexdigest()}))
         shutil.copyfile(gate.ROOT / 'scripts/configure-firebase.py', root / 'scripts/configure-firebase.py')
         self.model_files = {'model/AudioEncoder.mlmodelc/weights/weight.bin': b'synthetic-model',
                             'tokenizer/tokenizer.json': b'synthetic-tokenizer'}

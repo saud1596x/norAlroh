@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "url": "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot",
+  "sha256": "125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d",
+  "bytes": 23212238,
+  "compressedSHA256": "37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1",
+  "resourceID": 1,
+  "resourceContentID": 382,
+  "words": 77429,
+  "verses": 6236
+}
