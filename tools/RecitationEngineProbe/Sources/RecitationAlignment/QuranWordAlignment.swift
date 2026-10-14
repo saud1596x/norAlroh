@@ -160,6 +160,17 @@ public struct QuranRecitationTracker {
     }
 
     /// Exact, local, multi-group anchoring. Ambiguous phrases wait for context.
+    /// Replace the covered interpretation of one audio window before consuming
+    /// its new accepted runs. Older source transcripts stay in the journal, but
+    /// a retracted interpretation must not permanently reveal Quran words.
+    public mutating func reconsiderAudio(takeID: UUID, start: Double, end: Double) throws {
+        guard start.isFinite, end.isFinite, start >= 0, end > start else {
+            throw QuranAlignmentFailure.invalidEvidence
+        }
+        evidence.removeAll { $0.takeID == takeID && $0.start >= start && $0.end <= end }
+    }
+
+    /// Exact, local, multi-group anchoring. Ambiguous phrases wait for context.
     /// A skipped/uncertain word is never inferred from a later match or elapsed
     /// time. A compound is revealed only when its complete spoken form matches.
     @discardableResult public mutating func consume(_ heard: [QuranHeardWord], takeID: UUID,

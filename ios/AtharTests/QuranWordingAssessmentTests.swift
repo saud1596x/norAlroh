@@ -21,6 +21,39 @@ final class QuranWordingAssessmentTests: XCTestCase {
         XCTAssertTrue(QuranWordingAssessment.evaluate([span(["قل", "هو", "الله", "أحد", "الله", "الصمد"])], expected: reference).isEmpty)
         XCTAssertTrue(QuranWordingAssessment.evaluate([], expected: reference).isEmpty)
     }
+    func testRecognizerWindowRevisionRetractsOnlyItsCoveredTakeEvidence() throws {
+        var tracker = QuranRecitationTracker(expected: reference)
+        let heard = reference.enumerated().map { index, word in
+            QuranHeardWord(text: word.aliases.first!.first!, start: Double(index), end: Double(index) + 0.8, probability: 0.95)
+        }
+        try tracker.consume(heard, takeID: take)
+        XCTAssertEqual(tracker.evidence.count, 6)
+        let previousTake = UUID()
+        try tracker.consume(heard, takeID: previousTake)
+        try tracker.reconsiderAudio(takeID: take, start: 2, end: 6)
+        XCTAssertEqual(tracker.evidence.filter { $0.takeID == take }.map(\.nativeID), [1, 2])
+        XCTAssertEqual(tracker.evidence.filter { $0.takeID == previousTake }.count, 6)
+        try tracker.reconsiderAudio(takeID: take, start: 0, end: 6)
+        XCTAssertFalse(tracker.evidence.contains { $0.takeID == take })
+        XCTAssertThrowsError(try tracker.reconsiderAudio(takeID: previousTake, start: 1, end: 0))
+    }
+    func testDisputedFindingSurvivesReevaluationAndReopeningWithoutChangingSource() throws {
+        let source = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
+        let incoming = QuranWordingAssessment.evaluate([source], expected: reference)
+        var disputed = incoming
+        disputed[0].userReview = "disputed"
+        let repeated = QuranWordingAssessment.reconcile(previous: disputed, incoming: incoming, reconsidered: [source])
+        XCTAssertEqual(repeated, disputed, "Re-running ASR must not erase a learner's dispute")
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        record.takes = [.init(id: take, startedAt: record.startedAt, frames: 160_000, closed: true)]
+        record.observedSpeech = [source]; record.wordingEvents = repeated
+        try record.validate()
+        let decoded = try JSONDecoder().decode(QuranRecitationRecord.self, from: JSONEncoder().encode(record))
+        XCTAssertEqual(decoded.wordingEvents?.first?.userReview, "disputed")
+        XCTAssertEqual(decoded.observedSpeech, [source])
+        record.wordingEvents?[0].userReview = "confirmed-correct"
+        XCTAssertThrowsError(try record.validate(), "A user dispute cannot invent a machine correctness verdict")
+    }
     func testRecognizerRetractionPreservesPriorFindingAndIsNotSelfCorrection() throws {
         let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
         let correct = span(["قل", "هو", "الله", "أحد", "الله", "الصمد"])

@@ -15,6 +15,9 @@ import os
     @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
     @Published private(set) var microphonePeak: Float?
+    @Published private(set) var inputGuidance: String?
+    private var weakInputWindows = 0
+    private var clippedInputWindows = 0
     @Published var message: String?
     enum GuidedPhase: Equatable { case inactive, reference, clearance, ready, attempt, feedback }
     @Published private(set) var guidedPhase: GuidedPhase = .inactive
@@ -329,6 +332,17 @@ import os
                 }
             })
             microphonePeak = nil
+            inputGuidance = nil; weakInputWindows = 0; clippedInputWindows = 0
+            microphone.observeQuality { [weak self] reading in
+                Task { @MainActor in
+                    guard let self, self.revision == token, self.capturing else { return }
+                    self.weakInputWindows = reading == .weak || reading == .noSignal ? self.weakInputWindows + 1 : 0
+                    self.clippedInputWindows = reading == .clipping ? self.clippedInputWindows + 1 : 0
+                    if self.clippedInputWindows >= 2 { self.inputGuidance = "الصوت مرتفع ومشوّش؛ أبعد الميكروفون قليلًا." }
+                    else if self.weakInputWindows >= 6 { self.inputGuidance = "الصوت منخفض أو أنك متوقف؛ قرّب الميكروفون عند القراءة." }
+                    else if reading == .present { self.inputGuidance = nil }
+                }
+            }
             microphone.observeLevel { [weak self] peak in
                 Task { @MainActor in
                     guard let self, self.revision == token, self.capturing, peak.isFinite else { return }
@@ -392,6 +406,8 @@ import os
             }
             guard revision == token, !Task.isCancelled, var current = record, var updatedTracker = tracker else { return }
             do {
+                try updatedTracker.reconsiderAudio(takeID: take, start: window.offset,
+                    end: Double(window.endFrame) / 16_000)
                 var additions: [QuranWordEvidence] = []
                 for run in recognized.runs {
                     additions += try updatedTracker.consume(run, takeID: take, offset: window.offset)
@@ -433,14 +449,14 @@ import os
                 current.observedSpeech = spans
                 current.wordingEvents = QuranWordingAssessment.reconcile(previous: current.wordingEvents ?? [],
                     incoming: events, reconsidered: assessmentInput)
-                current.evidence += additions; current.recognitionUnavailable = !available
+                current.evidence = updatedTracker.evidence; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
                 record = current; tracker = updatedTracker
                 try save(current)
                 recognitionAvailable = available
                 revealed = Set(current.evidence.map(\.nativeID))
-                if let last = additions.last { currentVerse = last.verse }
+                currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
             } catch { stopForJournalFailure(); return }
 
@@ -505,6 +521,13 @@ import os
         current.phase = .finished; current.finishedAt = Date()
         do { try save(current); record = current; state = .stopped }
         catch { message = "تعذّر حفظ الملخص. التسجيلات محفوظة؛ أعد المحاولة." }
+    }
+    @discardableResult func reviewFinding(_ id: UUID, disputed: Bool) -> Bool {
+        guard !closing, state == .paused || state == .stopped, var current = record,
+              let index = current.wordingEvents?.firstIndex(where: { $0.eventID == id && $0.state == "provisional" }) else { return false }
+        current.wordingEvents?[index].userReview = disputed ? "disputed" : nil
+        do { try save(current); record = current; return true }
+        catch { message = "تعذّر حفظ مراجعتك. بقي التسجيل والملاحظة محفوظين."; return false }
     }
     deinit {
         pump?.cancel()

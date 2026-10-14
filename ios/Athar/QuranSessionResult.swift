@@ -7,11 +7,13 @@ struct QuranSessionResult: View {
     let wordIDs: [String: [Int]]
     let onReview: (String) -> Void
     let onListenPractice: (([String]) -> Void)?
+    let onEventReview: ((UUID, Bool) -> Bool)?
     private let coverageCounts: [String: Int]
     init(record: QuranRecitationRecord, wordIDs: [String: [Int]], onReview: @escaping (String) -> Void,
-         onListenPractice: (([String]) -> Void)? = nil) {
+         onListenPractice: (([String]) -> Void)? = nil, onEventReview: ((UUID, Bool) -> Bool)? = nil) {
         self.record = record; self.wordIDs = wordIDs; self.onReview = onReview
         self.onListenPractice = onListenPractice
+        self.onEventReview = onEventReview
         let evidence = Dictionary(grouping: record.evidence, by: \.verse).mapValues { Set($0.map(\.nativeID)) }
         coverageCounts = Dictionary(uniqueKeysWithValues: record.keys.map { key in
             (key, (evidence[key] ?? []).intersection(Set(wordIDs[key] ?? [])).count)
@@ -28,7 +30,7 @@ struct QuranSessionResult: View {
     }
     private var contextualPractice: [String] {
         let pendingIDs = Set((record.wordingEvents ?? []).filter {
-            $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
+            $0.state == "provisional" && $0.resolution == nil && $0.userReview != "disputed" && $0.category != "repetition"
         }.flatMap(\.referenceIDs))
         let focus = summaryKeys.first { !Set(wordIDs[$0] ?? []).isDisjoint(with: pendingIDs) }
             ?? unresolved.first ?? summaryKeys.first
@@ -108,6 +110,9 @@ struct QuranSessionResult: View {
                             Text("ملاحظات تحتاج مراجعة الصوت؛ ليست أخطاء مؤكدة ولا تؤثر في تقدم الحفظ.").font(.footnote).foregroundStyle(.secondary)
                             ForEach(events.filter { $0.state == "provisional" }, id: \.eventID) { event in
                                 VStack(alignment: .leading, spacing: 8) {
+                                    if event.userReview == "disputed" {
+                                        Text("اعترضت على هذه الملاحظة؛ حُفظ اعتراضك مع الصوت الأصلي.").font(.footnote)
+                                    }
                                     Text(event.resolution == nil ? "راجع هذا الموضع" : event.resolution == "later-assisted-evidence"
                                          ? "ظهرت قراءة مطابقة بمساعدة؛ ليست استرجاعًا مستقلًا" : "ظهرت قراءة مطابقة لاحقًا في التسجيل")
                                     HStack {
@@ -126,6 +131,13 @@ struct QuranSessionResult: View {
                                         if let key = wordIDs.first(where: { !Set($0.value).isDisjoint(with: event.referenceIDs) })?.key {
                                             Button("راجع الآية") { onReview(key) }.frame(minHeight: 44)
                                         }
+                                    }
+                                    if let onEventReview {
+                                        Button(event.userReview == "disputed" ? "إعادة الملاحظة للمراجعة" : "لا أوافق على هذه الملاحظة") {
+                                            if !onEventReview(event.eventID, event.userReview != "disputed") {
+                                                replayNotice = "تعذّر حفظ مراجعتك. أعد المحاولة."
+                                            }
+                                        }.frame(minHeight: 44)
                                     }
                                 }.padding(.vertical, 8)
                             }

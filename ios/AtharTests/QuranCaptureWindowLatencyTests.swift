@@ -4,6 +4,18 @@ import WhisperKit
 @testable import Athar
 
 final class QuranCaptureWindowLatencyTests: XCTestCase {
+    func testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes() {
+        var quality = QuranInputQuality()
+        XCTAssertTrue(quality.consume(Array(repeating: 0, count: 7999)).isEmpty)
+        XCTAssertEqual(quality.consume([0]), [.noSignal])
+        XCTAssertEqual(quality.consume(Array(repeating: 0.0001, count: 8000)), [.weak])
+        XCTAssertEqual(quality.consume(Array(repeating: 0.1, count: 8000)), [.present])
+        var transient = Array(repeating: Float(0.1), count: 8000); transient[0] = 1
+        XCTAssertEqual(quality.consume(transient), [.present])
+        XCTAssertEqual(quality.consume(Array(repeating: 1, count: 8000)), [.clipping])
+        XCTAssertEqual(quality.consume(Array(repeating: -1, count: 8000)), [.clipping])
+        XCTAssertTrue(quality.consume([.nan, .infinity]).isEmpty)
+    }
     func testHourOfPCMRetainsEveryFrameWithBoundedRecognitionWindows() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
         defer { try? FileManager.default.removeItem(at: url) }

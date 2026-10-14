@@ -16,6 +16,9 @@ public struct QuranWordingEvent: Codable, Equatable, Sendable {
     public var resolution: String? = nil
     public var correctionObservationIDs: [UUID]? = nil
     public var assessmentPolicyVersion: String = "context-dp-development-2"
+    /// The learner can dispute a provisional finding without rewriting its
+    /// acoustic source, model decision, or correction history.
+    public var userReview: String? = nil
 }
 
 /// Edit costs rank sequence hypotheses; they are not correctness probabilities.
@@ -91,6 +94,7 @@ public enum QuranWordingAssessment {
             let affected = beginnings[old.takeID].map { old.end >= $0 } ?? false
             guard affected || replacementIndex != nil else { continue }
             if let replacement = replacementIndex {
+                replacements[replacement].userReview = old.userReview
                 var compared = replacements[replacement]; compared.revision = old.revision
                 if compared == old { replacements.remove(at: replacement); continue }
                 replacements[replacement].revision = max(old.revision + 1, replacements[replacement].revision)

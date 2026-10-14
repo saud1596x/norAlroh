@@ -138,7 +138,7 @@ struct InteractiveMushafReader: View {
     @State private var feedbackAnnounced = false
     private var visibleReviewWordIDs: Set<Int> {
         let ids = Set((recitation.record?.wordingEvents ?? []).filter {
-            $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
+            $0.state == "provisional" && $0.resolution == nil && $0.userReview != "disputed" && $0.category != "repetition"
         }.flatMap(\.referenceIDs))
         if feedbackTiming == "live" { return ids }
         if feedbackTiming == "after-verse" {
@@ -149,7 +149,7 @@ struct InteractiveMushafReader: View {
     }
     private var showReviewFeedback: Bool {
         feedbackTiming == "live" ? (recitation.record?.wordingEvents ?? []).contains {
-            $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
+            $0.state == "provisional" && $0.resolution == nil && $0.userReview != "disputed" && $0.category != "repetition"
         } : feedbackTiming == "after-verse" && !visibleReviewWordIDs.isEmpty
     }
     private func announceReviewFeedback() {
@@ -362,7 +362,7 @@ struct InteractiveMushafReader: View {
                         await recitation.pause()
                         recitation.listenFirst(keys, audio: audio, repetitions: 1, responsePause: 3)
                     }
-                })
+                }, onEventReview: { id, disputed in recitation.reviewFinding(id, disputed: disputed) })
             }
         }
         .confirmationDialog("مساعدة في التسميع", isPresented: Binding(get: { practiceSelection != nil }, set: { if !$0 { practiceSelection = nil } }), titleVisibility: .visible) {
@@ -484,6 +484,10 @@ struct InteractiveMushafReader: View {
     }
     private var recitationControls: some View {
         VStack(spacing: 0) {
+            if recitation.state == .listening, let guidance = recitation.inputGuidance {
+                Text(guidance).font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("study.inputGuidance")
+            }
             HStack {
                 Menu {
                     Button("العودة للقراءة") { Task { await recitation.pause(); dismiss() } }

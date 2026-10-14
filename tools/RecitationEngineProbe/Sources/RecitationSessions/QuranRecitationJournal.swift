@@ -138,6 +138,7 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                   return event.start.isFinite && event.end.isFinite && event.start >= 0 && event.end > event.start
                       && event.end <= take.duration + 0.1 && ["provisional", "superseded"].contains(event.state)
                       && event.revision >= 0
+                      && (event.userReview == nil || event.userReview == "disputed")
                       && ["substitution", "omission", "insertion", "repetition", "transposition", "skipped-passage"].contains(event.category)
                       && event.referenceIDs.count <= 128
                       && !event.supportingObservationIDs.isEmpty && event.supportingObservationIDs.count <= 160

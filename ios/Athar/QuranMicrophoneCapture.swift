@@ -7,9 +7,37 @@ protocol QuranAudioCapture: AnyObject {
     func start() throws
     func stop() async -> Result<Int64, Error>
     func observeLevel(_ observer: @escaping (Float) -> Void)
+    func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void)
 }
 extension QuranAudioCapture {
     func observeLevel(_ observer: @escaping (Float) -> Void) {}
+    func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void) {}
+}
+
+/// Signal measurements only: silence is not a learner error and loud input is
+/// not proof of speech. Measure pre-inference PCM without changing saved audio.
+struct QuranInputQuality {
+    enum Reading: Equatable { case noSignal, weak, clipping, present }
+    private var count = 0
+    private var squared: Double = 0
+    private var clipped = 0
+    private var maximum: Float = 0
+    mutating func consume(_ samples: [Float]) -> [Reading] {
+        var output: [Reading] = []
+        for sample in samples {
+            guard sample.isFinite else { continue }
+            count += 1; squared += Double(sample) * Double(sample)
+            maximum = max(maximum, abs(sample))
+            if abs(sample) >= 0.995 { clipped += 1 }
+            if count == 8_000 {
+                let rms = sqrt(squared / Double(count))
+                output.append(maximum == 0 ? .noSignal : Double(clipped) / Double(count) >= 0.01 ? .clipping
+                    : rms < 0.0005 ? .weak : .present)
+                count = 0; squared = 0; clipped = 0; maximum = 0
+            }
+        }
+        return output
+    }
 }
 
 final class QuranMicrophoneCapture: QuranAudioCapture {
@@ -37,6 +65,7 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         catch { inputEvents.disarm(); engine.inputNode.removeTap(onBus: 0); installed = false; throw error }
     }
     func observeLevel(_ observer: @escaping (Float) -> Void) { pipe.observeLevel(observer) }
+    func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void) { pipe.observeQuality(observer) }
     func stop() async -> Result<Int64, Error> {
         inputEvents.disarm()
         engine.stop()
@@ -54,6 +83,8 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         private var stopped = false
         private var failure: Error?
         private var levelObserver: ((Float) -> Void)?
+        private var qualityObserver: ((QuranInputQuality.Reading) -> Void)?
+        private var quality = QuranInputQuality()
         init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping (Error) -> Void) throws {
             resampler = try QuranPCMResampler(input: format); self.writer = writer; self.onFailure = onFailure
         }
@@ -66,12 +97,16 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
                     // Read the converted microphone samples, independently of
                     // model throughput. A decorative pulse is not input proof.
                     levelObserver?(samples.reduce(Float(0)) { max($0, abs($1)) })
+                    for reading in quality.consume(samples) { qualityObserver?(reading) }
                     writer.append(samples)
                 }
             } catch { stopped = true; failure = error; onFailure(error) }
         }
         func observeLevel(_ observer: @escaping (Float) -> Void) {
             lock.lock(); levelObserver = observer; lock.unlock()
+        }
+        func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void) {
+            lock.lock(); qualityObserver = observer; lock.unlock()
         }
         func finish(_ completion: @escaping (Result<Int64, Error>) -> Void) {
             lock.lock()
