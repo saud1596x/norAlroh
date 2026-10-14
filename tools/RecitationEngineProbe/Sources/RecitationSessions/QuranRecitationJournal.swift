@@ -21,9 +21,13 @@ public struct QuranObservedSpeech: Codable, Equatable {
     public let words: [String]
     public let unresolved: Bool
     public let backendID: String
-    public init(takeID: UUID, start: Double, end: Double, words: [String], unresolved: Bool, backendID: String) {
+    public let modelID: String?
+    public let modelRevision: String?
+    public init(takeID: UUID, start: Double, end: Double, words: [String], unresolved: Bool, backendID: String,
+                modelID: String? = nil, modelRevision: String? = nil) {
         self.takeID = takeID; self.start = start; self.end = end; self.words = words
         self.unresolved = unresolved; self.backendID = backendID
+        self.modelID = modelID; self.modelRevision = modelRevision
     }
 }
 public struct QuranRecitationRecord: Codable, Identifiable {
@@ -65,6 +69,8 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       && span.end <= take.duration + 0.1 && span.words.count <= 1000
                       && span.words.allSatisfy { !$0.isEmpty && $0.utf8.count <= 1024 }
                       && !span.backendID.isEmpty && span.backendID.utf8.count <= 256
+                      && (span.modelID.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? true)
+                      && (span.modelRevision.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? true)
               }) else { throw QuranJournalFailure.invalidRecord }
         let scope = Set(keys)
         guard evidence.allSatisfy({ word in

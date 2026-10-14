@@ -315,7 +315,8 @@ import os
                     end: Double(window.endFrame) / 16_000,
                     words: recognized.runs.flatMap { $0.map(\.text) },
                     unresolved: recognized.hasUnresolvedSpeech,
-                    backendID: worker.capabilities.backendID)
+                    backendID: worker.capabilities.backendID,
+                    modelID: worker.capabilities.modelID, modelRevision: worker.capabilities.modelRevision)
                 var spans = current.observedSpeech ?? []
                 if let index = spans.firstIndex(where: { $0.takeID == take && $0.start == observed.start && $0.end == observed.end }) {
                     spans[index] = observed

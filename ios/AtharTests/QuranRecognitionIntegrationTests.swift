@@ -291,6 +291,10 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertTrue(observed.allSatisfy { $0.takeID == first.takes[0].id && $0.end <= first.duration + 0.1 })
         let independentlyLoaded = try QuranRecitationJournal(root: root).load(first.id)
         XCTAssertEqual(independentlyLoaded.observedSpeech, observed, "Decoded speech must survive a separate journal read")
+        XCTAssertTrue(observed.allSatisfy {
+            $0.modelRevision == QuranRecognitionWorker.shared.capabilities.modelRevision
+                && $0.modelID == QuranRecognitionWorker.shared.capabilities.modelID
+        })
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
         let verseID = try XCTUnwrap(verseKeys.firstIndex(of: "112:1")) + 1
         XCTAssertEqual(original.hiddenIDs, Set(snapshot.records.filter {
@@ -305,6 +309,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         await reopened.restore(id: first.id, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(reopened.state, .paused); XCTAssertNil(reopened.message)
         XCTAssertEqual(reopened.revealed, Set(first.evidence.map(\.nativeID)))
+        XCTAssertEqual(reopened.record?.observedSpeech, observed)
         XCTAssertEqual(reopened.hiddenIDs, original.hiddenIDs,
             "Restoring a session must preserve the same hidden-word scope and durable progress")
         let recoverable = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: first.id, base: root).first)

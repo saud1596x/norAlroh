@@ -4,6 +4,8 @@ import Foundation
 struct QuranRecognitionCapabilities: Equatable, Sendable {
     enum Delivery: String, Sendable { case overlappingAudioWindows, revisionedStreaming }
     let backendID: String
+    let modelID: String
+    let modelRevision: String
     let configuredLanguage: String
     let delivery: Delivery
     let processesLocally: Bool
@@ -22,7 +24,9 @@ protocol QuranSpeechRecognitionProvider: Sendable {
 
 extension QuranRecognitionWorker: QuranSpeechRecognitionProvider {
     nonisolated var capabilities: QuranRecognitionCapabilities {
-        .init(backendID: "whisperkit-bundled", configuredLanguage: "ar",
+        .init(backendID: "whisperkit-bundled",
+              modelID: "fazalshaikh123/ultra-fast-tarteel-coreml",
+              modelRevision: "0338074ac8d662f6f52c5d66b433cac74202158e", configuredLanguage: "ar",
               delivery: .overlappingAudioWindows, processesLocally: true,
               wordTimestamps: true, wordConfidence: true, phonemeEvidence: false,
               calibratedWordingAssessment: false, validatedTajweedAssessment: false)
