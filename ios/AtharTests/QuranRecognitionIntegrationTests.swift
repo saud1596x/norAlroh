@@ -2,11 +2,46 @@ import XCTest
 import AVFoundation
 import UIKit
 import WhisperKit
+import CryptoKit
 @testable import Athar
 
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    func testVerifiedReferenceMatrixProducesUsefulAnchorsAtOrdinaryAndQuietLevels() async throws {
+        struct Fixture: Decodable { let verse: String; let file: String; let sha256: String }
+        let bundle = Bundle(for: Self.self)
+        let manifest = try XCTUnwrap(bundle.url(forResource: "recitation-reference-sources", withExtension: "json"))
+        let fixtures = try JSONDecoder().decode([Fixture].self, from: Data(contentsOf: manifest))
+        XCTAssertEqual(fixtures.count, 10)
+        let scriptURL = try XCTUnwrap(Bundle.main.url(forResource: "recitation-word-script", withExtension: "json"))
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: scriptURL))
+        let worker = QuranRecognitionWorker()
+        for fixture in fixtures {
+            let name = (fixture.file as NSString).deletingPathExtension
+            let url = try XCTUnwrap(bundle.url(forResource: name, withExtension: "mp3"))
+            let digest = SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(digest, fixture.sha256, "Reference audio must match the independently pinned fixture")
+            let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+            let groups = try XCTUnwrap(script.groups[fixture.verse])
+            let expected = groups.enumerated().map { index, group in
+                QuranAlignedWord(id: index + 1, verse: fixture.verse, page: group.page,
+                    aliases: Set([QuranAlignedWord.tokens(group.imlaei), QuranAlignedWord.tokens(group.canonical),
+                                  QuranAlignedWord.tokens(group.canonical, expandDaggerAlif: true)]))
+            }
+            for level in [Float(1), Float(0.03)] {
+                let samples = original.map { $0 * level }
+                let output = try await worker.recognize(.init(samples: samples, startFrame: 0, endFrame: Int64(samples.count)))
+                var tracker = QuranRecitationTracker(expected: expected)
+                let take = UUID()
+                for run in output.runs { try tracker.consume(run, takeID: take) }
+                XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, min(2, expected.count),
+                    "Identified public fixture \(fixture.verse), level \(level) must establish a useful exact anchor")
+                XCTAssertTrue(tracker.evidence.allSatisfy { $0.end <= Double(samples.count) / 16_000 + 0.1 })
+            }
+        }
+    }
+
     @MainActor func testInterruptedActualReferenceProgressStaysVisibleThroughEmptyResumeUntilFreshRecognition() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
