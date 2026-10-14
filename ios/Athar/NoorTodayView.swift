@@ -22,114 +22,135 @@ struct NoorTodayView: View {
     }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("السَّلام عليكم").font(.subheadline).foregroundStyle(.secondary)
-                    Text("قليلٌ دائم، وأثرٌ باقٍ")
-                        .font(.custom(QuranTypography.postScriptName, size: 26, relativeTo: .title2))
-                        .foregroundStyle(Theme.gold)
-                }
-
-                NavigationLink { MushafReader(chapter: 1, page: page) } label: {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("متابعة القراءة").font(.subheadline)
-                        Text(resumeTitle)
-                            .font(.custom(QuranTypography.postScriptName, size: 30, relativeTo: .largeTitle))
-                        Text("آخر قراءة · الصفحة \(ArabicSearch.digits(page))").font(.subheadline)
-                        HStack {
-                            Text("افتح المصحف").font(.headline)
+            VStack(alignment: .leading, spacing: 22) {
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("نور الروح").font(.largeTitle.bold()).foregroundStyle(Theme.gold)
+                                Text(greeting(context.date)).font(.headline)
+                                Text(PrayerDisplay.gregorian(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
+                                Text(PrayerDisplay.hijri(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
+                            }
                             Spacer()
-                            Image(systemName: "arrow.left")
-                        }.padding(.top, 12)
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(22).foregroundStyle(.white)
-                        .background(Theme.hero, in: RoundedRectangle(cornerRadius: 24))
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.resume")
-
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("رحلتك مع القرآن").font(.headline)
-                        Spacer()
-                        NavigationLink { MemorizationPlanView() } label: {
-                            Image(systemName: "slider.horizontal.3").frame(width: 44, height: 44)
-                        }.accessibilityLabel("هدفك").accessibilityIdentifier("home.goal")
+                            NoorAmbientOrnament().frame(width: 64, height: 64)
+                        }.noorEntrance()
+                        accountCard
+                        if let next = PrayerCalculator.next(data: store.data, now: context.date) {
+                            NavigationLink { PrayerView() } label: {
+                                HStack(spacing: 12) {
+                                    NoorAnimatedSymbol(name: "sun.horizon").font(.title2).foregroundStyle(Theme.gold)
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text("\(next.name) · \(PrayerDisplay.isolatedClock(next.date, city: city))").font(.headline)
+                                        Text(store.data.city.name).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        Text("متبقي").font(.caption).foregroundStyle(.secondary)
+                                        Text(timerInterval: context.date...next.date, countsDown: true).font(.subheadline.monospacedDigit())
+                                            .environment(\.locale, Locale(identifier: "en_US_POSIX"))
+                                            .environment(\.layoutDirection, .leftToRight)
+                                    }.frame(maxWidth: 95)
+                                }.padding(18).foregroundStyle(.primary).background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+                            }.buttonStyle(NoorPressStyle()).noorEntrance(delay: 0.04)
+                        }
                     }
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 12) { dailyWard; reviewProgress }
-                        VStack(spacing: 12) { dailyWard; reviewProgress }
-                    }.padding(16).background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-                    NavigationLink {
-                        MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
-                    } label: {
-                        Text("ابدأ جلسة تسميع").font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .foregroundStyle(Theme.buttonInk)
-                            .background(Theme.mint, in: RoundedRectangle(cornerRadius: 18))
-                    }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.review")
                 }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("مساحة للسكينة").font(.headline)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 12) { calmLinks }
-                        VStack(spacing: 12) { calmLinks }
-                    }.padding(16).background(Theme.soft, in: RoundedRectangle(cornerRadius: 20))
-                }
-                Text("خطوة صغيرة اليوم، حفظٌ أثبت غدًا.")
-                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
-
-                accountCard
-                NavigationLink { NoorMyJourneyView() } label: {
-                    HStack {
-                        Label("رحلتي", systemImage: "chart.bar")
-                        Spacer()
-                        Image(systemName: "chevron.left").font(.caption)
-                    }.padding(18).frame(maxWidth: .infinity, minHeight: 52)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.myJourney")
                 NoorKhatmahProtectionCard()
-                NavigationLink { NoorSalawatView() } label: {
-                    Card {
-                        Label("الصلاة على النبي ﷺ", systemImage: "plus.circle")
-                        Text("عدادك اليومي وهدفك الشخصي").font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Label("موعدك مع القرآن", systemImage: "book.closed").font(.subheadline)
+                        Spacer()
+                        Text("حفص").font(.caption).padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(Theme.buttonInk.opacity(0.12), in: Capsule())
                     }
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.salawat")
-                NavigationLink { LibraryView() } label: {
-                    Card { Label("علاماتك", systemImage: "bookmark"); Text("\(store.data.bookmarks.count) علامات محفوظة").font(.caption) }
-                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.library")
+                    Text(resumeTitle).font(.largeTitle.bold())
+                    HStack {
+                        Text("آخر قراءة · الصفحة \(ArabicSearch.digits(page))").font(.subheadline)
+                        Spacer()
+                        Image(systemName: "bookmark.fill").font(.caption)
+                    }
+                    NavigationLink { MushafReader(chapter: 1, page: page) } label: {
+                        HStack { Text("متابعة القراءة"); Spacer(); Image(systemName: "arrow.left") }
+                            .font(.headline).padding(16).foregroundStyle(Theme.gold)
+                            .background(Theme.buttonInk, in: RoundedRectangle(cornerRadius: 16))
+                    }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.resume")
+                }.padding(24).foregroundStyle(Theme.buttonInk)
+                    .background {
+                        ZStack {
+                            LinearGradient(colors: [Theme.gold, Theme.gold.opacity(0.92)], startPoint: .topTrailing, endPoint: .bottomLeading)
+                            NoorMotionSurface(ink: Theme.buttonInk)
+                        }.clipShape(RoundedRectangle(cornerRadius: 28))
+                    }
+                    .overlay { RoundedRectangle(cornerRadius: 28).stroke(Theme.buttonInk.opacity(0.15), lineWidth: 1).allowsHitTesting(false) }
+                    .noorEntrance(delay: 0.08)
+                NavigationLink { KhatmahJourneyView() } label: {
+                    Card {
+                        Label("رحلة الختمة", systemImage: "book.closed")
+                        if let plan = khatmah.active {
+                            Text("\(plan.completed.count) من \(605 - plan.firstPage) صفحة").font(.headline)
+                            Text(plan.finished != nil ? "اكتملت رحلتك" : plan.paused ? "الرحلة متوقفة مؤقتًا" : "تابع من الصفحة \(plan.nextPage)").font(.subheadline).foregroundStyle(.secondary)
+                        } else { Text("خطتك ووردك اليومي").font(.subheadline).foregroundStyle(.secondary) }
+                    }
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.khatmah").noorEntrance(delay: 0.10)
+                NavigationLink { NoorSalawatView() } label: {
+                    Card { Label("الصلاة على النبي ﷺ", systemImage: "plus.circle"); Text("عدادك اليومي وهدفك الشخصي").font(.subheadline).foregroundStyle(.secondary) }
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.salawat").noorEntrance(delay: 0.12)
+                HStack {
+                    Text("خطواتك اليوم").font(.title3.bold())
+                    Spacer()
+                    NavigationLink { MemorizationPlanView() } label: { Label("هدفك", systemImage: "slider.horizontal.3").font(.caption).frame(minHeight: 44) }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.goal")
+                }
+                Card {
+                    HStack(spacing: 16) {
+                        ZStack {
+                            NoorProgressDial(value: Double(reviewed) / Double(max(1, memorization.dailyTarget)))
+                            Text("\(reviewed)").font(.title2.monospacedDigit()).contentTransition(.numericText())
+                        }.frame(width: 62, height: 62).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text("\(reviewed) من \(memorization.dailyTarget) آيات").font(.headline)
+                            Text("مراجعتك الفعلية، خطوة بعد خطوة").font(.caption).foregroundStyle(.secondary)
+                            NavigationLink {
+                                MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
+                            } label: { Text("ابدأ المراجعة").font(.subheadline).frame(minHeight: 44) }
+                                .buttonStyle(NoorPressStyle())
+                                .accessibilityIdentifier("home.review")
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }.noorEntrance(delay: 0.14)
+                Text("مساحاتك").font(.title3.bold())
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 14) {
+                    NavigationLink { AdhkarView() } label: { tile("أذكارك", "حصن المسلم كاملًا", "sparkles") }
+                    NavigationLink { LibraryView() } label: { tile("علاماتك", "\(store.data.bookmarks.count) علامات محفوظة", "bookmark") }.accessibilityIdentifier("home.library")
+                    }
+                    VStack(spacing: 14) {
+                        NavigationLink { AdhkarView() } label: { tile("أذكارك", "حصن المسلم كاملًا", "sparkles") }
+                        NavigationLink { LibraryView() } label: { tile("علاماتك", "\(store.data.bookmarks.count) علامات محفوظة", "bookmark") }.accessibilityIdentifier("home.library")
+                    }
+                }.buttonStyle(NoorPressStyle())
+                NavigationLink { NoorMyJourneyView() } label: {
+                    HStack(spacing: 14) {
+                        NoorAnimatedSymbol(name: "chart.bar").font(.title2).foregroundStyle(Theme.gold)
+                            .frame(width: 44, height: 44).background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 13))
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text("رحلتي").font(.headline)
+                            Text("قراءتك وحفظك ومراجعتك").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.left").font(.caption).foregroundStyle(Theme.gold).accessibilityHidden(true)
+                    }.padding(18).foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
+                        .overlay { RoundedRectangle(cornerRadius: 22).stroke(Theme.gold.opacity(0.12), lineWidth: 1).allowsHitTesting(false) }
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.myJourney").noorEntrance(delay: 0.20)
                 HStack(spacing: 8) {
                     Image(systemName: "lock.shield")
                     Text("مساحة لك. المزامنة السحابية اختيارية من صفحة حسابك.")
-                }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("home.footer")
-            }.padding(.horizontal, 22).padding(.vertical, 16)
-        }.background(Theme.background).navigationTitle("النور").navigationBarTitleDisplayMode(.inline)
-    }
-    private var dailyWard: some View {
-        NavigationLink { KhatmahJourneyView() } label: {
-            VStack(spacing: 6) {
-                Text("ورد اليوم").font(.caption).foregroundStyle(.secondary)
-                Text(khatmah.active?.due(on: Date()).map { "\(ArabicSearch.digits($0.count)) صفحات" } ?? "ابدأ خطتك")
-                    .font(.custom(QuranTypography.postScriptName, size: 23, relativeTo: .title3))
-                    .foregroundStyle(Theme.gold)
-            }.frame(maxWidth: .infinity, minHeight: 64)
-        }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.khatmah")
-    }
-    private var reviewProgress: some View {
-        VStack(spacing: 6) {
-            Text("مراجعة الحفظ").font(.caption).foregroundStyle(.secondary)
-            Text("\(ArabicSearch.digits(reviewed)) من \(ArabicSearch.digits(memorization.dailyTarget)) آيات")
-                .font(.custom(QuranTypography.postScriptName, size: 23, relativeTo: .title3))
-                .foregroundStyle(Theme.gold)
-        }.frame(maxWidth: .infinity, minHeight: 64)
-    }
-    @ViewBuilder private var calmLinks: some View {
-        NavigationLink { AdhkarView() } label: {
-            Text("أذكارك").frame(maxWidth: .infinity, minHeight: 44)
-        }
-        NavigationLink { PrayerView() } label: {
-            Text("مواقيت الصلاة").frame(maxWidth: .infinity, minHeight: 44)
-        }
+                }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8).accessibilityIdentifier("home.footer")
+            }.padding(20)
+        }.background(Theme.background).navigationTitle("اليوم").navigationBarTitleDisplayMode(.inline)
+            .animation(reduced ? nil : .spring(duration: 0.4, bounce: 0.1), value: reviewed)
     }
     private var accountCard: some View {
         NavigationLink { NoorAccountView() } label: {
