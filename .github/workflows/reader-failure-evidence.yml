@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   inspect-failure:
-    runs-on: macos-15
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
@@ -17,36 +17,33 @@ jobs:
       - name: Verify failed-source identity without granting approval
         run: |
           mkdir -p work/reader-diagnosis release/reader-failure-overview
-          gh api repos/saud1596x/norAlroh/actions/runs/38637402952 > work/reader-diagnosis/run.json
+          gh api repos/saud1596x/norAlroh/actions/runs/38645973142 > work/reader-diagnosis/run.json
           python3 - <<'PY'
           import json
           from pathlib import Path
           run=json.loads(Path('work/reader-diagnosis/run.json').read_text())
-          assert run['head_sha']=='3c84c0eda58759744b9b2ad20265c48efbc9bd9a'
+          assert run['head_sha']=='0b7ad76523175b4c1e2335daeeabbc2d450acdaf'
           assert run['conclusion']=='failure'
           PY
       - name: Extract original failed UI captures on the build host
         run: |
-          gh run download 38637402952 --repo saud1596x/norAlroh --name recitation-app-integration-compact --dir work/reader-diagnosis/artifact
-          xcrun xcresulttool export attachments --path work/reader-diagnosis/artifact/ui.xcresult --output-path work/reader-diagnosis/captures
+          gh run download 38645973142 --repo saud1596x/norAlroh --name noor-reader-screens --dir work/reader-diagnosis/artifact
           python3 - <<'PY'
-          import hashlib,json,re,shutil
+          import hashlib,json,re,zipfile
           from pathlib import Path
           root=Path('work/reader-diagnosis/captures')
           output=Path('release/reader-failure-overview')
-          wanted=['stage1-604-single-tap-actions','stage1-604-open','09-adhkar-search-query']
+          wanted=['stage1-604-single-tap-actions','stage1-604-tools-visible','09-adhkar-search-query']
           inventory=[]
-          for manifest in root.rglob('manifest.json'):
-              for test in json.loads(manifest.read_text()):
-                  for attachment in test.get('attachments',[]):
-                      name=attachment.get('suggestedHumanReadableName','')
-                      file=manifest.parent/attachment['exportedFileName']
-                      if file.suffix.lower()=='.png' and any(value in name for value in wanted):
-                          destination=output/(re.sub(r'[^a-zA-Z0-9._-]','_',name)[:120]+'.png')
-                          shutil.copyfile(file,destination)
-                          inventory.append(dict(name=name,file=destination.name,sha256=hashlib.sha256(file.read_bytes()).hexdigest()))
+          with zipfile.ZipFile('work/reader-diagnosis/artifact/native-screens.zip') as archive:
+              for name in archive.namelist():
+                  if name.lower().endswith('.png') and any(value in name for value in wanted):
+                      raw=archive.read(name)
+                      destination=output/(re.sub(r'[^a-zA-Z0-9._-]','_',Path(name).name)[:170]+'.png')
+                      destination.write_bytes(raw)
+                      inventory.append(dict(name=name,file=destination.name,sha256=hashlib.sha256(raw).hexdigest()))
           assert any('single-tap-actions' in row['name'] for row in inventory), 'Missing actual failed screenshot'
-          (output/'provenance.json').write_text(json.dumps(dict(sourceCommit='3c84c0eda58759744b9b2ad20265c48efbc9bd9a',run=38637402952,scope='Failed-source diagnostic captures only; no visual or release approval',files=inventory),indent=2)+'\n')
+          (output/'provenance.json').write_text(json.dumps(dict(sourceCommit='0b7ad76523175b4c1e2335daeeabbc2d450acdaf',run=38645973142,scope='Failed-source diagnostic captures only; no visual or release approval',files=inventory),indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
