@@ -51,7 +51,16 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("النوم")
         let sleepChapter = app.buttons["adhkar.group.hisn-28"]
         XCTAssertTrue(sleepChapter.waitForExistence(timeout: 10), "Sleep adhkar search result must appear before scrolling.")
-        XCTAssertTrue((search.value as? String)?.contains("النوم") == true, "The typed search query must remain intact before chapter navigation.")
+        // Arabic input composition can finish after the filtered row appears.
+        // Wait for the field value itself; do not retry typing or seed the query.
+        let committedQuery = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                (search.value as? String)?.contains("النوم") == true
+            }, object: search)
+        let queryResult = XCTWaiter.wait(for: [committedQuery], timeout: 5)
+        capture(app, "09-adhkar-search-query")
+        XCTAssertEqual(queryResult, .completed,
+            "The typed search query must remain intact before chapter navigation. Actual value: \(String(describing: search.value))")
         tap(sleepChapter, in: app)
         capture(app, "10-dhikr-chapter")
         tap(app.buttons["ابدأ جلسة الذكر"], in: app)
