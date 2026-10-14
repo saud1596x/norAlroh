@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -34,6 +35,9 @@ class PublishingPolicyModeTests(unittest.TestCase):
         app = json.loads((self.root/'ios/Athar/app-legal.json').read_text(encoding='utf-8'))
         self.assertEqual(app['accountMode'], 'local-only')
         self.assertEqual(app['appName'], 'نور الروح')
+        report = json.loads((self.root/'release/publishing-content-report.json').read_text(encoding='utf-8'))
+        for name, expected_hash in report['files'].items():
+            self.assertEqual(hashlib.sha256((self.root/name).read_bytes()).hexdigest(), expected_hash)
         for page in ['privacy', 'terms', 'support', 'index']:
             self.assertEqual((self.root/f'support-site/{page}.html').read_text(encoding='utf-8'),
                              (ROOT/f'support-site/{page}.html').read_text(encoding='utf-8'))

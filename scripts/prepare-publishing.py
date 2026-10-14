@@ -56,7 +56,7 @@ for name, text in outputs.items():
             raise SystemExit('Generated publishing file is missing/stale: ' + name)
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding='utf-8')
+        path.write_text(text, encoding='utf-8', newline='\n')
 if args.check:
     if plistlib.loads(privacy_path.read_bytes()) != privacy:
         raise SystemExit('Privacy manifest does not match the selected account mode')
@@ -69,5 +69,5 @@ report = {'status': 'GENERATED_CONTENT_CURRENT', 'publicWebsite': 'NOT_DEPLOYED_
           'files': {name: hashlib.sha256(text.encode()).hexdigest() for name, text in outputs.items()}}
 report['files']['ios/Athar/PrivacyInfo.xcprivacy'] = hashlib.sha256(privacy_path.read_bytes()).hexdigest()
 if not args.check:
-    (ROOT / 'release/publishing-content-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+    (ROOT / 'release/publishing-content-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8', newline='\n')
 print(json.dumps(report, ensure_ascii=False, indent=2))
