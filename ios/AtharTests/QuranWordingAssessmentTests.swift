@@ -128,5 +128,11 @@ final class QuranWordingAssessmentTests: XCTestCase {
         let loaded = try journal.load(record.id)
         XCTAssertEqual(loaded.wordingEvents, record.wordingEvents)
         XCTAssertEqual(loaded.wordingEvents?.first?.resolution, "later-independent-evidence")
+        var missingSource = record
+        missingSource.observedSpeech = []
+        XCTAssertThrowsError(try missingSource.validate(), "A finding cannot survive without its actual source observations")
+        var forgedCorrection = record
+        forgedCorrection.wordingEvents?[0].correctionObservationIDs = [UUID()]
+        XCTAssertThrowsError(try forgedCorrection.validate(), "Correction links must point to recorded observations")
     }
 }

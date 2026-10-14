@@ -27,6 +27,14 @@ import os
         cancelGuided()
         let token = UUID(); guidedRevision = token
         referenceAudio = audio; guidedPhase = .reference
+        // Conservatively retain listening assistance for this entire session,
+        // including interrupted reference playback and later microphone takes.
+        referenceExposure = audio.reciterDirectory
+        if var current = record {
+            current.referenceExposure = referenceExposure
+            do { try save(current); record = current }
+            catch { cancelGuided(); message = "تعذّر حفظ حالة المساعدة. أعد المحاولة."; return }
+        }
         audio.onSequenceFinished = { [weak self, weak audio] in
             guard let self, let audio, self.guidedRevision == token else { return }
             self.referenceExposure = audio.reciterDirectory
@@ -44,7 +52,7 @@ import os
     func cancelGuided() {
         guidedRevision = UUID(); guidedDelay?.cancel(); guidedDelay = nil
         referenceAudio?.onSequenceFinished = nil; referenceAudio?.stop(); referenceAudio = nil
-        referenceExposure = nil; guidedPhase = .inactive
+        referenceExposure = record?.referenceExposure ?? referenceExposure; guidedPhase = .inactive
     }
     private let worker: any QuranSpeechRecognitionProvider
     private let referenceBinder = QuranRecognitionWorker.shared
@@ -134,6 +142,9 @@ import os
             message = "انتظر انتهاء التلاوة والاستعداد، ثم ابدأ التسميع."; return
         }
         guard state == .idle || state == .stopped else { return }
+        if state == .stopped, guidedPhase == .inactive, record?.phase == .finished {
+            referenceExposure = nil
+        }
         let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
         record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
         state = .permission
@@ -367,9 +378,9 @@ import os
                     observed.processingConfiguration = QuranRecognitionModelDescriptor.bundled?.configuration
                 }
                 var spans = current.observedSpeech ?? []
-                if let index = spans.firstIndex(where: { $0.takeID == take && $0.start == observed.start && $0.end == observed.end }) {
-                    spans[index] = observed
-                } else { spans.append(observed) }
+                // Keep recognizer revisions as source evidence. Assessment can
+                // supersede an interpretation without erasing what it decoded.
+                if spans.last != observed { spans.append(observed) }
                 let assessmentInput = Array(spans.suffix(16))
                 let referenceWords = updatedTracker.expected
                 let priorEvents = current.wordingEvents ?? []

@@ -26,9 +26,19 @@ public enum QuranWordingAssessment {
     /// five-word context. Listening exposure remains assisted evidence.
     public static func linkLaterAttempts(_ events: [QuranWordingEvent], spans: [QuranObservedSpeech],
                                          takes: [QuranRecitationTake], expected: [QuranAlignedWord]) -> [QuranWordingEvent] {
-        guard expected.count >= 5, expected.count <= 77_429,
-              events.contains(where: { $0.state == "provisional" && $0.resolution == nil }) else { return events }
         let known = Dictionary(uniqueKeysWithValues: takes.map { ($0.id, $0) })
+        var result = events
+        for index in result.indices where result[index].resolution == "later-independent-evidence" {
+            let ids = Set(result[index].correctionObservationIDs ?? [])
+            let correctionTake = spans.first { span in
+                span.wordObservations?.contains(where: { ids.contains($0.observationID) }) == true
+            }?.takeID
+            if let correctionTake, known[correctionTake]?.referenceExposure != nil {
+                result[index].resolution = "later-assisted-evidence"
+            }
+        }
+        guard expected.count >= 5, expected.count <= 77_429,
+              result.contains(where: { $0.state == "provisional" && $0.resolution == nil }) else { return result }
         let forms = expected.map { Set($0.aliases.filter { $0.count == 1 }.map { QuranAlignedWord.normalize($0[0]) }) }
         var starts: [String: [Int]] = [:]
         for start in 0..<(forms.count - 4) {
@@ -36,7 +46,6 @@ public enum QuranWordingAssessment {
                 starts[left + " " + right, default: []].append(start)
             } }
         }
-        var result = events
         for index in result.indices.suffix(256) where result[index].state == "provisional" && result[index].resolution == nil {
             guard let target = result[index].referenceIDs.first,
                   let position = expected.firstIndex(where: { $0.id == target }), position >= 2,

@@ -119,6 +119,9 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       } ?? true)
               }) else { throw QuranJournalFailure.invalidRecord }
         let scope = Set(keys)
+        let observedWords = Dictionary(grouping: (observedSpeech ?? []).flatMap { span in
+            (span.wordObservations ?? []).map { (span.takeID, $0) }
+        }, by: { $0.1.observationID })
         guard (wordingEvents?.count ?? 0) <= 100_000,
               (wordingEvents ?? []).allSatisfy({ event in
                   guard let take = knownTakes[event.takeID] else { return false }
@@ -126,6 +129,18 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       && event.end <= take.duration + 0.1 && ["provisional", "superseded"].contains(event.state)
                       && event.revision >= 0
                       && ["substitution", "omission", "insertion", "repetition"].contains(event.category)
+                      && !event.supportingObservationIDs.isEmpty && event.supportingObservationIDs.count <= 160
+                      && event.supportingObservationIDs.allSatisfy { id in
+                          observedWords[id]?.contains(where: { observed in
+                              observed.0 == event.takeID && observed.1.startInTakeSeconds.map { $0 >= event.start } == true
+                                  && observed.1.endInTakeSeconds.map { $0 <= event.end + 0.001 } == true
+                          }) == true
+                      }
+                      && (event.resolution == nil || ["later-independent-evidence", "later-assisted-evidence"].contains(event.resolution!))
+                      && (event.resolution == nil) == (event.correctionObservationIDs == nil)
+                      && (event.correctionObservationIDs.map { ids in
+                          !ids.isEmpty && ids.count <= 160 && ids.allSatisfy { observedWords[$0] != nil }
+                      } ?? true)
                       && event.referenceIDs.allSatisfy { $0 > 0 }
               }) else { throw QuranJournalFailure.invalidRecord }
         guard evidence.allSatisfy({ word in
