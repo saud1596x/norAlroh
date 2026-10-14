@@ -53,9 +53,6 @@ struct NoorRecitersView: View {
                         description: Text("غيّر البحث أو أظهر جميع القراء."))
                 }
             }
-            Section {
-                Link("مصدر التلاوات: MP3Quran", destination: NoorReciterCatalog.source)
-            }.listRowBackground(Theme.panel)
         }
         .scrollContentBackground(.hidden).background(Theme.background)
         .noorScreenChrome().navigationTitle("أئمة الحرمين")

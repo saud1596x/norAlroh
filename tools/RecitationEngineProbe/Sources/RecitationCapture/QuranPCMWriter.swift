@@ -27,10 +27,14 @@ public final class QuranPCMWriter {
     private var failed: Error?
     private let onWindow: (QuranAudioWindow) -> Void
     private let onFailure: (Error) -> Void
-    public init(url: URL, onWindow: @escaping (QuranAudioWindow) -> Void,
+    private let firstWindowFrames: Int64
+    private let windowStrideFrames: Int64
+    public init(url: URL, lowLatency: Bool = false, onWindow: @escaping (QuranAudioWindow) -> Void,
                 onFailure: @escaping (Error) -> Void) throws {
         guard !FileManager.default.fileExists(atPath: url.path) else { throw QuranCaptureFailure.existingFile }
         self.url = url; self.onWindow = onWindow; self.onFailure = onFailure
+        firstWindowFrames = lowLatency ? 32_000 : 64_000
+        windowStrideFrames = lowLatency ? 16_000 : 32_000
         guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
                                         channels: 1, interleaved: false) else { throw QuranCaptureFailure.invalidSamples }
         self.format = format
@@ -74,7 +78,7 @@ public final class QuranPCMWriter {
                 frames += Int64(samples.count)
                 ring.append(contentsOf: samples)
                 if ring.count > 128_000 { ring.removeFirst(ring.count - 128_000) }
-                if frames >= 64_000 && frames - lastWindowEnd >= 32_000 { emitWindow() }
+                if frames >= firstWindowFrames && frames - lastWindowEnd >= windowStrideFrames { emitWindow() }
             } catch { fail(error) }
         }
     }

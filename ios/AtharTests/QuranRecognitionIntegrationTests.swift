@@ -8,6 +8,38 @@ import CryptoKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    func testShortStreamingReferenceWindowsAnchorOnlyTheActuallySpokenVerse() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let scriptURL = try XCTUnwrap(Bundle.main.url(forResource: "recitation-word-script", withExtension: "json"))
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: scriptURL))
+        let groups = try XCTUnwrap(script.groups["112:1"])
+        let expected = groups.enumerated().map { index, group in
+            QuranAlignedWord(id: index + 1, verse: "112:1", page: group.page,
+                aliases: Set([QuranAlignedWord.tokens(group.imlaei), QuranAlignedWord.tokens(group.canonical),
+                              QuranAlignedWord.tokens(group.canonical, expandDaggerAlif: true)]))
+        }
+        let worker = QuranRecognitionWorker()
+        var tracker = QuranRecitationTracker(expected: expected)
+        let take = UUID()
+        var firstAnchorSeconds: Double?
+        for end in Set([min(samples.count, 32_000), min(samples.count, 48_000), samples.count]).sorted() {
+            let prefix = Array(samples.prefix(end))
+            let started = Date()
+            let result = try await worker.recognize(.init(samples: prefix, startFrame: 0, endFrame: Int64(end)))
+            for run in result.runs { try tracker.consume(run, takeID: take) }
+            if !tracker.revealedIDs.isEmpty && firstAnchorSeconds == nil { firstAnchorSeconds = Double(end) / 16_000 }
+            print("PUBLIC_REFERENCE_STREAM seconds=\(Double(end) / 16_000) inferenceMs=\(Int(Date().timeIntervalSince(started) * 1000)) anchored=\(tracker.revealedIDs.count)")
+            XCTAssertTrue(tracker.evidence.allSatisfy { $0.verse == "112:1" && $0.end <= Double(end) / 16_000 + 0.1 })
+        }
+        XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, min(2, expected.count))
+        XCTAssertNotNil(firstAnchorSeconds)
+        let silence = Array(repeating: Float(0), count: 32_000)
+        let silentResult = try await worker.recognize(.init(samples: silence, startFrame: 0, endFrame: 32_000))
+        var silentTracker = QuranRecitationTracker(expected: expected)
+        for run in silentResult.runs { try silentTracker.consume(run, takeID: UUID()) }
+        XCTAssertTrue(silentTracker.revealedIDs.isEmpty)
+    }
     func testVerifiedReferenceMatrixProducesUsefulAnchorsAtOrdinaryAndQuietLevels() async throws {
         struct Fixture: Decodable { let verse: String; let file: String; let sha256: String }
         let bundle = Bundle(for: Self.self)

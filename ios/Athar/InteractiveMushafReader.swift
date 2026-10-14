@@ -102,6 +102,7 @@ struct InteractiveMushafReader: View {
     @State private var tools = true
     @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 60]
     @State private var khatmah = false
+    @State private var khatmahStopMessage: String?
     @State private var picker = false
     @FocusState private var pageInputFocused: Bool
     @State private var needsFirstDownload = false
@@ -206,10 +207,7 @@ struct InteractiveMushafReader: View {
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else {
-                        Button { khatmah = true } label: {
-                            Label(KhatmahStore.shared.active == nil ? "ابدأ ختمة" : "ختمتي", systemImage: "book.closed")
-                                .font(.caption.bold()).frame(minWidth: 44, minHeight: 44)
-                        }
+                        Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
                 }.background { readerControlMeasurement("header") }
@@ -283,7 +281,18 @@ struct InteractiveMushafReader: View {
         }) {
             QuranRecitationScope(page: number, pageKeys: visiblePageKeys,
                 initialKey: studyStartKey ?? visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
+                .task {
+                    // Prepare while the user chooses a scope; this never opens the microphone.
+                    // Start still performs its own checked preparation and reports failures.
+                    try? await NoorOperationDeadline.run(seconds: 45) { try await QuranRecognitionWorker.shared.prepare() }
+                }
         }
+        .alert("موضع الختمة", isPresented: Binding(get: { khatmahStopMessage != nil }, set: { if !$0 { khatmahStopMessage = nil } })) {
+            Button("تم") { khatmahStopMessage = nil }
+            if KhatmahStore.shared.active == nil {
+                Button("ابدأ ختمة") { khatmahStopMessage = nil; khatmah = true }
+            }
+        } message: { Text(khatmahStopMessage ?? "") }
         .sheet(isPresented: $khatmah) {
             NavigationStack {
                 if KhatmahStore.shared.active == nil {
@@ -455,7 +464,13 @@ struct InteractiveMushafReader: View {
         sheetAction = action; sheetVerse = selection
     }
     private func verseActions(_ selection: VerseSelection) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: dynamicTypeSize.isAccessibilitySize ? 2 : 3), spacing: 6) {
+            verseAction("توقّف هنا للختمة", symbol: "bookmark.circle", identifier: "verse.khatmah.stop") {
+                let journey = KhatmahStore.shared
+                if journey.stop(page: number, chapter: selection.chapter, ayah: selection.ayah) {
+                    khatmahStopMessage = "حُفظ موضعك عند الآية \(ArabicSearch.digits(selection.ayah)). حفظ الموضع لا يؤكد إتمام صفحات الورد."
+                } else { khatmahStopMessage = journey.error }
+            }
             verseAction("تفسير الآية", symbol: "book", identifier: "verse.tafsir") { openTools(selection, action: .tafsir) }
             verseAction("استماع من الآية", symbol: "play.fill", identifier: "verse.play") {
                 let count = store.quran[selection.chapter - 1].ayahs.count
@@ -468,8 +483,8 @@ struct InteractiveMushafReader: View {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
             verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) }
-        }.padding(12)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+        }.padding(8)
+            .background(Theme.background, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
             .shadow(color: .black.opacity(0.15), radius: 12, y: -3)
             .padding(.horizontal, 12).padding(.bottom, 8)
@@ -477,9 +492,9 @@ struct InteractiveMushafReader: View {
     }
     private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(label, systemImage: symbol).font(.subheadline.weight(.semibold))
+            Label(label, systemImage: symbol).font(.footnote.weight(.semibold))
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 48).padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 48).padding(.horizontal, 4)
                 .background(Theme.gold.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
                 .contentShape(RoundedRectangle(cornerRadius: 12))

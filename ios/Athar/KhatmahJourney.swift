@@ -16,6 +16,11 @@ struct KhatmahSession: Codable, Identifiable {
     var last: Int
     var newlyCompleted: Int
 }
+struct KhatmahStop: Codable, Equatable {
+    var page: Int
+    var chapter: Int
+    var ayah: Int
+}
 struct KhatmahPlan: Codable, Identifiable {
     var id = UUID()
     var started: Date
@@ -30,6 +35,7 @@ struct KhatmahPlan: Codable, Identifiable {
     var days: [KhatmahDay]
     var sessions: [KhatmahSession] = []
     var finished: Date?
+    var stoppedAt: KhatmahStop? = nil
     var nextPage: Int { (firstPage...604).first { !completed.contains($0) } ?? 605 }
     var progress: Double { Double(completed.count) / Double(605 - firstPage) }
     var calendar: Calendar {
@@ -62,6 +68,7 @@ struct KhatmahPlan: Codable, Identifiable {
               (dailyPages == nil) != (deadline == nil), completed.isSubset(of: Set(firstPage...604)),
               completed == Set(firstPage..<nextPage), !days.isEmpty,
               (finished == nil) == (nextPage <= 604),
+              stoppedAt.map({ (firstPage...604).contains($0.page) && (1...114).contains($0.chapter) && $0.ayah > 0 }) ?? true,
               sessions.allSatisfy({ $0.date.timeIntervalSince1970.isFinite && $0.first >= firstPage && $0.last <= 604 && $0.first <= $0.last && $0.newlyCompleted >= 0 && $0.newlyCompleted <= $0.last - $0.first + 1 }) else { return false }
         return (days.first?.first ?? 605) <= nextPage && zip(days, days.dropFirst()).allSatisfy { $0.date < $1.date && $0.last + 1 == $1.first }
             && days.allSatisfy { $0.date.timeIntervalSince1970.isFinite && $0.first >= firstPage && $0.last <= 604 && $0.first <= $0.last && weekdays.contains(calendar.component(.weekday, from: $0.date)) }
@@ -193,6 +200,17 @@ enum KhatmahCalculator {
             guard let plan = active else { throw KhatmahFailure.invalid }
             return adopt(try KhatmahCalculator.confirm(plan, first: first, last: last, date: date))
         } catch { self.error = error.localizedDescription; return false }
+    }
+    @discardableResult func stop(page: Int, chapter: Int, ayah: Int) -> Bool {
+        guard var plan = active, plan.finished == nil,
+              (plan.firstPage...604).contains(page),
+              let surah = QuranResources.corpus?.first(where: { $0.number == chapter }),
+              surah.ayahs.contains(where: { $0.number == ayah }) else {
+            error = "ابدأ ختمة نشطة أولًا، ثم اختر الآية التي توقفت عندها."; return false
+        }
+        // Saving an exact verse never confirms unread pages or releases a focus shield.
+        plan.stoppedAt = .init(page: page, chapter: chapter, ayah: ayah)
+        return adopt(plan)
     }
     // Called only by the existing explicit "delete all my data" confirmation.
     @discardableResult func erase() async -> Bool {

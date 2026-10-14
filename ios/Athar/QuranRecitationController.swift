@@ -221,7 +221,7 @@ import os
         if audio.isInputGainSettable { try? audio.setInputGain(1.0) }
         let take = QuranRecitationTake()
         let mailbox = QuranWindowMailbox()
-        let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id),
+        let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,
             onWindow: { mailbox.put($0) }, onFailure: { [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }

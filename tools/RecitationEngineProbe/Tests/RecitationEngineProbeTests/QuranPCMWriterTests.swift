@@ -4,6 +4,23 @@ import WhisperKit
 @testable import RecitationCapture
 
 final class QuranPCMWriterTests: XCTestCase {
+    func testLowLatencyWindowsStartAtTwoSecondsAndKeepEveryRecordedSample() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".caf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let done = expectation(description: "Writer closes after low-latency windows")
+        var windows: [QuranAudioWindow] = []
+        let writer = try QuranPCMWriter(url: url, lowLatency: true, onWindow: { windows.append($0) },
+            onFailure: { XCTFail("Unexpected recording failure: \($0)") })
+        let samples = (0..<80_000).map { Float(sin(Double($0) / 23)) * 0.1 }
+        for start in stride(from: 0, to: samples.count, by: 8_000) {
+            writer.append(Array(samples[start..<start + 8_000]))
+        }
+        writer.finish { result in XCTAssertEqual(try? result.get(), 80_000); done.fulfill() }
+        await fulfillment(of: [done], timeout: 10)
+        XCTAssertEqual(windows.map(\.endFrame), [32_000, 48_000, 64_000, 80_000])
+        XCTAssertEqual(windows.first?.offset, 0)
+        XCTAssertEqual(try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path), samples)
+    }
     func testActualReferenceAudioSurvivesWriterClosureWithExactSampleClock() async throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }

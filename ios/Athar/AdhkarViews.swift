@@ -210,9 +210,6 @@ struct DhikrSessionView: View {
                     DhikrReadingText(content: reading)
                 }.padding(.vertical, 20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
-                DisclosureGroup("المصدر") {
-                    Text(entry.reference).font(.footnote).textSelection(.enabled)
-                }
                 Text("عداد اليوم محفوظ على جهازك.").font(.caption).foregroundStyle(.secondary)
                 if reading.blocks.filter({ $0.quran != nil }).count > 1 {
                     Text("العداد لهذه المجموعة كاملة؛ اقرأ السور المعروضة ثم سجّل جولة واحدة.").font(.caption).foregroundStyle(.secondary)

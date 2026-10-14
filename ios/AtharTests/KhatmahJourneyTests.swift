@@ -2,6 +2,23 @@ import XCTest
 @testable import Athar
 
 final class KhatmahJourneyTests: XCTestCase {
+    @MainActor func testExactVerseStopPersistsWithoutCompletingUnreadPages() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("khatmah.json")
+        let store = KhatmahStore(file: file)
+        let plan = try KhatmahCalculator.make(first: 1, date: start, weekdays: Set(1...7), daily: 20,
+            deadline: nil, reminder: nil, calendar: calendar)
+        XCTAssertTrue(store.adopt(plan))
+        XCTAssertTrue(store.stop(page: 1, chapter: 1, ayah: 4))
+        XCTAssertEqual(store.active?.stoppedAt, .init(page: 1, chapter: 1, ayah: 4))
+        XCTAssertEqual(store.active?.nextPage, 1)
+        XCTAssertEqual(store.active?.completed.count, 0)
+        XCTAssertEqual(store.active?.sessions.count, 0)
+        XCTAssertEqual(KhatmahStore(file: file).active?.stoppedAt, store.active?.stoppedAt)
+        XCTAssertFalse(store.stop(page: 1, chapter: 1, ayah: 8))
+        XCTAssertEqual(store.active?.stoppedAt?.ayah, 4)
+    }
     var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Riyadh")!; return c }
     var start: Date { calendar.date(from: DateComponents(year: 2026, month: 10, day: 7, hour: 10))! }
     func testEveryStartingPageAndDailyAmountCoversExactlyRemainingPages() throws {

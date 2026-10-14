@@ -24,6 +24,11 @@ struct KhatmahJourneyView: View {
                             .accessibilityIdentifier("khatmah.completedPages")
                             .accessibilityValue(String(plan.completed.count))
                         NoorProgressBar(value: plan.progress, label: "تقدم الختمة")
+                        if let stop = plan.stoppedAt, stop.page >= plan.nextPage {
+                            Text("توقفت عند الصفحة \(stop.page) · الآية \(stop.ayah)").font(.subheadline)
+                            PrimaryButton(title: "متابعة من حيث توقفت", icon: "bookmark") { readerPage = stop.page }
+                                .accessibilityIdentifier("khatmah.resumeStop")
+                        }
                         if let finish = plan.expectedFinish { Text("الإتمام \(date(finish, plan: plan))").font(.subheadline).foregroundStyle(.secondary) }
                         if let due = plan.due(on: .now) {
                             Text("الصفحات \(due.first)–\(due.last)").font(.title3.bold())
@@ -92,7 +97,9 @@ struct KhatmahJourneyView: View {
                 }
             }
             .fullScreenCover(isPresented: Binding(get: { readerPage != nil }, set: { if !$0 { readerPage = nil } })) {
-                InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: readerPage)
+                let stop = journey.active?.stoppedAt
+                InteractiveMushafReader(chapter: stop?.page == readerPage ? stop?.chapter ?? 1 : 1,
+                    ayah: stop?.page == readerPage ? stop?.ayah ?? 1 : 1, initialPage: readerPage)
             }
     }
     private func actionButton(_ title: String, action: @escaping () -> Void) -> some View {
