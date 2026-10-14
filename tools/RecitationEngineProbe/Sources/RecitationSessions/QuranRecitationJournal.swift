@@ -10,6 +10,7 @@ public struct QuranRecitationTake: Codable, Equatable, Identifiable {
     public var closed: Bool
     public var referenceExposure: String? = nil
     public var textHintIDs: [Int]? = nil
+    public var textExposureOccurred: Bool? = nil
     public var duration: Double { Double(frames) / 16_000 }
     public init(id: UUID = UUID(), startedAt: Date = Date(), frames: Int64 = 0, closed: Bool = false) {
         self.id = id; self.startedAt = startedAt; self.frames = frames; self.closed = closed
@@ -71,6 +72,9 @@ public struct QuranRecitationRecord: Codable, Identifiable {
     public var finishedAt: Date?
     public var observedSpeech: [QuranObservedSpeech]? = nil
     public var wordingEvents: [QuranWordingEvent]? = nil
+    public var closedTextRequested: Bool? = nil
+    public var automaticScope: Bool? = nil
+    public var textExposureOccurred: Bool? = nil
     public var referenceExposure: String? = nil
     public var textHintIDs: [Int]? = nil
     public var duration: Double { takes.reduce(0) { $0 + $1.duration } }

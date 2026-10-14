@@ -10,6 +10,7 @@ struct QuranRecitationScope: View {
     @AppStorage("noor.guided.reciter") private var guidedReciter = "Abdul_Basit_Murattal_64kbps"
     @AppStorage("noor.guided.repetitions") private var guidedRepetitions = 1
     @AppStorage("noor.guided.pause") private var guidedPause = 3
+    @AppStorage("noor.recitation.closedText") private var closedPracticeText = false
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @State private var scope = MushafStudySession.Scope.page
@@ -71,6 +72,17 @@ struct QuranRecitationScope: View {
                         Label("ابدأ التسميع", systemImage: "mic.fill").frame(maxWidth: .infinity, minHeight: 48)
                     }.buttonStyle(.borderedProminent).tint(Theme.gold).disabled(selectedKeys.isEmpty)
                         .accessibilityIdentifier("recitation.scope.start")
+                    DisclosureGroup("تدريب إضافي") {
+                        Toggle("إخفاء النص من بداية الاختبار", isOn: $closedPracticeText)
+                        Button("اختبار من موضع عشوائي") {
+                            guard !selectedKeys.isEmpty else { return }
+                            let start = Int.random(in: selectedKeys.indices)
+                            onStart(Array(selectedKeys.dropFirst(start).prefix(3))); dismiss()
+                        }.frame(minHeight: 44).disabled(selectedKeys.isEmpty)
+                        Button("تدريب وصل الآيتين") { onStart(Array(selectedKeys.prefix(2))); dismiss() }
+                            .frame(minHeight: 44).disabled(selectedKeys.count < 2)
+                        Text("اضغط الآية لكشف كلمة أو طلب تلميح صوتي.").font(.footnote)
+                    }
                     if let onListen {
                         DisclosureGroup("استمع ثم سمّع") {
                             Picker("القارئ", selection: $guidedReciter) {

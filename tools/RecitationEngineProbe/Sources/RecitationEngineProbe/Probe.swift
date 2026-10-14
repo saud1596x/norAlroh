@@ -3,6 +3,7 @@ import RecitationEvidence
 import RecitationAlignment
 import WhisperKit
 import Darwin
+import CryptoKit
 
 struct ProbeFixture: Codable {
     let name: String
@@ -183,8 +184,11 @@ struct ProbeReport: Codable {
         let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         let corpus = try JSONDecoder().decode([Chapter].self, from: Data(contentsOf: root.appendingPathComponent("ios/Athar/quran.json")))
         let keys = corpus.flatMap { chapter in chapter.ayahs.map { "\(chapter.number):\($0.number)" } }
-        let (data, response) = try await URLSession.shared.data(from: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw ProbeFailure("Native word edition unavailable") }
+        let data = try Data(contentsOf: root.appendingPathComponent("ios/Athar/mushaf-snapshot.json"))
+        guard SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined()
+            == "125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d" else {
+            throw ProbeFailure("Native word edition checksum mismatch")
+        }
         let snapshot = try JSONDecoder().decode(Snapshot.self, from: data)
         guard snapshot.resource_group == "mushafs", snapshot.resource_id == 1,
               snapshot.resource_content_id == 382 else { throw QuranAlignmentFailure.invalidEdition }

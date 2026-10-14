@@ -8,6 +8,80 @@ import CryptoKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testActualReferenceFindsItsVerseAcrossEntireQuranWithoutStartingPageHint() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        XCTAssertEqual(keys.count, 6236)
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root, drainTimeout: 120,
+            makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
+        await controller.start(keys: keys, page: 1, snapshot: snapshot, corpus: corpus, automaticScope: true)
+        await controller.pause()
+        let saved = try XCTUnwrap(controller.record)
+        XCTAssertGreaterThanOrEqual(saved.evidence.count, 3)
+        XCTAssertTrue(saved.evidence.allSatisfy { $0.verse == "112:1" })
+        XCTAssertEqual(controller.currentVerse, "112:1", "Origin page must not bias recognition toward Al-Fatiha")
+        let ids = Dictionary(grouping: saved.evidence, by: \.verse).mapValues { $0.map(\.nativeID) }
+        XCTAssertEqual(QuranSessionResult(record: saved, wordIDs: ids, onReview: { _ in }).summaryKeys, ["112:1"])
+        var silent = saved; silent.evidence = []; silent.wordingEvents = []
+        XCTAssertTrue(QuranSessionResult(record: silent, wordIDs: ids, onReview: { _ in }).summaryKeys.isEmpty,
+            "No observed speech must not produce 6236 unresolved ayat")
+        let reopened = QuranRecitationController(archiveRoot: root)
+        await reopened.restore(id: saved.id, snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(reopened.currentVerse, "112:1")
+        await controller.finish()
+    }
+    @MainActor func testClosedTextStartsHiddenAndHintsNeverBecomeRecognitionEvidence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        // Silent injected capture checks state/assistance, not acoustic accuracy.
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: []) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus, closedText: true)
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.hiddenIDs.count, 4)
+        XCTAssertTrue(controller.revealed.isEmpty)
+        await controller.revealNextWord(in: "112:1")
+        XCTAssertEqual(controller.hiddenIDs.count, 3)
+        XCTAssertTrue(controller.revealed.isEmpty)
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        let saved = try XCTUnwrap(controller.record)
+        let journal = QuranRecitationJournal(root: root)
+        XCTAssertEqual(try journal.load(saved.id).closedTextRequested, true)
+        await controller.resume()
+        XCTAssertEqual(controller.record?.takes.last?.textHintIDs, saved.textHintIDs)
+        await controller.pause()
+        let restored = QuranRecitationController(archiveRoot: root)
+        await restored.restore(id: saved.id, snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(restored.hiddenIDs.count, 3)
+        XCTAssertTrue(restored.revealed.isEmpty)
+        await controller.finish()
+    }
+    @MainActor func testClosedTextCaptureFailureRestoresReadingAndRecordsExposedAssistance() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { _, _ in throw CocoaError(.fileWriteUnknown) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot,
+                               corpus: try XCTUnwrap(QuranResources.corpus), closedText: true)
+        XCTAssertEqual(controller.state, .paused)
+        XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertEqual(controller.record?.textExposureOccurred, true)
+        XCTAssertTrue((controller.record?.textHintIDs ?? []).isEmpty, "Exposing a page is assistance, not four invented hint requests")
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        XCTAssertTrue(controller.record?.recognitionUnavailable == true)
+        await controller.finish()
+    }
     /// Diagnostic edited-reference regression, not a human-reviewed learner
     /// benchmark. It exposes model normalization/abstention rather than claiming
     /// production error accuracy from a splice based on estimated word timing.
@@ -40,6 +114,10 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertTrue(events.allSatisfy { $0.state == "provisional" })
         XCTAssertEqual(span.wordObservations, result.observations, "Assessment must not repair observed speech into the reference")
         print("EDITED_PUBLIC_REFERENCE_OMISSION elapsedMs=\(Int(Date().timeIntervalSince(started) * 1000)) observations=\(result.observations?.count ?? 0) unresolved=\(result.hasUnresolvedSpeech) omissionCandidates=\(events.filter { $0.category == "omission" }.count) confirmed=0")
+        // Only this explicitly public fixture may log decoded text. Production
+        // microphone diagnostics remain numeric and never print a transcript.
+        let diagnostic = try JSONEncoder().encode(result.observations ?? [])
+        print("PUBLIC_FIXTURE_OBSERVED_WORDS " + (String(data: diagnostic, encoding: .utf8) ?? "unreadable"))
     }
     func testShortStreamingReferenceWindowsAnchorOnlyTheActuallySpokenVerse() async throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))

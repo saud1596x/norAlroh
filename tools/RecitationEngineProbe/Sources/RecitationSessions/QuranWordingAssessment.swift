@@ -33,7 +33,8 @@ public enum QuranWordingAssessment {
             let correctionTake = spans.first { span in
                 span.wordObservations?.contains(where: { ids.contains($0.observationID) }) == true
             }?.takeID
-            if let correctionTake, known[correctionTake]?.referenceExposure != nil || !(known[correctionTake]?.textHintIDs ?? []).isEmpty {
+            if let correctionTake, known[correctionTake]?.referenceExposure != nil || !(known[correctionTake]?.textHintIDs ?? []).isEmpty
+                || known[correctionTake]?.textExposureOccurred == true {
                 result[index].resolution = "later-assisted-evidence"
             }
         }
@@ -65,7 +66,7 @@ public enum QuranWordingAssessment {
                             (0..<5).allSatisfy { forms[start + $0].contains(tokens[$0]) }
                         })
                         guard matches == Set([position - 2]) else { continue }
-                        result[index].resolution = later.referenceExposure == nil && (later.textHintIDs ?? []).isEmpty
+                        result[index].resolution = later.referenceExposure == nil && (later.textHintIDs ?? []).isEmpty && later.textExposureOccurred != true
                             ? "later-independent-evidence" : "later-assisted-evidence"
                         result[index].correctionObservationIDs = context.map(\.observationID)
                         break

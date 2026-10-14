@@ -110,8 +110,17 @@ import os
         // Starting a microphone session is not proof that recognition works.
         // Keep the reader usable until actual saved word evidence establishes
         // a position, and expose the text again if the engine becomes unavailable.
-        guard hasSession, !revealed.isEmpty, recognitionAvailable else { return [] }
+        guard hasSession, recognitionAvailable,
+              record?.closedTextRequested == true || !revealed.isEmpty else { return [] }
         return expectedIDs.subtracting(revealed).subtracting(Set(record?.textHintIDs ?? []))
+    }
+    private func noteExposedPracticeText(_ value: inout QuranRecitationRecord) {
+        if value.closedTextRequested == true {
+            value.textExposureOccurred = true
+            if value.phase == .recording, let index = value.takes.indices.last, !value.takes[index].closed {
+                value.takes[index].textExposureOccurred = true
+            }
+        }
     }
     func revealNextWord(in verse: String, entireVerse: Bool = false) async {
         guard state == .listening || state == .paused else { return }
@@ -150,7 +159,8 @@ import os
         case .stopped: return "انتهت الجلسة"
         }
     }
-    func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
+    func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah], closedText: Bool = false,
+               automaticScope: Bool = false) async {
         guard guidedPhase != .reference && guidedPhase != .clearance else {
             message = "انتظر انتهاء التلاوة والاستعداد، ثم ابدأ التسميع."; return
         }
@@ -179,15 +189,22 @@ import os
             let scope = Set(keys)
             tracker = QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) })
             expectedIDs = Set(tracker?.expected.map(\.id) ?? [])
-            revealed = []; currentVerse = keys.first; uncertain = false; finishRequest = false
+            revealed = []; currentVerse = automaticScope ? nil : keys.first; uncertain = false; finishRequest = false
             let next = QuranRecitationRecord(keys: keys, originPage: page)
             var prepared = next
+            prepared.closedTextRequested = closedText
+            prepared.automaticScope = automaticScope
             prepared.referenceExposure = referenceExposure
             try journal.create(prepared); record = prepared
             if referenceExposure != nil { guidedPhase = .attempt }
             try await beginTake(token: token)
         } catch {
             guard revision == token else { return }
+            if var failed = record, failed.closedTextRequested == true {
+                failed.recognitionUnavailable = true; noteExposedPracticeText(&failed)
+                record = failed; recognitionAvailable = false
+                try? save(failed)
+            }
             state = record == nil ? .idle : .paused
             message = "تعذّر تجهيز التسميع الآن. النموذج مضمّن ولا يحتاج تنزيلًا جديدًا. أعد المحاولة أو تابع القراءة."
         }
@@ -230,12 +247,14 @@ import os
             }
             if restored.phase == .recording { restored.phase = .interrupted; restored.recognitionUnavailable = true }
             let scope = Set(restored.keys)
+            expectedIDs = Set(words.filter { scope.contains($0.verse) }.map(\.id))
+            if restored.recognitionUnavailable { noteExposedPracticeText(&restored) }
             let restoredTracker = try QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) }, restoring: restored.evidence)
             try journal.save(restored)
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
-            currentVerse = restored.evidence.last?.verse ?? restored.keys.first
+            currentVerse = restored.evidence.last?.verse ?? (restored.automaticScope == true ? nil : restored.keys.first)
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
             guard revision == token else { return }
@@ -288,6 +307,7 @@ import os
         var take = QuranRecitationTake()
         take.referenceExposure = referenceExposure ?? next.referenceExposure
         take.textHintIDs = next.textHintIDs
+        take.textExposureOccurred = next.textExposureOccurred
         if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,
@@ -358,7 +378,8 @@ import os
             catch is CancellationError { return }
             catch {
                 guard revision == token, var current = record else { return }
-                current.recognitionUnavailable = true; record = current; uncertain = true; recognitionAvailable = false
+                current.recognitionUnavailable = true; noteExposedPracticeText(&current)
+                record = current; uncertain = true; recognitionAvailable = false
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
                 if (error as? URLError)?.code == .timedOut {
@@ -461,7 +482,7 @@ import os
             // A Core ML decode may ignore cancellation. Invalidate its token
             // before saving so it cannot change a paused or resumed session.
             revision = UUID(); pending?.cancel()
-            if var current = record { current.recognitionUnavailable = true; record = current }
+            if var current = record { current.recognitionUnavailable = true; noteExposedPracticeText(&current); record = current }
             recognitionAvailable = false; uncertain = true
         }
         pump = nil; mailbox = nil

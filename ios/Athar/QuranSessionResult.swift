@@ -18,14 +18,25 @@ struct QuranSessionResult: View {
         })
     }
     @Environment(\.dismiss) private var dismiss
+    /// An open-Quran session has no assigned unread passage. Only actual
+    /// evidence and review locations belong in its summary, never all 6236 ayat.
+    var summaryKeys: [String] {
+        guard record.automaticScope == true else { return record.keys }
+        let heard = Set(record.evidence.map(\.verse))
+        let review = Set((record.wordingEvents ?? []).filter { $0.state == "provisional" }.flatMap(\.referenceIDs))
+        return record.keys.filter { heard.contains($0) || !Set(wordIDs[$0] ?? []).isDisjoint(with: review) }
+    }
     private var contextualPractice: [String] {
         let pendingIDs = Set((record.wordingEvents ?? []).filter {
             $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
         }.flatMap(\.referenceIDs))
-        let focus = record.keys.first { !Set(wordIDs[$0] ?? []).isDisjoint(with: pendingIDs) }
-            ?? unresolved.first ?? record.keys.first
+        let focus = summaryKeys.first { !Set(wordIDs[$0] ?? []).isDisjoint(with: pendingIDs) }
+            ?? unresolved.first ?? summaryKeys.first
         guard let focus, let index = record.keys.firstIndex(of: focus) else { return [] }
-        return Array(record.keys[max(0, index-1)...min(record.keys.count-1, index+1)])
+        let chapter = focus.split(separator: ":").first
+        return record.keys[max(0, index-1)...min(record.keys.count-1, index+1)].filter {
+            $0.split(separator: ":").first == chapter
+        }
     }
     @EnvironmentObject private var store: AtharStore
     @StateObject private var attemptAudio = MushafSessionRecorder()
@@ -55,7 +66,7 @@ struct QuranSessionResult: View {
         let count = wordIDs[key]?.count ?? 0
         return count > 0 && coverage(key) == count
     }
-    private var unresolved: [String] { record.keys.filter { !complete($0) } }
+    private var unresolved: [String] { summaryKeys.filter { !complete($0) } }
     private var trackedCount: Int { record.keys.reduce(0) { $0 + coverage($1) } }
     private func reference(_ key: String) -> String {
         let parts = key.split(separator: ":").compactMap { Int($0) }
@@ -69,7 +80,7 @@ struct QuranSessionResult: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Image(systemName: "waveform.circle.fill").font(.system(size: 48)).foregroundStyle(Theme.gold).accessibilityHidden(true)
                         Text("حُفظت جلستك").font(.title2.bold()).accessibilityIdentifier("study.result.saved")
-                        if let first = record.keys.first, let last = record.keys.last {
+                        if let first = summaryKeys.first, let last = summaryKeys.last {
                             Text(first == last ? reference(first) : "\(reference(first)) — \(reference(last))").font(.subheadline)
                         }
                     }
@@ -77,7 +88,7 @@ struct QuranSessionResult: View {
                         metric("مدة التسجيل", value: MushafAudioTime.text(record.duration))
                         metric("كلمات متتبّعة", value: String(trackedCount))
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                    if !(record.textHintIDs ?? []).isEmpty {
+                    if record.textExposureOccurred == true || !(record.textHintIDs ?? []).isEmpty {
                         Text("استُخدمت تلميحات للقراءة؛ الكلمات المكشوفة لا تُحسب كتلاوة مسموعة.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
@@ -155,7 +166,7 @@ struct QuranSessionResult: View {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             Text("التتبع يحدد موضع التلاوة؛ لا يقيس صحة النطق أو التجويد. المقاطع غير المتتبّعة ليست أخطاء مؤكدة.").font(.footnote).foregroundStyle(.secondary)
                             if record.recognitionUnavailable { Text("تعذّر التحليل في جزء من الجلسة؛ التسجيل الصوتي محفوظ.").font(.footnote) }
-                            ForEach(record.keys, id: \.self) { key in
+                            ForEach(summaryKeys, id: \.self) { key in
                                 Button { onReview(key) } label: {
                                     HStack {
                                         Text(reference(key))

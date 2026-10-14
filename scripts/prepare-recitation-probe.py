@@ -68,6 +68,14 @@ def main():
     noise = b"".join(rng.randint(-800, 800).to_bytes(2, "little", signed=True)
                      for _ in range(16000 * 8))
     write("noise", "noise", noise)
+    # Match the independently executed CTC/phonetic comparisons exactly.
+    # Fixed signal edits are diagnostics, not expert-labelled learner speech.
+    composite = chunks["112:1"] + chunks["112:2"]
+    first, last = 19200 * 2, 33920 * 2
+    write("public-composite", "edited-reference-diagnostic", composite)
+    write("public-cut", "edited-omission-diagnostic", composite[:first] + composite[last:])
+    write("public-repeat", "edited-repetition-diagnostic", composite[:last] + composite[first:last] + composite[last:])
+    write("public-hesitation", "edited-hesitation-diagnostic", composite[:last] + bytes(32000 * 2) + composite[last:])
     (fixtures / "fixtures.json").write_text(json.dumps(rows, indent=2) + "\n")
     evidence = dict(model=MODEL, model_revision=MODEL_REVISION,
                     tokenizer="openai/whisper-base", tokenizer_revision=TOKENIZER_REVISION,
@@ -79,7 +87,7 @@ def main():
                 evidence["files"].append(dict(path=str(path.relative_to(root)),
                     sha256=hashlib.sha256(path.read_bytes()).hexdigest(), bytes=path.stat().st_size))
     (root / "data-provenance.json").write_text(json.dumps(evidence, indent=2) + "\n")
-    print("Prepared 14 explicitly identified engine fixtures and pinned local models.")
+    print(f"Prepared {len(rows)} explicitly identified engine fixtures and pinned local models.")
 
 
 if __name__ == "__main__":

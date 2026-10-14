@@ -130,6 +130,33 @@ struct InteractiveMushafReader: View {
     private var hiddenStudyWords: Set<Int> { recitation.hiddenIDs }
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     @AppStorage("noor.mushaf.followAudio") private var followAudio = true
+    @AppStorage("noor.recitation.closedText") private var closedPracticeText = false
+    @AppStorage("noor.recitation.feedbackTiming") private var feedbackTiming = "after-session"
+    @AppStorage("noor.recitation.feedbackHaptics") private var feedbackHaptics = false
+    @State private var feedbackVerse: String?
+    @State private var completedFeedbackVerses: Set<String> = []
+    @State private var feedbackAnnounced = false
+    private var visibleReviewWordIDs: Set<Int> {
+        let ids = Set((recitation.record?.wordingEvents ?? []).filter {
+            $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
+        }.flatMap(\.referenceIDs))
+        if feedbackTiming == "live" { return ids }
+        if feedbackTiming == "after-verse" {
+            let completed = Set(completedFeedbackVerses.flatMap { studyIndex?.words[$0] ?? [] })
+            return ids.intersection(completed)
+        }
+        return []
+    }
+    private var showReviewFeedback: Bool {
+        feedbackTiming == "live" ? (recitation.record?.wordingEvents ?? []).contains {
+            $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition"
+        } : feedbackTiming == "after-verse" && !visibleReviewWordIDs.isEmpty
+    }
+    private func announceReviewFeedback() {
+        guard feedbackHaptics, showReviewFeedback, !feedbackAnnounced else { return }
+        feedbackAnnounced = true
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.35)
+    }
     private var keys: [String] { store.quran.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } } }
     private var page: OriginalPageData? {
         pageIndex[number]
@@ -150,7 +177,7 @@ struct InteractiveMushafReader: View {
                     let renderedIdentity = MushafRenderIdentity(page: page.number, generation: renderGeneration)
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords,
-                        reviewWordIDs: Set((recitation.record?.wordingEvents ?? []).filter { $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition" }.flatMap(\.referenceIDs)),
+                        reviewWordIDs: visibleReviewWordIDs,
                         allowsVerseSelection: true,
                         // Fit the complete page instead of automatically zooming
                         // past its edges. The larger-text preference uses a little
@@ -363,8 +390,10 @@ struct InteractiveMushafReader: View {
             } }
         }
         .onChange(of: recitation.record?.id) { _, value in
+            completedFeedbackVerses = []; feedbackVerse = recitation.currentVerse; feedbackAnnounced = false
             if let value { pendingRecitation = value.uuidString }
         }
+        .onChange(of: recitation.record?.wordingEvents) { _, _ in announceReviewFeedback() }
         .onChange(of: audio.error) { _, value in
             if value != nil, recitation.guidedPhase == .reference { recitation.cancelGuided() }
         }
@@ -377,6 +406,8 @@ struct InteractiveMushafReader: View {
                recitation.guidedPhase == .reference { recitation.cancelGuided() }
         }
         .onChange(of: recitation.currentVerse) { _, key in
+            if let previous = feedbackVerse, key != previous { completedFeedbackVerses.insert(previous) }
+            feedbackVerse = key; announceReviewFeedback()
             guard followAudio, recitation.hasSession, let key else { return }
             selected = key; manualSelection = nil
             if page?.words.contains(where: { $0.verse == key }) != true,
@@ -400,7 +431,8 @@ struct InteractiveMushafReader: View {
         } message: { Text(audio.error ?? recitation.message ?? "") }
     }
     private func showStudySetup(_ key: String? = nil) {
-        startRecitation(keys: key.map { [$0] } ?? visiblePageKeys)
+        if let key { startRecitation(keys: [key]) }
+        else { startRecitation(keys: keys, automatic: true) }
     }
     private func completeInitialEntryIfReady() {
         let ready = snapshot != nil && page != nil && error == nil && fonts.error == nil
@@ -439,14 +471,15 @@ struct InteractiveMushafReader: View {
         let visible = Set(page?.words.map(\.verse) ?? [])
         return keys.filter { visible.contains($0) }
     }
-    private func startRecitation(keys scope: [String]) {
+    private func startRecitation(keys scope: [String], automatic: Bool = false) {
         guard readerVisible, let snapshot, !recitation.hasSession else { return }
         followAudio = true
         audio.stop(); studyRecorder.stop(); legacyRecorder.stop(); clearManualSelection()
         tools = true
         Task {
             guard readerVisible, !Task.isCancelled else { return }
-            await recitation.start(keys: scope, page: number, snapshot: snapshot, corpus: store.quran)
+            await recitation.start(keys: scope, page: number, snapshot: snapshot, corpus: store.quran,
+                                   closedText: closedPracticeText, automaticScope: automatic)
         }
     }
     private var recitationControls: some View {
@@ -459,6 +492,14 @@ struct InteractiveMushafReader: View {
                     }
                     if !(recitation.record?.wordingEvents ?? []).isEmpty {
                         Button("راجع ملاحظات التلاوة") { Task { await recitation.pause(); studySummary = true } }
+                    }
+                    Menu("عرض ملاحظات المراجعة") {
+                        Picker("وقت الملاحظات", selection: $feedbackTiming) {
+                            Text("بعد الجلسة").tag("after-session")
+                            Text("بعد الانتقال للآية التالية").tag("after-verse")
+                            Text("أثناء التسميع").tag("live")
+                        }
+                        Toggle("اهتزاز خفيف اختياري", isOn: $feedbackHaptics)
                     }
                     Button("استمع ثم أعد المحاولة") {
                         Task {
@@ -474,7 +515,7 @@ struct InteractiveMushafReader: View {
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                     .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
                 Spacer(minLength: 8)
-                if (recitation.record?.wordingEvents ?? []).contains(where: { $0.state == "provisional" && $0.resolution == nil && $0.category != "repetition" }) {
+                if showReviewFeedback {
                     Button("ملاحظة غير محسومة · راجع الصوت") {
                         Task { await recitation.pause(); studySummary = true }
                     }.font(.caption).frame(minHeight: 44)

@@ -66,7 +66,7 @@ final class QCFV2ContentTests: XCTestCase {
         var altered = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.snapshot) as? [String: Any])
         var alteredRecords = try XCTUnwrap(altered["records"] as? [[String: Any]])
         let wordIndex = try XCTUnwrap(alteredRecords.firstIndex { $0["char_type_name"] as? String == "word" })
-        alteredRecords[wordIndex]["text"] = "ﱂ" // Valid edition glyph, incorrect canonical word.
+        alteredRecords[wordIndex]["text"] = alteredRecords[wordIndex]["text"] as? String == "ﱂ" ? "ﱁ" : "ﱂ"
         altered["records"] = alteredRecords
         do {
             _ = try await preparation.prepare(JSONSerialization.data(withJSONObject: altered), keys: keys)

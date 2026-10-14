@@ -76,6 +76,10 @@ final class QuranWordingAssessmentTests: XCTestCase {
         textAssisted.referenceExposure = nil; textAssisted.textHintIDs = [3]
         XCTAssertEqual(QuranWordingAssessment.linkLaterAttempts(initial, spans: [later], takes: [first, textAssisted],
             expected: reference).first?.resolution, "later-assisted-evidence")
+        textAssisted.textHintIDs = nil; textAssisted.textExposureOccurred = true
+        XCTAssertEqual(QuranWordingAssessment.linkLaterAttempts(initial, spans: [later], takes: [first, textAssisted],
+            expected: reference).first?.resolution, "later-assisted-evidence",
+            "Reading exposed during a capture failure cannot become independent recall")
         XCTAssertTrue(Set(linked.first?.correctionObservationIDs ?? []).isSubset(of: Set(later.wordObservations!.map(\.observationID))))
         let stored = QuranWordingAssessment.reconcile(previous: initial, incoming: linked, reconsidered: [later])
         XCTAssertEqual(stored.filter { $0.state == "provisional" }.first?.resolution, "later-assisted-evidence")
