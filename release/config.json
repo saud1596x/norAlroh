@@ -23,6 +23,7 @@
   "cloudConnectionEvidence": "CODEMAGIC_LIVE_NATIVE_BUILDS",
   "nativeBuildRun": true,
   "userAccountMode": "local-only",
+  "publicWebsiteAccountMode": "firebase-opt-in",
   "termsURL": "https://noor-alruh-support.onrender.com/terms.html",
   "speechRecognitionValidationDocument": null
 }
