@@ -13,7 +13,7 @@ struct NoorReciter: Codable, Identifiable, Hashable {
               let base = URL(string: server), base.scheme == "https",
               base.host == "cdn.mp3quran.net", base.user == nil, base.password == nil,
               base.port == nil, base.query == nil, base.fragment == nil,
-              base.path.hasPrefix("/audio/"), base.path.hasSuffix("/") else { return nil }
+              base.path.hasPrefix("/audio/"), base.hasDirectoryPath else { return nil }
         return base.appendingPathComponent(String(format: "%03d.mp3", surah))
     }
 }

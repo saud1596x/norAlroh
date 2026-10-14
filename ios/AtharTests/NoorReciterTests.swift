@@ -28,6 +28,15 @@ final class NoorReciterTests: XCTestCase {
                                     server: server, surahs: [1]).audioURL(surah: 1))
         }
     }
+    func testDirectoryURLProducesAnAudioFileOnFoundation() {
+        let reader = NoorReciter(id: 54, name: "السديس", recordingID: 54,
+            server: "https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/", surahs: [1, 114])
+        XCTAssertEqual(reader.audioURL(surah: 1)?.absoluteString,
+            "https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/001.mp3")
+        XCTAssertEqual(reader.audioURL(surah: 114)?.absoluteString,
+            "https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/114.mp3")
+        XCTAssertNil(reader.audioURL(surah: 2))
+    }
     @MainActor func testRecordingStopsPlaybackAndStaleLeaseCannotUnlockIt() {
         let focus = NoorAudioFocus(), player = UUID(), first = UUID(), second = UUID()
         var stops = 0
