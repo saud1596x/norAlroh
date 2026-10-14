@@ -1,11 +1,18 @@
 import Foundation
+import Combine
 
 /// All state changes are serialized with the UI. Recording owns the audio
 /// route until its capture has closed, including final recognition draining.
-@MainActor final class NoorAudioFocus {
+@MainActor final class NoorAudioFocus: ObservableObject {
     static let shared = NoorAudioFocus()
     private var recording: UUID?
     private var players: [UUID: () -> Void] = [:]
+    @Published private(set) var activePlayer: MushafVerseAudio?
+    private var activePlaybackID: UUID?
+    func holdPlayback(_ player: MushafVerseAudio, id: UUID) { activePlayer = player; activePlaybackID = id }
+    func releasePlayback(_ id: UUID) {
+        if activePlaybackID == id { activePlayer = nil; activePlaybackID = nil }
+    }
     func register(_ id: UUID, stop: @escaping () -> Void) { players[id] = stop }
     func unregister(_ id: UUID) { players.removeValue(forKey: id) }
     func acquireRecording(_ id: UUID) -> Bool {

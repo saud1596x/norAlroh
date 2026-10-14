@@ -16,6 +16,36 @@ import os
     @Published private(set) var permissionDenied = false
     @Published private(set) var microphonePeak: Float?
     @Published var message: String?
+    enum GuidedPhase: Equatable { case inactive, reference, clearance, ready, attempt, feedback }
+    @Published private(set) var guidedPhase: GuidedPhase = .inactive
+    private var guidedRevision = UUID()
+    private var guidedDelay: Task<Void, Never>?
+    private weak var referenceAudio: MushafVerseAudio?
+    private var referenceExposure: String?
+    func listenFirst(_ keys: [String], audio: MushafVerseAudio, repetitions: Int, responsePause: Int) {
+        guard state == .idle || state == .stopped || state == .paused else { return }
+        cancelGuided()
+        let token = UUID(); guidedRevision = token
+        referenceAudio = audio; guidedPhase = .reference
+        audio.onSequenceFinished = { [weak self, weak audio] in
+            guard let self, let audio, self.guidedRevision == token else { return }
+            self.referenceExposure = audio.reciterDirectory
+            self.guidedPhase = .clearance
+            self.guidedDelay = Task { [weak self] in
+                do { try await Task.sleep(nanoseconds: UInt64(max(1, min(30, responsePause))) * 1_000_000_000) }
+                catch { return }
+                guard let self, self.guidedRevision == token, !Task.isCancelled else { return }
+                self.guidedPhase = .ready
+            }
+        }
+        audio.play(keys, repetitions: repetitions)
+        if audio.error != nil { cancelGuided() }
+    }
+    func cancelGuided() {
+        guidedRevision = UUID(); guidedDelay?.cancel(); guidedDelay = nil
+        referenceAudio?.onSequenceFinished = nil; referenceAudio?.stop(); referenceAudio = nil
+        referenceExposure = nil; guidedPhase = .inactive
+    }
     private let worker: any QuranSpeechRecognitionProvider
     private let referenceBinder = QuranRecognitionWorker.shared
     private let drainTimeout: Double
@@ -76,6 +106,9 @@ import os
         return expectedIDs.subtracting(revealed)
     }
     var status: String {
+        if guidedPhase == .reference { return "استمع · الميكروفون مغلق" }
+        if guidedPhase == .clearance { return "استعد · الميكروفون مغلق" }
+        if guidedPhase == .ready { return "جاهز · ابدأ عندما تكون مستعدًا" }
         switch state {
         case .idle: return "ابدأ التسميع"
         case .permission: return "إذن الميكروفون"
@@ -97,6 +130,9 @@ import os
         }
     }
     func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
+        guard guidedPhase != .reference && guidedPhase != .clearance else {
+            message = "انتظر انتهاء التلاوة والاستعداد، ثم ابدأ التسميع."; return
+        }
         guard state == .idle || state == .stopped else { return }
         let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
         record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
@@ -121,7 +157,10 @@ import os
             expectedIDs = Set(tracker?.expected.map(\.id) ?? [])
             revealed = []; currentVerse = keys.first; uncertain = false; finishRequest = false
             let next = QuranRecitationRecord(keys: keys, originPage: page)
-            try journal.create(next); record = next
+            var prepared = next
+            prepared.referenceExposure = referenceExposure
+            try journal.create(prepared); record = prepared
+            if referenceExposure != nil { guidedPhase = .attempt }
             try await beginTake(token: token)
         } catch {
             guard revision == token else { return }
@@ -180,6 +219,7 @@ import os
         }
     }
     func resume() async {
+        guard guidedPhase != .reference && guidedPhase != .clearance else { return }
         guard state == .paused, !closing, record != nil else { return }
         permissionDenied = false; state = .permission
         let token = revision
@@ -221,7 +261,9 @@ import os
         // Use the highest hardware input gain only when this route supports it.
         // A route rejecting gain adjustment must not prevent microphone capture.
         if audio.isInputGainSettable { try? audio.setInputGain(1.0) }
-        let take = QuranRecitationTake()
+        var take = QuranRecitationTake()
+        take.referenceExposure = referenceExposure
+        if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,
             onWindow: { mailbox.put($0) }, onFailure: { [weak self] _ in
@@ -328,7 +370,20 @@ import os
                 if let index = spans.firstIndex(where: { $0.takeID == take && $0.start == observed.start && $0.end == observed.end }) {
                     spans[index] = observed
                 } else { spans.append(observed) }
+                let assessmentInput = Array(spans.suffix(16))
+                let referenceWords = updatedTracker.expected
+                let events = await Task.detached(priority: .userInitiated) {
+                    QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
+                }.value
+                guard revision == token, !Task.isCancelled, let latest = record else { return }
+                current = latest
                 current.observedSpeech = spans
+                var durableEvents = current.wordingEvents ?? []
+                if let earliest = assessmentInput.filter({ $0.takeID == take }).map(\.start).min() {
+                    durableEvents.removeAll { $0.takeID == take && $0.end >= earliest }
+                }
+                for event in events where !durableEvents.contains(where: { $0.eventID == event.eventID }) { durableEvents.append(event) }
+                current.wordingEvents = durableEvents
                 current.evidence += additions; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
@@ -394,6 +449,7 @@ import os
         audioFocusLease = nil
     }
     func finish() async {
+        cancelGuided()
         finishRequest = true
         if state == .listening { await pause(); return }
         guard state == .paused, !closing, var current = record else { return }

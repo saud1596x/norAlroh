@@ -117,6 +117,8 @@ struct InteractiveMushafReader: View {
     @State private var scopeOpen = false
     @State private var initialEntry = MushafInitialEntry()
     @State private var readerVisible = false
+    @State private var requestedGuided: ([String], String, Int, Int)?
+    @State private var guidedKeys: [String] = []
     @State private var retryingReader = false
     #if DEBUG || NOOR_ACCEPTANCE_TESTING
     @State private var acceptanceRenderFailureRecovered = false
@@ -230,14 +232,25 @@ struct InteractiveMushafReader: View {
                         if !dynamicTypeSize.isAccessibilitySize { pageJumpControl }
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                     }
-                        Button { showStudySetup() } label: {
+                        Button {
+                            if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
+                            else { showStudySetup() }
+                        } label: {
                             Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
                                 .foregroundStyle(Theme.background).frame(width: 60, height: 60)
                                 .background(Theme.gold, in: Circle())
                         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
+                            .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
                             .contextMenu { Button("اختيار مقطع التسميع") { scopeOpen = true } }
                             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
-                    } } }
+                    }
+                        if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
+                            HStack {
+                                Text(recitation.guidedPhase == .ready ? "جاهز · اضغط الميكروفون وابدأ" : recitation.guidedPhase == .clearance ? "استعد · الميكروفون مغلق" : "استمع · الميكروفون مغلق").font(.caption)
+                                Button("إلغاء") { recitation.cancelGuided() }.frame(minHeight: 44)
+                            }
+                        }
+                    } }
                 }.background { readerControlMeasurement("footer") }
             }.padding(.horizontal, 10).transition(.opacity) }
         }
@@ -262,12 +275,12 @@ struct InteractiveMushafReader: View {
             await fonts.load(String(format: "QCF2%03d", number))
             injectAcceptanceRenderFailureIfNeeded()
         }
-        .onDisappear { readerVisible = false; initialEntry.cancel(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
+        .onDisappear { readerVisible = false; initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
         .onChange(of: scenePhase) { _, value in
-            if value == .background || (value == .inactive && recitation.state != .permission) { Task { await recitation.pause() } }
+            if value == .background || (value == .inactive && recitation.state != .permission) { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { event in
-            if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { Task { await recitation.pause() } }
+            if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
         .onChange(of: number) { _, value in renderGeneration = UUID(); lastPage = value }
         .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; showStudySetup(studyStartKey) } }) { selection in
@@ -277,10 +290,14 @@ struct InteractiveMushafReader: View {
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $scopeOpen, onDismiss: {
-            if let scope = requestedScope { requestedScope = nil; startRecitation(keys: scope) }
+            if let guided = requestedGuided {
+                requestedGuided = nil; guidedKeys = guided.0; audio.reciterDirectory = guided.1
+                recitation.listenFirst(guided.0, audio: audio, repetitions: guided.2, responsePause: guided.3)
+            } else if let scope = requestedScope { requestedScope = nil; startRecitation(keys: scope) }
         }) {
             QuranRecitationScope(page: number, pageKeys: visiblePageKeys,
-                initialKey: studyStartKey ?? visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 })
+                initialKey: studyStartKey ?? visiblePageKeys.first ?? "1:1", onStart: { requestedScope = $0 },
+                onListen: { requestedGuided = ($0, $1, $2, $3) })
                 .task {
                     // Prepare while the user chooses a scope; this never opens the microphone.
                     // Start still performs its own checked preparation and reports failures.
@@ -325,6 +342,13 @@ struct InteractiveMushafReader: View {
         }
         .onChange(of: recitation.record?.id) { _, value in
             if let value { pendingRecitation = value.uuidString }
+        }
+        .onChange(of: audio.error) { _, value in
+            if value != nil, recitation.guidedPhase == .reference { recitation.cancelGuided() }
+        }
+        .onChange(of: audio.loadingKey) { _, value in
+            if value == nil, audio.playing == nil, audio.waitingKey == nil,
+               recitation.guidedPhase == .reference { recitation.cancelGuided() }
         }
         .onChange(of: recitation.currentVerse) { _, key in
             guard recitation.hasSession, let key else { return }
@@ -403,6 +427,20 @@ struct InteractiveMushafReader: View {
             HStack {
                 Menu {
                     Button("العودة للقراءة") { Task { await recitation.pause(); dismiss() } }
+                    if !(recitation.record?.wordingEvents ?? []).isEmpty {
+                        Button("راجع ملاحظات التلاوة") { Task { await recitation.pause(); studySummary = true } }
+                    }
+                    Button("استمع ثم أعد المحاولة") {
+                        Task {
+                            await recitation.pause()
+                            if let keys = recitation.record?.keys {
+                                recitation.listenFirst(keys, audio: audio, repetitions: 1, responsePause: 3)
+                            }
+                        }
+                    }
+                    if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance {
+                        Button("إلغاء الاستماع") { recitation.cancelGuided() }
+                    }
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                     .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
                 Spacer(minLength: 8)

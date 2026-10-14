@@ -160,6 +160,7 @@ struct RootView: View {
                 .tabItem { Label("الأذكار", systemImage: "sun.max") }
                 .tag(3)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { NoorAudioMiniPlayer() }
         .onChange(of: widgetRouter.destination?.id, initial: true) { _, _ in
             guard let destination = widgetRouter.destination else { return }
             settings = false

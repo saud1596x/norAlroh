@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import Foundation
+import MediaPlayer
 
 /// Cursor stores a range once. Only a real item-end event starts the next
 /// delay, and stop/replacement invalidates both that delay and stale callbacks.
@@ -9,6 +10,28 @@ import Foundation
     @Published var error: String?
     @Published private(set) var loadingKey: String?
     @Published private(set) var waitingKey: String?
+    @Published private(set) var isPaused = false
+    @Published private(set) var completedRepetitions = 0
+    @Published private(set) var playbackRate: Float = 1
+    @Published private(set) var sleepStatus: String?
+    private var sleepTask: Task<Void, Never>?
+    private var stopAtBoundary = false
+    private var bookmarkSeconds: Double?
+    private let recordingIdentity: String?
+    let displayName: String
+    private let keepAlive: Bool
+    private var remoteTargets: [(MPRemoteCommand, Any)] = []
+    var currentSeconds: Double {
+        let value = player?.currentTime().seconds ?? 0
+        return value.isFinite ? max(0, value) : 0
+    }
+    var durationSeconds: Double {
+        let value = player?.currentItem?.duration.seconds ?? 0
+        return value.isFinite ? max(0, value) : 0
+    }
+    var repetitionCount: Int { count }
+    var currentCanonicalKey: String? { index < keys.count ? keys[index] : nil }
+    private var bookmarkKey: String { "noor.audio.bookmark." + (recordingIdentity ?? "everyayah:" + reciterDirectory) }
     private var playbackObservation: NSKeyValueObservation?
     private var observation: NSKeyValueObservation?
     private var player: AVPlayer?
@@ -37,11 +60,20 @@ import Foundation
     private let resolveSource: (String) async -> URL?
     private var resolvingSource: Task<Void, Never>?
     var onVerse: ((String) -> Void)?
+    var onSequenceFinished: (() -> Void)?
+    var reciterDirectory = "Abdul_Basit_Murattal_64kbps" {
+        willSet { if newValue != reciterDirectory { stop() } }
+    }
     init(source: ((String) -> URL?)? = nil, loadTimeoutSeconds: Double = 15,
-         resolveSource: ((String) async -> URL?)? = nil) {
+         resolveSource: ((String) async -> URL?)? = nil, recordingIdentity: String? = nil,
+         displayName: String = "تلاوة القرآن", keepAlive: Bool = false) {
         self.source = source
+        self.recordingIdentity = recordingIdentity
+        self.displayName = displayName; self.keepAlive = keepAlive
         self.resolveSource = resolveSource ?? Self.recitationURL
         loadTimeout = UInt64(max(0.05, min(60, loadTimeoutSeconds.isFinite ? loadTimeoutSeconds : 15)) * 1_000_000_000)
+        let storedRate = UserDefaults.standard.float(forKey: bookmarkKey + ".rate")
+        if storedRate.isFinite, (0.75...1.25).contains(storedRate) { playbackRate = storedRate }
         NoorAudioFocus.shared.register(focusID) { [weak self] in self?.stop() }
     }
     static func recitationURL(_ key: String) async -> URL? {
@@ -52,17 +84,88 @@ import Foundation
         return await NoorAudioDownloads.shared.localURL(key) ?? URL(string: String(format:
             "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1]))
     }
-    func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0) {
+    func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0,
+              startingAt: Int = 0, seconds: Double = 0, completedPass: Int = 0) {
         stop(); error = nil; lastPlaybackDiagnostic = ""
         guard NoorAudioFocus.shared.preparePlayback(focusID) else {
             error = "أوقف التسميع أولًا للاستماع إلى التلاوة."; return
         }
         guard !keys.isEmpty, (1...20).contains(repetitions), (0...30).contains(delaySeconds),
+              keys.indices.contains(startingAt), (0..<repetitions).contains(completedPass), seconds.isFinite, seconds >= 0,
               keys.allSatisfy({ key in source.map { $0(key) != nil } ?? (NoorAudioIntegrity.url(key) != nil) }) else {
             error = "تعذّر تشغيل نطاق التلاوة أو خيارات التكرار."; return
         }
         self.keys = keys; count = repetitions; gap = delaySeconds
+        index = startingAt; pass = completedPass; completedRepetitions = completedPass
+        bookmarkSeconds = seconds > 0 ? seconds : nil
+        if keepAlive { NoorAudioFocus.shared.holdPlayback(self, id: focusID) }
+        installRemoteControls()
         advance()
+    }
+    func pausePlayback() {
+        if waitingKey != nil { delay?.cancel(); delay = nil; isPaused = true; updateNowPlaying(); return }
+        guard player != nil, playing != nil else { return }
+        saveBookmark(); isPaused = true; player?.pause(); updateNowPlaying()
+    }
+    func resumePlayback() {
+        if isPaused, waitingKey != nil, NoorAudioFocus.shared.preparePlayback(focusID) {
+            waitingKey = nil; isPaused = false; advance(); return
+        }
+        guard isPaused, let player, NoorAudioFocus.shared.preparePlayback(focusID) else { return }
+        isPaused = false; player.playImmediately(atRate: playbackRate); updateNowPlaying()
+    }
+    func seek(to seconds: Double) {
+        guard seconds.isFinite, let player, durationSeconds > 0, seconds >= 0, seconds <= durationSeconds else { return }
+        let token = revision
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor in guard let self, self.revision == token else { return }; self.updateNowPlaying() }
+        }
+    }
+    @discardableResult func setPlaybackRate(_ rate: Float) -> Bool {
+        guard rate.isFinite, (0.75...1.25).contains(rate) else { return false }
+        playbackRate = rate
+        UserDefaults.standard.set(rate, forKey: bookmarkKey + ".rate")
+        if !isPaused, playing != nil { player?.rate = rate }
+        updateNowPlaying()
+        return true
+    }
+    @discardableResult func switchReciter(to directory: String) -> Bool {
+        let permitted = ["Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_64kbps", "Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "Saood_ash-Shuraym_64kbps"]
+        guard source == nil, permitted.contains(directory), index < keys.count else { return false }
+        let range = keys, position = index, repetitions = count, completed = pass, pause = gap
+        reciterDirectory = directory
+        // No recording-specific word timing is available here. Start the same
+        // canonical ayah from its own beginning, never copy elapsed seconds.
+        play(range, repetitions: repetitions, delaySeconds: pause, startingAt: position, completedPass: completed)
+        return error == nil
+    }
+    @discardableResult func setSleepTimer(minutes: Int, atBoundary: Bool = true) -> Bool {
+        guard (1...120).contains(minutes) else { return false }
+        sleepTask?.cancel(); stopAtBoundary = false
+        sleepStatus = "إيقاف بعد \(minutes) دقيقة"
+        sleepTask = Task { [weak self] in
+            do { try await Task.sleep(nanoseconds: UInt64(minutes) * 60 * 1_000_000_000) } catch { return }
+            guard let self, !Task.isCancelled else { return }
+            if atBoundary, self.playing != nil { self.stopAtBoundary = true; self.sleepStatus = "سينتهي الاستماع عند نهاية المقطع" }
+            else { self.stop() }
+        }
+        return true
+    }
+    func saveBookmark() {
+        guard index < keys.count, player != nil, currentSeconds >= 0 else { return }
+        UserDefaults.standard.set(["key": keys[index], "keys": keys, "index": index, "seconds": currentSeconds,
+                                   "repetitions": count, "completedPass": pass, "gap": gap], forKey: bookmarkKey)
+    }
+    @discardableResult func restoreBookmark() -> Bool {
+        guard let value = UserDefaults.standard.dictionary(forKey: bookmarkKey),
+              let key = value["key"] as? String, let seconds = value["seconds"] as? Double,
+              seconds.isFinite, seconds >= 0 else { return false }
+        let range = value["keys"] as? [String] ?? [key]
+        let position = value["index"] as? Int ?? 0
+        guard range.indices.contains(position), range[position] == key else { return false }
+        play(range, repetitions: value["repetitions"] as? Int ?? 1, delaySeconds: value["gap"] as? Int ?? 0,
+             startingAt: position, seconds: seconds, completedPass: value["completedPass"] as? Int ?? 0)
+        return error == nil && (loadingKey != nil || playing != nil)
     }
     private func releasePlayer() {
         resolvingSource?.cancel(); resolvingSource = nil
@@ -72,12 +175,19 @@ import Foundation
         if let end { NotificationCenter.default.removeObserver(end) }; end = nil
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
         playing = nil; loadingKey = nil; reportedStart = false
+        isPaused = false
     }
     private func completed(_ item: AVPlayerItem, revision token: UUID) {
         guard revision == token, player?.currentItem === item else { return }
+        saveBookmark()
+        if stopAtBoundary { stop(); return }
         releasePlayer(); index += 1
         if index == keys.count { index = 0; pass += 1 }
-        guard pass < count else { stop(); return }
+        completedRepetitions = pass
+        guard pass < count else {
+            let completed = onSequenceFinished
+            stop(); completed?(); return
+        }
         guard gap > 0 else { advance(); return }
         waitingKey = keys[index]
         let seconds = gap
@@ -100,7 +210,15 @@ import Foundation
         } else {
             resolvingSource = Task { [weak self] in
                 guard let self else { return }
-                let url = await self.resolveSource(key)
+                let url: URL?
+                if self.reciterDirectory == "Abdul_Basit_Murattal_64kbps" {
+                    url = await self.resolveSource(key)
+                } else {
+                    let parts = key.split(separator: ":").compactMap { Int($0) }
+                    let permitted = ["Abdurrahmaan_As-Sudais_64kbps", "Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "Saood_ash-Shuraym_64kbps"]
+                    url = parts.count == 2 && permitted.contains(self.reciterDirectory)
+                        ? URL(string: String(format: "https://everyayah.com/data/%@/%03d%03d.mp3", self.reciterDirectory, parts[0], parts[1])) : nil
+                }
                 guard !Task.isCancelled, self.revision == token, self.loadingKey == key else { return }
                 self.resolvingSource = nil
                 guard let url else { self.stop(); return }
@@ -114,6 +232,7 @@ import Foundation
             try AVAudioSession.sharedInstance().setActive(true)
         } catch { self.error = "تعذّر تشغيل الصوت على الجهاز."; stop(); return }
         let item = AVPlayerItem(url: url); let playback = AVPlayer(playerItem: item); player = playback
+        item.audioTimePitchAlgorithm = .spectral
         loadingKey = key
         playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             let started = player.timeControlStatus == .playing
@@ -122,7 +241,12 @@ import Foundation
                 if started {
                     self.loadDeadline?.cancel(); self.loadDeadline = nil
                     self.playing = key; self.loadingKey = nil
+                    if let seconds = self.bookmarkSeconds, self.durationSeconds > 0 {
+                        self.bookmarkSeconds = nil
+                        self.seek(to: min(seconds, max(0, self.durationSeconds - 0.05)))
+                    }
                     if !self.reportedStart { self.reportedStart = true; self.onVerse?(key) }
+                    self.updateNowPlaying()
                 } else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
                     self.playing = nil; self.loadingKey = key
                     self.startLoadDeadline(key: key, token: token)
@@ -146,7 +270,7 @@ import Foundation
             }
         }
         startLoadDeadline(key: key, token: token)
-        playback.play()
+        playback.playImmediately(atRate: playbackRate)
     }
     private func startLoadDeadline(key: String, token: UUID) {
         guard loadDeadline == nil else { return }
@@ -160,8 +284,43 @@ import Foundation
         }
     }
     func stop() {
+        saveBookmark(); bookmarkSeconds = nil
+        sleepTask?.cancel(); sleepTask = nil; stopAtBoundary = false; sleepStatus = nil
         revision = UUID(); delay?.cancel(); delay = nil; waitingKey = nil
         releasePlayer(); keys = []; index = 0; pass = 0
+        NoorAudioFocus.shared.releasePlayback(focusID)
+        if !remoteTargets.isEmpty { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+        for (command, target) in remoteTargets { command.removeTarget(target) }
+        remoteTargets = []
+    }
+    private func updateNowPlaying() {
+        guard !remoteTargets.isEmpty else { return }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [MPMediaItemPropertyTitle: displayName,
+            MPMediaItemPropertyPlaybackDuration: durationSeconds, MPNowPlayingInfoPropertyElapsedPlaybackTime: currentSeconds,
+            MPNowPlayingInfoPropertyPlaybackRate: isPaused ? Float(0) : playbackRate]
+    }
+    private func installRemoteControls() {
+        let center = MPRemoteCommandCenter.shared()
+        center.playCommand.isEnabled = true; center.pauseCommand.isEnabled = true
+        center.stopCommand.isEnabled = true; center.togglePlayPauseCommand.isEnabled = true
+        center.changePlaybackPositionCommand.isEnabled = true
+        remoteTargets.append((center.pauseCommand, center.pauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.pausePlayback() }; return .success
+        }))
+        remoteTargets.append((center.playCommand, center.playCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.resumePlayback() }; return .success
+        }))
+        remoteTargets.append((center.togglePlayPauseCommand, center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in guard let self else { return }; if self.isPaused { self.resumePlayback() } else { self.pausePlayback() } }; return .success
+        }))
+        remoteTargets.append((center.stopCommand, center.stopCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.stop() }; return .success
+        }))
+        remoteTargets.append((center.changePlaybackPositionCommand, center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let position = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            let seconds = position.positionTime
+            Task { @MainActor in self?.seek(to: seconds) }; return .success
+        }))
     }
     deinit {
         let id = focusID
@@ -169,6 +328,8 @@ import Foundation
         resolvingSource?.cancel()
         delay?.cancel()
         loadDeadline?.cancel()
+        sleepTask?.cancel()
+        for (command, target) in remoteTargets { command.removeTarget(target) }
         if let end { NotificationCenter.default.removeObserver(end) }
         if let failure { NotificationCenter.default.removeObserver(failure) }
     }

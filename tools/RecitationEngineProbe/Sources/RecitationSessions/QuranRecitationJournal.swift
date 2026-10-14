@@ -8,6 +8,7 @@ public struct QuranRecitationTake: Codable, Equatable, Identifiable {
     public let startedAt: Date
     public var frames: Int64
     public var closed: Bool
+    public var referenceExposure: String? = nil
     public var duration: Double { Double(frames) / 16_000 }
     public init(id: UUID = UUID(), startedAt: Date = Date(), frames: Int64 = 0, closed: Bool = false) {
         self.id = id; self.startedAt = startedAt; self.frames = frames; self.closed = closed
@@ -34,7 +35,7 @@ public struct QuranObservedWord: Codable, Equatable, Sendable {
         self.recognitionState = recognitionState; self.timingSource = timingSource
     }
 }
-public struct QuranObservedSpeech: Codable, Equatable {
+public struct QuranObservedSpeech: Codable, Equatable, Sendable {
     public let takeID: UUID
     public let start: Double
     public let end: Double
@@ -68,6 +69,8 @@ public struct QuranRecitationRecord: Codable, Identifiable {
     public var recognitionUnavailable: Bool
     public var finishedAt: Date?
     public var observedSpeech: [QuranObservedSpeech]? = nil
+    public var wordingEvents: [QuranWordingEvent]? = nil
+    public var referenceExposure: String? = nil
     public var duration: Double { takes.reduce(0) { $0 + $1.duration } }
     public init(keys: [String], originPage: Int, date: Date = Date()) {
         version = 1; id = UUID(); startedAt = date; self.keys = keys; self.originPage = originPage
@@ -116,6 +119,14 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       } ?? true)
               }) else { throw QuranJournalFailure.invalidRecord }
         let scope = Set(keys)
+        guard (wordingEvents?.count ?? 0) <= 100_000,
+              (wordingEvents ?? []).allSatisfy({ event in
+                  guard let take = knownTakes[event.takeID] else { return false }
+                  return event.start.isFinite && event.end.isFinite && event.start >= 0 && event.end > event.start
+                      && event.end <= take.duration + 0.1 && event.state == "provisional"
+                      && ["substitution", "omission", "insertion", "repetition"].contains(event.category)
+                      && event.referenceIDs.allSatisfy { $0 > 0 }
+              }) else { throw QuranJournalFailure.invalidRecord }
         guard evidence.allSatisfy({ word in
             guard let take = knownTakes[word.takeID] else { return false }
             return word.nativeID > 0 && scope.contains(word.verse)

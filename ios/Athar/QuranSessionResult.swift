@@ -71,6 +71,25 @@ struct QuranSessionResult: View {
                         }.buttonStyle(.bordered).accessibilityIdentifier("study.result.review")
                     }
                     DisclosureGroup("تفاصيل التتبع") {
+                        if let events = record.wordingEvents, !events.isEmpty {
+                            Text("ملاحظات تحتاج مراجعة الصوت؛ ليست أخطاء مؤكدة ولا تؤثر في تقدم الحفظ.").font(.footnote).foregroundStyle(.secondary)
+                            ForEach(events, id: \.eventID) { event in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(event.resolution == nil ? "راجع هذا الموضع" : "ظهرت قراءة مطابقة لاحقًا في التسجيل")
+                                    HStack {
+                                        Button("استمع لمحاولتك") {
+                                            if let span = record.observedSpeech?.first(where: { $0.takeID == event.takeID && $0.start <= event.start && $0.end >= event.end }) {
+                                                let word = span.wordObservations?.first { event.supportingObservationIDs.contains($0.observationID) }
+                                                replay(span, word: word)
+                                            }
+                                        }.frame(minHeight: 44)
+                                        if let key = wordIDs.first(where: { !Set($0.value).isDisjoint(with: event.referenceIDs) })?.key {
+                                            Button("راجع الآية") { onReview(key) }.frame(minHeight: 44)
+                                        }
+                                    }
+                                }.padding(.vertical, 8)
+                            }
+                        }
                         if let spans = record.observedSpeech, !spans.isEmpty {
                             Text("الكلمات المسموعة ليست حكمًا بصحة الحفظ أو النطق. المقاطع المتداخلة قد تكرر الكلمات.").font(.footnote).foregroundStyle(.secondary)
                             LazyVStack(alignment: .leading, spacing: 0) {

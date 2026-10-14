@@ -8,6 +8,39 @@ import CryptoKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    /// Diagnostic edited-reference regression, not a human-reviewed learner
+    /// benchmark. It exposes model normalization/abstention rather than claiming
+    /// production error accuracy from a splice based on estimated word timing.
+    func testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional() async throws {
+        let bundle = Bundle(for: Self.self)
+        let one = try XCTUnwrap(bundle.url(forResource: "112001", withExtension: "mp3"))
+        let two = try XCTUnwrap(bundle.url(forResource: "112002", withExtension: "mp3"))
+        let correct = try AudioProcessor.loadAudioAsFloatArray(fromPath: one.path)
+            + AudioProcessor.loadAudioAsFloatArray(fromPath: two.path)
+        let worker = QuranRecognitionWorker()
+        let base = try await worker.recognize(.init(samples: correct, startFrame: 0, endFrame: Int64(correct.count)))
+        let observed = try XCTUnwrap(base.observations)
+        let removed = try XCTUnwrap(observed.first { QuranAlignedWord.normalize($0.observedText) == "الله" && $0.recognitionState == "accepted" })
+        let from = Int(try XCTUnwrap(removed.startInTakeSeconds) * 16_000)
+        let to = Int(try XCTUnwrap(removed.endInTakeSeconds) * 16_000)
+        XCTAssertGreaterThan(to, from); XCTAssertLessThanOrEqual(to, correct.count)
+        let edited = Array(correct[..<from]) + Array(correct[to...])
+        let started = Date()
+        let result = try await worker.recognize(.init(samples: edited, startFrame: 0, endFrame: Int64(edited.count)))
+        let tokens = ["قل", "هو", "الله", "أحد", "الله", "الصمد"]
+        let expected = tokens.enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: $0.offset < 4 ? "112:1" : "112:2", page: 604,
+                aliases: [[QuranAlignedWord.normalize($0.element)]])
+        }
+        var span = QuranObservedSpeech(takeID: UUID(), start: 0, end: Double(edited.count) / 16_000,
+            words: result.runs.flatMap { $0.map(\.text) }, unresolved: result.hasUnresolvedSpeech, backendID: worker.capabilities.backendID)
+        span.evidenceVersion = 1; span.recognitionWindowID = result.windowID; span.recognitionRevision = 0
+        span.wordObservations = result.observations
+        let events = QuranWordingAssessment.evaluate([span], expected: expected)
+        XCTAssertTrue(events.allSatisfy { $0.state == "provisional" })
+        XCTAssertEqual(span.wordObservations, result.observations, "Assessment must not repair observed speech into the reference")
+        print("EDITED_PUBLIC_REFERENCE_OMISSION elapsedMs=\(Int(Date().timeIntervalSince(started) * 1000)) observations=\(result.observations?.count ?? 0) unresolved=\(result.hasUnresolvedSpeech) omissionCandidates=\(events.filter { $0.category == "omission" }.count) confirmed=0")
+    }
     func testShortStreamingReferenceWindowsAnchorOnlyTheActuallySpokenVerse() async throws {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
         let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
@@ -287,6 +320,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(first.evidence.count, 2, "Actual reference speech must produce authentic native word evidence")
         let observed = try XCTUnwrap(first.observedSpeech)
         XCTAssertFalse(observed.isEmpty)
+        XCTAssertEqual(first.wordingEvents, [], "Correct real reference speech must not produce unsupported error alerts")
         let timed = observed.flatMap { $0.wordObservations ?? [] }
         XCTAssertFalse(timed.isEmpty, "Actual backend word evidence must reach the saved session")
         XCTAssertTrue(timed.contains { $0.startInTakeSeconds != nil && $0.endInTakeSeconds != nil })
