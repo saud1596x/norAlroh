@@ -399,6 +399,33 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertTrue(controlTracker.revealedIDs.isEmpty, "Noise must not create Quran progress after conditioning")
     }
 
+    func testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let expected = ["قل", "هو", "الله", "احد"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        }
+        let worker = QuranRecognitionWorker()
+        let weakSpeech = original.map { $0 * 0.003 }
+        let result = try await worker.recognize(.init(samples: weakSpeech, startFrame: 0, endFrame: Int64(weakSpeech.count)))
+        var speechTracker = QuranRecitationTracker(expected: expected)
+        for run in result.runs { try speechTracker.consume(run, takeID: UUID()) }
+        XCTAssertGreaterThanOrEqual(speechTracker.revealedIDs.count, 2,
+            "Increased gain must improve actual very weak speech recognition")
+        var seed: UInt32 = 14
+        let weakNoise: [Float] = (0..<128000).map { _ in
+            seed = 1664525 &* seed &+ 1013904223
+            return (Float(seed) / Float(UInt32.max) * 2 - 1) * 0.0005
+        }
+        let amplified = try QuranRecognitionAudio.conditioned(weakNoise)
+        XCTAssertGreaterThan(amplified.map { abs($0) }.max() ?? 0, 0.05,
+            "The negative control must exercise amplification, not bypass inference as silence")
+        let control = try await worker.recognize(.init(samples: weakNoise, startFrame: 0, endFrame: Int64(weakNoise.count)))
+        var noiseTracker = QuranRecitationTracker(expected: expected)
+        for run in control.runs { try noiseTracker.consume(run, takeID: UUID()) }
+        XCTAssertTrue(noiseTracker.revealedIDs.isEmpty, "Amplified background noise must not advance Quran words")
+    }
+
     func testActualAudioAndSessionEvidenceSurviveIndependentReopening() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

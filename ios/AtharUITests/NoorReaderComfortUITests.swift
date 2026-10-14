@@ -44,6 +44,13 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertFalse(app.navigationBars.firstMatch.exists)
         XCTAssertFalse(app.buttons["reader.fullscreen"].exists)
+        let viewport = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        let originalFrame = first.frame
+        let dragStart = viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+        let dragEnd = viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.56, dy: 0.6))
+        dragStart.press(forDuration: 0.05, thenDragTo: dragEnd)
+        requirePage(14, app: app)
+        XCTAssertEqual(first.frame, originalFrame, "A cancelled short drag must restore exact verse geometry")
         capture(app, "user-reference-balanced-page-14")
     }
     func testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone() {

@@ -119,11 +119,12 @@ import UIKit
             XCTAssertEqual(ornaments.count, source.rows.filter { $0.type == "surah_name" }.count)
             for row in canvas.rowGeometry {
                 let authored = try XCTUnwrap(source.rows.first { $0.line == row.line })
+                let opticalShift: CGFloat = row.kind == "ayah" ? -4.5 : 0
                 if authored.centered {
-                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2,
+                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2 + opticalShift,
                                    accuracy: 0.01, "Actual ink center: page \(number), row \(row.line)")
                 } else {
-                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15,
+                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15 + opticalShift,
                                    accuracy: 0.01, "Authored right edge: page \(number), row \(row.line)")
                 }
                 if row.kind == "surah_name" {

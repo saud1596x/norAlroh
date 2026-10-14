@@ -213,6 +213,9 @@ import os
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
         try setSessionActive(true)
+        // Use the highest hardware input gain only when this route supports it.
+        // A route rejecting gain adjustment must not prevent microphone capture.
+        if audio.isInputGainSettable { try? audio.setInputGain(1.0) }
         let take = QuranRecitationTake()
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id),

@@ -12,7 +12,7 @@ final class QuranRecognitionAudioTests: XCTestCase {
         XCTAssertEqual(rms, 0.06, accuracy: 0.000001)
         let extremelyQuiet = input.map { $0 * 0.001 }
         let bounded = try QuranRecognitionAudio.conditioned(extremelyQuiet)
-        XCTAssertEqual(bounded[20], extremelyQuiet[20] * 32, accuracy: 0.000001)
+        XCTAssertEqual(bounded[20], extremelyQuiet[20] * 256, accuracy: 0.000001)
         XCTAssertEqual(try QuranRecognitionAudio.conditioned([Float](repeating: 0, count: 16000)),
                        [Float](repeating: 0, count: 16000))
         XCTAssertThrowsError(try QuranRecognitionAudio.conditioned([.nan]))
@@ -21,5 +21,16 @@ final class QuranRecognitionAudioTests: XCTestCase {
     func testAlreadyAudibleInputIsNotClippedOrChanged() throws {
         let input: [Float] = [0.95, -0.95, 0.4, -0.4]
         XCTAssertEqual(try QuranRecognitionAudio.conditioned(input), input)
+    }
+
+    func testWeakInputWithTransientKeepsPeakHeadroomAndSampleTiming() throws {
+        var input = [Float](repeating: 0.0001, count: 16000)
+        input[4000] = 0.02; input[8000] = -0.02
+        let output = try QuranRecognitionAudio.conditioned(input)
+        XCTAssertEqual(output.count, input.count)
+        XCTAssertEqual(output[4000], 0.9, accuracy: 0.000001)
+        XCTAssertEqual(output[8000], -0.9, accuracy: 0.000001)
+        XCTAssertTrue(output.allSatisfy { $0.isFinite && abs($0) <= 0.900001 })
+        XCTAssertEqual(input[4000], 0.02, "Original audio remains available unchanged")
     }
 }

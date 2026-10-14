@@ -177,7 +177,10 @@ struct OriginalPageData {
             let baseline = row.type == "surah_name"
                 ? rowTop + 30.5 + ink.midY
                 : rowTop + Metrics.baselineOffset
-            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX, y: baseline)
+            // Optical balance requested by the reader: move ayah ink and its hit
+            // geometry together, without changing glyphs or authored line widths.
+            let opticalShift: CGFloat = row.type == "ayah" ? -4.5 : 0
+            let origin = CGPoint(x: (row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX) + opticalShift, y: baseline)
             let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
             guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
                   pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
@@ -471,22 +474,49 @@ struct OriginalPageData {
         selection.allowableMovement = 10
         tap.require(toFail: selection)
         addGestureRecognizer(selection)
-        for direction in [UISwipeGestureRecognizer.Direction.right, .left] {
-            let swipe = UISwipeGestureRecognizer(target: self, action: #selector(turnPage(_:)))
-            swipe.direction = direction; swipe.numberOfTouchesRequired = 1
-            swipe.delegate = pagingDelegate
-            addGestureRecognizer(swipe)
-            tap.require(toFail: swipe)
-            panGestureRecognizer.require(toFail: swipe)
-        }
+        let paging = UIPanGestureRecognizer(target: self, action: #selector(dragPage(_:)))
+        paging.maximumNumberOfTouches = 1
+        paging.delegate = pagingDelegate
+        addGestureRecognizer(paging)
+        tap.require(toFail: paging)
+        paging.require(toFail: selection)
+        panGestureRecognizer.require(toFail: paging)
         tap.require(toFail: panGestureRecognizer)
         addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
-    @objc private func turnPage(_ gesture: UISwipeGestureRecognizer) {
-        guard gesture.state == .ended, canTurnPages else { return }
-        // RTL: swipe right advances; zoomed swipes only pan the current page.
-        onTurn?(gesture.direction == .right ? 1 : -1)
+    @objc private func dragPage(_ gesture: UIPanGestureRecognizer) {
+        let distance = gesture.translation(in: self).x
+        let motionAllowed = !canvas.reduceMotion && !UIAccessibility.isReduceMotionEnabled
+            && !ProcessInfo.processInfo.isLowPowerModeEnabled
+        switch gesture.state {
+        case .began, .changed:
+            guard canTurnPages, motionAllowed else { return }
+            let travel = max(-bounds.width * 0.35, min(bounds.width * 0.35, distance))
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            canvas.layer.sublayerTransform = CATransform3DMakeTranslation(travel / max(zoomScale, 0.001), 0, 0)
+            CATransaction.commit()
+        case .ended, .cancelled, .failed:
+            let velocity = gesture.velocity(in: self).x
+            let committed = gesture.state == .ended && canTurnPages
+                && (abs(distance) >= bounds.width * 0.18 || (abs(distance) >= max(12, bounds.width * 0.08) && abs(velocity) >= 550 && distance * velocity > 0))
+            let previous = canvas.layer.sublayerTransform
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            canvas.layer.sublayerTransform = CATransform3DIdentity
+            CATransaction.commit()
+            if committed {
+                // RTL: right advances; a zoomed drag remains viewport panning.
+                onTurn?(distance > 0 ? 1 : -1)
+            } else if motionAllowed {
+                let settle = CABasicAnimation(keyPath: "sublayerTransform")
+                settle.fromValue = NSValue(caTransform3D: previous)
+                settle.toValue = NSValue(caTransform3D: CATransform3DIdentity)
+                settle.duration = 0.2
+                settle.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                canvas.layer.add(settle, forKey: "pageDragReturn")
+            }
+        default: break
+        }
     }
     @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
         if let onToggleTools { onToggleTools(); return }
@@ -520,6 +550,8 @@ struct OriginalPageData {
         }
     }
     func resetToFittedPage() {
+        canvas.layer.removeAnimation(forKey: "pageDragReturn")
+        canvas.layer.sublayerTransform = CATransform3DIdentity
         setZoomScale(minimumZoomScale * max(1, min(2, readingMagnification)), animated: false)
         setNeedsLayout(); layoutIfNeeded()
         setContentOffset(CGPoint(x: -contentInset.left, y: -contentInset.top), animated: false)
@@ -529,7 +561,10 @@ struct OriginalPageData {
     weak var viewport: OriginalMushafViewport?
     init(viewport: OriginalMushafViewport) { self.viewport = viewport }
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        viewport?.canTurnPages == true
+        guard let viewport, viewport.canTurnPages,
+              let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+        let velocity = pan.velocity(in: viewport)
+        return abs(velocity.x) > abs(velocity.y) * 1.2
     }
 }
 struct OriginalMushafDrawing: UIViewRepresentable {
@@ -552,6 +587,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
         if context.coordinator.page != page.number || !view.canvas.renderedSuccessfully {
             let animate = context.coordinator.page != nil && context.coordinator.page != page.number
                 && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
+            let previousPage = context.coordinator.page
             context.coordinator.page = page.number
             let change = {
                 view.canvas.configure(page: self.page, corpus: self.corpus)
@@ -561,9 +597,17 @@ struct OriginalMushafDrawing: UIViewRepresentable {
                 view.canvas.setNeedsDisplay(); view.canvas.layoutIfNeeded()
             }
             if animate {
-                // Fade the whole authored page, never reshape, stretch or move words.
-                UIView.transition(with: view, duration: 0.2,
-                    options: [.transitionCrossDissolve, .allowUserInteraction, .beginFromCurrentState], animations: change, completion: nil)
+                // Slide a complete page in reading direction, without animating
+                // individual words or changing the page's text layout.
+                let transition = CATransition()
+                transition.duration = 0.28
+                transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                if let previousPage, abs(page.number - previousPage) == 1 {
+                    transition.type = .push
+                    transition.subtype = page.number > previousPage ? .fromLeft : .fromRight
+                } else { transition.type = .fade }
+                view.layer.add(transition, forKey: "mushafPageTurn")
+                UIView.performWithoutAnimation(change)
             } else { UIView.performWithoutAnimation(change) }
         }
         view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
