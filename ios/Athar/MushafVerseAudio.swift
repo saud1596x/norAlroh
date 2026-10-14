@@ -18,6 +18,7 @@ import Foundation
     private var loadDeadline: Task<Void, Never>?
     private let loadTimeout: UInt64
     private var revision = UUID()
+    private let focusID = UUID()
     private var keys: [String] = []
     private var index = 0
     private var pass = 0
@@ -41,6 +42,7 @@ import Foundation
         self.source = source
         self.resolveSource = resolveSource ?? Self.recitationURL
         loadTimeout = UInt64(max(0.05, min(60, loadTimeoutSeconds.isFinite ? loadTimeoutSeconds : 15)) * 1_000_000_000)
+        NoorAudioFocus.shared.register(focusID) { [weak self] in self?.stop() }
     }
     static func recitationURL(_ key: String) async -> URL? {
         let parts = key.split(separator: ":").compactMap { Int($0) }
@@ -52,6 +54,9 @@ import Foundation
     }
     func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0) {
         stop(); error = nil; lastPlaybackDiagnostic = ""
+        guard NoorAudioFocus.shared.preparePlayback(focusID) else {
+            error = "أوقف التسميع أولًا للاستماع إلى التلاوة."; return
+        }
         guard !keys.isEmpty, (1...20).contains(repetitions), (0...30).contains(delaySeconds),
               keys.allSatisfy({ key in source.map { $0(key) != nil } ?? (NoorAudioIntegrity.url(key) != nil) }) else {
             error = "تعذّر تشغيل نطاق التلاوة أو خيارات التكرار."; return
@@ -159,6 +164,8 @@ import Foundation
         releasePlayer(); keys = []; index = 0; pass = 0
     }
     deinit {
+        let id = focusID
+        Task { @MainActor in NoorAudioFocus.shared.unregister(id) }
         resolvingSource?.cancel()
         delay?.cancel()
         loadDeadline?.cancel()

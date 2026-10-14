@@ -1,0 +1,114 @@
+{
+  "checked": "2026-10-14",
+  "source": "https://www.mp3quran.net/api/v3/reciters?language=ar",
+  "catalogSHA256": "3677ce535894a7c0a0ab9c74f5ce73b128d4e5c4050edd537e9287a5000b2568",
+  "reciters": 20,
+  "surahsPerReciter": 114,
+  "publicAudioLinksChecked": 2280,
+  "successfulAudioRangeResponses": 2280,
+  "missingLinks": 0,
+  "method": "HTTPS range bytes=0-31; HTTP206; audio/mpeg; 32 actual response bytes",
+  "limits": "Link availability only. Full recordings have not been listened to or compared verse-by-verse. Native player and physical-device checks remain separate.",
+  "readers": [
+    {
+      "id": 54,
+      "name": "عبدالرحمن السديس",
+      "surahs": 114
+    },
+    {
+      "id": 31,
+      "name": "سعود الشريم",
+      "surahs": 114
+    },
+    {
+      "id": 102,
+      "name": "ماهر المعيقلي",
+      "surahs": 114
+    },
+    {
+      "id": 62,
+      "name": "عبدالله عواد الجهني",
+      "surahs": 114
+    },
+    {
+      "id": 92,
+      "name": "ياسر الدوسري",
+      "surahs": 114
+    },
+    {
+      "id": 217,
+      "name": "بندر بليله",
+      "surahs": 114
+    },
+    {
+      "id": 254,
+      "name": "بدر التركي",
+      "surahs": 114
+    },
+    {
+      "id": 76,
+      "name": "علي جابر",
+      "surahs": 114
+    },
+    {
+      "id": 61,
+      "name": "عبدالله خياط",
+      "surahs": 114
+    },
+    {
+      "id": 1,
+      "name": "إبراهيم الأخضر",
+      "surahs": 114
+    },
+    {
+      "id": 109,
+      "name": "محمد أيوب",
+      "surahs": 114
+    },
+    {
+      "id": 159,
+      "name": "خالد المهنا",
+      "surahs": 114
+    },
+    {
+      "id": 58,
+      "name": "عبدالله البعيجان",
+      "surahs": 114
+    },
+    {
+      "id": 67,
+      "name": "عبدالمحسن القاسم",
+      "surahs": 114
+    },
+    {
+      "id": 74,
+      "name": "علي بن عبدالرحمن الحذيفي",
+      "surahs": 114
+    },
+    {
+      "id": 43,
+      "name": "صلاح البدير",
+      "surahs": 114
+    },
+    {
+      "id": 49,
+      "name": "عبدالبارئ الثبيتي",
+      "surahs": 114
+    },
+    {
+      "id": 229,
+      "name": "محمد خليل القارئ",
+      "surahs": 114
+    },
+    {
+      "id": 21136,
+      "name": "عبدالله القرافي",
+      "surahs": 114
+    },
+    {
+      "id": 21181,
+      "name": "محمد برهجي",
+      "surahs": 114
+    }
+  ]
+}

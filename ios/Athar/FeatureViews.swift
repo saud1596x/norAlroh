@@ -21,6 +21,10 @@ struct QuranView: View {
             Section {
                 Text("١١٤ سورة. تابع القراءة من آخر صفحة واحفظ علاماتك.")
                     .font(.subheadline).foregroundStyle(.secondary)
+                NavigationLink { NoorRecitersView() } label: {
+                    Label("تلاوات أئمة الحرمين", systemImage: "headphones")
+                        .frame(minHeight: 44)
+                }.accessibilityIdentifier("quran.haramainReciters")
             }
             ForEach(filtered) { surah in
                 NavigationLink { MushafReader(chapter: surah.number) } label: {

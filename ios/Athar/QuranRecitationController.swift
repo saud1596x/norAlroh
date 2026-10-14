@@ -42,6 +42,7 @@ import os
     private var mailbox: QuranWindowMailbox?
     private var pump: Task<Void, Never>?
     private var capturing = false
+    private var audioFocusLease: UUID?
     private var tracker: QuranRecitationTracker?
     private var expectedIDs = Set<Int>()
     private var words: [QuranAlignedWord] = []
@@ -196,11 +197,22 @@ import os
     private func beginTake(token: UUID) async throws {
         guard var next = record, let journal else { throw QuranJournalFailure.invalidRecord }
         finishRequest = false; next.finishedAt = nil
+        let lease = UUID()
+        guard NoorAudioFocus.shared.acquireRecording(lease) else {
+            throw NSError(domain: "NoorAudioFocus", code: 1)
+        }
+        audioFocusLease = lease
+        var started = false
+        defer {
+            if !started {
+                try? setSessionActive(false)
+                NoorAudioFocus.shared.releaseRecording(lease)
+                audioFocusLease = nil
+            }
+        }
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
         try setSessionActive(true)
-        var started = false
-        defer { if !started { try? setSessionActive(false) } }
         let take = QuranRecitationTake()
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id),
@@ -350,6 +362,8 @@ import os
         }
         closing = false
         try? setSessionActive(false)
+        if let lease = audioFocusLease { NoorAudioFocus.shared.releaseRecording(lease) }
+        audioFocusLease = nil
     }
     func finish() async {
         finishRequest = true
@@ -359,6 +373,11 @@ import os
         do { try save(current); record = current; state = .stopped }
         catch { message = "تعذّر حفظ الملخص. التسجيلات محفوظة؛ أعد المحاولة." }
     }
-    deinit { pump?.cancel() }
+    deinit {
+        pump?.cancel()
+        if let lease = audioFocusLease {
+            Task { @MainActor in NoorAudioFocus.shared.releaseRecording(lease) }
+        }
+    }
 }
 

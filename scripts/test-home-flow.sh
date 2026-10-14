@@ -40,6 +40,7 @@ xcrun simctl privacy "$noor_home_device" reset microphone com.saud1596x.nooralru
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorHomeFlowUITests \
   -only-testing:AtharUITests/NoorAllScreensTests \
+  -only-testing:AtharUITests/NoorReciterLibraryTests \
   -only-testing:AtharUITests/NoorNavigationTests \
   -only-testing:AtharUITests/NoorPrayerDisplayUITests \
   -only-testing:AtharUITests/NoorRemovedFeaturesUITests \
