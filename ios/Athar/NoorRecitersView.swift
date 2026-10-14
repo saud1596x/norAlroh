@@ -45,8 +45,13 @@ struct NoorRecitersView: View {
                 }.listRowBackground(Theme.panel)
             }
             if filtered.isEmpty {
-                ContentUnavailableView("لا يوجد قارئ مطابق", systemImage: "magnifyingglass",
-                    description: Text("غيّر البحث أو أظهر جميع القراء."))
+                if NoorReciterCatalog.reciters.isEmpty {
+                    ContentUnavailableView("تعذّر تحميل مكتبة القراء", systemImage: "exclamationmark.triangle",
+                        description: Text("بيانات المكتبة غير متاحة في هذه النسخة. أعد فتح التطبيق أو حدّثه إلى آخر نسخة."))
+                } else {
+                    ContentUnavailableView(favoritesOnly ? "لا يوجد قارئ مفضل مطابق" : "لا يوجد قارئ مطابق", systemImage: "magnifyingglass",
+                        description: Text("غيّر البحث أو أظهر جميع القراء."))
+                }
             }
             Section {
                 Link("مصدر التلاوات: MP3Quran", destination: NoorReciterCatalog.source)
@@ -77,6 +82,11 @@ private struct NoorReciterSurahsView: View {
                 ArabicSearch.normalize($0.name).contains(query) || ArabicSearch.integer(search) == $0.number)
         }
     }
+    private var activeSurah: Surah? {
+        guard let key = audio.playing ?? audio.loadingKey ?? audio.waitingKey,
+              let number = Int(key) else { return nil }
+        return store.quran.first { $0.number == number }
+    }
     var body: some View {
         List {
             Section {
@@ -89,6 +99,12 @@ private struct NoorReciterSurahsView: View {
                         .frame(minHeight: 44)
                 }.accessibilityIdentifier("reciter.playCompleteQuran")
                 if audio.playing != nil || audio.loadingKey != nil || audio.waitingKey != nil {
+                    if let current = activeSurah {
+                        Label("\(audio.playing != nil ? "تُتلى الآن" : "جارٍ تحميل") · \(current.name)",
+                              systemImage: audio.playing != nil ? "speaker.wave.2.fill" : "arrow.down.circle")
+                            .font(.subheadline).foregroundStyle(Theme.gold)
+                            .accessibilityIdentifier("reciter.currentSurah")
+                    }
                     Button { audio.stop() } label: {
                         Label("إيقاف التلاوة", systemImage: "stop.circle")
                             .frame(minHeight: 44)
@@ -118,7 +134,7 @@ private struct NoorReciterSurahsView: View {
                     }.padding(.vertical, 8).frame(minHeight: 48)
                 }.buttonStyle(.plain).listRowBackground(Theme.panel)
                     .accessibilityIdentifier("reciter.surah.\(surah.number)")
-                    .accessibilityLabel("\(surah.name)، \(reciter.name)، \(audio.playing == key ? "إيقاف" : "تشغيل")")
+                    .accessibilityLabel("\(surah.name)، \(reciter.name)، \(audio.playing == key || audio.loadingKey == key ? "إيقاف" : "تشغيل")")
             }
             if surahs.isEmpty {
                 ContentUnavailableView("لا توجد سورة مطابقة", systemImage: "magnifyingglass")
