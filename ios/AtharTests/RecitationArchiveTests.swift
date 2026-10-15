@@ -3,6 +3,27 @@ import AVFoundation
 @testable import Athar
 
 final class RecitationArchiveTests: XCTestCase {
+    func testFailedFinalizationPreservesActualCaptureForRetry() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let capture = folder.appendingPathComponent(".capture-retry.mp3")
+        try FileManager.default.copyItem(at: reference, to: capture)
+        let original = try Data(contentsOf: capture)
+        // A directory cannot be atomically replaced with the completed audio.
+        let blocked = folder.appendingPathComponent("blocked", isDirectory: true)
+        try FileManager.default.createDirectory(at: blocked, withIntermediateDirectories: true)
+        let sentinel = blocked.appendingPathComponent("keep.txt")
+        try Data("existing archive".utf8).write(to: sentinel)
+        XCTAssertThrowsError(try RecitationArchive.finalize(capture: capture, destination: blocked, saveCapture: true))
+        XCTAssertEqual(try Data(contentsOf: capture), original)
+        XCTAssertEqual(try Data(contentsOf: sentinel), Data("existing archive".utf8))
+        let saved = folder.appendingPathComponent("saved.mp3")
+        try RecitationArchive.finalize(capture: capture, destination: saved, saveCapture: true)
+        XCTAssertEqual(try Data(contentsOf: saved), original)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: capture.path))
+    }
     func testDamagedCaptureDoesNotReplaceSavedVoice() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

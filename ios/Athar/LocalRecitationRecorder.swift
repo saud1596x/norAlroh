@@ -18,6 +18,14 @@ enum RecitationArchive {
         guard check.duration.isFinite, check.duration > 0 else { throw CocoaError(.fileReadCorruptFile) }
         try Data(contentsOf: capture).write(to: destination, options: [.atomic, .completeFileProtection])
     }
+    /// Remove the working take only after the replacement is durably written.
+    /// Any validation/write failure leaves both files available for recovery.
+    static func finalize(capture: URL, destination: URL, saveCapture: Bool) throws {
+        if saveCapture { try save(capture: capture, destination: destination) }
+        if FileManager.default.fileExists(atPath: capture.path) {
+            try FileManager.default.removeItem(at: capture)
+        }
+    }
 }
 
 @MainActor final class LocalRecitationRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate {
@@ -30,6 +38,7 @@ enum RecitationArchive {
     @Published private(set) var duration = 0.0
     @Published private(set) var playbackTime = 0.0
     private var capture: URL?
+    @Published private(set) var pendingCaptureSave = false
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
     private var file: URL?
@@ -74,6 +83,9 @@ enum RecitationArchive {
         guard requestedRevision == startRevision, let file, isActive() else { return }
         do {
             stop()
+            guard capture == nil else {
+                message = "تعذّر حفظ التسجيل السابق. احتُفظ بالصوت؛ أعد محاولة الحفظ قبل بدء تسجيل جديد."; return
+            }
             guard NoorAudioFocus.shared.acquireRecording(focusID) else {
                 message = "أوقف جلسة التسميع الأخرى أولًا."; return
             }
@@ -102,7 +114,7 @@ enum RecitationArchive {
     }
     func stop(saveCapture: Bool = true) {
         startRevision += 1
-        let shouldSave = recording && saveCapture
+        if recording && saveCapture { pendingCaptureSave = true }
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = false; level = 0
         // An idle legacy control can disappear while the Mushaf is listening.
@@ -114,15 +126,13 @@ enum RecitationArchive {
         }
         if recordingFocus { NoorAudioFocus.shared.releaseRecording(focusID); recordingFocus = false }
         if let capture, let file {
-            if shouldSave {
-                do {
-                    try RecitationArchive.save(capture: capture, destination: file)
-                } catch { message = "تعذّر حفظ التسجيل الجديد. التسجيل السابق لم يُستبدل. حاول مجددًا." }
+            do {
+                try RecitationArchive.finalize(capture: capture, destination: file, saveCapture: pendingCaptureSave)
+                self.capture = nil; pendingCaptureSave = false
+            } catch {
+                message = "تعذّر إكمال حفظ التسجيل. احتُفظ بملف الصوت لإعادة المحاولة."
             }
-            do { if FileManager.default.fileExists(atPath: capture.path) { try FileManager.default.removeItem(at: capture) } }
-            catch { message = "تعذّر حذف ملف التسجيل المؤقت. احذف التسجيلات من الإعدادات للمحاولة مجددًا." }
         }
-        capture = nil
         hasRecording = file.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
     }
     func play() {
@@ -145,7 +155,9 @@ enum RecitationArchive {
         player.currentTime = min(player.duration, max(0, time)); playbackTime = player.currentTime
     }
     @discardableResult func erase() -> Bool {
-        stop()
+        // Erasure is an explicit user action, unlike incidental view cleanup.
+        pendingCaptureSave = false
+        stop(saveCapture: false)
         guard let file else { return true }
         do {
             let directory = file.deletingLastPathComponent()
@@ -198,6 +210,11 @@ struct RecitationRecordingControls: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("سجّل تسميعك", systemImage: "mic.fill").font(.headline)
             Text("سمّع من حفظك، ثم استمع وقارن بالنص.").font(.subheadline).foregroundStyle(.secondary)
+            if audio.pendingCaptureSave && !audio.recording {
+                Button("إعادة حفظ التسجيل", systemImage: "arrow.clockwise") { audio.stop() }
+                    .buttonStyle(.borderedProminent).frame(minHeight: 44)
+                    .accessibilityIdentifier("recitation.retrySave")
+            }
             HStack {
                 Button {
                     if audio.recording { audio.stop() }

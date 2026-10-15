@@ -129,3 +129,22 @@ Do not repeat the same paid runs, change the completion expectations, or mark
 the release gates passed. The user has no Mac and declined sending a support
 request. A different, working real-audio verification path is still required;
 no new TestFlight build was produced. This is not full engine acceptance.
+
+## Standalone host and archive review
+
+Diagnostic commit 24625dcc0e68d8a688ce4fc39523b9c0928a420d adds a separate
+UIKit application and two actual-playback tests with the unchanged 112001.mp3.
+It excludes all Noor startup, stores and services; previous raw controls shared
+the Noor app host. Build 6ad104023ffd2c7f0ad3a745 is the bounded six-minute
+comparison on the same Xcode26.3/iOS26.2 runtime. Its result must be recorded
+before drawing a conclusion; it cannot replace engine or Release acceptance.
+
+Local review also found a separate data-loss defect: legacy recorder cleanup
+deleted its temporary capture even after archive validation/write failed.
+Cleanup now removes that take only after successful finalization, retains the
+pending save for a subsequent stop/start retry, and prevents a new capture from
+overwriting that pending reference. Explicit user erasure can still remove it.
+A regression uses the original reference audio and an unwritable destination
+(an existing nonempty directory), then retries to a valid destination and
+checks exact bytes. This change is not part of the standalone diagnostic run,
+and its new native regression has not yet run. No recognition claims follow.
