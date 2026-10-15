@@ -84,8 +84,8 @@ player/capture, and a legacy recording could compete with recognition. It now
 tracks its own activation, participates in the shared recording lease, and
 registers playback cleanup. Two ownership regressions verify idle cleanup and
 rejection before system activation when another recording owns the route.
-These new legacy changes are not part of cc8cca6 and have not run natively yet;
-they are not asserted to be the cause of the Simulator's reference failure.
+Both legacy ownership regressions compiled and passed in 424a05b. They are
+not asserted to be the cause of the Simulator's reference failure.
 
 Follow-up review found that retaining a failed session-deactivation retry could
 let an old recorder deactivate a new recording owner later. NoorAudioFocus now
@@ -93,12 +93,20 @@ rotates an ownership epoch after handoff cleanup; both recorder transports only
 retry deactivation within their activation epoch. The existing same-owner retry
 test is retained, and a new handoff regression requires the next recording's
 lease and file bytes to survive old cleanup. This follow-up is not in the
-running 424a05b comparison and needs its own native verification.
+completed 424a05b comparison and needs its own native verification.
 
-The next comparison pins Xcode 26.6 (a different patched macOS worker image),
-includes the legacy ownership fix, and retains both raw control tests and the
-original guided assertions. The existing host-daemon recovery and actual
-`afplay` observation remain identical. DerivedData caching is removed from this
-diagnostic workflow to avoid retaining or uploading an unnecessary build tree.
-This is an unverified environment comparison, not a proved audio fix; it does
-not inject PCM, fake item-end, skip failed tests, or replace Release gates.
+The 424a05b Xcode 26.6 comparison failed in build 6ad0fb933ffd2c7f0ad3a47c
+after 9m14s. Of 33 selected cases, 30 passed and three failed (four failure
+entries). Both raw Apple players and the original guided reference still
+failed; the AVAudioPlayer control timed out in the system audio path. The
+restarted runner's 30-case summary excludes the two passed legacy tests and
+the timed-out raw AVAudioPlayer case. Microphone UI did not run.
+
+Xcode 26.5 and 26.6 both use the iOS 26.5 Simulator runtime. One further
+comparison explicitly pins iOS 26.2 on the documented Xcode 26.3 image:
+https://docs.codemagic.io/specs-macos/xcode-26-3/
+The script fails if that exact runtime is absent and records its identity.
+This includes the ownership-epoch repair and retains all real-audio controls,
+the original guided assertions, host-daemon recovery and actual afplay check.
+The 15-minute cap remains. This comparison is not evidence of a fix until
+it runs; no PCM, completion events, tests or Release gates are substituted.

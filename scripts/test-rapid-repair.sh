@@ -40,14 +40,22 @@ print('ACTUAL_HOST_AUDIO',json.dumps(report))
 PYAUDIO
 fi
 device=$(python3 - <<'PY'
-import json,subprocess
+import json,subprocess,os
+from pathlib import Path
 devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
-phones=[d for runtime,rows in devices['devices'].items() if 'SimRuntime.iOS' in runtime for d in rows
+required_runtime=os.environ.get('NOOR_RAPID_RUNTIME')
+phones=[(runtime,d) for runtime,rows in devices['devices'].items()
+        if 'SimRuntime.iOS' in runtime and (not required_runtime or runtime == required_runtime) for d in rows
         if d.get('isAvailable') and d['name'].startswith('iPhone') and 'Pro Max' not in d['name']]
-assert phones,'An iPhone Simulator is required'
-print(phones[0]['udid'])
+assert phones,f'An available iPhone Simulator is required for {required_runtime or "iOS"}; do not silently substitute runtimes'
+runtime,phone=phones[0]
+path=Path('release/rapid-repair/context.json');context=json.loads(path.read_text())
+context.update(simulatorRuntime=runtime,simulatorName=phone['name'],simulatorUDID=phone['udid'])
+path.write_text(json.dumps(context,indent=2)+'\n')
+print(phone['udid'])
 PY
 )
+cat release/rapid-repair/context.json
 state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(x["state"] for rows in json.load(sys.stdin)["devices"].values() for x in rows if x["udid"]==sys.argv[1]))' "$device")
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
