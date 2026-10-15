@@ -65,7 +65,10 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["study.finish"].tap()
         XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 30))
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists, "Acoustic tracking cannot invent an old self-assessment score")
-        app.buttons["study.result.close"].tap(); app.buttons["إغلاق المصحف"].tap()
+        app.buttons["study.result.close"].tap()
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "إغلاق المصحف")).count, 1,
+                       "Only the presented reader must be exposed to accessibility")
+        app.buttons["إغلاق المصحف"].tap()
         XCTAssertTrue(entry.waitForExistence(timeout: 10), "Leaving must restore the actual memorization navigation context")
         app.buttons["reader.memorization.close"].tap()
         app.buttons["إغلاق المصحف"].tap()
@@ -174,7 +177,16 @@ final class NoorMushafStudyUITests: XCTestCase {
         launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        // A previous interrupted journey may have a real recoverable take.
+        // Finish it through the shipped controls; never erase or seed state to
+        // make the new microphone journey appear to start successfully.
+        if app.buttons["study.finish"].exists {
+            app.buttons["study.finish"].tap()
+            XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 30))
+            app.buttons["study.result.close"].tap()
+        }
         if let page {
+            XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 10))
             app.buttons["reader.jump"].tap()
             let field = app.textFields["reader.pageNumber"]
             XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText(String(page)); app.buttons["انتقل"].tap()

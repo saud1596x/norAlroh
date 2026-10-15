@@ -36,6 +36,8 @@ if [[ "${NOOR_RECITER_SMOKE_ONLY:-0}" == 1 ]]; then
     -only-testing:AtharTests/NoorReciterTests \
     -only-testing:AtharTests/QuranGuidedPracticeTests \
     -only-testing:AtharUITests/NoorReciterLibraryTests \
+    -only-testing:AtharUITests/NoorNavigationTests/testNativeHomeSaudiCitySelectionAndAdhkarSearch \
+    -only-testing:AtharUITests/NoorAllScreensTests/testMemorizationWorkspaceAndManualReviewAreReachableFromMushaf \
     -resultBundlePath release/home-flow/reciter-smoke.xcresult
   exit 0
 fi

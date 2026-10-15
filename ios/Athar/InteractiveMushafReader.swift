@@ -3,6 +3,27 @@ import UIKit
 import AVFoundation
 import Combine
 
+/// A native context menu on an actionable microphone Button can also release
+/// its primary action. Recognize these intents exclusively: a long press may
+/// open options, but must never obtain microphone permission or start capture.
+private struct NoorMushafMicrophonePressStyle: PrimitiveButtonStyle {
+    let onOptions: () -> Void
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.contentShape(Circle())
+            .gesture(LongPressGesture(minimumDuration: 0.45).exclusively(before: TapGesture())
+                .onEnded { value in
+                    guard enabled else { return }
+                    switch value {
+                    case .first(let recognized): if recognized { onOptions() }
+                    case .second(_): configuration.trigger()
+                    }
+                })
+            .allowsHitTesting(enabled)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { if enabled { configuration.trigger() } }
+    }
+}
 @MainActor final class MushafTafsir: ObservableObject {
     struct Envelope: Decodable { let result: Result }
     struct Result: Codable { let sura: String; let aya: String; let translation: String }
@@ -101,6 +122,8 @@ struct InteractiveMushafReader: View {
     @State private var sheetVerse: VerseSelection?
     @State private var sheetAction = VerseToolAction.details
     @State private var tools = true
+    @State private var recitationOptionsOpen = false
+    @State private var readerActionsOpen = false
     @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 60]
     @State private var khatmah = false
     @State private var khatmahStopMessage: String?
@@ -275,10 +298,12 @@ struct InteractiveMushafReader: View {
                                 .background(Theme.gold, in: Circle())
                         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
                             .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
-                            .contextMenu {
+                            .buttonStyle(NoorMushafMicrophonePressStyle(onOptions: { readerActionsOpen = true }))
+                            .confirmationDialog("خيارات المصحف", isPresented: $readerActionsOpen, titleVisibility: .visible) {
                                 Button("اختيار مقطع التسميع") { scopeOpen = true }
                                 Button("تسجيلاتي") { recordingBrowserOpen = true }
                                 Button("الحفظ والمراجعة") { memorizationOpen = true }
+                                Button("إلغاء", role: .cancel) {}
                             }
                             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
                             .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }
@@ -369,7 +394,7 @@ struct InteractiveMushafReader: View {
                     .toolbar { Button("إغلاق") { recordingBrowserOpen = false } }
             }
         }
-        .sheet(isPresented: $memorizationOpen) {
+        .fullScreenCover(isPresented: $memorizationOpen) {
             NavigationStack {
                 MemorizationView()
                     .toolbar { Button("إغلاق") { memorizationOpen = false }.accessibilityIdentifier("reader.memorization.close") }
@@ -513,19 +538,32 @@ struct InteractiveMushafReader: View {
                     .accessibilityIdentifier("study.inputGuidance")
             }
             HStack {
-                Menu {
-                    Button("العودة للقراءة") { Task { await recitation.pause(); dismiss() } }
+                Button { recitationOptionsOpen = true } label: {
+                    Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                    .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
+                    .popover(isPresented: $recitationOptionsOpen, arrowEdge: .top) {
+                    VStack(alignment: .leading, spacing: 12) {
+                    Text("خيارات التسميع").font(.headline)
+                    Button("العودة للقراءة") {
+                        recitationOptionsOpen = false
+                        Task { await recitation.pause(); dismiss() }
+                    }
                     Button("تسجيلات الجلسة") {
+                        recitationOptionsOpen = false
                         Task {
                             await recitation.pause()
                             if let id = recitation.record?.id { recordingSelection = MushafRecordingSelection(id: id) }
                         }
                     }.accessibilityIdentifier("study.recordings")
                     if !followAudio {
-                        Button("العودة إلى موضع التلاوة") { followCurrentAudio() }
+                        Button("العودة إلى موضع التلاوة") { recitationOptionsOpen = false; followCurrentAudio() }
                     }
                     if !(recitation.record?.wordingEvents ?? []).isEmpty {
-                        Button("راجع ملاحظات التلاوة") { Task { await recitation.pause(); studySummary = true } }
+                        Button("راجع ملاحظات التلاوة") {
+                            recitationOptionsOpen = false
+                            Task { await recitation.pause(); studySummary = true }
+                        }
                     }
                     Menu("عرض ملاحظات المراجعة") {
                         Picker("وقت الملاحظات", selection: $feedbackTiming) {
@@ -536,6 +574,7 @@ struct InteractiveMushafReader: View {
                         Toggle("اهتزاز خفيف اختياري", isOn: $feedbackHaptics)
                     }
                     Button("استمع ثم أعد المحاولة") {
+                        recitationOptionsOpen = false
                         Task {
                             await recitation.pause()
                             if let keys = recitation.record?.keys {
@@ -544,10 +583,12 @@ struct InteractiveMushafReader: View {
                         }
                     }
                     if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance {
-                        Button("إلغاء الاستماع") { recitation.cancelGuided() }
+                        Button("إلغاء الاستماع") { recitationOptionsOpen = false; recitation.cancelGuided() }
                     }
-                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                    .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
+                    Button("إغلاق") { recitationOptionsOpen = false }.accessibilityIdentifier("study.options.close")
+                    }.buttonStyle(.bordered).controlSize(.large).padding(16)
+                        .frame(minWidth: 260, maxWidth: 320).presentationCompactAdaptation(.popover)
+                }
                 Spacer(minLength: 8)
                 if showReviewFeedback {
                     Button("ملاحظة غير محسومة · راجع الصوت") {

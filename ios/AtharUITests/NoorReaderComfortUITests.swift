@@ -192,16 +192,32 @@ final class NoorReaderComfortUITests: XCTestCase {
         }
         capture(app, "stage2-151-landscape-verse-actions")
         app.buttons["verse.tools.close"].tap()
-        app.buttons["reader.verse.7:1"].tap()
+        toggleChromeInBlankPaper(app)
         requireTools(false, app: app)
         XCTAssertEqual(page.frame, landscapeFrame)
         capture(app, "stage1-151-landscape-tools-hidden")
-        app.buttons["reader.verse.7:1"].tap()
+        toggleChromeInBlankPaper(app)
         requireTools(true, app: app)
         XCUIDevice.shared.orientation = .portrait
         requireStableReadingLayout(app, page: page, landscape: false)
         requirePage(151, app: app)
         capture(app, "stage1-151-portrait-restored")
+    }
+    private func toggleChromeInBlankPaper(_ app: XCUIApplication) {
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        let bounds = page.frame
+        let ink = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reader.verse."))
+            .allElementsBoundByIndex.filter { $0.exists }.map(\.frame)
+        let corners = [CGPoint(x: bounds.minX + 4, y: bounds.minY + 4),
+                       CGPoint(x: bounds.maxX - 4, y: bounds.minY + 4),
+                       CGPoint(x: bounds.minX + 4, y: bounds.maxY - 4),
+                       CGPoint(x: bounds.maxX - 4, y: bounds.maxY - 4)]
+        guard let point = corners.first(where: { candidate in
+            app.frame.contains(candidate) && !ink.contains(where: { $0.contains(candidate) })
+        }) else { XCTFail("No visible blank-paper target outside the actual ayah hit regions"); return }
+        // The approved single ayah tap opens its actions. Chrome visibility is
+        // toggled only by paper outside ayah ink, using the real hit geometry.
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: point.x, dy: point.y)).tap()
     }
     private func requireTools(_ visible: Bool, app: XCUIApplication) {
         let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in

@@ -23,7 +23,7 @@ final class NoorAllScreensTests: XCTestCase {
         capture(app, "37-practice-mushaf-hidden")
         app.buttons["hifz.revealPart"].tap(); capture(app, "38-practice-mushaf-hint")
         app.buttons["hifz.revealAll"].tap(); capture(app, "39-practice-mushaf-revealed")
-        back(app)
+        back(app, titled: "الحفظ")
         tap(app.buttons["hifz.test"], in: app)
         XCTAssertTrue(app.buttons["hifz.pause"].waitForExistence(timeout: 90))
         capture(app, "14-hifz-test")
@@ -44,9 +44,9 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["hifz.complete"].waitForExistence(timeout: 10))
         capture(app, "18-hifz-result")
         app.buttons["hifz.resultHistory"].tap(); capture(app, "19-hifz-history")
-        back(app); back(app)
+        back(app, titled: "اختبار الاسترجاع"); back(app, titled: "الحفظ")
         tap(app.buttons["hifz.insights"], in: app); capture(app, "36-mastery-map")
-        back(app)
+        back(app, titled: "الحفظ")
         app.buttons["reader.memorization.close"].tap(); app.buttons["إغلاق المصحف"].tap()
     }
 
@@ -271,15 +271,27 @@ final class NoorAllScreensTests: XCTestCase {
             let hierarchy = XCTAttachment(string: description)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
             let selected = scrollingSurface()
-            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(element.frame) scrollSurface=\(selected.frame) viewport=\(visibleViewport(selected)) keyboards=\(app.keyboards.allElementsBoundByIndex.map { $0.frame })\n\(description)")
+            let targetFrame = element.exists ? String(describing: element.frame) : "absent"
+            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(targetFrame) scrollSurface=\(selected.frame) viewport=\(visibleViewport(selected)) keyboards=\(app.keyboards.allElementsBoundByIndex.map { $0.frame })\n\(description)")
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
         if performTap { element.tap() }
     }
-    private func back(_ app: XCUIApplication) {
-        let button = app.navigationBars.buttons.firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 5)); button.tap()
+    private func back(_ app: XCUIApplication, titled: String? = nil) {
+        if let titled {
+            let button = app.navigationBars.buttons[titled]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing actual Back destination: \(titled)")
+            XCTAssertTrue(button.isHittable); button.tap(); return
+        }
+        let candidates = app.navigationBars.buttons.allElementsBoundByIndex.filter {
+            $0.identifier != "reader.memorization.close" && $0.identifier != "hifz.recording"
+                && $0.label != "إغلاق" && $0.isHittable
+        }
+        guard let button = candidates.first else {
+            XCTFail("The current navigation destination has no reachable Back control: \(app.debugDescription)"); return
+        }
+        button.tap()
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
         RunLoop.current.run(until: Date().addingTimeInterval(0.4))

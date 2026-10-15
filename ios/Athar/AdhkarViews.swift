@@ -7,35 +7,41 @@ import Foundation
 struct NoorArabicSearchField: UIViewRepresentable {
     @Binding var text: String
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeUIView(context: Context) -> UISearchTextField {
-        let field = UISearchTextField()
+    func makeUIView(context: Context) -> UISearchBar {
+        let bar = UISearchBar()
+        bar.searchBarStyle = .minimal
+        bar.delegate = context.coordinator
+        let field = bar.searchTextField
         field.placeholder = "ابحث في الأبواب والنصوص"
         field.accessibilityLabel = "ابحث في الأبواب والنصوص"
         field.accessibilityIdentifier = "adhkar.search"
-        field.text = text; field.delegate = context.coordinator
+        bar.text = text
         field.autocorrectionType = .no; field.spellCheckingType = .no
         field.autocapitalizationType = .none; field.returnKeyType = .search
         field.font = .preferredFont(forTextStyle: .body)
         field.adjustsFontForContentSizeCategory = true
         field.textAlignment = .right; field.semanticContentAttribute = .forceRightToLeft
-        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
-        return field
+        return bar
     }
-    func updateUIView(_ field: UISearchTextField, context: Context) {
+    func updateUIView(_ bar: UISearchBar, context: Context) {
         context.coordinator.parent = self
-        if !field.isFirstResponder, field.markedTextRange == nil, field.text != text { field.text = text }
+        let field = bar.searchTextField
+        if !field.isFirstResponder, field.markedTextRange == nil, field.text != text { bar.text = text }
     }
-    final class Coordinator: NSObject, UITextFieldDelegate {
+    final class Coordinator: NSObject, UISearchBarDelegate {
         var parent: NoorArabicSearchField
         init(_ parent: NoorArabicSearchField) { self.parent = parent }
-        @objc func changed(_ field: UITextField) {
+        private func changed(_ field: UITextField) {
             guard field.markedTextRange == nil else { return }
             parent.text = field.text ?? ""
         }
-        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            changed(textField); textField.resignFirstResponder(); return true
+        func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+            changed(searchBar.searchTextField)
         }
-        func textFieldDidEndEditing(_ textField: UITextField) { changed(textField) }
+        func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+            changed(searchBar.searchTextField); searchBar.resignFirstResponder()
+        }
+        func searchBarTextDidEndEditing(_ searchBar: UISearchBar) { changed(searchBar.searchTextField) }
     }
 }
 
