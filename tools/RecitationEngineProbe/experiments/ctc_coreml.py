@@ -148,7 +148,12 @@ def verify():
     manifest=validated_manifest()
     vocab=json.loads((OUT/'vocab.json').read_text())
     compiled=OUT/'NoorCTC.mlmodelc'
-    model=ct.models.CompiledMLModel(str(compiled),compute_units=ct.ComputeUnit.CPU_ONLY) if compiled.is_dir() else ct.models.MLModel(str(OUT/'NoorCTC.mlpackage'),compute_units=ct.ComputeUnit.CPU_ONLY)
+    compute=os.environ.get('NOOR_CTC_COMPUTE','CPU_ONLY')
+    if compute not in {'CPU_ONLY','ALL'}:raise ValueError('Unsupported Apple compute configuration')
+    units=getattr(ct.ComputeUnit,compute)
+    started=time.monotonic()
+    model=ct.models.CompiledMLModel(str(compiled),compute_units=units) if compiled.is_dir() else ct.models.MLModel(str(OUT/'NoorCTC.mlpackage'),compute_units=units)
+    load_seconds=time.monotonic()-started
     results=[];word_cases=[]
     for row in manifest['cases']:
         path=OUT/row['input']
@@ -174,7 +179,7 @@ def verify():
             rawAppleText=text,rawSourceText=row['rawSourceText'],rawUTF8Equal=text==row['rawSourceText'],lexicalParity=same))
         print(json.dumps(results[-1],ensure_ascii=False),flush=True)
     passed=bool(results) and all(row['lexicalParity'] for row in results)
-    report=dict(schema=1,sourceRevision=REV,arithmetic=manifest.get('arithmetic','float32'),appleRuntimeExecuted=True,computeUnits='CPU_ONLY',lexicalParityPassed=passed,
+    report=dict(schema=1,sourceRevision=REV,arithmetic=manifest.get('arithmetic','float32'),appleRuntimeExecuted=True,computeUnits=compute,modelLoadSeconds=load_seconds,lexicalParityPassed=passed,
         scope='Actual macOS Core ML on public fixtures; not iPhone microphone, learner-error accuracy, or Tajweed',
         coremltools=ct.__version__,cases=results,peakHostRSSBytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         precompiledRuntime=compiled.is_dir(),

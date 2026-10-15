@@ -38,6 +38,12 @@ jobs:
     needs: convert
     runs-on: macos-15
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        compute: [CPU_ONLY, ALL]
+    env:
+      NOOR_CTC_COMPUTE: ${{ matrix.compute }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -60,7 +66,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ctc-apple-runtime-measurements
+          name: ctc-apple-runtime-measurements-${{ matrix.compute }}
           path: |
             ctc-apple-parity.json
             ctc-word-observations.json
