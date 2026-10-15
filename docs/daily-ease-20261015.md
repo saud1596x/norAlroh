@@ -19,7 +19,10 @@ recordings automatically; first playback still requires network access.
 Wi-Fi-only preference is retained. Listening again retries a failed pending
 save. Bundled Quran, fonts, adhkar and recognition model need no user download.
 
-Native verification is pending for these changes. The separate c2df1f4
+Source 509a7ca passed 32 unit tests and one real morning/evening UI journey
+on Codemagic build 6ad1373b3ffd2c7f0ad3b78c (Release, iOS 26.2,
+iPhone 17 Pro, 7m43s). Native reading screenshots were inspected. The later
+khatmah changes require their own result. The separate c2df1f4
 selection run passed 12 tests (original fonts, adjacent ayah exclusion and
 viewport geometry). The unchanged recognition source 90e3090 passed 14 narrow
 tests including a real public reference recording. Its edited omission sample

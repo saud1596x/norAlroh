@@ -24,7 +24,8 @@ final class NoorKhatmahUITests: XCTestCase {
         app.buttons["إغلاق المصحف"].tap()
         tapVisible(app, app.buttons["home.continueKhatmah"])
         XCTAssertTrue(app.buttons["reader.next"].waitForExistence(timeout: 120))
-        XCTAssertFalse(app.buttons["reader.next"].isEnabled, "The same action restores page20 without creating a second ward")
+        let resumed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"), object: app.buttons["reader.next"])
+        XCTAssertEqual(XCTWaiter.wait(for: [resumed], timeout: 30), .completed, "The same action restores page20 without creating a second ward")
         XCTAssertFalse(app.buttons["khatmah.resumeStop"].exists)
         let confirm = app.buttons["reader.ward.confirm"]
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: confirm)
