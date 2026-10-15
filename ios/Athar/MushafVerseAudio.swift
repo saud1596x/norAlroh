@@ -62,7 +62,8 @@ import MediaPlayer
     private let resolveSource: (String) async -> URL?
     private var resolvingSource: Task<Void, Never>?
     var onVerse: ((String) -> Void)?
-    var onSequenceFinished: (() -> Void)?
+    private var onSequenceFinished: (() -> Void)?
+    private var onSequenceInterrupted: (() -> Void)?
     var reciterDirectory = "Abdul_Basit_Murattal_64kbps" {
         willSet { if newValue != reciterDirectory { stop() } }
     }
@@ -89,7 +90,8 @@ import MediaPlayer
             "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/%03d%03d.mp3", parts[0], parts[1]))
     }
     func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0,
-              startingAt: Int = 0, seconds: Double = 0, completedPass: Int = 0) {
+              startingAt: Int = 0, seconds: Double = 0, completedPass: Int = 0,
+              onFinished: (() -> Void)? = nil, onInterrupted: (() -> Void)? = nil) {
         stop(); error = nil; lastPlaybackDiagnostic = ""
         guard NoorAudioFocus.shared.preparePlayback(focusID) else {
             error = "أوقف التسميع أولًا للاستماع إلى التلاوة."; return
@@ -100,6 +102,7 @@ import MediaPlayer
             error = "تعذّر تشغيل نطاق التلاوة أو خيارات التكرار."; return
         }
         self.keys = keys; count = repetitions; gap = delaySeconds
+        onSequenceFinished = onFinished; onSequenceInterrupted = onInterrupted
         index = startingAt; pass = completedPass; completedRepetitions = completedPass
         bookmarkSeconds = seconds > 0 ? seconds : nil
         if keepAlive { NoorAudioFocus.shared.holdPlayback(self, id: focusID) }
@@ -190,6 +193,9 @@ import MediaPlayer
         completedRepetitions = pass
         guard pass < count else {
             let completed = onSequenceFinished
+            // A natural end is distinct from replacement, route loss, failure
+            // or an explicit stop. Callbacks belong to this one sequence only.
+            onSequenceFinished = nil; onSequenceInterrupted = nil
             stop(); completed?(); return
         }
         guard gap > 0 else { advance(); return }
@@ -209,7 +215,7 @@ import MediaPlayer
         loadingKey = key
         startLoadDeadline(key: key, token: token)
         if let source {
-            guard let url = source(key) else { stop(); return }
+            guard let url = source(key) else { error = "تعذّر العثور على تلاوة هذا المقطع."; stop(); return }
             if let cacheKey = cacheKey?(key) {
                 resolvingSource = Task { [weak self] in
                     guard let self else { return }
@@ -233,7 +239,7 @@ import MediaPlayer
                 }
                 guard !Task.isCancelled, self.revision == token, self.loadingKey == key else { return }
                 self.resolvingSource = nil
-                guard let url else { self.stop(); return }
+                guard let url else { self.error = "تعذّر العثور على تلاوة هذا المقطع."; self.stop(); return }
                 self.startPlayer(url: url, key: key, token: token)
             }
         }
@@ -296,6 +302,8 @@ import MediaPlayer
         }
     }
     func stop() {
+        let interrupted = onSequenceInterrupted
+        onSequenceInterrupted = nil; onSequenceFinished = nil
         saveBookmark(); bookmarkSeconds = nil
         sleepTask?.cancel(); sleepTask = nil; stopAtBoundary = false; sleepStatus = nil
         revision = UUID(); delay?.cancel(); delay = nil; waitingKey = nil
@@ -304,6 +312,7 @@ import MediaPlayer
         if !remoteTargets.isEmpty { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
         for (command, target) in remoteTargets { command.removeTarget(target) }
         remoteTargets = []
+        interrupted?()
     }
     private func updateNowPlaying() {
         guard !remoteTargets.isEmpty else { return }

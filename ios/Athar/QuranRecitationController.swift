@@ -23,11 +23,12 @@ import os
     @Published private(set) var guidedPhase: GuidedPhase = .inactive
     private var guidedRevision = UUID()
     private var guidedDelay: Task<Void, Never>?
+    private var guidedFailure: AnyCancellable?
     private weak var referenceAudio: MushafVerseAudio?
     private var referenceExposure: String?
     func listenFirst(_ keys: [String], audio: MushafVerseAudio, repetitions: Int, responsePause: Int) {
         guard state == .idle || state == .stopped || state == .paused else { return }
-        cancelGuided()
+        cancelGuided(); message = nil
         let token = UUID(); guidedRevision = token
         referenceAudio = audio; guidedPhase = .reference
         // Conservatively retain listening assistance for this entire session,
@@ -38,7 +39,15 @@ import os
             do { try save(current); record = current }
             catch { cancelGuided(); message = "تعذّر حفظ حالة المساعدة. أعد المحاولة."; return }
         }
-        audio.onSequenceFinished = { [weak self, weak audio] in
+        // Loading/decoding can fail after play() returns. Release the guided
+        // gate on that actual error so a failed reference cannot permanently
+        // block an otherwise usable microphone. Replaced players are ignored.
+        guidedFailure = audio.$error.dropFirst().compactMap { $0 }.sink { [weak self] failure in
+            guard let self, self.guidedRevision == token,
+                  self.guidedPhase == .reference || self.guidedPhase == .clearance || self.guidedPhase == .ready else { return }
+            self.cancelGuided(); self.message = failure
+        }
+        let onFinished: () -> Void = { [weak self, weak audio] in
             guard let self, let audio, self.guidedRevision == token else { return }
             self.referenceExposure = audio.reciterDirectory
             self.guidedPhase = .clearance
@@ -49,12 +58,16 @@ import os
                 self.guidedPhase = .ready
             }
         }
-        audio.play(keys, repetitions: repetitions)
+        audio.play(keys, repetitions: repetitions, onFinished: onFinished, onInterrupted: { [weak self] in
+            guard let self, self.guidedRevision == token else { return }
+            self.cancelGuided()
+        })
         if audio.error != nil { cancelGuided() }
     }
     func cancelGuided() {
         guidedRevision = UUID(); guidedDelay?.cancel(); guidedDelay = nil
-        referenceAudio?.onSequenceFinished = nil; referenceAudio?.stop(); referenceAudio = nil
+        guidedFailure?.cancel(); guidedFailure = nil
+        referenceAudio?.stop(); referenceAudio = nil
         referenceExposure = record?.referenceExposure ?? referenceExposure; guidedPhase = .inactive
     }
     private let worker: any QuranSpeechRecognitionProvider

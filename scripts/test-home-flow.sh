@@ -34,6 +34,7 @@ xcodebuild build-for-testing "${common[@]}"
 if [[ "${NOOR_RECITER_SMOKE_ONLY:-0}" == 1 ]]; then
   xcodebuild test-without-building "${common[@]}" \
     -only-testing:AtharTests/NoorReciterTests \
+    -only-testing:AtharTests/QuranGuidedPracticeTests \
     -only-testing:AtharUITests/NoorReciterLibraryTests \
     -resultBundlePath release/home-flow/reciter-smoke.xcresult
   exit 0
