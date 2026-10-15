@@ -6,6 +6,13 @@ import MediaPlayer
 /// Cursor stores a range once. Only a real item-end event starts the next
 /// delay, and stop/replacement invalidates both that delay and stale callbacks.
 @MainActor final class MushafVerseAudio: ObservableObject {
+    // Native CI can distinguish an OS audio RPC stall from sequence logic.
+    // Phase markers contain no media URL, Quran text or user recording data.
+    private func traceAudio(_ phase: String) {
+        #if DEBUG || NOOR_ACCEPTANCE_TESTING
+        NSLog("NOOR_AUDIO_STAGE %@", phase)
+        #endif
+    }
     @Published private(set) var playing: String?
     @Published var error: String?
     @Published private(set) var loadingKey: String?
@@ -106,7 +113,9 @@ import MediaPlayer
         index = startingAt; pass = completedPass; completedRepetitions = completedPass
         bookmarkSeconds = seconds > 0 ? seconds : nil
         if keepAlive { NoorAudioFocus.shared.holdPlayback(self, id: focusID) }
+        traceAudio("remote-controls.begin")
         installRemoteControls()
+        traceAudio("remote-controls.end")
         advance()
     }
     func pausePlayback() {
@@ -175,6 +184,7 @@ import MediaPlayer
         return error == nil && (loadingKey != nil || playing != nil)
     }
     private func releasePlayer() {
+        traceAudio("player.release.begin")
         resolvingSource?.cancel(); resolvingSource = nil
         loadDeadline?.cancel(); loadDeadline = nil
         if player != nil { lastPlaybackDiagnostic = playbackDiagnostic }
@@ -183,9 +193,11 @@ import MediaPlayer
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
         playing = nil; loadingKey = nil; reportedStart = false
         isPaused = false
+        traceAudio("player.release.end")
     }
     private func completed(_ item: AVPlayerItem, revision token: UUID) {
         guard revision == token, player?.currentItem === item else { return }
+        traceAudio("item.actual-end")
         saveBookmark()
         if stopAtBoundary { stop(); return }
         releasePlayer(); index += 1
@@ -246,10 +258,19 @@ import MediaPlayer
     }
     private func startPlayer(url: URL, key: String, token: UUID) {
         do {
+            traceAudio("session.category.begin")
             try AVAudioSession.sharedInstance().setCategory(.playback)
+            traceAudio("session.category.end")
+            traceAudio("session.activate.begin")
             try AVAudioSession.sharedInstance().setActive(true)
+            traceAudio("session.activate.end")
         } catch { self.error = "تعذّر تشغيل الصوت على الجهاز."; stop(); return }
-        let item = AVPlayerItem(url: url); let playback = AVPlayer(playerItem: item); player = playback
+        traceAudio("item.create.begin")
+        let item = AVPlayerItem(url: url)
+        traceAudio("item.create.end")
+        traceAudio("player.create.begin")
+        let playback = AVPlayer(playerItem: item); player = playback
+        traceAudio("player.create.end")
         item.audioTimePitchAlgorithm = .spectral
         loadingKey = key
         playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
@@ -288,7 +309,9 @@ import MediaPlayer
             }
         }
         startLoadDeadline(key: key, token: token)
+        traceAudio("player.play.begin")
         playback.playImmediately(atRate: playbackRate)
+        traceAudio("player.play.end")
     }
     private func startLoadDeadline(key: String, token: UUID) {
         guard loadDeadline == nil else { return }
