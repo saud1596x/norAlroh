@@ -7,7 +7,7 @@ struct KhatmahJourneyView: View {
     @Environment(\.dismiss) private var dismiss
     var currentPage: Int? = nil
     @State private var editing = false
-    @State private var readerPage: Int?
+    @State private var readingWard: KhatmahReadingScope?
     @State private var confirmation = false
     @State private var confirmedLast = 1
     @State private var recoveryPreview: KhatmahPlan?
@@ -26,16 +26,14 @@ struct KhatmahJourneyView: View {
                         NoorProgressBar(value: plan.progress, label: "تقدم الختمة")
                         if let stop = plan.stoppedAt, stop.page >= plan.nextPage {
                             Text("توقفت عند الصفحة \(stop.page) · الآية \(stop.ayah)").font(.subheadline)
-                            PrimaryButton(title: "متابعة من حيث توقفت", icon: "bookmark") { readerPage = stop.page }
-                                .accessibilityIdentifier("khatmah.resumeStop")
                         }
                         if let finish = plan.expectedFinish { Text("الإتمام \(date(finish, plan: plan))").font(.subheadline).foregroundStyle(.secondary) }
-                        if let due = plan.due(on: .now) {
+                        if let due = plan.readingScope(on: .now) {
                             Text("الصفحات \(due.first)–\(due.last)").font(.title3.bold())
                             Text(chapters(first: due.first, last: due.last)).foregroundStyle(.secondary)
                             Text("نحو \(due.count * 2)–\(due.count * 3) دقيقة؛ تقدير يتغير حسب سرعة قراءتك").font(.caption).foregroundStyle(.secondary)
-                            PrimaryButton(title: "ابدأ ورد اليوم", icon: "book") { readerPage = due.first }.accessibilityIdentifier("khatmah.read")
-                            actionButton("تأكيد الصفحات التي أتممت قراءتها") { confirmedLast = min(604, max(plan.nextPage, currentPage ?? due.last)); confirmation = true }
+                            PrimaryButton(title: "أكمل ختمتك", icon: "book") { readingWard = due }.accessibilityIdentifier("khatmah.read")
+                            actionButton("تأكيد الصفحات التي أتممت قراءتها") { confirmedLast = min(due.last, max(plan.nextPage, currentPage ?? due.last)); confirmation = true }
                                 .accessibilityIdentifier("khatmah.confirm")
                             Text("فتح المصحف لا يضيف تقدمًا؛ التأكيد وحده يحفظ القراءة.").font(.caption).foregroundStyle(.secondary)
                         }
@@ -76,14 +74,14 @@ struct KhatmahJourneyView: View {
                 NavigationStack { KhatmahSetupView(existing: journey.active?.finished == nil ? journey.active : nil, currentPage: currentPage ?? lastPage) }
             }
             .sheet(isPresented: $confirmation) {
-                if let plan = journey.active, let due = plan.due(on: .now) {
+                if let plan = journey.active, let due = plan.readingScope(on: .now) {
                     NavigationStack {
                         VStack(alignment: .leading, spacing: 20) {
                             Text("ما آخر صفحة أتممتها؟").font(.title2.bold())
                             Text("سنحفظ الصفحات من \(plan.nextPage) حتى اختيارك؛ لا تختَر إلا الصفحات التي قرأتها كاملة.").foregroundStyle(.secondary)
-                            Stepper("الصفحة \(confirmedLast)", value: $confirmedLast, in: plan.nextPage...604).accessibilityIdentifier("khatmah.lastRead")
-                            actionButton("تأكيد ورد اليوم حتى الصفحة \(due.last)") { if journey.confirm(first: plan.nextPage, last: due.last) { confirmation = false } }
-                            PrimaryButton(title: "حفظ قراءتي", icon: "checkmark") { if journey.confirm(first: plan.nextPage, last: confirmedLast) { confirmation = false } }.accessibilityIdentifier("khatmah.saveReading")
+                            Stepper("الصفحة \(confirmedLast)", value: $confirmedLast, in: plan.nextPage...due.last).accessibilityIdentifier("khatmah.lastRead")
+                            actionButton("تأكيد ورد اليوم حتى الصفحة \(due.last)") { if journey.confirmReading(due, through: due.last) { confirmation = false } }
+                            PrimaryButton(title: "حفظ قراءتي", icon: "checkmark") { if journey.confirmReading(due, through: confirmedLast) { confirmation = false } }.accessibilityIdentifier("khatmah.saveReading")
                             Spacer()
                         }.padding(24).noorScreenChrome().navigationTitle("تأكيد القراءة").toolbar { Button("إلغاء") { confirmation = false } }
                     }.presentationDetents([.medium, .large])
@@ -96,10 +94,11 @@ struct KhatmahJourneyView: View {
                     }.toolbar { Button("إلغاء") { recoveryPreview = nil } }
                 }
             }
-            .fullScreenCover(isPresented: Binding(get: { readerPage != nil }, set: { if !$0 { readerPage = nil } })) {
+            .fullScreenCover(item: $readingWard) { scope in
                 let stop = journey.active?.stoppedAt
-                InteractiveMushafReader(chapter: stop?.page == readerPage ? stop?.chapter ?? 1 : 1,
-                    ayah: stop?.page == readerPage ? stop?.ayah ?? 1 : 1, initialPage: readerPage)
+                let resume = scope.resumePage(stop)
+                InteractiveMushafReader(chapter: stop?.page == resume ? stop?.chapter ?? 1 : 1,
+                    ayah: stop?.page == resume ? stop?.ayah ?? 1 : 1, initialPage: resume, readingScope: scope)
             }
     }
     private func actionButton(_ title: String, action: @escaping () -> Void) -> some View {

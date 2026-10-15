@@ -21,6 +21,18 @@ struct KhatmahStop: Codable, Equatable {
     var chapter: Int
     var ayah: Int
 }
+struct KhatmahReadingScope: Identifiable, Equatable {
+    let planID: UUID
+    let date: Date
+    let first: Int
+    let last: Int
+    var id: String { "\(planID):\(date.timeIntervalSince1970):\(first):\(last)" }
+    var pages: ClosedRange<Int> { first...last }
+    var count: Int { last - first + 1 }
+    func resumePage(_ stop: KhatmahStop?) -> Int {
+        stop.flatMap { pages.contains($0.page) ? $0.page : nil } ?? first
+    }
+}
 struct KhatmahPlan: Codable, Identifiable {
     var id = UUID()
     var started: Date
@@ -44,6 +56,19 @@ struct KhatmahPlan: Codable, Identifiable {
         return result
     }
     var expectedFinish: Date? { finished ?? days.last?.date }
+    /// The daily reading route never accumulates missed days into a bigger
+    /// session or adds another daily quota when the reader reopens it.
+    func readingScope(on now: Date) -> KhatmahReadingScope? {
+        guard !paused, finished == nil, nextPage <= 604 else { return nil }
+        let today = calendar.startOfDay(for: now)
+        let slot = days.last(where: { calendar.startOfDay(for: $0.date) <= today }) ?? days.first
+        guard let target = dailyPages ?? slot?.count else { return nil }
+        let completedToday = sessions.filter { calendar.isDate($0.date, inSameDayAs: now) }
+            .reduce(0) { $0 + $1.newlyCompleted }
+        let remaining = max(0, target - completedToday)
+        guard remaining > 0 else { return nil }
+        return .init(planID: id, date: today, first: nextPage, last: min(604, nextPage + remaining - 1))
+    }
     func due(on now: Date) -> KhatmahDay? {
         guard !paused, finished == nil, nextPage <= 604 else { return nil }
         let endOfToday = calendar.startOfDay(for: now)
@@ -200,6 +225,15 @@ enum KhatmahCalculator {
             guard let plan = active else { throw KhatmahFailure.invalid }
             return adopt(try KhatmahCalculator.confirm(plan, first: first, last: last, date: date))
         } catch { self.error = error.localizedDescription; return false }
+    }
+    @discardableResult func confirmReading(_ scope: KhatmahReadingScope, through page: Int, date: Date = .now) -> Bool {
+        guard let plan = active, plan.id == scope.planID,
+              plan.calendar.isDate(scope.date, inSameDayAs: date),
+              let current = plan.readingScope(on: date),
+              scope.pages.contains(page), current.pages.contains(page) else {
+            error = "تغيّر وردك. ارجع إلى «أكمل ختمتك» لفتح الموضع الحالي."; return false
+        }
+        return confirm(first: plan.nextPage, last: page, date: date)
     }
     @discardableResult func stop(page: Int, chapter: Int, ayah: Int) -> Bool {
         guard var plan = active, plan.finished == nil,

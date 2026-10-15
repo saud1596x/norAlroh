@@ -71,7 +71,7 @@ extension XCTestCase {
         app.launch()
         let guest = app.buttons["welcome.continue"]
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guest.exists || app.buttons["home.resume"].exists
+            guest.exists || app.buttons["home.resume"].exists || app.buttons["home.continueKhatmah"].exists || app.staticTexts["أتممت ورد اليوم"].exists
         }, object: nil)
         guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
             XCTFail("Neither first-use continuation nor home is available: \(app.debugDescription)")

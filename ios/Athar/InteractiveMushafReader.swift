@@ -109,8 +109,13 @@ struct InteractiveMushafReader: View {
     let chapter: Int; let ayah: Int; let initialPage: Int?
     let startsStudy: Bool
     let opensStudyScope: Bool
-    init(chapter: Int, ayah: Int, initialPage: Int?, startsStudy: Bool = false, opensStudyScope: Bool = false) {
+    let readingScope: KhatmahReadingScope?
+    @ObservedObject private var readingJourney = KhatmahStore.shared
+    @State private var wardComplete = false
+    private var allowedPages: ClosedRange<Int> { readingScope?.pages ?? 1...604 }
+    init(chapter: Int, ayah: Int, initialPage: Int?, startsStudy: Bool = false, opensStudyScope: Bool = false, readingScope: KhatmahReadingScope? = nil) {
         self.chapter = chapter; self.ayah = ayah; self.initialPage = initialPage; self.startsStudy = startsStudy; self.opensStudyScope = opensStudyScope
+        self.readingScope = readingScope
     }
     @State private var snapshot: QCFV2Snapshot?
     @State private var rows: OriginalMushafRows?
@@ -294,10 +299,10 @@ struct InteractiveMushafReader: View {
                         if dynamicTypeSize.isAccessibilitySize { pageJumpControl }
                         ZStack {
                     HStack {
-                    Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number == 604).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
+                    Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number >= allowedPages.upperBound).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
                     Spacer()
                         if !dynamicTypeSize.isAccessibilitySize { pageJumpControl }
-                    Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number == 1).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
+                    Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number <= allowedPages.lowerBound).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                     }
                         Button {
                             if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
@@ -327,6 +332,20 @@ struct InteractiveMushafReader: View {
                             }
                         }
                     } }
+                    if let scope = readingScope, !studyOpen {
+                        VStack(spacing: 4) {
+                            Text("وردك · الصفحات \(ArabicSearch.digits(scope.first))–\(ArabicSearch.digits(scope.last))")
+                                .font(.caption).accessibilityIdentifier("reader.ward.range")
+                            Button(number == scope.last ? "أتممت ورد اليوم" : "أتممت القراءة حتى هذه الصفحة") {
+                                if readingJourney.confirmReading(scope, through: number) {
+                                    if number == scope.last { wardComplete = true }
+                                    else { turn(1) }
+                                }
+                            }.frame(minHeight: 44).accessibilityIdentifier("reader.ward.confirm")
+                                .disabled(page == nil || renderingFailed || fonts.names[String(format: "QCF2%03d", number)] == nil || readingJourney.active?.id != scope.planID || number < (readingJourney.active?.nextPage ?? 605))
+                            if let message = readingJourney.error { Text(message).font(.caption).foregroundStyle(.red) }
+                        }
+                    }
                 }.background { readerControlMeasurement("footer") }
             }.padding(.horizontal, 10).transition(.opacity) }
         }
@@ -403,14 +422,21 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { readerVisible = false; initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
+        .onDisappear { rememberWardPosition(); readerVisible = false; initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
         .onChange(of: scenePhase) { _, value in
+            if value == .background { rememberWardPosition() }
             if value == .background || (value == .inactive && recitation.state != .permission) { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { event in
             if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
-        .onChange(of: number) { _, value in renderGeneration = UUID(); lastPage = value }
+        .onChange(of: number) { _, value in
+            guard allowedPages.contains(value) else { number = min(allowedPages.upperBound, max(allowedPages.lowerBound, value)); return }
+            renderGeneration = UUID(); lastPage = value; rememberWardPosition()
+        }
+        .alert("أتممت ورد اليوم", isPresented: $wardComplete) {
+            Button("العودة للرئيسية") { dismiss() }
+        } message: { Text(readingJourney.active?.finished != nil ? "حُفظت قراءتك وأتممت الختمة." : "حُفظ تقدمك. ستكمل غدًا من الصفحة التالية حسب مقدار وردك.") }
         .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; showStudySetup(studyStartKey) } }) { selection in
             VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
                 studyStartKey = key; studyRequestFromSheet = true
@@ -475,7 +501,7 @@ struct InteractiveMushafReader: View {
             if let record = recitation.record {
                 QuranSessionResult(record: record, wordIDs: studyIndex?.words ?? [:], onReview: { key in
                     studySummary = false; selected = key; manualSelection = VerseSelection(key: key)
-                    if let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
+                    if let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) { number = destination; lastPage = destination }
                 }, onListenPractice: { keys in
                     studySummary = false; guidedKeys = keys; followAudio = true
                     Task {
@@ -498,10 +524,10 @@ struct InteractiveMushafReader: View {
         }
         .sheet(isPresented: $picker, onDismiss: { pageInputFocused = false }) {
             NavigationStack { Form {
-                TextField("١ إلى ٦٠٤", text: $input).keyboardType(.numberPad)
+                TextField("\(allowedPages.lowerBound) إلى \(allowedPages.upperBound)", text: $input).keyboardType(.numberPad)
                     .focused($pageInputFocused).accessibilityIdentifier("reader.pageNumber")
                 Button("انتقل") {
-                    if let value = ArabicSearch.integer(input), (1...604).contains(value) {
+                    if let value = ArabicSearch.integer(input), allowedPages.contains(value) {
                         pageInputFocused = false; turn(value - number); picker = false
                     }
                 }
@@ -531,7 +557,7 @@ struct InteractiveMushafReader: View {
             guard followAudio, recitation.hasSession, let key else { return }
             selected = key; manualSelection = nil
             if page?.words.contains(where: { $0.verse == key }) != true,
-               let destination = studyIndex?.pages[key]?.first { number = destination; lastPage = destination }
+               let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) { number = destination; lastPage = destination }
         }
         .onChange(of: recitation.state) { _, state in
             if state == .stopped { pendingRecitation = ""; selected = nil; studySummary = true }
@@ -777,16 +803,26 @@ struct InteractiveMushafReader: View {
         return store.quran[n - 1].name
     }
     private func turn(_ amount: Int) {
-        guard (1...604).contains(number + amount) else { return }
+        guard allowedPages.contains(number + amount) else { return }
         followAudio = false
         let destination = number + amount
         // Persist before publishing the new page, including a quick close/background.
         lastPage = destination
         number = destination; selected = nil; manualSelection = nil
     }
+    private func rememberWardPosition() {
+        guard let scope = readingScope, readingJourney.active?.id == scope.planID,
+              allowedPages.contains(number), let page else { return }
+        let oldStop = readingJourney.active?.stoppedAt
+        let savedKey = oldStop.flatMap { $0.page == number ? "\($0.chapter):\($0.ayah)" : nil }
+        let candidate = visibleSelection ?? savedKey
+        guard let key = candidate.flatMap({ key in page.words.contains(where: { $0.verse == key }) ? key : nil }) ?? page.words.first?.verse else { return }
+        let verse = VerseSelection(key: key)
+        _ = readingJourney.stop(page: number, chapter: verse.chapter, ayah: verse.ayah)
+    }
     private func followCurrentAudio() {
         guard let key = recitation.hasSession ? recitation.currentVerse : audio.playing,
-              let destination = studyIndex?.pages[key]?.first else { return }
+              let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) else { return }
         followAudio = true; manualSelection = nil; selected = key
         lastPage = destination; number = destination
     }
@@ -806,6 +842,8 @@ struct InteractiveMushafReader: View {
             if first {
                 number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil }
                     ?? versePages["\(chapter):\(ayah)"] ?? 1
+                number = min(allowedPages.upperBound, max(allowedPages.lowerBound, number))
+                if readingScope != nil, versePages["\(chapter):\(ayah)"] == number { selected = "\(chapter):\(ayah)" }
                 lastPage = number
             }
             audio.onVerse = { key in
@@ -813,13 +851,13 @@ struct InteractiveMushafReader: View {
                 guard manualSelection == nil, sheetVerse == nil else { return }
                 selected = key
                 if page?.words.contains(where: { $0.verse == key }) != true,
-                   let target = versePages[key] { lastPage = target; number = target }
+                   let target = versePages[key], allowedPages.contains(target) { lastPage = target; number = target }
             }
             if first, let pending = UUID(uuidString: pendingRecitation) {
                 await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
                 if recitation.hasSession, followAudio {
                     selected = recitation.currentVerse
-                    if let key = recitation.currentVerse, let destination = versePages[key] { number = destination; lastPage = destination }
+                    if let key = recitation.currentVerse, let destination = versePages[key], allowedPages.contains(destination) { number = destination; lastPage = destination }
                 }
             }
             await fonts.load(String(format: "QCF2%03d", number))

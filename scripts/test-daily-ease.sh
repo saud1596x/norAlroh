@@ -33,6 +33,8 @@ xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Releas
   'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING' \
   -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
   -maximum-test-execution-time-allowance 90 \
+  -only-testing:AtharTests/KhatmahJourneyTests \
+  -only-testing:AtharTests/MushafViewportTests \
   -only-testing:AtharTests/NotificationReconciliationTests \
   -only-testing:AtharTests/NoorPersonalReminderTests \
   -only-testing:AtharTests/AdhkarReadingTests \
@@ -40,6 +42,7 @@ xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Releas
   -only-testing:AtharTests/NoorReciterTests \
   -only-testing:AtharTests/AudioDownloadTests/testReciterDownloadIdentityRejectsDifferentRecordingAndPartialTransfers \
   -only-testing:AtharUITests/NoorDailyEaseTests \
+  -only-testing:AtharUITests/NoorKhatmahUITests/testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction \
   -resultBundlePath release/daily-ease/actual-tests.xcresult || test_exit=$?
 python3 - "$test_exit" <<'PY'
 import json,sys
