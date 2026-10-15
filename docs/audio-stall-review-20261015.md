@@ -66,7 +66,14 @@ speaker leakage, long sessions and model accuracy remain to be measured.
   zero). Host `afplay` of that same MP3 exited successfully in 4.265 seconds.
   Host playback does not establish Simulator playback. UI checks did not run.
 - cc8cca6 adds actual AVPlayer and AVAudioPlayer control tests on the same
-  reference, retaining the original guided test. Results are pending.
+  reference, retaining the original guided test. Both controls failed in build
+  6ad0f5f93ffd2c7f0ad3a2b3 (9m51s): AVAudioPlayer timed out inside AudioQueuePrime
+  and HAL device setup; AVPlayer returned but never made its item ready or
+  emitted actual end. The guided reference likewise timed out cleanly. There
+  were 28 passing cases and three failing cases (four failure entries); the
+  restarted runner's 30-test summary excludes the first timed-out control.
+  These controls bypass Noor's verse-range logic but share its test host. This
+  isolates a system audio path failure without proving all device audio works.
 
 ## Independent ownership defect found during review
 
@@ -80,8 +87,10 @@ rejection before system activation when another recording owns the route.
 These new legacy changes are not part of cc8cca6 and have not run natively yet;
 they are not asserted to be the cause of the Simulator's reference failure.
 
-The next disposable Codemagic worker restarts its host audio daemon once before
-booting Simulator, records the actual exit/elapsed time of host `afplay` using
-the same real reference file, and runs the unchanged actual playback assertion.
-This is a controlled environment recovery attempt, not proof of an app fix;
-it does not inject PCM, fake item-end, or skip failed audio tests.
+The next comparison pins Xcode 26.6 (a different patched macOS worker image),
+includes the legacy ownership fix, and retains both raw control tests and the
+original guided assertions. The existing host-daemon recovery and actual
+`afplay` observation remain identical. DerivedData caching is removed from this
+diagnostic workflow to avoid retaining or uploading an unnecessary build tree.
+This is an unverified environment comparison, not a proved audio fix; it does
+not inject PCM, fake item-end, skip failed tests, or replace Release gates.
