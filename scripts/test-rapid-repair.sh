@@ -96,6 +96,7 @@ audio_exit=0
 xcodebuild test-without-building "${common[@]}" \
   -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
   -maximum-test-execution-time-allowance 90 \
+  -only-testing:AtharTests/QuranAudioBackendControlTests \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
   -only-testing:AtharTests/QuranGuidedPracticeTests \
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \

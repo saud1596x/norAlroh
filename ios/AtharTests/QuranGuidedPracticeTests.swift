@@ -1,5 +1,46 @@
 import XCTest
+import AVFoundation
 @testable import Athar
+
+/// Real system-player controls: isolate the remaining Simulator playback
+/// failure from Noor's range controller. These never award learning evidence
+/// or replace the app's actual guided-playback acceptance assertion below.
+final class QuranAudioBackendControlTests: XCTestCase {
+    @MainActor func testPlainAVPlayerActuallyCompletesSameReference() async throws {
+        let file = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback); try session.setActive(true)
+        let item = AVPlayerItem(url: file)
+        let player = AVPlayer(playerItem: item)
+        let ended = expectation(description: "Unmodified AVPlayer reaches actual media end")
+        let observation = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime,
+            object: item, queue: .main) { _ in ended.fulfill() }
+        defer { NotificationCenter.default.removeObserver(observation); player.pause() }
+        player.play()
+        await fulfillment(of: [ended], timeout: 10)
+        NSLog("NOOR_CONTROL_AVPLAYER item=%ld player=%ld", item.status.rawValue, player.status.rawValue)
+    }
+    @MainActor func testPlainAVAudioPlayerActuallyCompletesSameReference() async throws {
+        let file = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback); try session.setActive(true)
+        let ended = expectation(description: "Unmodified AVAudioPlayer reaches actual media end")
+        let delegate = ReferenceEndDelegate(ended)
+        let player = try AVAudioPlayer(contentsOf: file)
+        player.delegate = delegate
+        defer { player.stop(); player.delegate = nil }
+        XCTAssertTrue(player.play())
+        await fulfillment(of: [ended], timeout: 10)
+        withExtendedLifetime(delegate) {}
+    }
+    private final class ReferenceEndDelegate: NSObject, AVAudioPlayerDelegate {
+        private let ended: XCTestExpectation
+        init(_ ended: XCTestExpectation) { self.ended = ended }
+        func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+            XCTAssertTrue(flag); ended.fulfill()
+        }
+    }
+}
 
 final class QuranGuidedPracticeTests: XCTestCase {
     @MainActor func testStoppingActualReferenceDuringPreparationDoesNotWaitForMediaTiming() async throws {
