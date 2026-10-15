@@ -110,3 +110,22 @@ This includes the ownership-epoch repair and retains all real-audio controls,
 the original guided assertions, host-daemon recovery and actual afplay check.
 The 15-minute cap remains. This comparison is not evidence of a fix until
 it runs; no PCM, completion events, tests or Release gates are substituted.
+
+## Distinct-runtime result
+
+Source 873c77cdcb1675e38c50261ec0ac88ef03a59196 ran in
+https://codemagic.io/app/6ac3b8b756235b59ec04e90a/build/6ad0ffbc3ffd2c7f0ad3a5bb
+and failed after 6m47s. The emitted context confirms iOS26.2 on iPhone17Pro.
+All five legacy/session ownership tests passed, including the new stale
+deactivation retry regression. Of 36 selected cases, 33 passed and three
+failed (four failure entries including the watchdog). The restarted runner's
+30-case summary excludes the five earlier passes and the timed-out control.
+Plain AVAudioPlayer still hung; plain AVPlayer never completed; guided
+reference failed its real completion checks. Microphone UI did not run.
+Actual host afplay succeeded in 3.678s, which does not establish Simulator
+audio functionality. The actual hardware route remains unverified.
+
+Do not repeat the same paid runs, change the completion expectations, or mark
+the release gates passed. The user has no Mac and declined sending a support
+request. A different, working real-audio verification path is still required;
+no new TestFlight build was produced. This is not full engine acceptance.
