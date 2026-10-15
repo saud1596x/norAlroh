@@ -1,6 +1,9 @@
 import XCTest
 final class NoorKhatmahUITests: XCTestCase {
     @MainActor func testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction() {
+        // The complete real UI journey took 61.366s in the prior native run;
+        // keep all assertions and allow 90s for launch, navigation and loading.
+        executionTimeAllowance = 90
         let app = XCUIApplication(); launchNoorApp(app)
         tapVisible(app, app.buttons["home.startKhatmah"])
         tapVisible(app, app.buttons["khatmah.setup"])
