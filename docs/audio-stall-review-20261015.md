@@ -58,7 +58,27 @@ speaker leakage, long sessions and model accuracy remain to be measured.
 - Existing actual reference playback test and all its assertions retained.
 - Targeted native run additionally includes microphone lifecycle, recognition
   worker lifecycle, wording assessment, and recognition input conditioning.
-- Native compilation and execution of these changes: PENDING.
+- d32a394 native compilation succeeded. Of 29 selected native tests, 28 passed;
+  actual guided playback failed two assertions in one test. The stop-during-
+  preparation regression passed in 0.346 seconds. The former MainActor freeze
+  did not recur: load timeout returned in 15.959 seconds and release in ~1 ms.
+- The reference still did not play in Simulator (item unknown, observed time
+  zero). Host `afplay` of that same MP3 exited successfully in 4.265 seconds.
+  Host playback does not establish Simulator playback. UI checks did not run.
+- cc8cca6 adds actual AVPlayer and AVAudioPlayer control tests on the same
+  reference, retaining the original guided test. Results are pending.
+
+## Independent ownership defect found during review
+
+`LocalRecitationRecorder.stop()` previously called shared audio session
+deactivation even when idle, and the legacy recorder was not registered with
+NoorAudioFocus. A disappearing legacy view could therefore affect another
+player/capture, and a legacy recording could compete with recognition. It now
+tracks its own activation, participates in the shared recording lease, and
+registers playback cleanup. Two ownership regressions verify idle cleanup and
+rejection before system activation when another recording owns the route.
+These new legacy changes are not part of cc8cca6 and have not run natively yet;
+they are not asserted to be the cause of the Simulator's reference failure.
 
 The next disposable Codemagic worker restarts its host audio daemon once before
 booting Simulator, records the actual exit/elapsed time of host `afplay` using

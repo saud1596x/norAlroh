@@ -35,8 +35,23 @@ enum RecitationArchive {
     private var file: URL?
     @Published private(set) var requestingPermission = false
     private var startRevision = 0
-    override init() {
+    private var ownsAudioSession = false
+    private var recordingFocus = false
+    private let focusID = UUID()
+    private let permission: () async -> Bool
+    private let isActive: @MainActor () -> Bool
+    private let setSessionActive: (Bool) throws -> Void
+    init(permission: @escaping () async -> Bool = {
+        await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
+        }
+    }, isActive: @escaping @MainActor () -> Bool = { UIApplication.shared.applicationState == .active },
+         setSessionActive: @escaping (Bool) throws -> Void = { active in
+             try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
+         }) {
+        self.permission = permission; self.isActive = isActive; self.setSessionActive = setSessionActive
         super.init()
+        NoorAudioFocus.shared.register(focusID) { [weak self] in self?.stop() }
         do {
             let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
                 .appendingPathComponent("NoorRecitation", isDirectory: true)
@@ -52,17 +67,19 @@ enum RecitationArchive {
         requestingPermission = true
         let requestedRevision = startRevision
         defer { requestingPermission = false }
-        let granted = await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
-        }
+        let granted = await permission()
         guard requestedRevision == startRevision else { return }
         guard granted else { message = "اسمح باستخدام الميكروفون من إعدادات iPhone لتسجيل مراجعتك. يمكنك متابعة الحفظ دون تسجيل."; return }
-        guard requestedRevision == startRevision, let file, UIApplication.shared.applicationState == .active else { return }
+        guard requestedRevision == startRevision, let file, isActive() else { return }
         do {
             stop()
+            guard NoorAudioFocus.shared.acquireRecording(focusID) else {
+                message = "أوقف جلسة التسميع الأخرى أولًا."; return
+            }
+            recordingFocus = true
             let session = AVAudioSession.sharedInstance()
             try MushafCaptureAudio.configure(session)
-            try session.setActive(true)
+            try setSessionActive(true); ownsAudioSession = true
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             let temporary = file.deletingLastPathComponent().appendingPathComponent(".capture-" + UUID().uuidString + ".m4a")
             capture = temporary
@@ -86,7 +103,13 @@ enum RecitationArchive {
         let shouldSave = recording && saveCapture
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = false; level = 0
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // An idle legacy control can disappear while the Mushaf is listening.
+        // It must never deactivate the app-wide session owned by that player.
+        if ownsAudioSession {
+            do { try setSessionActive(false); ownsAudioSession = false }
+            catch { /* Keep ownership so explicit stop can retry. */ }
+        }
+        if recordingFocus { NoorAudioFocus.shared.releaseRecording(focusID); recordingFocus = false }
         if let capture, let file {
             if shouldSave {
                 do {
@@ -101,9 +124,13 @@ enum RecitationArchive {
     }
     func play() {
         guard !recording, let file, hasRecording else { return }
+        stop()
+        guard NoorAudioFocus.shared.preparePlayback(focusID) else {
+            message = "أوقف التسميع أولًا للاستماع إلى التسجيل."; return
+        }
         do {
             let session = AVAudioSession.sharedInstance(); try session.setCategory(.playback, mode: .spokenAudio)
-            try session.setActive(true)
+            try setSessionActive(true); ownsAudioSession = true
             let audio = try AVAudioPlayer(contentsOf: file); audio.delegate = self; player = audio
             guard audio.play() else { throw CocoaError(.fileReadUnknown) }
             duration = audio.duration; playbackTime = 0; playing = true; message = nil
@@ -145,6 +172,13 @@ enum RecitationArchive {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor [weak self] in
             guard let self, self.player === player else { return }; self.stop()
+        }
+    }
+    deinit {
+        let id = focusID
+        Task { @MainActor in
+            NoorAudioFocus.shared.releaseRecording(id)
+            NoorAudioFocus.shared.unregister(id)
         }
     }
 }
