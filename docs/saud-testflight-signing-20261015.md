@@ -25,14 +25,20 @@ limit is a budget bound, not evidence that a build will finish in that time.
 It has no automatic trigger. Check the budget before every manual dispatch;
 the workflow cap does not enforce the cumulative USD10 account allowance.
 
+## Protected build configuration
+
+The user subsequently explicitly approved adding the existing Noor Firebase
+client plist to `noor_release`, restricted to the `norAlroh` application.
+The group was created with only that application selected. The downloaded
+plist passed the existing project, app and bundle validation again, and was
+saved as the secret variable `NOOR_FIREBASE_IOS_PLIST_BASE64`. The resulting
+UI displays the variable name with a secured value. No value was printed,
+no new key was created, and no Firebase project/provider settings changed.
+Evidence: `outputs/noor-firebase-protected-saved.png`. Runtime account sign-in
+is still unverified; storing build configuration does not establish it.
+
 ## Remaining blockers
 
-- The protected `noor_release` environment group does not yet exist in saud.
-  The local downloaded Firebase client plist passed the existing project,
-  app and bundle validation without printing its values. Automatic approval
-  rejected creation of the group as an access change; explicit permission
-  for this specific protected configuration is pending. Do not substitute
-  Masar configuration or build without account support.
 - Current TestFlight publication evidence still describes an older native
   run. The source-hash gate remains unchanged and must pass with actual
   matching evidence before dispatch. Narrow Debug preservation tests are
