@@ -1,4 +1,21 @@
 workflows:
+  daily-ease-check:
+    name: Noor automatic setup and clear daily adhkar
+    instance_type: mac_mini_m2
+    max_build_duration: 12
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify automatic setup and separated daily adhkar
+        script: bash scripts/test-daily-ease.sh
+    artifacts:
+      - release/daily-ease/**
   selection-regression-check:
     name: Noor adjacent ayah selection regression
     instance_type: mac_mini_m2

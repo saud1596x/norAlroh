@@ -106,6 +106,43 @@ final class PrayerNotifications: ObservableObject {
         if let data = try? JSONEncoder().encode(preferences) { defaults.set(data, forKey: preferencesKey) }
     }
 
+    /// First-use only. A saved opt-out, denied prompt or migrated preferences
+    /// must never be silently replaced on another launch.
+    func configureFirstUse(store: AtharStore) async {
+        let key = "noor.notifications.firstUse.v1"
+        guard !defaults.bool(forKey: key), !requestingPermission else { return }
+        defaults.set(true, forKey: key)
+        guard !personalUnreadable,
+              [enabledKey, preferencesKey, personalKey, "noor.salawat.preferences.v1"]
+                .allSatisfy({ defaults.object(forKey: $0) == nil }) else { return }
+        requestingPermission = true
+        let attempt = authorizationRevision
+        defer { requestingPermission = false }
+        do {
+            let allowed = try await client.requestAuthorization()
+            guard allowed, attempt == authorizationRevision, !Task.isCancelled else { return }
+            guard [enabledKey, preferencesKey, personalKey, "noor.salawat.preferences.v1"]
+                .allSatisfy({ defaults.object(forKey: $0) == nil }) else { return }
+            var archive = NoorReminderArchive()
+            for kind in [NoorReminderKind.morning, .evening, .witr, .duha, .salawat] {
+                var value = NoorReminderPreference(kind: kind)
+                value.enabled = true
+                if kind == .salawat {
+                    value.intervalMinutes = 5; value.startMinute = 0; value.endMinute = 1439
+                }
+                archive.values[kind.rawValue] = value
+            }
+            let bytes = try JSONEncoder().encode(archive)
+            defaults.set(bytes, forKey: personalKey)
+            guard defaults.data(forKey: personalKey) == bytes else { return }
+            personal = archive
+            preferences.afterPrayerMinutes = 20
+            persist()
+            defaults.set(true, forKey: enabledKey)
+            await refresh(store: store)
+        } catch { message = "يمكنك تفعيل التنبيهات لاحقًا من الإعدادات." }
+    }
+
     func reminder(_ kind: NoorReminderKind) -> NoorReminderPreference {
         if let value = personal.values[kind.rawValue] { return value }
         var value = NoorReminderPreference(kind: kind)

@@ -203,7 +203,7 @@ struct SettingsView: View {
                 Toggle("خط قرآن أكبر", isOn: Binding(
                     get: { store.data.largeQuran }, set: { value in store.update { $0.largeQuran = value } }
                 ))
-                NavigationLink("التنزيلات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
+                NavigationLink("مساحة التلاوات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
                 NavigationLink("الخصوصية") { PrivacyView() }.accessibilityIdentifier("settings.privacy")
                 DisclosureGroup("إدارة بياناتي") {
                 Button("تصدير بياناتي") {

@@ -188,8 +188,8 @@ struct RootView: View {
                         else if destination.host == "salawat" { NoorSalawatView() }
                         else if destination.host == "dua" { AdhkarView(initialSearch: "دعاء") }
                         else if ["morning", "evening"].contains(destination.host), let content = AdhkarContent.shared,
-                                let group = content.groups.first(where: { $0.id == "hisn-27" }) {
-                            DhikrListView(group: group, entries: content.entries(in: group))
+                                let period = DhikrDayPeriod(rawValue: destination.host) {
+                            DhikrListView(group: period.group(in: content), entries: period.entries(in: content))
                         }
                         else { QuranView() }
                     }

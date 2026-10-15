@@ -8,11 +8,11 @@
   "publicPrivacyURLConfigured": true,
   "publicSupportURLConfigured": true,
   "files": {
-    "ios/Athar/app-legal.json": "a6b67fef2549d7e4cfd35299e3fcfce1ffd70880ba7cc022912da9a9e9548500",
-    "support-site/privacy.html": "0884683d55f5414d19d4c4563ad8a598f2cfea6ff8971c2abe93b768401a223f",
+    "ios/Athar/app-legal.json": "4c51097c74977ed3dbe9ed317ae7bb4ced29460cade5e314fefced788a487913",
+    "support-site/privacy.html": "c176d37510af53c6e0f9900c0cb49120dad35b2e15c9caf9986d6b44818f36a2",
     "support-site/terms.html": "c1348f2b1e81e5b6676f8ac82b15d58ea1f85fae4d01033e7e551a439cbdc66a",
-    "support-site/support.html": "5e2775bea2240d9916711a16717c75f5e1f19b5970f9285d4b9258088ad0a73e",
-    "support-site/index.html": "5e2775bea2240d9916711a16717c75f5e1f19b5970f9285d4b9258088ad0a73e",
+    "support-site/support.html": "6a0201c9743e40e6c60879d3fe3fa53d7c488f436d02006d8f98fc3951e654bb",
+    "support-site/index.html": "6a0201c9743e40e6c60879d3fe3fa53d7c488f436d02006d8f98fc3951e654bb",
     "support-site/.nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "ios/Athar/PrivacyInfo.xcprivacy": "fd4b1f41183acac5e22074181582d0fb51cb24957043aedf6117830ea5b00af5"
   }

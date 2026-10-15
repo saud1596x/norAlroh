@@ -78,6 +78,11 @@ extension XCTestCase {
             return
         }
         if guest.exists { guest.tap() }
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        if system.alerts.firstMatch.waitForExistence(timeout: 3) {
+            let allow = system.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "السماح", "سماح"])).firstMatch
+            if allow.exists { allow.tap() }
+        }
     }
 
     func selectNoorTab(_ title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {

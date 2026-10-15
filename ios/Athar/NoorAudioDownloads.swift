@@ -305,6 +305,12 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     /// Streaming starts independently. Persist a complete, verified file in
     /// the background only for recordings the user actually played.
     func cacheWhenHeard(_ key: String) {
+        // A failed pending transfer is retried by listening again; it must not
+        // require the removed manual retry/download screen.
+        if paused && active == nil && !planning && !deleting && !cancelling,
+           NoorAudioIntegrity.url(key) != nil {
+            download([key]); return
+        }
         guard !deleting, !cancelling, NoorAudioIntegrity.url(key) != nil,
               active != key, !queue.contains(key), !automaticQueue.contains(key),
               automaticQueue.count + queue.count < 300 else { return }
@@ -432,48 +438,31 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
 
 struct NoorAudioDownloadsView: View {
     @ObservedObject private var downloads = NoorAudioDownloads.shared
-    @State private var chapter = 1
-    @State private var from = 1
-    @State private var to = 7
-    @State private var confirm = false
-    private var count: Int { QuranResources.corpus?[chapter - 1].ayahs.count ?? 1 }
     var body: some View {
         List {
-            Section("تنزيل التلاوات") {
-                Toggle("التنزيل عبر Wi-Fi فقط", isOn: $downloads.wifiOnly).disabled(downloads.active != nil)
-                Text("عبد الباسط عبد الصمد — مرتّل").font(.headline)
-                Picker("السورة", selection: $chapter) {
-                    ForEach(QuranResources.corpus ?? [], id: \.number) { Text($0.name).tag($0.number) }
-                }.disabled(downloads.active != nil)
-                Stepper("من الآية \(from)", value: $from, in: 1...count).disabled(downloads.active != nil)
-                Stepper("إلى الآية \(to)", value: $to, in: from...max(from, count)).disabled(downloads.active != nil)
-                Button("تنزيل النطاق") { confirm = true }.disabled(downloads.active != nil).accessibilityIdentifier("downloads.range")
-                Text("يعمل التنزيل أثناء فتح التطبيق. تُحفظ الملفات المكتملة؛ الاستئناف يعتمد على دعم الخادم. لا تتغير بيانات الحفظ عند حذف التلاوات.").font(.caption)
+            Section("الحفظ التلقائي") {
+                Toggle("حفظ التلاوات عبر Wi-Fi فقط", isOn: $downloads.wifiOnly).disabled(downloads.active != nil)
+                Text("شغّل أي قارئ مباشرة. تُحفظ التلاوة المكتملة تلقائيًا أثناء الاستماع لتشغيلها لاحقًا دون اتصال.").font(.subheadline)
             }
             if let key = downloads.active {
-                Section("جاري تنزيل · " + NoorAudioIntegrity.label(key)) {
+                Section("جارٍ الحفظ · " + NoorAudioIntegrity.label(key)) {
                     if downloads.expected > 0 { ProgressView(value: Double(downloads.received), total: Double(max(downloads.received, downloads.expected))) }
                     else { ProgressView() }
                     Text(ByteCountFormatter.string(fromByteCount: downloads.received, countStyle: .file))
                     Text(downloads.checking ? "التحقق من ملف الصوت…" : "متبقي \(downloads.remaining) مقطع")
-                    Button("إيقاف التنزيل") { downloads.cancel() }.disabled(downloads.cancelling).accessibilityIdentifier("downloads.cancel")
+                    Button("إيقاف الحفظ") { downloads.cancel() }.disabled(downloads.cancelling).accessibilityIdentifier("downloads.cancel")
                 }
             } else if !downloads.pending.isEmpty {
-                Section { Button("إعادة المحاولة والاستئناف") { downloads.retry() }.accessibilityIdentifier("downloads.retry") }
+                Section { Text("سيُعاد الحفظ عند تشغيل التلاوة مجددًا.").font(.caption) }
             }
             if let message = downloads.message { Section { Text(message) } }
             Section("المحفوظ على الجهاز · " + ByteCountFormatter.string(fromByteCount: Int64(downloads.totalBytes), countStyle: .file)) {
-                if downloads.files.isEmpty { Text("لا توجد تلاوات منزّلة بعد.").foregroundStyle(.secondary) }
+                if downloads.files.isEmpty { Text("تُحفظ هنا التلاوات التي تستمع إليها.").foregroundStyle(.secondary) }
                 ForEach(downloads.files) { recording in
                     HStack { Text(NoorAudioIntegrity.label(recording.key)); Spacer(); Text(ByteCountFormatter.string(fromByteCount: Int64(recording.bytes), countStyle: .file)).font(.caption) }
                     .swipeActions { Button("حذف", role: .destructive) { Task { await downloads.remove(recording.key) } } }
                 }
             }
-        }.navigationTitle("التنزيلات")
-        .onChange(of: chapter) { _, _ in from = 1; to = min(7, count) }
-        .onChange(of: from) { _, value in to = max(to, value) }
-        .confirmationDialog("تنزيل النطاق من الإنترنت؟ قد يستخدم بيانات الجوال.", isPresented: $confirm, titleVisibility: .visible) {
-            Button("تنزيل") { downloads.download((from...to).map { "\(chapter):\($0)" }) }
-        }
+        }.navigationTitle("مساحة التلاوات")
     }
 }

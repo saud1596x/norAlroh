@@ -150,6 +150,16 @@ struct AdhkarView: View {
         guard let content else { return [] }
         return content.searchGroups(search, favorites: favoritesOnly ? counters.favorites : nil)
     }
+    private var dailyPeriods: [DhikrDayPeriod] {
+        guard let content else { return [] }
+        let query = ArabicSearch.normalize(search)
+        return DhikrDayPeriod.allCases.filter { period in
+            let id = period.group(in: content).id
+            return (!favoritesOnly || counters.favorites.contains(id)) &&
+                (query.isEmpty || ArabicSearch.normalize(period.title).contains(query) ||
+                 period.entries(in: content).contains { ArabicSearch.normalize($0.text).contains(query) })
+        }
+    }
     var body: some View {
         Group {
             if let content {
@@ -166,10 +176,25 @@ struct AdhkarView: View {
                         Picker("عرض الأذكار", selection: $favoritesOnly) {
                             Text("جميع الأبواب").tag(false); Text("المفضلة").tag(true)
                         }.pickerStyle(.segmented)
+                        ForEach(dailyPeriods) { period in
+                            let group = period.group(in: content)
+                                HStack {
+                                    NavigationLink {
+                                        DhikrListView(group: group, entries: period.entries(in: content))
+                                    } label: {
+                                        Label(period.title, systemImage: period.symbol)
+                                            .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                                    }.accessibilityIdentifier("adhkar.\(period.rawValue)")
+                                    Button { counters.toggleFavorite(group.id) } label: {
+                                        Image(systemName: counters.favorites.contains(group.id) ? "star.fill" : "star")
+                                            .frame(width: 44, height: 44)
+                                    }.accessibilityLabel("مفضلة: \(period.title)")
+                                }.padding(.horizontal, 18).background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+                        }
                         NavigationLink { NoorSalawatView() } label: {
                             Label("عداد الصلاة على النبي ﷺ", systemImage: "plus.circle").frame(minHeight: 48)
                         }.accessibilityIdentifier("adhkar.salawat")
-                        ForEach(groups) { group in
+                        ForEach(groups.filter { $0.id != "hisn-27" }) { group in
                             HStack(spacing: 8) {
                                 NavigationLink { DhikrListView(group: group, entries: content.entries(in: group)) } label: {
                                     HStack(spacing: 14) {
@@ -188,7 +213,7 @@ struct AdhkarView: View {
                                 }.buttonStyle(NoorPressStyle()).accessibilityLabel("مفضلة: \(group.name)")
                             }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 20)).noorEntrance()
                         }
-                        if groups.isEmpty { ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass", description: Text("ابحث باسم الباب أو كلمة من الذكر، أو أضف بابًا إلى المفضلة.")) }
+                        if groups.filter({ $0.id != "hisn-27" }).isEmpty && dailyPeriods.isEmpty { ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass", description: Text("ابحث باسم الباب أو كلمة من الذكر، أو أضف بابًا إلى المفضلة.")) }
                     }.padding(20)
                 }
             } else { ContentUnavailableView("تعذر تحميل الأذكار", systemImage: "book.closed") }
@@ -252,7 +277,7 @@ struct DhikrSessionView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(reading.title).font(.title2.bold())
                     DhikrReadingText(content: reading)
-                }.padding(.vertical, 20).frame(maxWidth: .infinity, alignment: .leading)
+                }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
                 Text("عداد اليوم محفوظ على جهازك.").font(.caption).foregroundStyle(.secondary)
                 if reading.blocks.filter({ $0.quran != nil }).count > 1 {

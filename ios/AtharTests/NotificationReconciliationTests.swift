@@ -6,12 +6,15 @@ import UserNotifications
     var permission: CheckedContinuation<Bool, Never>?
     var permissionStarted: (() -> Void)?
     var holdPermission = false
+    var permissionAllowed = true
+    var permissionRequests = 0
     var pending: [String: UNNotificationRequest] = [:]
     var delivered: [String] = []
     var failAdding = false
     var added: ((UNNotificationRequest) -> Void)?
     func requestAuthorization() async throws -> Bool {
-        if !holdPermission { return true }
+        permissionRequests += 1
+        if !holdPermission { return permissionAllowed }
         return await withCheckedContinuation { permission = $0; permissionStarted?() }
     }
     func isAuthorized() async -> Bool { true }
@@ -28,6 +31,74 @@ import UserNotifications
 }
 
 final class NotificationReconciliationTests: XCTestCase {
+    @MainActor func testFirstUseDefaultsRequirePermissionAndDoNotReturnAfterOptOut() async throws {
+        let suite = "NoorFirstUse." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let client = TestNotificationClient()
+        let service = PrayerNotifications(client: client, defaults: defaults)
+        let store = AtharStore(directory: folder)
+        await service.configureFirstUse(store: store)
+        XCTAssertEqual(client.permissionRequests, 1)
+        XCTAssertTrue(service.enabled)
+        XCTAssertEqual(service.preferences.afterPrayerMinutes, 20)
+        XCTAssertTrue(service.reminder(.salawat).continuousFiveMinuteReminder)
+        for kind in [NoorReminderKind.morning, .evening, .witr, .duha] { XCTAssertTrue(service.reminder(kind).enabled) }
+        var morning = service.reminder(.morning); morning.enabled = false
+        await service.setReminder(.morning, preference: morning, store: store)
+        service.disable()
+        let reopened = PrayerNotifications(client: client, defaults: defaults)
+        await reopened.configureFirstUse(store: store)
+        XCTAssertEqual(client.permissionRequests, 1)
+        XCTAssertFalse(reopened.reminder(.morning).enabled)
+        XCTAssertFalse(defaults.bool(forKey: "athar.prayerNotifications"))
+    }
+    @MainActor func testDeniedFirstUseNeverSchedulesOrRepeatedlyPrompts() async throws {
+        let suite = "NoorFirstUse." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let client = TestNotificationClient(); client.permissionAllowed = false
+        let service = PrayerNotifications(client: client, defaults: defaults)
+        let store = AtharStore(directory: folder)
+        await service.configureFirstUse(store: store)
+        await service.configureFirstUse(store: store)
+        XCTAssertEqual(client.permissionRequests, 1)
+        XCTAssertTrue(client.pending.isEmpty)
+        XCTAssertTrue(service.personal.values.isEmpty)
+        XCTAssertFalse(service.enabled)
+    }
+    @MainActor func testFirstUseKeepsExistingDisabledPreferences() async throws {
+        let suite = "NoorFirstUse." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        defaults.set(false, forKey: "athar.prayerNotifications")
+        let client = TestNotificationClient()
+        let service = PrayerNotifications(client: client, defaults: defaults)
+        await service.configureFirstUse(store: AtharStore(directory: folder))
+        XCTAssertEqual(client.permissionRequests, 0)
+        XCTAssertFalse(service.enabled)
+        XCTAssertTrue(service.personal.values.isEmpty)
+    }
+    @MainActor func testDisablingDuringFirstUsePermissionCannotReactivateAlerts() async throws {
+        let suite = "NoorFirstUse." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let client = TestNotificationClient(); client.holdPermission = true
+        let service = PrayerNotifications(client: client, defaults: defaults)
+        let store = AtharStore(directory: folder)
+        let started = expectation(description: "permission")
+        client.permissionStarted = { started.fulfill() }
+        let task = Task { await service.configureFirstUse(store: store) }
+        await fulfillment(of: [started], timeout: 2)
+        service.disable(); client.permission?.resume(returning: true)
+        await task.value
+        XCTAssertTrue(service.personal.values.isEmpty)
+        XCTAssertFalse(defaults.bool(forKey: "athar.prayerNotifications"))
+    }
     @MainActor func testAfterPrayerIsSilentAndExactlyTwentyMinutesAfterPrayerTime() async throws {
         let suite = "NoorNotifications." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
