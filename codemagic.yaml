@@ -1,4 +1,22 @@
 workflows:
+  rapid-repair-check:
+    name: Noor Alruh targeted iPhone repair check (not a release gate)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: "26.5"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+        - release/rapid-derived-data
+    scripts:
+      - name: Install native project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Reproduce exact navigation and microphone failures first
+        script: bash scripts/test-rapid-repair.sh
+    artifacts:
+      - release/rapid-repair/**
   recitation-app-integration:
     name: Noor Alruh offline recognition and durable audio on iOS
     instance_type: mac_mini_m2
