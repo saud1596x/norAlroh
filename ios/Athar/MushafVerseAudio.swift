@@ -33,7 +33,10 @@ import MediaPlayer
         return value.isFinite ? max(0, value) : 0
     }
     var durationSeconds: Double {
-        let value = player?.currentItem?.duration.seconds ?? 0
+        // AVPlayer can report a playing time-control state before its item is
+        // ready. Do not synchronously request unloaded media timing from UI.
+        guard let item = player?.currentItem, item.status == .readyToPlay else { return 0 }
+        let value = item.duration.seconds
         return value.isFinite ? max(0, value) : 0
     }
     var repetitionCount: Int { count }
@@ -274,29 +277,21 @@ import MediaPlayer
         item.audioTimePitchAlgorithm = .spectral
         loadingKey = key
         playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
-            let started = player.timeControlStatus == .playing
             Task { @MainActor in
-                guard let self, self.revision == token, self.player === player else { return }
-                if started {
-                    self.loadDeadline?.cancel(); self.loadDeadline = nil
-                    self.playing = key; self.loadingKey = nil
-                    if let seconds = self.bookmarkSeconds, self.durationSeconds > 0 {
-                        self.bookmarkSeconds = nil
-                        self.seek(to: min(seconds, max(0, self.durationSeconds - 0.05)))
-                    }
-                    if !self.reportedStart { self.reportedStart = true; self.onVerse?(key) }
-                    self.updateNowPlaying()
-                } else if player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
-                    self.playing = nil; self.loadingKey = key
-                    self.startLoadDeadline(key: key, token: token)
-                }
+                self?.refreshPlaybackState(player, key: key, token: token)
             }
         }
-        observation = item.observe(\.status, options: [.new, .initial]) { [weak self] item, _ in
-            let failed = item.status == .failed
+        observation = item.observe(\.status, options: [.new, .initial]) { [weak self, weak playback] item, _ in
             Task { @MainActor in
-                guard failed, let self, self.revision == token, self.player?.currentItem === item else { return }
-                self.error = "تعذّر تشغيل الآية. أعد تنزيلها أو تحقق من الاتصال."; self.stop()
+                guard let self, let playback, self.revision == token,
+                      self.player === playback, playback.currentItem === item else { return }
+                if item.status == .failed {
+                    self.error = "تعذّر تشغيل الآية. أعد تنزيلها أو تحقق من الاتصال."; self.stop()
+                } else {
+                    // Readiness and time-control notifications can arrive in
+                    // either order. Both must converge on the same state.
+                    self.refreshPlaybackState(playback, key: key, token: token)
+                }
             }
         }
         end = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
@@ -312,6 +307,25 @@ import MediaPlayer
         traceAudio("player.play.begin")
         playback.playImmediately(atRate: playbackRate)
         traceAudio("player.play.end")
+    }
+    private func refreshPlaybackState(_ playback: AVPlayer, key: String, token: UUID) {
+        guard revision == token, player === playback else { return }
+        if playback.timeControlStatus == .playing,
+           playback.currentItem?.status == .readyToPlay {
+            traceAudio("ready-state.begin")
+            loadDeadline?.cancel(); loadDeadline = nil
+            playing = key; loadingKey = nil
+            if let seconds = bookmarkSeconds, durationSeconds > 0 {
+                bookmarkSeconds = nil
+                seek(to: min(seconds, max(0, durationSeconds - 0.05)))
+            }
+            if !reportedStart { reportedStart = true; onVerse?(key) }
+            updateNowPlaying()
+            traceAudio("ready-state.end")
+        } else if !isPaused {
+            playing = nil; loadingKey = key
+            startLoadDeadline(key: key, token: token)
+        }
     }
     private func startLoadDeadline(key: String, token: UUID) {
         guard loadDeadline == nil else { return }
@@ -338,10 +352,15 @@ import MediaPlayer
         interrupted?()
     }
     private func updateNowPlaying() {
-        guard !remoteTargets.isEmpty else { return }
+        // Unknown/loading items must retain their load deadline and must not
+        // cause synchronous metadata queries on the main actor.
+        guard !remoteTargets.isEmpty,
+              player?.currentItem?.status == .readyToPlay else { return }
+        traceAudio("now-playing.begin")
         MPNowPlayingInfoCenter.default().nowPlayingInfo = [MPMediaItemPropertyTitle: displayName,
             MPMediaItemPropertyPlaybackDuration: durationSeconds, MPNowPlayingInfoPropertyElapsedPlaybackTime: currentSeconds,
             MPNowPlayingInfoPropertyPlaybackRate: isPaused ? Float(0) : playbackRate]
+        traceAudio("now-playing.end")
     }
     private func installRemoteControls() {
         let center = MPRemoteCommandCenter.shared()
