@@ -63,7 +63,11 @@
     "execution": "success",
     "qualityAcceptance": "failed",
     "category": "Published single dal-qalqala errors versus correct labels; Ikhlas verses 1 and 2 only",
-    "samples": { "train": 338, "development": 136, "test": 247 },
+    "samples": {
+      "train": 338,
+      "development": 136,
+      "test": 247
+    },
     "measurements": {
       "testSamples": 247,
       "assessed": 197,
@@ -96,5 +100,61 @@
     "There is no independently reviewed word-omission/substitution benchmark or verified phonetic mobile runtime yet.",
     "CI CPU timings do not establish physical iPhone microphone, route, thermal, 30/60-minute or p95 performance.",
     "No private recordings uploaded. CPU calibration ran on public licensed data; no paid training service was purchased or provisioned."
-  ]
+  ],
+  "nonAutoregressiveWordingCandidate": {
+    "model": "rabah2026/wav2vec2-large-xlsr-53-arabic-quran",
+    "revision": "b539d5fa66deb820c8e4762171ecb284ace4b52d",
+    "sourceWeightsSHA256": "202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf",
+    "declaredModelLicense": "Apache-2.0",
+    "trainingDataRightsIndependentlyVerified": false,
+    "sourceCommit": "1b29526fa57307c6aee0f5b3b898a5398d0d896a",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38657095657",
+    "execution": "success",
+    "runtime": "Actual precompiled Core ML on macOS CPU; linear-only float16 arithmetic; other operations float32; int8 stored weights",
+    "appleCases": 18,
+    "allLexicalParityPassed": true,
+    "peakHostRSSBytes": 1012908032,
+    "maximumMeasuredCaseSeconds": 4.234575500000005,
+    "appleReceiptSHA256": "6a4865e19ebef4bc3935d450087c15740c4c5efa44b4e6eb4d66b8b4d67c38e5",
+    "productionWordingReceiptSHA256": "ba5044deaa210cf1051ede25dd1de8af76c40a495635286d6181775e0f1c1317",
+    "actualAssessmentCases": [
+      {
+        "name": "public-composite",
+        "categories": [],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "public-cut",
+        "categories": [
+          "omission"
+        ],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "public-repeat",
+        "categories": [
+          "insertion"
+        ],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "public-hesitation",
+        "categories": [],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "digital-silence",
+        "categories": [],
+        "confirmedErrors": 0
+      }
+    ],
+    "assessmentSource": "Unchanged production QuranWordingAssessment.swift and QuranWordAlignment.swift",
+    "boundaryPolicy": "Final words require an actual closed input and at least 300ms after the last acoustic CTC character. Streaming window endings alone do not finalize a word. No expected letters supplied.",
+    "scope": "Ten public reference verses, fixed signal splices, three partial prefixes and digital silence; not a reviewed learner-error benchmark. Word timing remains CTC receptive-field timing, not reviewed boundaries.",
+    "iPhoneVerified": false,
+    "integratedIntoShippingApp": false,
+    "productionPromoted": false,
+    "learnerErrorAccuracyEstablished": false,
+    "validatedTajweedAssessment": false
+  }
 }
