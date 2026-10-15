@@ -1,4 +1,21 @@
 workflows:
+  archive-preservation-check:
+    name: Noor recording preservation regression (not release acceptance)
+    instance_type: mac_mini_m2
+    max_build_duration: 8
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify recording preservation and session ownership
+        script: bash scripts/test-recording-preservation.sh
+    artifacts:
+      - release/recording-preservation/**
   isolated-audio-check:
     name: Independent Apple audio host diagnosis (not Noor acceptance)
     instance_type: mac_mini_m2

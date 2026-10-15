@@ -139,6 +139,14 @@ the Noor app host. Build 6ad104023ffd2c7f0ad3a745 is the bounded six-minute
 comparison on the same Xcode26.3/iOS26.2 runtime. Its result must be recorded
 before drawing a conclusion; it cannot replace engine or Release acceptance.
 
+The independent build ended with Codemagic timeout after 6m22s. AVAudioPlayer
+entered play() without returning, exceeded XCTest's 60-second allowance and
+logged HALC proxy error 268451843 before runner restart. The subsequent AVPlayer
+case returned from play(), but its final case result was not captured before
+the global timeout. Host afplay succeeded in 4.2447s. The stall therefore also
+occurs without Noor startup or services; it is not evidence that Noor's actual
+microphone or complete engine works. No further identical paid retry is useful.
+
 Local review also found a separate data-loss defect: legacy recorder cleanup
 deleted its temporary capture even after archive validation/write failed.
 Cleanup now removes that take only after successful finalization, retains the
@@ -148,3 +156,8 @@ A regression uses the original reference audio and an unwritable destination
 (an existing nonempty directory), then retries to a valid destination and
 checks exact bytes. This change is not part of the standalone diagnostic run,
 and its new native regression has not yet run. No recognition claims follow.
+
+A separate eight-minute bounded archive-preservation-check selects the three
+archive tests and five ownership regressions. This verifies the new concrete
+data-loss repair only, without replaying the known hung playback controls or
+changing any existing full audio/Release gate. It has not run yet.
