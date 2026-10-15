@@ -16,39 +16,45 @@ extension QuranAudioCapture {
 
 final class QuranMicrophoneCapture: QuranAudioCapture {
     private let engine: AVAudioEngine
+    private let inputNode: AVAudioInputNode
+    private let inputFormat: AVAudioFormat
     private let pipe: Pipe
     private let inputEvents: QuranAudioInputEvents
     private var installed = false
     init(writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
         let engine = AVAudioEngine()
-        let input = engine.inputNode.outputFormat(forBus: 0)
+        let inputNode = engine.inputNode
+        let input = inputNode.outputFormat(forBus: 0)
         guard input.sampleRate > 0, input.channelCount > 0 else { throw QuranCaptureFailure.invalidSamples }
         self.engine = engine
+        self.inputNode = inputNode; inputFormat = input
         pipe = try Pipe(format: input, writer: writer, onFailure: onFailure)
         inputEvents = QuranAudioInputEvents(engine: engine, onFailure: onFailure)
     }
     func start() throws {
+        guard !installed else { return }
         let pipe = self.pipe
-        let input = engine.inputNode
-        input.installTap(onBus: 0, bufferSize: 4096, format: input.outputFormat(forBus: 0)) { buffer, _ in
+        // Retain the node/format for this take. Shutdown must not ask the
+        // engine to initialize or rediscover its input after route loss.
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
             pipe.append(buffer)
         }
         installed = true; engine.prepare()
         inputEvents.arm()
         do { try engine.start() }
-        catch { inputEvents.disarm(); engine.inputNode.removeTap(onBus: 0); installed = false; throw error }
+        catch { inputEvents.disarm(); inputNode.removeTap(onBus: 0); installed = false; throw error }
     }
     func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) { pipe.observeLevel(observer) }
     func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) { pipe.observeQuality(observer) }
     func stop() async -> Result<Int64, Error> {
         inputEvents.disarm()
         engine.stop()
-        if installed { engine.inputNode.removeTap(onBus: 0); installed = false }
+        if installed { inputNode.removeTap(onBus: 0); installed = false }
         return await withCheckedContinuation { continuation in
             pipe.finish { continuation.resume(returning: $0) }
         }
     }
-    deinit { inputEvents.disarm(); engine.stop(); if installed { engine.inputNode.removeTap(onBus: 0) } }
+    deinit { inputEvents.disarm(); engine.stop(); if installed { inputNode.removeTap(onBus: 0) } }
     private final class Pipe {
         private let lock = NSLock()
         private let resampler: QuranPCMResampler

@@ -1,0 +1,67 @@
+# Audio lifecycle review — 15 October 2026
+
+This review is not an assertion that the complete recitation engine or release
+has passed. The failing native run was d48cc67, Codemagic
+6ad0ed1b3ffd2c7f0ad39f83. Both live process samples completed successfully.
+
+## Confirmed failure and change
+
+The second sample shows MainActor blocked in
+`startLoadDeadline -> error.setter -> listenFirst error subscriber ->
+cancelGuided -> stop -> saveBookmark -> currentSeconds -> AVPlayerItem.currentTime
+-> itemfig_GetCurrentTime -> __psynch_mutexwait`.
+
+Separately, the audio initialization thread waits for CoreAudio's host IPC
+(`HALC_ProxyObject::SetPropertyData` while creating an output IOProc). The first
+sample's main thread was still responsive. Thus a host playback failure became
+an application UI hang specifically during timeout recovery.
+
+The application now uses periodic player timestamps for elapsed time and
+asynchronously loaded asset duration. Bookmark saving, diagnostics, and UI no
+longer request `currentTime()` or an unloaded item's duration synchronously.
+Only a reference that actually started can replace a saved bookmark. Time and
+metadata callbacks check the sequence revision and exact player identity;
+observers/tasks are removed on replacement and stop. Natural item-end remains
+the only completion signal for guided practice.
+
+Capture retains its input node and format for one take and removes its tap
+through that retained node during shutdown; it no longer re-queries
+`engine.inputNode` during cleanup. This does not claim to cure an OS failure
+while initially creating the input node. Guided cancellation detaches the
+reference before calling its stop method.
+
+## Other lifecycle paths inspected
+
+- Playback/recording ownership: NoorAudioFocus prevents reference playback
+  while a recording lease is held.
+- Capture/session setup: category and activation precede microphone creation;
+  gain is adjusted only for routes that support it.
+- Input loss: route, interruption, configuration and media-service observers
+  report once, dispatching controller work away from the engine notification.
+- PCM and inference: the writer keeps audio independently of the latest-window
+  mailbox; inference cancellation and revision checks reject late results.
+- Pause/finish: captured PCM is drained, the take is closed, and the recording
+  lease remains held through recognition draining.
+- Guided practice: playback itself creates no learner recording/evidence;
+  microphone permission is requested only on the explicit learner action.
+
+Code inspection is not device acceptance. Physical input, interruptions,
+speaker leakage, long sessions and model accuracy remain to be measured.
+
+## Verification
+
+- Exact bundled text check: 6,236 verses and 112 separate basmalas match their
+  pinned source without normalization.
+- Local Python regression suite: 35 tests, 1 platform symlink skip, no failures.
+- New native regression: stop an actual bundled reference during preparation,
+  verify bounded stop, cleared state, and no late/false completion.
+- Existing actual reference playback test and all its assertions retained.
+- Targeted native run additionally includes microphone lifecycle, recognition
+  worker lifecycle, wording assessment, and recognition input conditioning.
+- Native compilation and execution of these changes: PENDING.
+
+The next disposable Codemagic worker restarts its host audio daemon once before
+booting Simulator, records the actual exit/elapsed time of host `afplay` using
+the same real reference file, and runs the unchanged actual playback assertion.
+This is a controlled environment recovery attempt, not proof of an app fix;
+it does not inject PCM, fake item-end, or skip failed audio tests.

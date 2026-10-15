@@ -28,17 +28,13 @@ import MediaPlayer
     let displayName: String
     private let keepAlive: Bool
     private var remoteTargets: [(MPRemoteCommand, Any)] = []
-    var currentSeconds: Double {
-        let value = player?.currentTime().seconds ?? 0
-        return value.isFinite ? max(0, value) : 0
-    }
-    var durationSeconds: Double {
-        // AVPlayer can report a playing time-control state before its item is
-        // ready. Do not synchronously request unloaded media timing from UI.
-        guard let item = player?.currentItem, item.status == .readyToPlay else { return 0 }
-        let value = item.duration.seconds
-        return value.isFinite ? max(0, value) : 0
-    }
+    // Never synchronously query media timing from UI, error handling or stop.
+    // A real device/service stall can hold AVPlayerItem's timing mutex. Native
+    // stack evidence showed saveBookmark -> currentTime freezing MainActor.
+    private(set) var currentSeconds: Double = 0
+    private(set) var durationSeconds: Double = 0
+    private var timeObservation: Any?
+    private var durationTask: Task<Void, Never>?
     var repetitionCount: Int { count }
     var currentCanonicalKey: String? { index < keys.count ? keys[index] : nil }
     private var bookmarkKey: String { "noor.audio.bookmark." + (recordingIdentity ?? "everyayah:" + reciterDirectory) }
@@ -64,7 +60,7 @@ import MediaPlayer
     var playbackDiagnostic: String {
         guard let player else { return lastPlaybackDiagnostic }
         let item = player.currentItem
-        return "player=\(player.status.rawValue), item=\(item?.status.rawValue ?? -1), timeControl=\(player.timeControlStatus.rawValue), waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "none"), seconds=\(player.currentTime().seconds), duration=\(item?.duration.seconds ?? .nan), itemError=\((item?.error as NSError?)?.code ?? 0), outputs=\(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","))"
+        return "player=\(player.status.rawValue), item=\(item?.status.rawValue ?? -1), timeControl=\(player.timeControlStatus.rawValue), waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "none"), observedSeconds=\(currentSeconds), loadedDuration=\(durationSeconds), itemError=\((item?.error as NSError?)?.code ?? 0)"
     }
     private let cacheKey: ((String) -> String?)?
     private let cachedSource: (String) async -> URL?
@@ -136,8 +132,11 @@ import MediaPlayer
     func seek(to seconds: Double) {
         guard seconds.isFinite, let player, durationSeconds > 0, seconds >= 0, seconds <= durationSeconds else { return }
         let token = revision
-        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-            Task { @MainActor in guard let self, self.revision == token else { return }; self.updateNowPlaying() }
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player] finished in
+            Task { @MainActor in
+                guard let self, let player, finished, self.revision == token, self.player === player else { return }
+                self.currentSeconds = seconds; self.updateNowPlaying()
+            }
         }
     }
     @discardableResult func setPlaybackRate(_ rate: Float) -> Bool {
@@ -171,7 +170,8 @@ import MediaPlayer
         return true
     }
     func saveBookmark() {
-        guard index < keys.count, player != nil, currentSeconds >= 0 else { return }
+        // An item which never started must not overwrite a useful bookmark.
+        guard index < keys.count, player != nil, reportedStart else { return }
         UserDefaults.standard.set(["key": keys[index], "keys": keys, "index": index, "seconds": currentSeconds,
                                    "repetitions": count, "completedPass": pass, "gap": gap], forKey: bookmarkKey)
     }
@@ -190,8 +190,13 @@ import MediaPlayer
         traceAudio("player.release.begin")
         resolvingSource?.cancel(); resolvingSource = nil
         loadDeadline?.cancel(); loadDeadline = nil
+        durationTask?.cancel(); durationTask = nil
         if player != nil { lastPlaybackDiagnostic = playbackDiagnostic }
-        player?.pause(); player = nil; observation = nil; playbackObservation = nil
+        observation = nil; playbackObservation = nil
+        if let timeObservation, let player { player.removeTimeObserver(timeObservation) }
+        timeObservation = nil
+        player?.pause(); player = nil
+        currentSeconds = 0; durationSeconds = 0
         if let end { NotificationCenter.default.removeObserver(end) }; end = nil
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
         playing = nil; loadingKey = nil; reportedStart = false
@@ -274,6 +279,25 @@ import MediaPlayer
         traceAudio("player.create.begin")
         let playback = AVPlayer(playerItem: item); player = playback
         traceAudio("player.create.end")
+        timeObservation = playback.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self, weak playback] time in
+            let seconds = time.seconds
+            Task { @MainActor in
+                guard let self, let playback, self.revision == token, self.player === playback,
+                      seconds.isFinite, seconds >= 0 else { return }
+                self.currentSeconds = seconds
+            }
+        }
+        // Metadata loading may wait for media services; suspension must not
+        // prevent Stop, the load deadline, or changing to another recording.
+        durationTask = Task { [weak self, weak playback] in
+            let duration = try? await item.asset.load(.duration)
+            guard let self, let playback, !Task.isCancelled, self.revision == token,
+                  self.player === playback else { return }
+            if let seconds = duration?.seconds, seconds.isFinite, seconds > 0 {
+                self.durationSeconds = seconds
+                self.refreshPlaybackState(playback, key: key, token: token)
+            }
+        }
         item.audioTimePitchAlgorithm = .spectral
         loadingKey = key
         playbackObservation = playback.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
@@ -391,6 +415,8 @@ import MediaPlayer
         resolvingSource?.cancel()
         delay?.cancel()
         loadDeadline?.cancel()
+        durationTask?.cancel()
+        if let timeObservation, let player { player.removeTimeObserver(timeObservation) }
         sleepTask?.cancel()
         for (command, target) in remoteTargets { command.removeTarget(target) }
         if let end { NotificationCenter.default.removeObserver(end) }

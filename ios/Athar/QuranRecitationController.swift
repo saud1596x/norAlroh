@@ -67,7 +67,8 @@ import os
     func cancelGuided() {
         guidedRevision = UUID(); guidedDelay?.cancel(); guidedDelay = nil
         guidedFailure?.cancel(); guidedFailure = nil
-        referenceAudio?.stop(); referenceAudio = nil
+        let previous = referenceAudio; referenceAudio = nil
+        previous?.stop()
         referenceExposure = record?.referenceExposure ?? referenceExposure; guidedPhase = .inactive
     }
     private let worker: any QuranSpeechRecognitionProvider

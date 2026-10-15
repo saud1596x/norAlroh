@@ -2,6 +2,24 @@ import XCTest
 @testable import Athar
 
 final class QuranGuidedPracticeTests: XCTestCase {
+    @MainActor func testStoppingActualReferenceDuringPreparationDoesNotWaitForMediaTiming() async throws {
+        let file = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let player = MushafVerseAudio(source: { _ in file })
+        var finished = false
+        player.play(["112:1"], onFinished: { finished = true })
+        let started = Date()
+        player.stop()
+        XCTAssertLessThan(Date().timeIntervalSince(started), 2,
+            "Stop must not synchronously wait for unloaded media timing")
+        XCTAssertNil(player.playing)
+        XCTAssertNil(player.loadingKey)
+        XCTAssertEqual(player.currentSeconds, 0)
+        XCTAssertEqual(player.durationSeconds, 0)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertFalse(finished, "Stopping is not evidence that the reference was heard")
+        XCTAssertNil(player.playing, "Late readiness callbacks cannot restart a stopped item")
+        XCTAssertEqual(player.currentSeconds, 0)
+    }
     @MainActor func testReplacingOrStoppingReferenceCannotFinishAnUnheardGuide() {
         let controller = QuranRecitationController(requestPermission: { false })
         let player = MushafVerseAudio(resolveSource: { _ in

@@ -16,6 +16,29 @@ Path('release/rapid-repair/context.json').write_text(json.dumps({
 },indent=2)+'\n')
 PY
 xcodegen generate --spec ios/project.yml --project ios
+# The captured host stack waited in HALC_ProxyObject::SetPropertyData while
+# creating the output IOProc. Recover the audio daemon once on this disposable
+# Codemagic worker, before starting its simulator. Never run this on a local Mac.
+if [[ -n "${CM_BUILD_ID:-}" ]]; then
+  python3 - <<'PYAUDIO'
+import json,subprocess,time
+from pathlib import Path
+report={'scope':'Disposable Codemagic worker only; not an app fix or voice accuracy evidence'}
+result=subprocess.run(['sudo','-n','killall','coreaudiod'],capture_output=True,text=True,timeout=10)
+report['daemonRestartExit']=result.returncode
+report['daemonRestartDiagnostic']=result.stderr[-500:]
+time.sleep(2)
+started=time.monotonic()
+try:
+    played=subprocess.run(['/usr/bin/afplay','ios/AtharTests/RecitationFixtures/112001.mp3'],capture_output=True,text=True,timeout=10)
+    report.update(hostPlaybackExit=played.returncode,hostPlaybackDiagnostic=played.stderr[-1500:])
+except subprocess.TimeoutExpired:
+    report['hostPlaybackTimeout']=True
+report['hostPlaybackElapsedSeconds']=time.monotonic()-started
+Path('release/rapid-repair/host-playback.json').write_text(json.dumps(report,indent=2)+'\n')
+print('ACTUAL_HOST_AUDIO',json.dumps(report))
+PYAUDIO
+fi
 device=$(python3 - <<'PY'
 import json,subprocess
 devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
@@ -75,6 +98,9 @@ xcodebuild test-without-building "${common[@]}" \
   -maximum-test-execution-time-allowance 90 \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
   -only-testing:AtharTests/QuranGuidedPracticeTests \
+  -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
+  -only-testing:AtharTests/QuranWordingAssessmentTests \
+  -only-testing:AtharTests/QuranRecognitionAudioTests \
   -resultBundlePath release/rapid-repair/audio-lifecycle.xcresult || audio_exit=$?
 kill "$audio_sampler" 2>/dev/null || true
 wait "$audio_sampler" 2>/dev/null || true
