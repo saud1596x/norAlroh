@@ -226,6 +226,26 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
+  ios-testflight-saud:
+    <<: *signed_ios
+    name: Noor Alruh signed TestFlight / saud
+    # Manual dispatch only, after matching release evidence and protected
+    # noor_release configuration are present. Keep all inherited release gates.
+    # The bound reserves USD1.52 at USD0.095/min including one rounding minute.
+    max_build_duration: 15
+    integrations:
+      app_store_connect: masar-apple
+    environment:
+      <<: *signed_ios_environment
+      ios_signing:
+        provisioning_profiles:
+          - noor-saud-appstore-20261015
+          - noor-saud-widgets-20261015
+          - noor-saud-focus-monitor-20261015
+          - noor-saud-focus-shield-20261015
+          - noor-saud-focus-action-20261015
+        certificates:
+          - masar_distribution
   ios-testflight-verified-update:
     <<: *signed_ios
     name: Noor Alruh verified update / TestFlight webhook
