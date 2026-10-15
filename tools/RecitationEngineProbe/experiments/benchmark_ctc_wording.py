@@ -4,6 +4,7 @@ No prompt, expected-text decoding, private recordings, training, mobile runtime
 claim, or pronunciation verdict. Preserve raw CTC observations for inspection.
 """
 import hashlib
+import argparse
 import json
 from pathlib import Path
 import resource
@@ -21,6 +22,15 @@ WORK.mkdir(exist_ok=True)
 REV = 'b539d5fa66deb820c8e4762171ecb284ace4b52d'
 REPO = 'rabah2026/wav2vec2-large-xlsr-53-arabic-quran'
 WEIGHT_SHA = '202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf'
+WEIGHT_BYTES = 1262037080
+PAD_LABEL = '<pad>'; DELIMITER_ID = 4
+parser=argparse.ArgumentParser();parser.add_argument('--small',action='store_true');args=parser.parse_args()
+if args.small:
+    REPO='HamzaSidhu786/wav2vec2-base-word-by-word-quran-asr'
+    REV='20b8520763787f986b17fb960c7bb3736bb26f08'
+    WEIGHT_SHA='2db819d988d36f80714fa1243f9f96433c1424a211516c5cd60c93718ad9115f'
+    WEIGHT_BYTES=377706484
+    PAD_LABEL='[PAD]';DELIMITER_ID=5
 BASE = f'https://huggingface.co/{REPO}/resolve/{REV}/'
 receipt = {}
 
@@ -41,13 +51,13 @@ def download(name, size_limit, expected=None):
 
 for name in ['config.json', 'preprocessor_config.json', 'tokenizer_config.json', 'special_tokens_map.json', 'vocab.json', 'README.md']:
     download(name, 2_000_000)
-download('model.safetensors', 1262037080, WEIGHT_SHA)
-if receipt['model.safetensors']['bytes'] != 1262037080:
+download('model.safetensors', WEIGHT_BYTES, WEIGHT_SHA)
+if receipt['model.safetensors']['bytes'] != WEIGHT_BYTES:
     raise ValueError('Truncated model resource')
 config = json.loads((WORK / 'config.json').read_text())
 vocabulary = json.loads((WORK / 'vocab.json').read_text())
 inverse = {value: key for key, value in vocabulary.items()}
-if config.get('model_type') != 'wav2vec2' or vocabulary.get('<pad>') != 0 or vocabulary.get('|') != 4:
+if config.get('model_type') != 'wav2vec2' or config.get('pad_token_id')!=0 or vocabulary.get(PAD_LABEL) != 0 or vocabulary.get('|') != DELIMITER_ID:
     raise ValueError('Unexpected CTC architecture or token identity')
 torch.set_num_threads(2); torch.set_num_interop_threads(1)
 processor = Wav2Vec2Processor.from_pretrained(str(WORK), local_files_only=True, trust_remote_code=False)
@@ -91,6 +101,7 @@ cases.extend([
     ('digital-silence-8s',np.zeros(128000,dtype=np.float32)),
 ])
 report=dict(schema=1,model=REPO,revision=REV,declaredModelLicense='Apache-2.0',
+    trainingDataRightsIndependentlyVerified=False,wholeAyahQualityEstablished=False,
     sourceReceipt=receipt,torchRuntime=torch.__version__,quantization='Actual dynamic int8 Linear layers on CPU; not Core ML',
     frontendStrideSamples=stride,frontendReceptiveFieldSamples=receptive,
     timingScope='CTC character-frame receptive fields; not independently reviewed word boundaries',

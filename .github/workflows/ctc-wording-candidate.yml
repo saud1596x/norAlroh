@@ -1,4 +1,4 @@
-name: Pinned CTC Quran wording comparison
+name: Pinned compact CTC Quran wording comparison
 on:
   workflow_dispatch:
   push:
@@ -27,7 +27,7 @@ jobs:
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
           TOKENIZERS_PARALLELISM: 'false'
-        run: python tools/RecitationEngineProbe/experiments/benchmark_ctc_wording.py
+        run: python tools/RecitationEngineProbe/experiments/benchmark_ctc_wording.py --small
       - uses: actions/upload-artifact@v4
         if: always()
         with:
