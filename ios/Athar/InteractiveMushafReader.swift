@@ -203,6 +203,49 @@ struct InteractiveMushafReader: View {
         return page?.words.contains(where: { $0.verse == key }) == true ? key : nil
     }
     var body: some View {
+        presentedReader
+        .onChange(of: recitation.record?.id) { _, value in
+            completedFeedbackVerses = []; feedbackVerse = recitation.currentVerse; feedbackAnnounced = false
+            if let value { pendingRecitation = value.uuidString }
+        }
+        .onChange(of: recitation.record?.wordingEvents) { _, _ in announceReviewFeedback() }
+        .onChange(of: audio.error) { _, value in
+            if value != nil, recitation.guidedPhase == .reference { recitation.cancelGuided() }
+        }
+        .onChange(of: audio.loadingKey) { _, value in
+            if value == nil, audio.playing == nil, audio.waitingKey == nil,
+               recitation.guidedPhase == .reference { recitation.cancelGuided() }
+        }
+        .onChange(of: audio.playing) { _, value in
+            if value == nil, audio.loadingKey == nil, audio.waitingKey == nil,
+               recitation.guidedPhase == .reference { recitation.cancelGuided() }
+        }
+        .onChange(of: recitation.currentVerse) { _, key in
+            if let previous = feedbackVerse, key != previous { completedFeedbackVerses.insert(previous) }
+            feedbackVerse = key; announceReviewFeedback()
+            guard followAudio, recitation.hasSession, let key else { return }
+            selected = key; manualSelection = nil
+            if page?.words.contains(where: { $0.verse == key }) != true,
+               let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) { number = destination; lastPage = destination }
+        }
+        .onChange(of: recitation.state) { _, state in
+            if state == .stopped { pendingRecitation = ""; selected = nil; studySummary = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { event in
+            if (event.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue {
+                Task { await recitation.pause() }
+            }
+        }
+        .alert(audio.error == nil ? "التسميع" : "التلاوة", isPresented: Binding(
+            get: { audio.error != nil || recitation.message != nil },
+            set: { if !$0 { audio.error = nil; recitation.message = nil } })) {
+            if audio.error == nil && recitation.permissionDenied {
+                Button("إعدادات الميكروفون") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+            }
+            Button("حسنًا", role: .cancel) { audio.error = nil; recitation.message = nil }
+        } message: { Text(audio.error ?? recitation.message ?? "") }
+    }
+    private var initializedReader: some View {
         readerSurface
         .statusBarHidden(true)
         .toolbar(.hidden, for: .navigationBar, .tabBar)
@@ -226,6 +269,9 @@ struct InteractiveMushafReader: View {
             try? await NoorOperationDeadline.run(seconds: 45) { try await QuranRecognitionWorker.shared.prepare() }
         }
         .onAppear { readerVisible = true; audio.reciterDirectory = preferredReciter }
+    }
+    private var activeReader: some View {
+        initializedReader
         .sheet(isPresented: $recitersOpen) {
             NavigationStack {
                 List {
@@ -292,6 +338,9 @@ struct InteractiveMushafReader: View {
         .alert("أتممت ورد اليوم", isPresented: $wardComplete) {
             Button("العودة للرئيسية") { dismiss() }
         } message: { Text(readingJourney.active?.finished != nil ? "حُفظت قراءتك وأتممت الختمة." : "حُفظ تقدمك. ستكمل غدًا من الصفحة التالية حسب مقدار وردك.") }
+    }
+    private var studyReader: some View {
+        activeReader
         .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; showStudySetup(studyStartKey) } }) { selection in
             VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
                 studyStartKey = key; studyRequestFromSheet = true
@@ -328,6 +377,9 @@ struct InteractiveMushafReader: View {
                 }
             }
         }
+    }
+    private var presentedReader: some View {
+        studyReader
         .sheet(item: $recordingSelection) { selection in
             MushafRecordingList(session: selection.id, recorder: studyRecorder)
         }
@@ -390,46 +442,6 @@ struct InteractiveMushafReader: View {
                 Button("إغلاق") { pageInputFocused = false; picker = false }
             } }
         }
-        .onChange(of: recitation.record?.id) { _, value in
-            completedFeedbackVerses = []; feedbackVerse = recitation.currentVerse; feedbackAnnounced = false
-            if let value { pendingRecitation = value.uuidString }
-        }
-        .onChange(of: recitation.record?.wordingEvents) { _, _ in announceReviewFeedback() }
-        .onChange(of: audio.error) { _, value in
-            if value != nil, recitation.guidedPhase == .reference { recitation.cancelGuided() }
-        }
-        .onChange(of: audio.loadingKey) { _, value in
-            if value == nil, audio.playing == nil, audio.waitingKey == nil,
-               recitation.guidedPhase == .reference { recitation.cancelGuided() }
-        }
-        .onChange(of: audio.playing) { _, value in
-            if value == nil, audio.loadingKey == nil, audio.waitingKey == nil,
-               recitation.guidedPhase == .reference { recitation.cancelGuided() }
-        }
-        .onChange(of: recitation.currentVerse) { _, key in
-            if let previous = feedbackVerse, key != previous { completedFeedbackVerses.insert(previous) }
-            feedbackVerse = key; announceReviewFeedback()
-            guard followAudio, recitation.hasSession, let key else { return }
-            selected = key; manualSelection = nil
-            if page?.words.contains(where: { $0.verse == key }) != true,
-               let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) { number = destination; lastPage = destination }
-        }
-        .onChange(of: recitation.state) { _, state in
-            if state == .stopped { pendingRecitation = ""; selected = nil; studySummary = true }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { event in
-            if (event.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue {
-                Task { await recitation.pause() }
-            }
-        }
-        .alert(audio.error == nil ? "التسميع" : "التلاوة", isPresented: Binding(
-            get: { audio.error != nil || recitation.message != nil },
-            set: { if !$0 { audio.error = nil; recitation.message = nil } })) {
-            if audio.error == nil && recitation.permissionDenied {
-                Button("إعدادات الميكروفون") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
-            }
-            Button("حسنًا", role: .cancel) { audio.error = nil; recitation.message = nil }
-        } message: { Text(audio.error ?? recitation.message ?? "") }
     }
     private var readerSurface: some View {
         ZStack {
