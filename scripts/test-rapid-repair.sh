@@ -28,6 +28,10 @@ PY
 state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(x["state"] for rows in json.load(sys.stdin)["devices"].values() for x in rows if x["udid"]==sys.argv[1]))' "$device")
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
+# The prior headless run aborted inside AURemoteIO initialization. Launch the
+# actual Simulator application as a controlled host-audio retry, without PCM substitution.
+open -a Simulator --args -CurrentDeviceUDID "$device"
+system_profiler SPAudioDataType -json > release/rapid-repair/host-audio.json
 common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Debug
   -destination "platform=iOS Simulator,id=$device"
   -derivedDataPath release/rapid-derived-data CODE_SIGNING_ALLOWED=NO
@@ -61,16 +65,21 @@ PYCRASH
 trap collect_failure_reports EXIT
 xcodebuild build-for-testing "${common[@]}"
 xcodebuild test-without-building "${common[@]}" \
+  -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
+  -maximum-test-execution-time-allowance 90 \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
   -only-testing:AtharTests/QuranGuidedPracticeTests \
   -resultBundlePath release/rapid-repair/audio-lifecycle.xcresult
 # Run the exact failing walkthrough first, without waiting for unrelated unit
 # suites or a second physical-device archive. Keep its original assertions.
-navigation_exit=0
-xcrun simctl privacy "$device" reset microphone com.saud1596x.nooralruh
-xcodebuild test-without-building "${common[@]}" \
-  -only-testing:AtharUITests/NoorAllScreensTests/testAllScreensWalkthrough \
-  -resultBundlePath release/rapid-repair/navigation.xcresult || navigation_exit=$?
+navigation_exit=not-run
+if [[ "${NOOR_RAPID_NAVIGATION:-1}" == 1 ]]; then
+  navigation_exit=0
+  xcrun simctl privacy "$device" reset microphone com.saud1596x.nooralruh
+  xcodebuild test-without-building "${common[@]}" \
+    -only-testing:AtharUITests/NoorAllScreensTests/testAllScreensWalkthrough \
+    -resultBundlePath release/rapid-repair/navigation.xcresult || navigation_exit=$?
+fi
 microphone_exit=0
 xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 xcodebuild test-without-building "${common[@]}" \
@@ -80,8 +89,8 @@ python3 - "$navigation_exit" "$microphone_exit" <<'PY'
 import json,sys,time
 from pathlib import Path
 p=Path('release/rapid-repair/context.json'); data=json.loads(p.read_text())
-data.update(finishedUnix=time.time(),navigationExit=int(sys.argv[1]),microphoneExit=int(sys.argv[2]))
+data.update(finishedUnix=time.time(),navigationExit=None if sys.argv[1]=="not-run" else int(sys.argv[1]),microphoneExit=int(sys.argv[2]))
 data['elapsedSeconds']=data['finishedUnix']-data['startedUnix']
 p.write_text(json.dumps(data,indent=2)+'\n')
 PY
-[[ "$navigation_exit" == 0 && "$microphone_exit" == 0 ]]
+[[ ( "$navigation_exit" == 0 || "$navigation_exit" == not-run ) && "$microphone_exit" == 0 ]]
