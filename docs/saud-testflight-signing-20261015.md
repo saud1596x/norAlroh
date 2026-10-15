@@ -49,3 +49,21 @@ is still unverified; storing build configuration does not establish it.
 
 Imported older Noor profiles that lack a matching certificate remain unused.
 Do not delete them or use them in this workflow.
+
+## User-requested device review channel
+
+After disclosure that actual audio and full Release checks had not passed,
+the user explicitly requested: “اريد تنشر ف تيست لايت انا بختبر التطبيق كامل”.
+`ios-testflight-user-review` implements that narrower testing request. It
+requires `release/user-testflight-review.json`, which pins the current source
+inventory and records every outstanding test as unresolved. The normal
+reviewed-preview and App Store gate functions remain unchanged. No prior
+native evidence is relabelled, updated to success or reused for this source.
+
+The user-review workflow retains toolchain validation, exact Quran checks,
+protected Firebase installation, production signing, 604 font verification,
+all four extensions and the complete recognition/resource IPA checks. Only
+the requirement to have completed native/device acceptance before this
+personal TestFlight review is deferred at the user's request. This cannot
+authorize an App Store release or new external tester invitations. No new
+test success or recognition-accuracy claim follows from the eventual upload.

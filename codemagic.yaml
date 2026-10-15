@@ -153,6 +153,7 @@ workflows:
           set -euo pipefail
           case "$NOOR_RELEASE_CHANNEL" in
             TESTFLIGHT_PREVIEW) python3 scripts/check-mushaf-publication.py --testflight-preview ;;
+            TESTFLIGHT_USER_REVIEW) python3 scripts/check-user-testflight.py ;;
             APP_STORE) python3 scripts/check-mushaf-publication.py ;;
             *) echo "Unknown publication channel; refusing upload"; exit 1 ;;
           esac
@@ -226,7 +227,7 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
-  ios-testflight-saud:
+  ios-testflight-saud: &signed_saud_ios
     <<: *signed_ios
     name: Noor Alruh signed TestFlight / saud
     # Manual dispatch only, after matching release evidence and protected
@@ -237,6 +238,24 @@ workflows:
       app_store_connect: masar-apple
     environment:
       <<: *signed_ios_environment
+      ios_signing:
+        provisioning_profiles:
+          - noor-saud-appstore-20261015
+          - noor-saud-widgets-20261015
+          - noor-saud-focus-monitor-20261015
+          - noor-saud-focus-shield-20261015
+          - noor-saud-focus-action-20261015
+        certificates:
+          - masar_distribution
+  ios-testflight-user-review:
+    <<: *signed_saud_ios
+    name: Noor Alruh user device review / TestFlight (checks unresolved)
+    # User explicitly requested this unfinished build for their own iPhone
+    # testing after disclosure. Do not relabel old native results as successful.
+    environment:
+      <<: *signed_ios_environment
+      vars:
+        NOOR_RELEASE_CHANNEL: TESTFLIGHT_USER_REVIEW
       ios_signing:
         provisioning_profiles:
           - noor-saud-appstore-20261015
