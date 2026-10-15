@@ -25,6 +25,8 @@ class ReleasePayloadTests(unittest.TestCase):
         root = Path(self.resources.name)
         (root / 'ios/Athar').mkdir(parents=True)
         self.quran_files = {'quran.json': b'synthetic-pinned-quran',
+                            'reciter-word-timings.json': b'synthetic-pinned-timings',
+                            'Reciter-Timings-LICENSE.txt': b'synthetic-timing-license',
                             'mushaf-snapshot.json': b'synthetic-pinned-mushaf-edition',
                             'quran-basmalas.json': b'synthetic-pinned-basmalas',
                             'haramain-reciters.json': json.dumps({'schema': 1, 'reciters': [

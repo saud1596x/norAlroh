@@ -1,0 +1,40 @@
+{
+  "source": "https://github.com/cpfair/quran-align/releases/tag/release-2016-11-24",
+  "author": "Collin Fair",
+  "license": "CC BY 4.0",
+  "archiveSHA256": "5eeb045d8a7895208c94d2d7ec243567f8f550728835411527c4ffa1e789c9b7",
+  "outputSHA256": "c3364cd2f2f76de78274e24d6b7b4e0ce8a74f7c5f8dd64fad9cad6826d2eb9d",
+  "nativeEdition": 382,
+  "all6236LexicalBindingsVerified": true,
+  "recordings": {
+    "Abdul_Basit_Murattal_64kbps": {
+      "sourceSHA256": "5e884ac55832ec33c9339ef38267081297513edf6225e6f86d64e04b9e2a25fe",
+      "sourceVerses": 6236,
+      "ignoredPrefixBytes": 0,
+      "exportedVerses": 5294,
+      "exportedSingleWordSpans": 56180,
+      "rejectedAmbiguousVerses": 942,
+      "audioBase": "https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/"
+    },
+    "Abdurrahmaan_As-Sudais_192kbps": {
+      "sourceSHA256": "53469c4267c51661804dd4eba81c3dada40022a2d9ebd0d55b1dc3a4c9fcd9f4",
+      "sourceVerses": 6236,
+      "ignoredPrefixBytes": 154139,
+      "exportedVerses": 5341,
+      "exportedSingleWordSpans": 57451,
+      "rejectedAmbiguousVerses": 895,
+      "audioBase": "https://everyayah.com/data/Abdurrahmaan_As-Sudais_192kbps/"
+    },
+    "Saood_ash-Shuraym_128kbps": {
+      "sourceSHA256": "282fcb950c5c9327f2db8c306e4e054cadf487a45b475ed0034fce65664c1b02",
+      "sourceVerses": 6236,
+      "ignoredPrefixBytes": 0,
+      "exportedVerses": 5544,
+      "exportedSingleWordSpans": 61259,
+      "rejectedAmbiguousVerses": 692,
+      "audioBase": "https://everyayah.com/data/Saood_ash-Shuraym_128kbps/"
+    }
+  },
+  "acousticReview": "NOT_RUN; upstream timings, not independently measured or universally complete",
+  "changes": "Mapped whitespace positions to native IDs; excluded ambiguous and combined-word spans; no interpolation"
+}

@@ -124,6 +124,9 @@ struct InteractiveMushafReader: View {
     @State private var tools = true
     @State private var recitationOptionsOpen = false
     @State private var readerActionsOpen = false
+    @State private var recitersOpen = false
+    @ObservedObject private var audioFocus = NoorAudioFocus.shared
+    @AppStorage("noor.mushaf.reciter") private var preferredReciter = "Abdul_Basit_Murattal_64kbps"
     @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 60]
     @State private var khatmah = false
     @State private var khatmahStopMessage: String?
@@ -205,6 +208,7 @@ struct InteractiveMushafReader: View {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords,
                         reviewWordIDs: visibleReviewWordIDs,
+                        activeWordID: recitation.state == .listening ? recitation.record?.evidence.last?.nativeID : audio.activeWordID,
                         allowsVerseSelection: true,
                         // Fit the complete page instead of automatically zooming
                         // past its edges. The larger-text preference uses a little
@@ -260,10 +264,15 @@ struct InteractiveMushafReader: View {
                         .font(.headline).lineLimit(1).accessibilityIdentifier(manualSelection == nil ? "reader.title" : "verse.tools.title")
                         .accessibilityValue(manualSelection?.key ?? "")
                     Spacer()
+                    if manualSelection == nil {
+                        Button { recitersOpen = true } label: {
+                            Image(systemName: "headphones").frame(width: 44, height: 44)
+                        }.accessibilityLabel("اختر القارئ").accessibilityIdentifier("reader.reciters")
+                    }
                     if let selection = manualSelection {
                         Button { openTools(selection, action: .details) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                             .accessibilityLabel("المزيد من أدوات الآية").accessibilityIdentifier("verse.more")
-                    } else if audio.playing != nil || audio.waitingKey != nil { Button { audio.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel(audio.waitingKey == nil ? "إيقاف التلاوة" : "إيقاف التكرار أثناء المهلة").accessibilityIdentifier("reader.audio.stop") }
+                    } else if audioFocus.activePlayer != nil || audio.playing != nil || audio.waitingKey != nil { Button { audio.stop(); audioFocus.activePlayer?.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel(audio.waitingKey == nil ? "إيقاف التلاوة" : "إيقاف التكرار أثناء المهلة").accessibilityIdentifier("reader.audio.stop") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else {
@@ -335,12 +344,64 @@ struct InteractiveMushafReader: View {
             await load()
             injectAcceptanceRenderFailureIfNeeded()
             completeInitialEntryIfReady()
+            if let snapshot {
+                _ = try? await QuranRecognitionWorker.shared.bind(snapshot: snapshot, verseKeys: keys)
+            }
+            // Warm the bundled model during reading; never request microphone
+            // permission here or hold up the user's first recording tap.
+            try? await NoorOperationDeadline.run(seconds: 45) { try await QuranRecognitionWorker.shared.prepare() }
         }
-        .onAppear { readerVisible = true }
+        .onAppear { readerVisible = true; audio.reciterDirectory = preferredReciter }
+        .sheet(isPresented: $recitersOpen) {
+            NavigationStack {
+                List {
+                    Section("استماع من الآية المحددة") {
+                        ForEach(NoorVerseReciter.all) { reciter in
+                            Button {
+                                preferredReciter = reciter.id; audio.reciterDirectory = reciter.id
+                                recitersOpen = false; followAudio = true
+                                let key = visibleSelection ?? visiblePageKeys.first ?? "1:1"
+                                let selection = VerseSelection(key: key)
+                                guard let chapter = store.quran.first(where: { $0.number == selection.chapter }),
+                                      (1...chapter.ayahs.count).contains(selection.ayah) else { return }
+                                manualSelection = nil
+                                audio.play((selection.ayah...chapter.ayahs.count).map { "\(selection.chapter):\($0)" })
+                            } label: {
+                                HStack { Text(reciter.name); Spacer(); if reciter.id == preferredReciter { Image(systemName: "checkmark.circle.fill") } }
+                                    .frame(minHeight: 44)
+                            }.accessibilityIdentifier("reader.reciter.\(reciter.id)")
+                        }
+                    }
+                    Section("جميع أئمة الحرمين · سور كاملة") {
+                        ForEach(NoorReciterCatalog.reciters) { reciter in
+                            Button {
+                                let key = visibleSelection ?? visiblePageKeys.first ?? "1:1"
+                                let chapter = VerseSelection(key: key).chapter
+                                let player = MushafVerseAudio(source: { Int($0).flatMap { reciter.audioURL(surah: $0) } },
+                                    cacheKey: { Int($0).flatMap { NoorAudioIntegrity.reciterKey(reciter, surah: $0) } },
+                                    recordingIdentity: "mp3quran:\(reciter.recordingID):\(reciter.server)",
+                                    displayName: reciter.name, keepAlive: true)
+                                player.onPlaybackError = { [weak audio] message in audio?.error = message }
+                                audio.stop(); audio.error = nil; manualSelection = nil; selected = nil
+                                followAudio = false; recitersOpen = false
+                                player.play([String(chapter)])
+                            } label: {
+                                HStack { Text(reciter.name); Spacer(); Image(systemName: "play.circle") }
+                                    .frame(minHeight: 44)
+                            }.accessibilityLabel("\(reciter.name) · تشغيل السورة الحالية من بدايتها")
+                        }
+                    }
+                }.navigationTitle("اختر القارئ")
+                    .toolbar { Button("إغلاق") { recitersOpen = false } }
+            }
+        }
         .task(id: number) {
+            let requestedPage = number
             renderingFailed = false
-            await fonts.load(String(format: "QCF2%03d", number))
+            await fonts.load(String(format: "QCF2%03d", requestedPage))
+            guard !Task.isCancelled, requestedPage == number else { return }
             injectAcceptanceRenderFailureIfNeeded()
+            await fonts.prepareNeighbors(of: requestedPage)
         }
         .onDisappear { readerVisible = false; initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
         .onChange(of: scenePhase) { _, value in
@@ -699,10 +760,15 @@ struct InteractiveMushafReader: View {
     }
     private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(label, systemImage: symbol).font(.footnote.weight(.semibold))
+            VStack(spacing: 8) {
+                Image(systemName: symbol).font(.system(size: 22, weight: .semibold))
+                Text(label).font(.subheadline.weight(.semibold))
+            }
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 48).padding(.horizontal, 4)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
+                .frame(maxWidth: .infinity, minHeight: 72).padding(.horizontal, 4)
+                .foregroundStyle(.primary)
+                .background(Theme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.gold.opacity(0.55), lineWidth: 1))
                 .contentShape(RoundedRectangle(cornerRadius: 12))
         }.accessibilityLabel(label).accessibilityIdentifier(identifier)
     }

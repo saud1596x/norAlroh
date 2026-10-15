@@ -219,8 +219,9 @@ import os
             }
             try await bind(snapshot: snapshot, corpus: corpus)
             guard revision == token, state == .preparing else { return }
-            try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
-            guard revision == token, state == .preparing else { return }
+            // Capture first: model loading belongs to recognize(), not the
+            // microphone permission/start path. PCM is durably recorded while
+            // the bundled model warms up, even if recognition later fails.
             let scope = Set(keys)
             tracker = QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) })
             expectedIDs = Set(tracker?.expected.map(\.id) ?? [])
@@ -309,8 +310,6 @@ import os
         guard revision == token, state == .permission else { return }
         do {
             state = .preparing
-            try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
-            guard revision == token, state == .preparing else { return }
             try await beginTake(token: token)
         }
         catch {
@@ -404,6 +403,7 @@ import os
         }
     }
     private func processWindows(_ mailbox: QuranWindowMailbox, take: UUID, token: UUID) async {
+        var prepared = false
         while revision == token, !Task.isCancelled {
             guard let window = mailbox.take() else {
                 if !capturing { return }
@@ -418,6 +418,14 @@ import os
             record = next
             let recognized: QuranRecognitionWorker.Result
             do {
+                if !prepared {
+                    // Cold model loading has its own bounded deadline, after
+                    // capture is already writing PCM. Do not charge model
+                    // startup against the shorter per-window decode deadline.
+                    try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
+                    guard revision == token, !Task.isCancelled else { return }
+                    prepared = true
+                }
                 recognized = try await NoorOperationDeadline.run(seconds: recognitionTimeout) {
                     try await self.recognizeWindow(window)
                 }

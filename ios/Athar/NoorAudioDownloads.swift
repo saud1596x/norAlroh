@@ -129,6 +129,12 @@ enum NoorAudioIntegrity {
         return key == expected ? (reciter, surah) : nil
     }
     static func label(_ key: String) -> String {
+        if key.hasPrefix("v:"), url(key) != nil {
+            let parts = key.split(separator: ":")
+            if let reciter = NoorVerseReciter.all.first(where: { $0.id == String(parts[1]) }) {
+                return "الآية \(parts[2]):\(parts[3]) · \(reciter.name)"
+            }
+        }
         if let (reciter, number) = reciterRecording(key) {
             let name = QuranResources.corpus?.first(where: { $0.number == number })?.name ?? "\(number)"
             return "\(name) · \(reciter.name)"
@@ -173,6 +179,13 @@ enum NoorAudioIntegrity {
     }
     static func url(_ key: String) -> URL? {
         if let (reciter, surah) = reciterRecording(key) { return reciter.audioURL(surah: surah) }
+        if key.hasPrefix("v:") {
+            let components = key.split(separator: ":", omittingEmptySubsequences: false)
+            guard components.count == 4,
+                  NoorVerseReciter.directories.contains(String(components[1])),
+                  let canonical = url("\(components[2]):\(components[3])") else { return nil }
+            return URL(string: "https://everyayah.com/data/\(components[1])/\(canonical.lastPathComponent)")
+        }
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, let corpus = QuranResources.corpus,
               corpus.indices.contains(parts[0] - 1), (1...corpus[parts[0] - 1].ayahs.count).contains(parts[1]),
@@ -236,6 +249,7 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
     private var planning = false
     private var deleting = false
     private var queue: [String] = []
+    private var automaticQueue: [String] = []
     private var paused = false
     private let directory: URL
     private let defaults: UserDefaults
@@ -288,12 +302,28 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
             self.queue = combined; self.paused = false; self.persistPending(); self.next()
         }
     }
+    /// Streaming starts independently. Persist a complete, verified file in
+    /// the background only for recordings the user actually played.
+    func cacheWhenHeard(_ key: String) {
+        guard !deleting, !cancelling, NoorAudioIntegrity.url(key) != nil,
+              active != key, !queue.contains(key), !automaticQueue.contains(key),
+              automaticQueue.count + queue.count < 300 else { return }
+        automaticQueue.append(key)
+        if !planning && active == nil {
+            let requested = automaticQueue; automaticQueue = []
+            download(requested)
+        }
+    }
     func retry() { download(pending) }
     private func persistPending() {
         defaults.set((active.map { [$0] } ?? []) + queue, forKey: pendingKey)
         remaining = queue.count + (active == nil ? 0 : 1)
     }
     private func next() {
+        if !paused && !automaticQueue.isEmpty {
+            queue.append(contentsOf: automaticQueue.filter { !queue.contains($0) })
+            automaticQueue = []
+        }
         guard !paused, active == nil, !queue.isEmpty else {
             if !paused && active == nil && queue.isEmpty { persistPending(); message = "التلاوات المحفوظة جاهزة دون اتصال." }
             return
@@ -355,6 +385,7 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         paused = true; persistPending(); message = text
     }
     func cancel() {
+        automaticQueue = []
         if planning || (active != nil && task == nil) {
             fail("أُوقف التحقق من التنزيل. يمكنك إعادة المحاولة.")
             return
@@ -375,6 +406,7 @@ private final class NoorAudioTransfer: NSObject, URLSessionDownloadDelegate, @un
         } })
     }
     @discardableResult func erase() async -> Bool {
+        automaticQueue = []
         guard !deleting else { return false }
         advanceGeneration(); let token = generation; let epoch = diskEpoch
         deleting = true; planning = false; session?.invalidateAndCancel(); session = nil; task = nil

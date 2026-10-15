@@ -88,7 +88,8 @@ def verify(path):
         if found != set(EXTENSIONS):
             raise ValueError('Missing required extensions: ' + ', '.join(sorted(set(EXTENSIONS) - found)))
         recognition_count = verify_recitation_resources(ipa, root)
-        for resource in ['quran.json', 'quran-basmalas.json', 'haramain-reciters.json', 'mushaf-snapshot.json']:
+        for resource in ['quran.json', 'quran-basmalas.json', 'haramain-reciters.json', 'mushaf-snapshot.json',
+                         'reciter-word-timings.json', 'Reciter-Timings-LICENSE.txt']:
             if ipa.read(root + resource) != (ROOT / 'ios/Athar' / resource).read_bytes():
                 raise ValueError('Incorrect bundled Quran or reciter resource: ' + resource)
         snapshot = ipa.read(root + 'mushaf-snapshot.json')

@@ -14,7 +14,9 @@ import MediaPlayer
         #endif
     }
     @Published private(set) var playing: String?
-    @Published var error: String?
+    @Published var error: String? {
+        didSet { if let error { onPlaybackError?(error) } }
+    }
     @Published private(set) var loadingKey: String?
     @Published private(set) var waitingKey: String?
     @Published private(set) var isPaused = false
@@ -35,6 +37,10 @@ import MediaPlayer
     private(set) var durationSeconds: Double = 0
     private var timeObservation: Any?
     private var durationTask: Task<Void, Never>?
+    private var wordTimingTask: Task<Void, Never>?
+    private var wordTiming: NoorReciterTimingTrack?
+    private let usesPublishedTimingSource: Bool
+    @Published private(set) var activeWordID: Int?
     var repetitionCount: Int { count }
     var currentCanonicalKey: String? { index < keys.count ? keys[index] : nil }
     private var bookmarkKey: String { "noor.audio.bookmark." + (recordingIdentity ?? "everyayah:" + reciterDirectory) }
@@ -54,6 +60,7 @@ import MediaPlayer
     private var count = 1
     private var gap = 0
     private var reportedStart = false
+    private var automaticCacheKey: String?
     // Native CI needs to distinguish corrupt media, buffering and simulator
     // audio-route failure without exposing URLs or a user's recording content.
     private(set) var lastPlaybackDiagnostic = ""
@@ -68,6 +75,7 @@ import MediaPlayer
     private let resolveSource: (String) async -> URL?
     private var resolvingSource: Task<Void, Never>?
     var onVerse: ((String) -> Void)?
+    var onPlaybackError: ((String) -> Void)?
     private var onSequenceFinished: (() -> Void)?
     private var onSequenceInterrupted: (() -> Void)?
     var reciterDirectory = "Abdul_Basit_Murattal_64kbps" {
@@ -78,6 +86,7 @@ import MediaPlayer
          resolveSource: ((String) async -> URL?)? = nil, recordingIdentity: String? = nil,
          displayName: String = "تلاوة القرآن", keepAlive: Bool = false) {
         self.source = source; self.cacheKey = cacheKey
+        usesPublishedTimingSource = source == nil && cachedSource == nil && resolveSource == nil
         self.cachedSource = cachedSource ?? { await NoorAudioDownloads.shared.localURL($0) }
         self.recordingIdentity = recordingIdentity
         self.displayName = displayName; self.keepAlive = keepAlive
@@ -118,6 +127,7 @@ import MediaPlayer
         advance()
     }
     func pausePlayback() {
+        activeWordID = nil
         if waitingKey != nil { delay?.cancel(); delay = nil; isPaused = true; updateNowPlaying(); return }
         guard player != nil, playing != nil else { return }
         saveBookmark(); isPaused = true; player?.pause(); updateNowPlaying()
@@ -131,6 +141,7 @@ import MediaPlayer
     }
     func seek(to seconds: Double) {
         guard seconds.isFinite, let player, durationSeconds > 0, seconds >= 0, seconds <= durationSeconds else { return }
+        activeWordID = nil
         let token = revision
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player] finished in
             Task { @MainActor in
@@ -200,6 +211,8 @@ import MediaPlayer
         if let end { NotificationCenter.default.removeObserver(end) }; end = nil
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
         playing = nil; loadingKey = nil; reportedStart = false
+        automaticCacheKey = nil
+        wordTimingTask?.cancel(); wordTimingTask = nil; wordTiming = nil; activeWordID = nil
         isPaused = false
         traceAudio("player.release.end")
     }
@@ -252,10 +265,9 @@ import MediaPlayer
                 if self.reciterDirectory == "Abdul_Basit_Murattal_64kbps" {
                     url = await self.resolveSource(key)
                 } else {
-                    let parts = key.split(separator: ":").compactMap { Int($0) }
-                    let permitted = ["Abdurrahmaan_As-Sudais_64kbps", "Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "Saood_ash-Shuraym_64kbps"]
-                    url = parts.count == 2 && permitted.contains(self.reciterDirectory)
-                        ? URL(string: String(format: "https://everyayah.com/data/%@/%03d%03d.mp3", self.reciterDirectory, parts[0], parts[1])) : nil
+                    if let cacheKey = NoorVerseReciter.cacheKey(directory: self.reciterDirectory, verse: key) {
+                        url = await self.cachedSource(cacheKey) ?? NoorAudioIntegrity.url(cacheKey)
+                    } else { url = nil }
                 }
                 guard !Task.isCancelled, self.revision == token, self.loadingKey == key else { return }
                 self.resolvingSource = nil
@@ -265,6 +277,10 @@ import MediaPlayer
         }
     }
     private func startPlayer(url: URL, key: String, token: UUID) {
+        let candidate = source == nil ? NoorVerseReciter.cacheKey(directory: reciterDirectory, verse: key) : cacheKey?(key)
+        // Never cache a different recording under a canonical reciter key
+        // (including injected/local reference sources used by tests).
+        automaticCacheKey = candidate.flatMap { NoorAudioIntegrity.url($0) == url && !url.isFileURL ? $0 : nil }
         do {
             traceAudio("session.category.begin")
             try AVAudioSession.sharedInstance().setCategory(.playback)
@@ -279,12 +295,24 @@ import MediaPlayer
         traceAudio("player.create.begin")
         let playback = AVPlayer(playerItem: item); player = playback
         traceAudio("player.create.end")
-        timeObservation = playback.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self, weak playback] time in
+        timeObservation = playback.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.05, preferredTimescale: 600), queue: .main) { [weak self, weak playback] time in
             let seconds = time.seconds
             Task { @MainActor in
                 guard let self, let playback, self.revision == token, self.player === playback,
                       seconds.isFinite, seconds >= 0 else { return }
                 self.currentSeconds = seconds
+                let word = self.isPaused || playback.timeControlStatus != .playing ? nil
+                    : self.wordTiming?.word(at: seconds, duration: self.durationSeconds)
+                if self.activeWordID != word { self.activeWordID = word }
+            }
+        }
+        if usesPublishedTimingSource {
+            let directory = reciterDirectory
+            wordTimingTask = Task { [weak self, weak playback] in
+                let timing = await NoorReciterWordTimings.shared.track(directory: directory, verse: key)
+                guard let self, let playback, !Task.isCancelled, self.revision == token,
+                      self.player === playback else { return }
+                self.wordTiming = timing
             }
         }
         // Metadata loading may wait for media services; suspension must not
@@ -343,10 +371,14 @@ import MediaPlayer
                 bookmarkSeconds = nil
                 seek(to: min(seconds, max(0, durationSeconds - 0.05)))
             }
-            if !reportedStart { reportedStart = true; onVerse?(key) }
+            if !reportedStart {
+                reportedStart = true; onVerse?(key)
+                if let automaticCacheKey { NoorAudioDownloads.shared.cacheWhenHeard(automaticCacheKey) }
+            }
             updateNowPlaying()
             traceAudio("ready-state.end")
         } else if !isPaused {
+            activeWordID = nil
             playing = nil; loadingKey = key
             startLoadDeadline(key: key, token: token)
         }

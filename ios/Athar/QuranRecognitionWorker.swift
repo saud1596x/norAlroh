@@ -16,6 +16,7 @@ actor QuranRecognitionWorker {
     private var inference: Task<Result, Error>?
     private var inferenceID: UUID?
     private var boundNative: [QuranNativeWord] = []
+    private var boundSnapshot: QCFV2Snapshot?
     private var boundKeys: [String] = []
     private var boundWords: [QuranAlignedWord] = []
     private let decodeOverride: ((QuranAudioWindow) async throws -> Result)?
@@ -26,6 +27,10 @@ actor QuranRecognitionWorker {
     // Reuse only after comparing every native ID, glyph, position and page.
     func bind(snapshot: QCFV2Snapshot, verseKeys: [String]) throws -> [QuranAlignedWord] {
         guard verseKeys.count == 6236 else { throw QuranAlignmentFailure.invalidEdition }
+        // Reuse only an exactly equal, previously validated immutable copy.
+        // Array value equality also permits the shared COW storage fast path.
+        // IDs, revision numbers, or counts alone are insufficient evidence.
+        if snapshot == boundSnapshot, verseKeys == boundKeys, !boundWords.isEmpty { return boundWords }
         let native = try snapshot.validated().records
             .filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }
             .map { QuranNativeWord(id: $0.id, verse: verseKeys[$0.verse_id! - 1],
@@ -36,7 +41,7 @@ actor QuranRecognitionWorker {
         }
         let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: url))
         let words = try script.bind(native: native, verseKeys: verseKeys)
-        boundNative = native; boundKeys = verseKeys; boundWords = words
+        boundNative = native; boundKeys = verseKeys; boundWords = words; boundSnapshot = snapshot
         return words
     }
     func prepare() async throws {

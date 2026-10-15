@@ -59,6 +59,20 @@ struct MushafDatabase: Codable {
     @Published var error: String?
     private var pending: [String: Task<String, Error>] = [:]
     private var requestedFamily: String?
+    func prepareNeighbors(of page: Int) async {
+        for neighbor in [page + 1, page - 1] where (1...604).contains(neighbor) {
+            guard !Task.isCancelled else { return }
+            let family = String(format: "QCF2%03d", neighbor)
+            guard names[family] == nil else { continue }
+            let task = pending[family] ?? Task { try await Self.register(family) }
+            pending[family] = task
+            // A speculative neighbor must never overwrite the visible page's
+            // error state. Its normal load still reports any real failure.
+            let prepared = try? await task.value
+            if let name = prepared { names[family] = name }
+            pending[family] = nil
+        }
+    }
     func load(_ family: String) async {
         requestedFamily = family
         guard names[family] == nil else { error = nil; return }

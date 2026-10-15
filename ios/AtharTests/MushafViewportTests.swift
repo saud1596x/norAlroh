@@ -3,6 +3,27 @@ import UIKit
 @testable import Athar
 
 @MainActor final class MushafViewportTests: XCTestCase {
+    func testPreparingNeighborFontsPreservesVisiblePageErrorAndPreparesBothDirections() async {
+        let fonts = MushafFonts()
+        await fonts.load("invalid-current-font")
+        let originalError = fonts.error
+        await fonts.prepareNeighbors(of: 2)
+        XCTAssertEqual(fonts.error, originalError)
+        XCTAssertEqual(fonts.names["QCF2001"], "QCF2001")
+        XCTAssertEqual(fonts.names["QCF2003"], "QCF2003")
+        await fonts.load("QCF2003")
+        XCTAssertNil(fonts.error)
+    }
+    func testNonAnimatedReplacementClearsDraggedTransformAndKeepsPageCentered() {
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+        viewport.layoutIfNeeded()
+        viewport.canvas.layer.sublayerTransform = CATransform3DMakeTranslation(120, 0, 0)
+        viewport.replacePage(number: 3, animated: false) { viewport.resetToFittedPage() }
+        XCTAssertEqual(viewport.pageNumber, 3)
+        XCTAssertFalse(viewport.turningPage)
+        XCTAssertTrue(CATransform3DIsIdentity(viewport.canvas.layer.sublayerTransform))
+        assertFitted(viewport)
+    }
     func testMeasuredReaderInsetsKeepReferenceDefaultsAndFitLargeControls() {
         XCTAssertEqual(MushafReaderInsets.reserved(nil, minimum: 44), 44)
         XCTAssertEqual(MushafReaderInsets.reserved(44, minimum: 44), 44)
@@ -88,6 +109,14 @@ import UIKit
             viewport.layoutIfNeeded()
             let canvas = viewport.canvas
             XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Page \(number)")
+            let firstWord = try XCTUnwrap(canvas.regions.first)
+            canvas.activeWordID = firstWord.word
+            XCTAssertNotNil(canvas.activeWordPath())
+            canvas.hiddenWordIDs = [firstWord.word]
+            XCTAssertNil(canvas.activeWordPath(), "Word tracking must never reveal hidden Quran text")
+            canvas.hiddenWordIDs = []; canvas.activeWordID = Int.max
+            XCTAssertNil(canvas.activeWordPath(), "A word from another page cannot be highlighted here")
+            canvas.activeWordID = nil
             let authoredInk = canvas.rowGeometry.map(\.ink)
             let ornaments = canvas.ornamentBounds
             // A selected verse may span several authored lines. Its halo must

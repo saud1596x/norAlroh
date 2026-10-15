@@ -6,7 +6,7 @@ import FoundationNetworking
 
 /// Content Sync's full-copy contract. The approved V2 edition can be bundled;
 /// a font and its positioned words must always share that exact edition.
-struct QCFV2Snapshot: Decodable, Sendable {
+struct QCFV2Snapshot: Decodable, Sendable, Equatable {
     let resource_group: String
     let resource_id: Int
     // Immutable Content Sync edition matching the pinned original V2 fonts.
@@ -15,7 +15,7 @@ struct QCFV2Snapshot: Decodable, Sendable {
     let sync_sequence: Int
     let records: [Record]
 
-    struct Record: Decodable, Sendable {
+    struct Record: Decodable, Sendable, Equatable {
         let id: Int
         let record_type: String
         let mushaf_id: Int?

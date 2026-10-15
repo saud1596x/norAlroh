@@ -2,6 +2,24 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterTests: XCTestCase {
+    func testVerseCacheKeepsEachReciterSeparateAndRejectsInventedDirectories() throws {
+        var urls = Set<URL>(), keys = Set<String>()
+        for reader in NoorVerseReciter.all {
+            let key = try XCTUnwrap(NoorVerseReciter.cacheKey(directory: reader.id, verse: "2:255"))
+            let url = try XCTUnwrap(NoorAudioIntegrity.url(key))
+            XCTAssertEqual(url.host, "everyayah.com")
+            XCTAssertEqual(url.path, "/data/\(reader.id)/002255.mp3")
+            XCTAssertTrue(keys.insert(key).inserted)
+            XCTAssertTrue(urls.insert(url).inserted)
+        }
+        XCTAssertEqual(NoorVerseReciter.cacheKey(directory: "Abdul_Basit_Murattal_64kbps", verse: "2:255"), "2:255",
+                       "Existing verified default-reciter cache remains readable")
+        XCTAssertNil(NoorVerseReciter.cacheKey(directory: "../wrong", verse: "2:255"))
+        XCTAssertNil(NoorAudioIntegrity.url("v:unknown:2:255"))
+        XCTAssertNil(NoorAudioIntegrity.url("v:Hudhaify_64kbps:2:999"))
+        XCTAssertNil(NoorAudioIntegrity.url("v:Hudhaify_64kbps:2:255:extra"))
+        XCTAssertNil(NoorVerseReciter.cacheKey(directory: "Hudhaify_64kbps", verse: "v:Hudhaify_64kbps:2:255"))
+    }
     func testCatalogContainsVerifiedCoverageAndDistinctRecordings() throws {
         let readers = NoorReciterCatalog.reciters
         XCTAssertEqual(readers.count, 20)

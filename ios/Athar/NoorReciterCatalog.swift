@@ -1,5 +1,25 @@
 import Foundation
 
+struct NoorVerseReciter: Identifiable {
+    let id: String
+    let name: String
+    static let all: [Self] = [
+        .init(id: "Abdul_Basit_Murattal_64kbps", name: "عبد الباسط عبد الصمد"),
+        .init(id: "Abdurrahmaan_As-Sudais_192kbps", name: "عبد الرحمن السديس"),
+        .init(id: "Hudhaify_64kbps", name: "علي الحذيفي"),
+        .init(id: "Maher_AlMuaiqly_64kbps", name: "ماهر المعيقلي"),
+        .init(id: "Saood_ash-Shuraym_128kbps", name: "سعود الشريم")
+    ]
+    // Keep older bookmarks and verified cache files readable. Timings never
+    // transfer between bitrates; only the exact published recording is used.
+    static let directories = Set(all.map(\.id) + ["Abdurrahmaan_As-Sudais_64kbps", "Saood_ash-Shuraym_64kbps"])
+    static func cacheKey(directory: String, verse: String) -> String? {
+        guard directories.contains(directory),
+              NoorAudioIntegrity.url(verse) != nil, !verse.hasPrefix("v:"), !verse.hasPrefix("r:") else { return nil }
+        return directory == all[0].id ? verse : "v:\(directory):\(verse)"
+    }
+}
+
 struct NoorReciter: Codable, Identifiable, Hashable {
     let id: Int
     let name: String

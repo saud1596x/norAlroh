@@ -3,6 +3,23 @@ import XCTest
 
 /// Explicitly injected non-cancellable backend; not microphone/ASR evidence.
 final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
+    func testWarmBindingDoesNotTrustSameEditionWithAlteredWords() async throws {
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let original = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { chapter in chapter.ayahs.map { "\(chapter.number):\($0.number)" } }
+        let worker = QuranRecognitionWorker()
+        let first = try await worker.bind(snapshot: original, verseKeys: keys)
+        let reused = try await worker.bind(snapshot: original, verseKeys: keys)
+        XCTAssertEqual(first.map(\.id), reused.map(\.id))
+        var document = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var rows = try XCTUnwrap(document["records"] as? [[String: Any]])
+        let index = try XCTUnwrap(rows.firstIndex { $0["record_type"] as? String == "mushaf_word" })
+        rows[index]["text"] = "altered"; document["records"] = rows
+        let changed = try JSONDecoder().decode(QCFV2Snapshot.self, from: JSONSerialization.data(withJSONObject: document))
+        do { _ = try await worker.bind(snapshot: changed, verseKeys: keys); XCTFail("Changed glyphs must never reuse a warm binding") }
+        catch { /* The invalid edition is deliberately rejected. */ }
+    }
     @MainActor func testCancellingDeadlineCallerMarksWorkerInferenceAndDoesNotQueueNextSession() async throws {
         let backend = StuckBackend()
         let worker = QuranRecognitionWorker(decodeOverride: { try await backend.decode($0) })

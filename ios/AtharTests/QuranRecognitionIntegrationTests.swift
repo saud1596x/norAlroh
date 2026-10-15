@@ -8,6 +8,30 @@ import CryptoKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testOpeningAndResumingCaptureDoesNotWaitForModelPreparation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let provider = UnavailableStartupProvider()
+        // Empty injected capture verifies lifecycle ordering only, never
+        // microphone hardware, recognition accuracy, or recitation progress.
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionProvider: provider,
+            makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: []) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertNotNil(controller.record?.takes.first)
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        await controller.pause()
+        XCTAssertEqual(controller.state, .paused)
+        await controller.resume()
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.record?.takes.count, 2)
+        await controller.finish()
+        let attempts = await provider.prepareAttempts
+        XCTAssertEqual(attempts, 0, "No audio window exists; model loading must not gate opening capture")
+    }
     @MainActor func testPauseClosesActualAudioWhileAnalysisSaveIsDelayedWithoutReopeningTake() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -675,5 +699,14 @@ private final class ReferenceCapture: QuranAudioCapture {
     }
     func stop() async -> Result<Int64, Error> {
         await withCheckedContinuation { continuation in writer.finish { continuation.resume(returning: $0) } }
+    }
+}
+
+private actor UnavailableStartupProvider: QuranSpeechRecognitionProvider {
+    private(set) var prepareAttempts = 0
+    nonisolated var capabilities: QuranRecognitionCapabilities { QuranRecognitionWorker.shared.capabilities }
+    func prepare() async throws { prepareAttempts += 1; throw CocoaError(.fileNoSuchFile) }
+    func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+        throw CocoaError(.fileNoSuchFile)
     }
 }
