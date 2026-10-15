@@ -466,7 +466,7 @@ struct InteractiveMushafReader: View {
                     }
                 }.background { readerControlMeasurement("header") }
                 Spacer()
-                Group {
+                VStack(spacing: 0) {
                     if let selection = manualSelection {
                         // Float the action panel without refitting Quran ink.
                         Color.clear.frame(height: 60).overlay(alignment: .bottom) {
