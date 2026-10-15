@@ -396,12 +396,15 @@ struct OriginalPageData {
             flush()
         }
         let halo: CGPath = bands
-        let neighbors = CGMutablePath()
+        var neighbors: CGPath = CGMutablePath()
         for region in regions where region.verse != key && !hiddenWordIDs.contains(region.word)
             && region.rect.insetBy(dx: -2, dy: -2).intersects(halo.boundingBoxOfPath) {
             for path in region.paths {
-                neighbors.addPath(path)
-                neighbors.addPath(path.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1))
+                // Appending glyph contours and stroked contours can cancel
+                // opposite windings and leave holes in the exclusion mask.
+                // Boolean union preserves both filled areas before subtraction.
+                let margin = path.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1)
+                neighbors = neighbors.union(path.union(margin))
             }
         }
         return neighbors.isEmpty ? halo : halo.subtracting(neighbors)
