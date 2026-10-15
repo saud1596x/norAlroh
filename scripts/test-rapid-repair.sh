@@ -64,12 +64,29 @@ PYCRASH
 }
 trap collect_failure_reports EXIT
 xcodebuild build-for-testing "${common[@]}"
+# Capture the actual blocked thread while the reference test is still alive.
+# Existing timeouts and assertions remain unchanged, and sampling never feeds
+# samples or completion events into the player or microphone.
+python3 scripts/sample-test-audio-hang.py "$device" release/rapid-repair/stacks &
+audio_sampler=$!
+audio_exit=0
 xcodebuild test-without-building "${common[@]}" \
   -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
   -maximum-test-execution-time-allowance 90 \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
   -only-testing:AtharTests/QuranGuidedPracticeTests \
-  -resultBundlePath release/rapid-repair/audio-lifecycle.xcresult
+  -resultBundlePath release/rapid-repair/audio-lifecycle.xcresult || audio_exit=$?
+kill "$audio_sampler" 2>/dev/null || true
+wait "$audio_sampler" 2>/dev/null || true
+if [[ "$audio_exit" != 0 ]]; then
+  python3 - <<'PYSTACK'
+from pathlib import Path
+for p in sorted(Path('release/rapid-repair/stacks').glob('*.txt')):
+    text = p.read_text(errors='replace')
+    print('ACTUAL_AUDIO_STACK', p.name, text[:18000])
+PYSTACK
+  exit "$audio_exit"
+fi
 # Run the exact failing walkthrough first, without waiting for unrelated unit
 # suites or a second physical-device archive. Keep its original assertions.
 navigation_exit=not-run
