@@ -169,3 +169,15 @@ an invalid first capture could block new recording with no visible way to
 discard it. Export remains restricted to an actual saved take; the confirmation
 explicitly covers both saved and pending audio. This later UI change is not
 part of build 6ad109013ffd2c7f0ad3a8f0 and still needs native/UI verification.
+
+The preservation build completed successfully in 8m09s on 1f4c579: eight tests,
+zero failures (three archive, two legacy focus, three recorder ownership).
+The real-file write-failure/retry test passed in 0.014s. This verifies the
+c9b5688 preservation repair, not the later 959cb00 UI change or actual audio
+playback/microphone/Release acceptance. Evidence is recorded separately in
+outputs/1f4-preservation-passed-log.txt and 1f4-preservation-result.json.
+
+Publication is still blocked: the current preview gate fails the stale workflow
+hash, and the paid saud team currently exposes only masar_app_store for
+com.saud1596x.masar, not the required Noor profiles. No credentials were
+transferred, no gate was changed and no new TestFlight build was uploaded.
