@@ -430,6 +430,7 @@ struct MemorizationArchive: Codable {
     }
 }
 struct MemorizationView: View {
+    var onStartRecitation: (() -> Void)? = nil
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var memorization: MemorizationStore
     private var surah: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
@@ -450,9 +451,15 @@ struct MemorizationView: View {
                 NavigationLink { MemorizationPracticeView() } label: {
                     action("احفظ آية جديدة", detail: "اقرأ الآية، أخفها، ثم اكشف كلماتها بالتدرج", icon: "book.closed", number: "١")
                 }.accessibilityIdentifier("hifz.practice")
-                NavigationLink { SpeechRecitationView() } label: {
-                    action("سمّع داخل المصحف", detail: "اختر مقطعك، وأخفِ الآيات وسجّل صوتك اختياريًا", icon: "mic", number: "٢")
-                }.accessibilityIdentifier("hifz.speech")
+                if let onStartRecitation {
+                    Button(action: onStartRecitation) {
+                        action("سمّع داخل المصحف", detail: "ارجع إلى مصحفك وابدأ التسميع", icon: "mic", number: "٢")
+                    }.accessibilityIdentifier("hifz.speech")
+                } else {
+                    NavigationLink { SpeechRecitationView() } label: {
+                        action("سمّع داخل المصحف", detail: "اختر مقطعك، وأخفِ الآيات وسجّل صوتك اختياريًا", icon: "mic", number: "٢")
+                    }.accessibilityIdentifier("hifz.speech")
+                }
                 NavigationLink { MemorizationTestView() } label: {
                     action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")
                 }.accessibilityIdentifier("hifz.test")

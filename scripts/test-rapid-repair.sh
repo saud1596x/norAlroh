@@ -33,7 +33,37 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Debug
   -derivedDataPath release/rapid-derived-data CODE_SIGNING_ALLOWED=NO
   ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO
   'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
+collect_failure_reports() {
+  # Only this disposable build machine and this app's crash reports. No user's
+  # device, audio, credentials or unrelated process logs are collected.
+  mkdir -p release/rapid-repair/crashes
+  python3 - <<'PYCRASH'
+from pathlib import Path
+import shutil,json
+out=Path('release/rapid-repair/crashes')
+files=[]
+for folder in [Path.home()/'Library/Logs/DiagnosticReports', Path.home()/'Library/Logs/CrashReporter']:
+    if not folder.exists(): continue
+    for p in folder.glob('Athar*'):
+        if p.is_file() and p.suffix in {'.ips','.crash'} and p.stat().st_size < 5_000_000:
+            shutil.copyfile(p,out/p.name);files.append(p.name)
+(out/'inventory.json').write_text(json.dumps(files,indent=2)+'\n')
+for p in out.glob('*.ips'):
+    try:
+        text=p.read_text(); lines=text.splitlines(); data=json.loads('\n'.join(lines[1:]))
+        print('ACTUAL_APP_CRASH', p.name, json.dumps({k:data.get(k) for k in ['exception','termination','faultingThread']},ensure_ascii=False))
+        threads=data.get('threads',[])
+        for thread in threads:
+            if thread.get('triggered'): print('CRASH_FRAMES',json.dumps(thread.get('frames',[])[:18]))
+    except (ValueError,OSError): pass
+PYCRASH
+}
+trap collect_failure_reports EXIT
 xcodebuild build-for-testing "${common[@]}"
+xcodebuild test-without-building "${common[@]}" \
+  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
+  -only-testing:AtharTests/QuranGuidedPracticeTests \
+  -resultBundlePath release/rapid-repair/audio-lifecycle.xcresult
 # Run the exact failing walkthrough first, without waiting for unrelated unit
 # suites or a second physical-device archive. Keep its original assertions.
 navigation_exit=0

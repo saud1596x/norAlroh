@@ -6,12 +6,12 @@ import Foundation
 protocol QuranAudioCapture: AnyObject {
     func start() throws
     func stop() async -> Result<Int64, Error>
-    func observeLevel(_ observer: @escaping (Float) -> Void)
-    func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void)
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void)
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void)
 }
 extension QuranAudioCapture {
-    func observeLevel(_ observer: @escaping (Float) -> Void) {}
-    func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void) {}
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) {}
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) {}
 }
 
 final class QuranMicrophoneCapture: QuranAudioCapture {
@@ -19,7 +19,7 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
     private let pipe: Pipe
     private let inputEvents: QuranAudioInputEvents
     private var installed = false
-    init(writer: QuranPCMWriter, onFailure: @escaping (Error) -> Void) throws {
+    init(writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
         let engine = AVAudioEngine()
         let input = engine.inputNode.outputFormat(forBus: 0)
         guard input.sampleRate > 0, input.channelCount > 0 else { throw QuranCaptureFailure.invalidSamples }
@@ -38,8 +38,8 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         do { try engine.start() }
         catch { inputEvents.disarm(); engine.inputNode.removeTap(onBus: 0); installed = false; throw error }
     }
-    func observeLevel(_ observer: @escaping (Float) -> Void) { pipe.observeLevel(observer) }
-    func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void) { pipe.observeQuality(observer) }
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) { pipe.observeLevel(observer) }
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) { pipe.observeQuality(observer) }
     func stop() async -> Result<Int64, Error> {
         inputEvents.disarm()
         engine.stop()
@@ -53,13 +53,13 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         private let lock = NSLock()
         private let resampler: QuranPCMResampler
         private let writer: QuranPCMWriter
-        private let onFailure: (Error) -> Void
+        private let onFailure: @Sendable (Error) -> Void
         private var stopped = false
         private var failure: Error?
-        private var levelObserver: ((Float) -> Void)?
-        private var qualityObserver: ((QuranInputQuality.Reading) -> Void)?
+        private var levelObserver: (@Sendable (Float) -> Void)?
+        private var qualityObserver: (@Sendable (QuranInputQuality.Reading) -> Void)?
         private var quality = QuranInputQuality()
-        init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping (Error) -> Void) throws {
+        init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
             resampler = try QuranPCMResampler(input: format); self.writer = writer; self.onFailure = onFailure
         }
         func append(_ buffer: AVAudioPCMBuffer) {
@@ -76,10 +76,10 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
                 }
             } catch { stopped = true; failure = error; onFailure(error) }
         }
-        func observeLevel(_ observer: @escaping (Float) -> Void) {
+        func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) {
             lock.lock(); levelObserver = observer; lock.unlock()
         }
-        func observeQuality(_ observer: @escaping (QuranInputQuality.Reading) -> Void) {
+        func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) {
             lock.lock(); qualityObserver = observer; lock.unlock()
         }
         func finish(_ completion: @escaping (Result<Int64, Error>) -> Void) {
@@ -105,11 +105,11 @@ enum QuranAudioInputFailure: Error {
 /// and offers explicit resume; never claim an automatic restart succeeded.
 final class QuranAudioInputEvents {
     private let center: NotificationCenter
-    private let onFailure: (Error) -> Void
+    private let onFailure: @Sendable (Error) -> Void
     private let lock = NSLock()
     private var armed = false
     private var observations: [NSObjectProtocol] = []
-    init(engine: AnyObject, center: NotificationCenter = .default, onFailure: @escaping (Error) -> Void) {
+    init(engine: AnyObject, center: NotificationCenter = .default, onFailure: @escaping @Sendable (Error) -> Void) {
         self.center = center; self.onFailure = onFailure
         observations.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
             self?.fail(QuranAudioInputFailure.configurationChanged)

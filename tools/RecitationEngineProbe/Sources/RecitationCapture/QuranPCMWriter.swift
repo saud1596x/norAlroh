@@ -25,12 +25,12 @@ public final class QuranPCMWriter {
     private var ring: [Float] = []
     private var lastWindowEnd: Int64 = 0
     private var failed: Error?
-    private let onWindow: (QuranAudioWindow) -> Void
-    private let onFailure: (Error) -> Void
+    private let onWindow: @Sendable (QuranAudioWindow) -> Void
+    private let onFailure: @Sendable (Error) -> Void
     private let firstWindowFrames: Int64
     private let windowStrideFrames: Int64
-    public init(url: URL, lowLatency: Bool = false, onWindow: @escaping (QuranAudioWindow) -> Void,
-                onFailure: @escaping (Error) -> Void) throws {
+    public init(url: URL, lowLatency: Bool = false, onWindow: @escaping @Sendable (QuranAudioWindow) -> Void,
+                onFailure: @escaping @Sendable (Error) -> Void) throws {
         guard !FileManager.default.fileExists(atPath: url.path) else { throw QuranCaptureFailure.existingFile }
         self.url = url; self.onWindow = onWindow; self.onFailure = onFailure
         firstWindowFrames = lowLatency ? 32_000 : 64_000
@@ -96,7 +96,7 @@ public final class QuranPCMWriter {
     }
     /// Stop capture before calling this. Completion runs after every accepted
     /// buffer and closes the file, so relaunch playback can use the real bytes.
-    public func finish(_ completion: @escaping (Result<Int64, Error>) -> Void) {
+    public func finish(_ completion: @escaping @Sendable (Result<Int64, Error>) -> Void) {
         lock.lock(); accepting = false; lock.unlock()
         queue.async { [self] in
             if failed == nil && frames != lastWindowEnd { emitWindow() }

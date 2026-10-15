@@ -78,14 +78,14 @@ import os
     private let recognizeWindow: (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result
     private let requestPermission: () async -> Bool
     private let archiveRoot: URL?
-    private let makeCapture: (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture
+    private let makeCapture: (QuranPCMWriter, @escaping @Sendable (Error) -> Void) throws -> any QuranAudioCapture
     private let setSessionActive: (Bool) throws -> Void
     init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
          archiveRoot: URL? = nil, drainTimeout: Double = 8, recognitionTimeout: Double = 20,
          recognizeWindow: ((QuranAudioWindow) async throws -> QuranRecognitionWorker.Result)? = nil,
          analysisPersistence: ((QuranRecitationRecord) async throws -> Void)? = nil,
          recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared,
-         makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
+         makeCapture: @escaping (QuranPCMWriter, @escaping @Sendable (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
              try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
@@ -346,7 +346,7 @@ import os
         if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,
-            onWindow: { mailbox.put($0) }, onFailure: { [weak self] _ in
+            onWindow: { mailbox.put($0) }, onFailure: { @Sendable [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }
                     self.message = "تعذّر حفظ بقية الصوت. احتُفظ بالجزء المسجل؛ توقفت الجلسة لحماية تسجيلك."

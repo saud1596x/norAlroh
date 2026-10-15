@@ -141,6 +141,7 @@ struct InteractiveMushafReader: View {
     @State private var recordingSelection: MushafRecordingSelection?
     @State private var recordingBrowserOpen = false
     @State private var memorizationOpen = false
+    @State private var startAfterMemorization = false
     @State private var scopeOpen = false
     @State private var initialEntry = MushafInitialEntry()
     @State private var readerVisible = false
@@ -394,9 +395,18 @@ struct InteractiveMushafReader: View {
                     .toolbar { Button("إغلاق") { recordingBrowserOpen = false } }
             }
         }
-        .fullScreenCover(isPresented: $memorizationOpen) {
+        .fullScreenCover(isPresented: $memorizationOpen, onDismiss: {
+            if startAfterMemorization {
+                startAfterMemorization = false
+                // Reuse the existing reader after its cover has dismissed.
+                readerVisible = true
+                showStudySetup()
+            }
+        }) {
             NavigationStack {
-                MemorizationView()
+                MemorizationView(onStartRecitation: {
+                    startAfterMemorization = true; memorizationOpen = false
+                })
                     .toolbar { Button("إغلاق") { memorizationOpen = false }.accessibilityIdentifier("reader.memorization.close") }
             }
         }
