@@ -36,6 +36,7 @@ enum RecitationArchive {
     @Published private(set) var requestingPermission = false
     private var startRevision = 0
     private var ownsAudioSession = false
+    private var audioSessionEpoch: UUID?
     private var recordingFocus = false
     private let focusID = UUID()
     private let permission: () async -> Bool
@@ -80,6 +81,7 @@ enum RecitationArchive {
             let session = AVAudioSession.sharedInstance()
             try MushafCaptureAudio.configure(session)
             try setSessionActive(true); ownsAudioSession = true
+            audioSessionEpoch = NoorAudioFocus.shared.audioSessionEpoch
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             let temporary = file.deletingLastPathComponent().appendingPathComponent(".capture-" + UUID().uuidString + ".m4a")
             capture = temporary
@@ -105,6 +107,7 @@ enum RecitationArchive {
         recording = false; playing = false; level = 0
         // An idle legacy control can disappear while the Mushaf is listening.
         // It must never deactivate the app-wide session owned by that player.
+        if audioSessionEpoch != NoorAudioFocus.shared.audioSessionEpoch { ownsAudioSession = false }
         if ownsAudioSession {
             do { try setSessionActive(false); ownsAudioSession = false }
             catch { /* Keep ownership so explicit stop can retry. */ }
@@ -131,6 +134,7 @@ enum RecitationArchive {
         do {
             let session = AVAudioSession.sharedInstance(); try session.setCategory(.playback, mode: .spokenAudio)
             try setSessionActive(true); ownsAudioSession = true
+            audioSessionEpoch = NoorAudioFocus.shared.audioSessionEpoch
             let audio = try AVAudioPlayer(contentsOf: file); audio.delegate = self; player = audio
             guard audio.play() else { throw CocoaError(.fileReadUnknown) }
             duration = audio.duration; playbackTime = 0; playing = true; message = nil

@@ -98,6 +98,9 @@ xcodebuild test-without-building "${common[@]}" \
   -maximum-test-execution-time-allowance 90 \
   -only-testing:AtharTests/QuranAudioBackendControlTests \
   -only-testing:AtharTests/LegacyRecordingFocusTests \
+  -only-testing:AtharTests/MushafRecordingTests/testFailedRealDecodeReleasesOnlyOwnedAudioSessionWithoutDeletingBytes \
+  -only-testing:AtharTests/MushafRecordingTests/testFailedDeactivationCanRetryWithoutReactivatingOrReplacingAudio \
+  -only-testing:AtharTests/MushafRecordingTests/testFailedDeactivationCannotRetryAfterAnotherRecordingTakesOver \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
   -only-testing:AtharTests/QuranGuidedPracticeTests \
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \

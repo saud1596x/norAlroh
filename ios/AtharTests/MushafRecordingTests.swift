@@ -202,6 +202,27 @@ final class MushafRecordingTests: XCTestCase {
         recorder.stop(); XCTAssertEqual(activations, [true, false, false])
         XCTAssertEqual(try Data(contentsOf: url), bytes)
     }
+    @MainActor func testFailedDeactivationCannotRetryAfterAnotherRecordingTakesOver() throws {
+        let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent(UUID().uuidString + ".m4a")
+        let bytes = Data([0, 255, 1]); try bytes.write(to: url)
+        var activations: [Bool] = []
+        let recorder = MushafSessionRecorder(base: root, setSessionActive: { active in
+            activations.append(active)
+            if !active { throw CocoaError(.fileReadUnknown) }
+        })
+        recorder.play(.init(id: UUID(), session: UUID(), url: url, date: Date(), duration: 1))
+        XCTAssertEqual(activations, [true, false])
+        let nextOwner = UUID()
+        XCTAssertTrue(NoorAudioFocus.shared.acquireRecording(nextOwner))
+        defer { NoorAudioFocus.shared.releaseRecording(nextOwner) }
+        // The handoff attempts old cleanup once, before activating the new owner.
+        XCTAssertEqual(activations, [true, false, false])
+        recorder.stop(); recorder.stop()
+        XCTAssertEqual(activations, [true, false, false], "Old cleanup must not deactivate the new recording")
+        XCTAssertFalse(NoorAudioFocus.shared.preparePlayback(UUID()))
+        XCTAssertEqual(try Data(contentsOf: url), bytes)
+    }
     func testUnreadableMetadataAndAudioArePreservedAndConflictingHeaderCannotReplaceSession() throws {
         let root = try folder(); defer { try? FileManager.default.removeItem(at: root) }
         let value = session(); let directory = try MushafRecordingArchive.register(value, base: root)

@@ -221,6 +221,7 @@ enum MushafRecordingArchive {
     private var player: AVAudioPlayer?
     private var revision = 0
     private var ownsAudioSession = false
+    private var audioSessionEpoch: UUID?
     private let setSessionActive: (Bool) throws -> Void
     private let permission: () async -> Bool
     private let isActive: () -> Bool
@@ -279,6 +280,7 @@ enum MushafRecordingArchive {
         // Track activation before creating the encoder/player: their initializers
         // can throw while the app already owns an active system audio session.
         ownsAudioSession = true
+        audioSessionEpoch = NoorAudioFocus.shared.audioSessionEpoch
     }
     func meters() {
         guard recording, let recorder else { return }
@@ -287,6 +289,7 @@ enum MushafRecordingArchive {
     }
     func stop() {
         revision += 1
+        if audioSessionEpoch != NoorAudioFocus.shared.audioSessionEpoch { ownsAudioSession = false }
         let ownsSound = ownsAudioSession
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = nil; level = 0

@@ -87,6 +87,14 @@ rejection before system activation when another recording owns the route.
 These new legacy changes are not part of cc8cca6 and have not run natively yet;
 they are not asserted to be the cause of the Simulator's reference failure.
 
+Follow-up review found that retaining a failed session-deactivation retry could
+let an old recorder deactivate a new recording owner later. NoorAudioFocus now
+rotates an ownership epoch after handoff cleanup; both recorder transports only
+retry deactivation within their activation epoch. The existing same-owner retry
+test is retained, and a new handoff regression requires the next recording's
+lease and file bytes to survive old cleanup. This follow-up is not in the
+running 424a05b comparison and needs its own native verification.
+
 The next comparison pins Xcode 26.6 (a different patched macOS worker image),
 includes the legacy ownership fix, and retains both raw control tests and the
 original guided assertions. The existing host-daemon recovery and actual
