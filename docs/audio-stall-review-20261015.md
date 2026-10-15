@@ -161,3 +161,11 @@ A separate eight-minute bounded archive-preservation-check selects the three
 archive tests and five ownership regressions. This verifies the new concrete
 data-loss repair only, without replaying the known hung playback controls or
 changing any existing full audio/Release gate. It has not run yet.
+
+Build 6ad109013ffd2c7f0ad3a8f0 now runs that selection on source 1f4c579.
+A subsequent UI-only correction exposes the existing confirmed erase action
+when a pending capture exists even if no earlier saved take exists. Otherwise
+an invalid first capture could block new recording with no visible way to
+discard it. Export remains restricted to an actual saved take; the confirmation
+explicitly covers both saved and pending audio. This later UI change is not
+part of build 6ad109013ffd2c7f0ad3a8f0 and still needs native/UI verification.

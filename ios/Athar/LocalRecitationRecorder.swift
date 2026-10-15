@@ -230,13 +230,15 @@ struct RecitationRecordingControls: View {
                     }.frame(minHeight: 44).accessibilityIdentifier("recitation.play")
                 }
             }.font(.subheadline).buttonStyle(.bordered)
-            if audio.hasRecording && !audio.recording {
+            if (audio.hasRecording || audio.pendingCaptureSave) && !audio.recording {
                 HStack {
-                    Button("تصدير الصوت", systemImage: "square.and.arrow.up") {
-                        do {
-                            if let bytes = try audio.exportRecording() { document = ExportDocument(bytes: bytes); exporting = true }
-                        } catch { audio.message = "تعذّر تجهيز ملف الصوت للتصدير." }
-                    }.accessibilityIdentifier("recitation.export")
+                    if audio.hasRecording {
+                        Button("تصدير الصوت", systemImage: "square.and.arrow.up") {
+                            do {
+                                if let bytes = try audio.exportRecording() { document = ExportDocument(bytes: bytes); exporting = true }
+                            } catch { audio.message = "تعذّر تجهيز ملف الصوت للتصدير." }
+                        }.accessibilityIdentifier("recitation.export")
+                    }
                     Spacer()
                     Button("حذف", role: .destructive) { deleteConfirmation = true }.accessibilityIdentifier("recitation.delete")
                 }.font(.caption).frame(minHeight: 44)
@@ -264,7 +266,7 @@ struct RecitationRecordingControls: View {
             Button("بدء تسجيل جديد") { Task { await audio.start() } }
             Button("إلغاء", role: .cancel) {}
         }
-        .confirmationDialog("حذف تسميعك المحفوظ نهائيًا؟", isPresented: $deleteConfirmation, titleVisibility: .visible) {
+        .confirmationDialog("حذف التسجيل المحفوظ وأي تسجيل ينتظر الحفظ نهائيًا؟", isPresented: $deleteConfirmation, titleVisibility: .visible) {
             Button("حذف التسجيل", role: .destructive) { _ = audio.erase() }
             Button("إلغاء", role: .cancel) {}
         }
