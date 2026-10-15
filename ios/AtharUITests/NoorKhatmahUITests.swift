@@ -17,6 +17,8 @@ final class NoorKhatmahUITests: XCTestCase {
         tapVisible(app, app.buttons["home.continueKhatmah"])
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         XCTAssertTrue(app.staticTexts["reader.ward.range"].label.contains("٢٠"))
+        XCTAssertFalse(app.buttons["reader.study"].exists, "Daily ward is reading only")
+        XCTAssertFalse(app.buttons["reader.reciters"].exists)
         app.buttons["reader.jump"].tap()
         let field = app.textFields["reader.pageNumber"]
         XCTAssertTrue(field.waitForExistence(timeout: 10)); field.tap(); field.typeText("20")

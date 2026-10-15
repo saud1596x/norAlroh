@@ -110,6 +110,7 @@ struct InteractiveMushafReader: View {
     let startsStudy: Bool
     let opensStudyScope: Bool
     let readingScope: KhatmahReadingScope?
+    private var readingOnly: Bool { readingScope != nil }
     @ObservedObject private var readingJourney = KhatmahStore.shared
     @State private var wardComplete = false
     private var allowedPages: ClosedRange<Int> { readingScope?.pages ?? 1...604 }
@@ -261,12 +262,12 @@ struct InteractiveMushafReader: View {
             await load()
             injectAcceptanceRenderFailureIfNeeded()
             completeInitialEntryIfReady()
-            if let snapshot {
+            if !readingOnly, let snapshot {
                 _ = try? await QuranRecognitionWorker.shared.bind(snapshot: snapshot, verseKeys: keys)
             }
             // Warm the bundled model during reading; never request microphone
             // permission here or hold up the user's first recording tap.
-            try? await NoorOperationDeadline.run(seconds: 45) { try await QuranRecognitionWorker.shared.prepare() }
+            if !readingOnly { try? await NoorOperationDeadline.run(seconds: 45) { try await QuranRecognitionWorker.shared.prepare() } }
         }
         .onAppear { readerVisible = true; audio.reciterDirectory = preferredReciter }
     }
@@ -342,7 +343,7 @@ struct InteractiveMushafReader: View {
     private var studyReader: some View {
         activeReader
         .sheet(item: $sheetVerse, onDismiss: { clearManualSelection(); if studyRequestFromSheet { studyRequestFromSheet = false; showStudySetup(studyStartKey) } }) { selection in
-            VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, onStudy: { key in
+            VerseTools(selection: selection, audio: audio, selected: $selected, initialAction: sheetAction, readingOnly: readingOnly, onStudy: { key in
                 studyStartKey = key; studyRequestFromSheet = true
             })
                 .presentationDragIndicator(.visible)
@@ -461,7 +462,7 @@ struct InteractiveMushafReader: View {
                         .font(.headline).lineLimit(1).accessibilityIdentifier(manualSelection == nil ? "reader.title" : "verse.tools.title")
                         .accessibilityValue(manualSelection?.key ?? "")
                     Spacer()
-                    if manualSelection == nil {
+                    if manualSelection == nil && !readingOnly {
                         Button { recitersOpen = true } label: {
                             Image(systemName: "headphones").frame(width: 44, height: 44)
                         }.accessibilityLabel("اختر القارئ").accessibilityIdentifier("reader.reciters")
@@ -496,7 +497,7 @@ struct InteractiveMushafReader: View {
                         if !dynamicTypeSize.isAccessibilitySize { pageJumpControl }
                     Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number <= allowedPages.lowerBound).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
                     }
-                        Button {
+                        if !readingOnly { Button {
                             if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
                             else { showStudySetup() }
                         } label: {
@@ -516,6 +517,7 @@ struct InteractiveMushafReader: View {
                             .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }
                             .accessibilityAction(named: "الحفظ والمراجعة") { memorizationOpen = true }
                             .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
+                        }
                     }
                         if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
                             HStack {
@@ -598,10 +600,12 @@ struct InteractiveMushafReader: View {
                     }
     }
     private func showStudySetup(_ key: String? = nil) {
+        guard !readingOnly else { return }
         if let key { startRecitation(keys: [key]) }
         else { startRecitation(keys: keys, automatic: true) }
     }
     private func completeInitialEntryIfReady() {
+        guard !readingOnly else { return }
         let ready = snapshot != nil && page != nil && error == nil && fonts.error == nil
             && fonts.names[String(format: "QCF2%03d", number)] != nil && !renderingFailed
         switch initialEntry.consume(requestScope: opensStudyScope, startStudy: startsStudy,
@@ -639,7 +643,7 @@ struct InteractiveMushafReader: View {
         return keys.filter { visible.contains($0) }
     }
     private func startRecitation(keys scope: [String], automatic: Bool = false) {
-        guard readerVisible, let snapshot, !recitation.hasSession else { return }
+        guard !readingOnly, readerVisible, let snapshot, !recitation.hasSession else { return }
         followAudio = true
         audio.stop(); studyRecorder.stop(); legacyRecorder.stop(); clearManualSelection()
         tools = true
@@ -788,17 +792,18 @@ struct InteractiveMushafReader: View {
                 } else { khatmahStopMessage = journey.error }
             }
             verseAction("تفسير الآية", symbol: "book", identifier: "verse.tafsir") { openTools(selection, action: .tafsir) }
-            verseAction("استماع من الآية", symbol: "play.fill", identifier: "verse.play") {
+            if !readingOnly { verseAction("استماع من الآية", symbol: "play.fill", identifier: "verse.play") {
                 let count = store.quran[selection.chapter - 1].ayahs.count
                 manualSelection = nil; followAudio = true
                 audio.play((selection.ayah...count).map { "\(selection.chapter):\($0)" })
             }
             verseAction("تكرار الآية", symbol: "repeat", identifier: "verse.repeat") { openTools(selection, action: .repeatRange) }
+            }
             let bookmarked = store.data.bookmarks.contains(selection.key)
             verseAction(bookmarked ? "إزالة العلامة" : "حفظ موضع الآية", symbol: bookmarked ? "bookmark.fill" : "bookmark", identifier: "verse.bookmark") {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
-            verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) }
+            if !readingOnly { verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) } }
         }.padding(8)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
@@ -874,7 +879,7 @@ struct InteractiveMushafReader: View {
                 if page?.words.contains(where: { $0.verse == key }) != true,
                    let target = versePages[key], allowedPages.contains(target) { lastPage = target; number = target }
             }
-            if first, let pending = UUID(uuidString: pendingRecitation) {
+            if first, !readingOnly, let pending = UUID(uuidString: pendingRecitation) {
                 await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
                 if recitation.hasSession, followAudio {
                     selected = recitation.currentVerse
@@ -911,10 +916,11 @@ private struct VerseTools: View {
     @State private var notice: String?
     @State private var tafsirHeight: CGFloat = 220
     let initialAction: VerseToolAction
+    let readingOnly: Bool
     let onStudy: (String) -> Void
-    init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>, initialAction: VerseToolAction = .details, onStudy: @escaping (String) -> Void) {
+    init(selection: VerseSelection, audio: MushafVerseAudio, selected: Binding<String?>, initialAction: VerseToolAction = .details, readingOnly: Bool = false, onStudy: @escaping (String) -> Void) {
         self.selection = selection; self.audio = audio; self._selected = selected
-        self.initialAction = initialAction; self.onStudy = onStudy
+        self.initialAction = initialAction; self.readingOnly = readingOnly; self.onStudy = onStudy
         self._repeatEnd = State(initialValue: selection.ayah)
     }
     private var surah: Surah { store.quran[selection.chapter - 1] }
@@ -927,14 +933,14 @@ private struct VerseTools: View {
                 else { List {
                 if initialAction == .details {
                 Section {
-                    Button("الاستماع من هذه الآية", systemImage: "play.fill") {
+                    if !readingOnly { Button("الاستماع من هذه الآية", systemImage: "play.fill") {
                         audio.play((selection.ayah...surah.ayahs.count).map { "\(selection.chapter):\($0)" }); dismiss()
-                    }.accessibilityIdentifier("verse.sheet.play")
+                    }.accessibilityIdentifier("verse.sheet.play") }
                     Button("التفسير", systemImage: "book") { showTafsir = true }.accessibilityIdentifier("verse.sheet.tafsir")
                     Button(store.data.bookmarks.contains(selection.key) ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية", systemImage: "bookmark") { store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah) }.accessibilityIdentifier("verse.sheet.bookmark")
                 }
                 }
-                Section("التكرار") {
+                if !readingOnly { Section("التكرار") {
                     Stepper("عدد التكرارات: \(repeatCount)", value: $repeatCount, in: 1...20).accessibilityIdentifier("verse.repeat.count")
                     Stepper("إلى الآية: \(repeatEnd)", value: $repeatEnd, in: selection.ayah...surah.ayahs.count)
                     Stepper("مهلة بين التلاوات: \(repeatDelay) ثانية", value: $repeatDelay, in: 0...30).accessibilityIdentifier("verse.repeat.delay")
@@ -946,10 +952,10 @@ private struct VerseTools: View {
                         audio.play((selection.ayah...repeatEnd).map { "\(selection.chapter):\($0)" }, repetitions: repeatCount, delaySeconds: repeatDelay)
                         dismiss()
                     }.accessibilityIdentifier("verse.repeat.start")
-                }
+                } }
                 if initialAction == .details {
                 Section("الحفظ والمشاركة") {
-                    Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { onStudy(selection.key); dismiss() }
+                    if !readingOnly { Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { onStudy(selection.key); dismiss() } }
                     Button("نسخ نص الآية", systemImage: "doc.on.doc") { UIPasteboard.general.string = copyText; notice = "نُسخ نص الآية مع اسم السورة ورقمها." }.accessibilityIdentifier("verse.copy")
                     ShareLink(item: copyText) { Label("مشاركة الآية", systemImage: "square.and.arrow.up") }
                 }
