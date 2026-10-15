@@ -26,3 +26,7 @@ not been resolved. A complete implementation needs the matching authored V4
 layout, an audited mapping to the app's canonical word IDs, verified resource
 distribution terms, and native rendering/selection tests across all pages.
 No downloaded V4 resource is included in the app or substituted into V2.
+
+The user subsequently explicitly deferred Tajweed colors and requested this
+reading-only update be published to TestFlight: «تمام انشر التطبيق اجل موضوع
+التجويد بعدين». Tajweed is outside this delivery, not marked completed.
