@@ -405,7 +405,18 @@ import os
     private func processWindows(_ mailbox: QuranWindowMailbox, take: UUID, token: UUID) async {
         var prepared = false
         while revision == token, !Task.isCancelled {
-            guard let window = mailbox.take() else {
+            let pendingWindow: QuranAudioWindow?
+            do { pendingWindow = try mailbox.take() }
+            catch {
+                guard var current = record else { return }
+                current.recognitionUnavailable = true; noteExposedPracticeText(&current)
+                record = current; uncertain = true; recognitionAvailable = false
+                do { try save(current) }
+                catch { stopForJournalFailure(); return }
+                message = "تأخر التتبع عن التسجيل؛ احتُفظ بالصوت. أوقف التسميع ثم استأنفه لإعادة المحاولة."
+                return
+            }
+            guard let window = pendingWindow else {
                 if !capturing { return }
                 do { try await Task.sleep(nanoseconds: 100_000_000) } catch { return }
                 continue

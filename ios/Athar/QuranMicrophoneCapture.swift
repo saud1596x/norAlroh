@@ -152,11 +152,49 @@ final class QuranAudioInputEvents {
     deinit { observations.forEach { center.removeObserver($0) } }
 }
 
-/// The latest completed audio window replaces older pending inference only.
-/// All audio remains in the writer. Constant space even on a slow device.
+/// Coalesce overlapping windows only when their predecessor still covers the
+/// removed audio. A cold model must not silently skip the beginning of a take.
+/// Eight eight-second windows bound memory to ~4 MB; overload is explicit and
+/// affects tracking only. The independent writer retains the original audio.
 final class QuranWindowMailbox {
+    enum Failure: Error { case overloaded, discontinuousAudio }
     private let lock = NSLock()
-    private var latest: QuranAudioWindow?
-    func put(_ value: QuranAudioWindow) { lock.lock(); defer { lock.unlock() }; latest = value }
-    func take() -> QuranAudioWindow? { lock.lock(); defer { lock.unlock() }; defer { latest = nil }; return latest }
+    private let capacity: Int
+    private var pending: [QuranAudioWindow] = []
+    private var deliveredEnd: Int64 = 0
+    private var receivedEnd: Int64 = 0
+    private var failure: Failure?
+    init(capacity: Int = 8) { self.capacity = max(1, capacity) }
+    func put(_ value: QuranAudioWindow) {
+        lock.lock(); defer { lock.unlock() }
+        guard failure == nil else { return }
+        guard value.startFrame >= 0, value.endFrame > receivedEnd,
+              value.endFrame - value.startFrame == Int64(value.samples.count),
+              !value.samples.isEmpty, value.samples.count <= 128_000,
+              value.startFrame <= receivedEnd else {
+            failure = .discontinuousAudio; pending.removeAll(); return
+        }
+        receivedEnd = value.endFrame
+        if !pending.isEmpty {
+            let predecessorEnd = pending.count > 1 ? pending[pending.count - 2].endFrame : deliveredEnd
+            // Retain a second of overlap for words crossing a decode boundary.
+            let replacementStart = max(0, predecessorEnd - 16_000)
+            if value.startFrame <= replacementStart {
+                pending[pending.count - 1] = value
+                return
+            }
+        }
+        guard pending.count < capacity else {
+            failure = .overloaded; pending.removeAll(); return
+        }
+        pending.append(value)
+    }
+    func take() throws -> QuranAudioWindow? {
+        lock.lock(); defer { lock.unlock() }
+        if let failure { throw failure }
+        guard !pending.isEmpty else { return nil }
+        let next = pending.removeFirst()
+        deliveredEnd = next.endFrame
+        return next
+    }
 }

@@ -1,4 +1,21 @@
 workflows:
+  recitation-engine-check:
+    name: Noor recitation backlog, real reference recognition and cancellation
+    instance_type: mac_mini_m2
+    max_build_duration: 10
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify recitation engine with recorded reference PCM
+        script: bash scripts/test-recitation-engine-current.sh
+    artifacts:
+      - release/recitation-engine-current/**
   mushaf-usability-check:
     name: Noor Mushaf highlighting, timing bindings and startup regression
     instance_type: mac_mini_m2
