@@ -137,3 +137,14 @@ honest remaining limitations; do not alter normal preview/App Store gates or
 claim full Release/device acceptance. New source must be pinned and its actual
 checks recorded. All previous failed or unfinished results remain failed or
 unfinished. No new invitation, credential or public App Store release.
+
+Native source `8e6950e` / run `6ad3e0d07550aed8108fac8c` passed25 targeted
+unit regressions, including the exact legacy preference/bookmark test (0.030s).
+The tightened UI test exposed a genuine interaction defect: tapping the Toggle
+left its value0, and the native canvas correctly continued reporting ordinary
+reading. Two assertions failed; do not label that UI run successful or the image
+colored. Replace the ambiguous List Toggle hit target with one explicit full-row
+button (48pt minimum), visible enabled/disabled state and accessible value. The
+follow-up must still tap the real action and prove the actual canvas changes to
+colored mode and back; it must not set preferences or rendering state from tests.
+The existing25-case and swipe/selection/hide/picker assertions remain intact.

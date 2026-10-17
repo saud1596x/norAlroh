@@ -25,10 +25,12 @@ final class NoorContinuousReaderUITests: XCTestCase {
         readerScreenshot.name = "reader-controls-spaced-no-overlap"; readerScreenshot.lifetime = .keepAlways; add(readerScreenshot)
         more.tap()
         XCTAssertTrue(app.buttons["اختيار مقطع التسميع"].waitForExistence(timeout: 5))
-        let tajweed = app.switches["reader.tajweed"]
-        XCTAssertTrue(tajweed.exists)
-        if tajweed.value as? String == "0" { tajweed.tap() }
-        XCTAssertEqual(tajweed.value as? String, "1", "The actual colors switch must be on")
+        let tajweed = app.buttons["reader.tajweed"]
+        XCTAssertTrue(tajweed.isHittable)
+        if tajweed.value as? String == "متوقفة" { tajweed.tap() }
+        let enabledColors = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "مفعّلة"), object: tajweed)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabledColors], timeout: 5), .completed,
+                       "The full-width colors action must actually enable the stored mode")
         let closeOptions = app.buttons["reader.options.close"]
         XCTAssertTrue(closeOptions.isHittable, "Options always have an explicit close button")
         closeOptions.tap()

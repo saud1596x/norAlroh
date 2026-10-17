@@ -644,9 +644,23 @@ struct InteractiveMushafReader: View {
             }) {
                 NavigationStack {
                     List {
-                        Toggle("ألوان التجويد", isOn: $tajweedColors)
-                            .accessibilityIdentifier("reader.tajweed")
-                            .listRowSeparator(.visible)
+                        Button { tajweedColors.toggle() } label: {
+                            HStack(spacing: 12) {
+                                Text("ألوان التجويد").foregroundStyle(.primary)
+                                Spacer()
+                                Text(tajweedColors ? "مفعّلة" : "متوقفة")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                                Image(systemName: tajweedColors ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(tajweedColors ? Theme.gold : Color.secondary)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("reader.tajweed")
+                        .accessibilityValue(tajweedColors ? "مفعّلة" : "متوقفة")
+                        .accessibilityHint("اضغط لتغيير ألوان التجويد في المصحف")
+                        .listRowSeparator(.visible)
                         readerActionRow("الختمة وموضع التوقف", icon: "bookmark", action: .khatmah)
                         readerActionRow("اختيار مقطع التسميع", icon: "mic", action: .scope)
                         readerActionRow("تسجيلاتي", icon: "waveform", action: .recordings)
