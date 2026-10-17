@@ -26,7 +26,7 @@ state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
 test_exit=0
-xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
   -destination "platform=iOS Simulator,id=$device" \
   -derivedDataPath release/continuous-reader-derived-data CODE_SIGNING_ALLOWED=NO \
   ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO \
@@ -34,6 +34,7 @@ xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Releas
   -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
   -maximum-test-execution-time-allowance 180 \
   -only-testing:AtharTests/NoorContinuousMushafTests \
+  -only-testing:AtharTests/NoorReaderCoreRegressionTests \
   -only-testing:AtharTests/QuranWordAlignmentTests \
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
   -only-testing:AtharTests/QuranRecognitionCapabilityTests \

@@ -23,6 +23,11 @@ workflows:
     max_build_duration: 12
     environment:
       xcode: "26.3"
+    cache:
+      cache_paths:
+        - release/continuous-reader-derived-data/ModuleCache.noindex
+        - release/continuous-reader-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/continuous-reader-derived-data/SourcePackages
     scripts:
       - name: Install project generator
         script: command -v xcodegen >/dev/null || brew install xcodegen
