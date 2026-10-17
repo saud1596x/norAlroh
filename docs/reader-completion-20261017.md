@@ -148,3 +148,20 @@ button (48pt minimum), visible enabled/disabled state and accessible value. The
 follow-up must still tap the real action and prove the actual canvas changes to
 colored mode and back; it must not set preferences or rendering state from tests.
 The existing25-case and swipe/selection/hide/picker assertions remain intact.
+
+Source `2a36ee7` / run `6ad3e3cd7550aed8108fad54` passed25 native unit
+cases (10.889s) and1 actual UI case (76.735s), zero failures. The full-row color
+action enabled the stored preference, the native canvas reported colored mode,
+then returned to ordinary reading after disabling. Original `tajweed-reader-full-screen`
+PNG SHA256 `0c659e110d407ba0bba47292be545ce14e5943554df137fa95dd504937525aba`
+was reconstructed without alteration and visually inspected: actual publisher
+colors, complete page604, three surah headings and visible spaced controls.
+The other three original attachments show ordinary page604, clear yellow ayah
+selection/actions and the last searched reciter selected. Actual UI movie exited0,
+27,674,758bytes. This proves these UI actions on the simulator, not acoustic
+error accuracy, real microphone performance or universal reciter word timing.
+
+The private review inventory now pins490 tracked source files for this runtime.
+Its unresolved flags remain unchanged. The older full42-unit run is retained as
+component evidence; it was not rerun or attributed to this latest source. Normal
+reviewed-preview/App Store evidence remains unchanged and is not a success claim.
