@@ -9,9 +9,16 @@ import Combine
 private struct NoorMushafMicrophonePressStyle: PrimitiveButtonStyle {
     let onOptions: () -> Void
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @EnvironmentObject private var store: AtharStore
+    @GestureState private var pressed = false
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.contentShape(Circle())
+        configuration.label.contentShape(RoundedRectangle(cornerRadius: 22))
+            .scaleEffect(pressed && !reduced && !store.data.lowMotion ? 0.93 : 1)
+            .opacity(pressed ? 0.8 : 1)
+            .animation(reduced || store.data.lowMotion ? nil : .spring(duration: 0.24, bounce: 0.16), value: pressed)
             .gesture(LongPressGesture(minimumDuration: 0.45).exclusively(before: TapGesture())
+                .updating($pressed) { _, state, _ in state = true }
                 .onEnded { value in
                     guard enabled else { return }
                     switch value {
@@ -137,6 +144,7 @@ struct InteractiveMushafReader: View {
     @State private var recitationOptionsOpen = false
     @State private var readerActionsOpen = false
     @AppStorage("noor.mushaf.tajweedColors") private var tajweedColors = false
+    @StateObject private var microphoneCue = NoorMicrophoneCue()
     private enum ReaderAction { case khatmah, scope, recordings, memorization }
     @State private var pendingReaderAction: ReaderAction?
     @State private var recitersOpen = false
@@ -310,8 +318,9 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { rememberWardPosition(); readerVisible = false; initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
+        .onDisappear { rememberWardPosition(); readerVisible = false; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
         .onChange(of: scenePhase) { _, value in
+            if value != .active { microphoneCue.cancel() }
             if value == .background { rememberWardPosition() }
             if value == .background || (value == .inactive && recitation.state != .permission) { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
@@ -467,11 +476,7 @@ struct InteractiveMushafReader: View {
                     }
                     else { VStack(spacing: 0) {
                         if !readingOnly {
-                            HStack(spacing: 12) {
-                                practiceTextVisibilityButton.frame(maxWidth: .infinity)
-                                startRecitationButton
-                                readerOptionsButton.frame(maxWidth: .infinity)
-                            }
+                            readerPracticeDock
                         }
                         pageNavigationControls
                         if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
@@ -613,25 +618,40 @@ struct InteractiveMushafReader: View {
     }
     private var startRecitationButton: some View {
         Button {
-            if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
-            else { showStudySetup() }
+            audio.stop(); studyRecorder.stop(); legacyRecorder.stop()
+            microphoneCue.begin {
+                guard readerVisible, !recitation.hasSession else { return }
+                if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
+                else { showStudySetup() }
+            }
         } label: {
-            Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Theme.background).frame(width: 60, height: 60)
-                .background(Theme.gold, in: Circle())
+            NoorReaderMicrophoneFace(busy: microphoneCue.pending, title: microphoneCue.pending ? "استعد" : "تسميع")
+                .frame(width: 80)
         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
-            .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
+            .disabled(microphoneCue.pending || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
             .buttonStyle(NoorMushafMicrophonePressStyle(onOptions: { readerActionsOpen = true }))
             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
             .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }
             .accessibilityAction(named: "الحفظ والمراجعة") { memorizationOpen = true }
             .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
     }
+    private var readerPracticeDock: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 12) {
+                practiceTextVisibilityButton.frame(maxWidth: .infinity)
+                startRecitationButton
+                readerOptionsButton.frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 26))
+            .overlay(RoundedRectangle(cornerRadius: 26).stroke(Theme.gold.opacity(0.13), lineWidth: 1))
+            if let message = microphoneCue.error { Text(message).font(.caption).foregroundStyle(.secondary) }
+        }
+    }
     private var readerOptionsButton: some View {
         Button { readerActionsOpen = true } label: {
-            Label("المزيد", systemImage: "ellipsis.circle")
-                .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
-        }.buttonStyle(.plain).accessibilityIdentifier("reader.more")
+            NoorReaderUtilityLabel(title: "المزيد", symbol: "ellipsis")
+        }.buttonStyle(NoorReaderControlPressStyle()).accessibilityIdentifier("reader.more")
             .sheet(isPresented: $readerActionsOpen, onDismiss: {
                 let action = pendingReaderAction; pendingReaderAction = nil
                 switch action {
@@ -708,12 +728,11 @@ struct InteractiveMushafReader: View {
                 closedPracticeText = next
             }
         } label: {
-            Label(hidden ? "إظهار الآيات" : "إخفاء الآيات للتسميع",
-                  systemImage: hidden ? "eye" : "eye.slash")
-                .font(.subheadline.weight(.semibold))
-                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: 44)
-        }.buttonStyle(.plain)
+            NoorReaderUtilityLabel(title: hidden ? "إظهار الآيات" : "إخفاء الآيات",
+                                   symbol: hidden ? "eye" : "eye.slash", selected: hidden)
+        }.buttonStyle(NoorReaderControlPressStyle())
+            .sensoryFeedback(.selection, trigger: hidden)
+            .accessibilityLabel(hidden ? "إظهار الآيات" : "إخفاء الآيات للتسميع")
             .accessibilityIdentifier("reader.textVisibility")
             .accessibilityValue(hidden ? "الآيات مخفية" : "الآيات ظاهرة")
             .accessibilityHint("يُظهر التسميع الكلمات التي تم التعرف عليها. لا يتوقف الميكروفون عند تغيير العرض.")
@@ -794,41 +813,54 @@ struct InteractiveMushafReader: View {
             }
             }.background { readerControlMeasurement("header") }
             Spacer(minLength: 0)
-            VStack(spacing: 0) {
-            practiceTextVisibilityButton
-            HStack {
+            VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                practiceTextVisibilityButton.frame(maxWidth: .infinity)
+                studyMicrophoneButton
                 VStack(alignment: .leading, spacing: 2) {
                     Text("الصفحة \(number)").font(.caption).monospacedDigit()
                     if let record = recitation.record {
                         Text("تسجيل محلي · \(MushafAudioTime.text(record.duration))")
                             .font(.caption2).monospacedDigit().accessibilityIdentifier("study.elapsed")
                     }
-                }
-                Spacer()
-                Button {
-                    Task {
-                        if recitation.state == .paused { await recitation.resume() }
-                        else { await recitation.pause() }
-                    }
-                } label: {
-                    Group {
-                        if recitation.state == .processing || recitation.state == .preparing { ProgressView() }
-                        else { Image(systemName: recitation.state == .paused ? "mic.fill" : "pause.fill") }
-                    }.font(.system(size: 24, weight: .semibold)).foregroundStyle(Theme.background)
-                        .frame(width: 60, height: 60).background(Theme.gold, in: Circle())
-                }.disabled(recitation.state == .processing || recitation.state == .permission
-                    || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
-                    .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
-                    .accessibilityIdentifier("study.pause")
-                Spacer()
                 ProgressView(value: recitation.microphoneMeter)
-                    .tint(Theme.gold).frame(width: 44, height: 44)
+                    .tint(Theme.gold).frame(maxWidth: 64)
                     .accessibilityLabel("إشارة صوت الميكروفون")
                     .accessibilityValue("\(Int(recitation.microphoneMeter * 100)) بالمئة")
                     .accessibilityIdentifier("study.microphoneLevel")
+                }.frame(maxWidth: .infinity)
             }
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 26))
+            .overlay(RoundedRectangle(cornerRadius: 26).stroke(Theme.gold.opacity(0.13), lineWidth: 1))
+            if let message = microphoneCue.error { Text(message).font(.caption).foregroundStyle(.secondary) }
             }.background { readerControlMeasurement("footer") }
         }.padding(.horizontal, 10)
+    }
+    private var studyMicrophoneButton: some View {
+        Button {
+            if recitation.state == .paused {
+                microphoneCue.begin {
+                    guard readerVisible, recitation.state == .paused else { return }
+                    Task { await recitation.resume() }
+                }
+            } else {
+                Task {
+                    await recitation.pause()
+                    UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.5)
+                }
+            }
+        } label: {
+            NoorReaderMicrophoneFace(symbol: recitation.state == .paused ? "mic.fill" : "pause.fill",
+                listening: recitation.state == .listening, level: recitation.microphoneMeter,
+                busy: microphoneCue.pending || recitation.state == .processing || recitation.state == .preparing,
+                title: recitation.state == .paused ? "استئناف" : "إيقاف")
+                .frame(width: 80)
+        }.buttonStyle(NoorReaderControlPressStyle())
+            .disabled(microphoneCue.pending || recitation.state == .processing || recitation.state == .permission
+                || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
+            .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
+            .accessibilityIdentifier("study.pause")
     }
     private func readerControlMeasurement(_ key: String) -> some View {
         GeometryReader { geometry in

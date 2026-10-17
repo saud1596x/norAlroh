@@ -109,6 +109,8 @@ def verify(path):
                          'reciter-word-timings.json', 'Reciter-Timings-LICENSE.txt']:
             if ipa.read(root + resource) != (ROOT / 'ios/Athar' / resource).read_bytes():
                 raise ValueError('Incorrect bundled Quran or reciter resource: ' + resource)
+        if ipa.read(root + 'mic-start.wav') != (ROOT / 'ios/Athar/mic-start.wav').read_bytes():
+            raise ValueError('Incorrect bundled microphone UI feedback')
         snapshot = ipa.read(root + 'mushaf-snapshot.json')
         pinned = json.loads((ROOT / 'content-sources/mushaf-snapshot-manifest.json').read_text())
         if len(snapshot) != pinned['bytes'] or hashlib.sha256(snapshot).hexdigest() != pinned['sha256']:
@@ -121,6 +123,7 @@ def verify(path):
     return {'version': version[0], 'build': version[1], 'extensions': sorted(found),
             'accountConfigurationIncluded': True, 'recognitionResourcesVerified': recognition_count,
             'originalTajweedPagesVerified': tajweed_count,
+            'microphoneFeedbackIncluded': True,
             'quranTextResourcesMatchSource': True, 'completeReciterCatalogs': len(readers),
             'deviceTested': False}
 

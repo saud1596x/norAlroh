@@ -33,6 +33,7 @@ class ReleasePayloadTests(unittest.TestCase):
                                 {'id': 54, 'surahs': list(range(1, 115))}]}).encode()}
         for name, data in self.quran_files.items():
             (root / 'ios/Athar' / name).write_bytes(data)
+        (root / 'ios/Athar/mic-start.wav').write_bytes(b'synthetic-UI-feedback-not-recitation')
         for directory in ['scripts', 'content-sources', 'docs']:
             (root / directory).mkdir()
         (root / 'release').mkdir()
@@ -74,6 +75,7 @@ class ReleasePayloadTests(unittest.TestCase):
             resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
             resources.update(self.quran_files)
             resources.update(self.tajweed_files)
+            resources['mic-start.wav'] = b'synthetic-UI-feedback-not-recitation'
             resources['RecitationModel/verified-model.json'] = json.dumps({
                 'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision',
                 'configuration': 'ar;wordTimestamps=true;temperatureFallbackCount=0;concurrentWorkerCount=1'
@@ -181,6 +183,13 @@ class ReleasePayloadTests(unittest.TestCase):
                         gate.verify(self.payload(folder, omit=name))
                     with self.assertRaisesRegex(ValueError, 'Incorrect bundled Quran or reciter resource'):
                         gate.verify(self.payload(folder, corrupt=name))
+
+    def test_missing_or_corrupted_microphone_feedback_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(KeyError):
+                gate.verify(self.payload(folder, omit='mic-start.wav'))
+            with self.assertRaisesRegex(ValueError, 'Incorrect bundled microphone UI feedback'):
+                gate.verify(self.payload(folder, corrupt='mic-start.wav'))
 
     def test_identical_but_incomplete_reciter_catalog_is_rejected(self):
         name = 'haramain-reciters.json'

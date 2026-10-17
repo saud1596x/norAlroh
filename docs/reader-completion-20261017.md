@@ -165,3 +165,32 @@ The private review inventory now pins490 tracked source files for this runtime.
 Its unresolved flags remain unchanged. The older full42-unit run is retained as
 component evidence; it was not rerun or attributed to this latest source. Normal
 reviewed-preview/App Store evidence remains unchanged and is not a success claim.
+
+## Follow-up: microphone and adjacent controls (18 October)
+
+The user requested a calmer, attractive animated microphone and adjacent
+visibility controls with tactile and audible tap feedback while the first
+signed archive was running. Cancelled `6ad3e69e7550aed8108fae15` before upload;
+it is not a delivered TestFlight build. Keep the existing publication request
+and cost ceiling; verify the new UI before the replacement archive.
+
+A compact shared dock uses quiet gold outlines, separate62pt utility targets,
+a70pt microphone ring, short labels and a spring press response. Active input
+ring motion follows only the controller's measured microphone meter; there is
+no random waveform or claim of hearing while idle. Reduce Motion/low-motion
+preferences disable scaling. Long press remains exclusively an options action.
+
+The original60ms mono PCM earcon (`mic-start.wav`) is UI feedback only, never
+recognition evidence or a substitute for public/user PCM. System Sound Services
+honors the system's volume/silent behavior. Capture begins only after its real
+completion callback plus100ms acoustic clearance. Creation failure starts
+quietly; a queued sound timeout fails closed and offers a retry, never a fake
+completion. Leaving/backgrounding cancels pending starts. Pause gives haptic
+feedback without injecting an audible cue into the closing take; resume uses
+the same pre-capture gate. The17 local payload/authorization tests pass, including
+missing/corrupt UI sound rejection. The five new native ordering/asset tests use
+a manual sound driver and must not be described as speaker/microphone tests.
+
+Primary API: https://developer.apple.com/documentation/audiotoolbox/audio-services
+Physical cue audibility, haptics and microphone isolation remain device testing;
+no new acoustic accuracy or full-app acceptance claim is made.
