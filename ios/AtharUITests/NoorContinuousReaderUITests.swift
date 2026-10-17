@@ -2,6 +2,7 @@ import XCTest
 
 final class NoorContinuousReaderUITests: XCTestCase {
     @MainActor func testLastCatalogReciterIsSearchableSelectedAndPersistsWithoutStartingAudio() {
+        executionTimeAllowance = 180
         let app = XCUIApplication(); launchNoorApp(app)
         selectNoorTab("المصحف", in: app)
         let search = app.searchFields.firstMatch
@@ -38,11 +39,21 @@ final class NoorContinuousReaderUITests: XCTestCase {
         let viewport = app.descendants(matching: .any)["reader.page.ready"]
         XCTAssertTrue(viewport.waitForExistence(timeout: 10))
         viewport.swipeLeft()
-        let previousPage = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@", "reader.jump", "الصفحة ٦٠٣ من ٦٠٤")).firstMatch
-        XCTAssertTrue(previousPage.waitForExistence(timeout: 10), "A real RTL swipe turns exactly one page")
+        print("NOOR_PAGE_AFTER_SWIPE \(jump.label.debugDescription)")
+        let previousPage = XCTNSPredicateExpectation(predicate: NSPredicate { object, _ in
+            guard let element = object as? XCUIElement else { return false }
+            return Self.pageNumbers(element.label) == [603, 604]
+        }, object: jump)
+        XCTAssertEqual(XCTWaiter.wait(for: [previousPage], timeout: 10), .completed,
+                       "A real RTL swipe turns exactly one page. Actual: \(jump.label.debugDescription)")
         app.buttons["reader.next"].tap()
-        let lastPage = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@", "reader.jump", "الصفحة ٦٠٤ من ٦٠٤")).firstMatch
-        XCTAssertTrue(lastPage.waitForExistence(timeout: 10))
+        print("NOOR_PAGE_AFTER_NEXT \(jump.label.debugDescription)")
+        let lastPage = XCTNSPredicateExpectation(predicate: NSPredicate { object, _ in
+            guard let element = object as? XCUIElement else { return false }
+            return Self.pageNumbers(element.label) == [604, 604]
+        }, object: jump)
+        XCTAssertEqual(XCTWaiter.wait(for: [lastPage], timeout: 10), .completed,
+                       "The next button returns to604. Actual: \(jump.label.debugDescription)")
         XCTAssertFalse(app.buttons["reader.next"].isEnabled, "Last page cannot overshoot")
         let verse = app.buttons["reader.verse.112:1"]
         XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
@@ -76,5 +87,12 @@ final class NoorContinuousReaderUITests: XCTestCase {
         app.buttons["إغلاق"].tap()
         XCTAssertTrue(app.buttons["reader.study"].exists)
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
+    }
+    /// Preserve the exact page/total assertion without depending on invisible
+    /// bidi formatting inserted around localized Arabic interpolation.
+    private static func pageNumbers(_ label: String) -> [Int] {
+        label.split { $0.wholeNumberValue == nil }.map { digits in
+            digits.reduce(0) { value, digit in value * 10 + (digit.wholeNumberValue ?? 0) }
+        }
     }
 }

@@ -25,6 +25,10 @@ state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
 test_exit=0
+test_log=release/reader-ease/native-test-log.txt
+: > "$test_log"
+python3 scripts/record-reader-test.py "$device" "$test_log" release/reader-ease &
+video_watch=$!
 python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
  -destination "platform=iOS Simulator,id=$device" \
  -derivedDataPath release/reader-ease-derived-data CODE_SIGNING_ALLOWED=NO \
@@ -36,7 +40,10 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Ath
  -only-testing:AtharTests/QuranWordAlignmentTests \
  -only-testing:AtharTests/MushafViewportTests \
  -only-testing:AtharUITests/NoorContinuousReaderUITests \
- -resultBundlePath release/reader-ease/actual-tests.xcresult || test_exit=$?
+ -resultBundlePath release/reader-ease/actual-tests.xcresult 2>&1 | tee "$test_log" || test_exit=$?
+touch release/reader-ease/test-finished
+wait "$video_watch" || true
+python3 scripts/export-reader-proof.py release/reader-ease/actual-tests.xcresult
 python3 - "$test_exit" <<'PY'
 import json,sys
 from pathlib import Path

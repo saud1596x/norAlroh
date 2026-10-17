@@ -371,6 +371,15 @@ workflows:
           - noor-saud-focus-action-20261015
         certificates:
           - masar_distribution
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+        # Existing group verified in the app's TestFlight sidebar. Distribute
+        # only this build; no tester invitations or new groups are created.
+        beta_groups:
+          - Internal Testers
   ios-testflight-verified-update:
     <<: *signed_ios
     name: Noor Alruh verified update / TestFlight webhook
