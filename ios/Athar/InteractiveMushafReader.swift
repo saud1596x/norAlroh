@@ -618,9 +618,10 @@ struct InteractiveMushafReader: View {
     }
     private var startRecitationButton: some View {
         Button {
+            guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
             audio.stop(); studyRecorder.stop(); legacyRecorder.stop()
             microphoneCue.begin {
-                guard readerVisible, !recitation.hasSession else { return }
+                guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
                 if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
                 else { showStudySetup() }
             }
@@ -628,7 +629,8 @@ struct InteractiveMushafReader: View {
             NoorReaderMicrophoneFace(busy: microphoneCue.pending, title: microphoneCue.pending ? "استعد" : "تسميع")
                 .frame(width: 80)
         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
-            .disabled(microphoneCue.pending || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
+            .disabled(microphoneCue.pending || (recitation.state != .idle && recitation.state != .stopped)
+                || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
             .buttonStyle(NoorMushafMicrophonePressStyle(onOptions: { readerActionsOpen = true }))
             .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
             .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }

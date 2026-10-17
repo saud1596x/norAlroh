@@ -194,3 +194,21 @@ a manual sound driver and must not be described as speaker/microphone tests.
 Primary API: https://developer.apple.com/documentation/audiotoolbox/audio-services
 Physical cue audibility, haptics and microphone isolation remain device testing;
 no new acoustic accuracy or full-app acceptance claim is made.
+
+Source `9a00d6d` / run `6ad3e9387550aed8108faeae` passed30 native cases
+(13.182s) and1 UI case (83.330s), zero failures; terminal8m43s. All five new
+cue ordering/asset cases passed. The UI also demonstrated the exclusive long
+press, options close, actual colored mode on/off, real603/604 swipe, selection,
+hiding and saved reciter choice. Original screenshot of the normal new dock
+SHA256 `c09338ef5910c5bf6b4fe7a2aac5dc741c328eb510ce215d3410fcb27d580be0`
+was visually inspected: complete page604, legible short labels, separated touch
+areas and no footer overlap. The actual UI movie exited0,29,678,455bytes.
+
+A subsequent small UI guard applies the controller's existing idle/stopped-only
+start rule before queuing a decorative sound, at cue completion and in the
+button's enabled state. This closes a repeat-tap window while `bind()` is awaiting
+and `record` is still nil. The current native30-case pass belongs to9a00d6d;
+this guard has not had a separate simulator run. Its exact source delta is
+recorded in the private review inventory, and the replacement signed archive
+must compile it. Do not relabel the earlier pass as testing this later guard.
+No physical cue, haptic, microphone or acoustic-accuracy pass is claimed.
