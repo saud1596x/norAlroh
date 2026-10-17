@@ -212,3 +212,29 @@ this guard has not had a separate simulator run. Its exact source delta is
 recorded in the private review inventory, and the replacement signed archive
 must compile it. Do not relabel the earlier pass as testing this later guard.
 No physical cue, haptic, microphone or acoustic-accuracy pass is claimed.
+
+## Build23 upload and distribution follow-up
+
+`e5cf935` / `6ad3ec3c7550aed8108faf62` compiled the small startup guard, signed
+and exported the IPA, passed the complete payload checks (including the UI WAV,
+26 recognition files,604 original Tajweed page resources and the four extensions),
+and uploaded version1.0 build23 successfully. Delivery/build UUID:
+`1505f1e1-f4a6-46b1-9993-6a0ace78b42d`;359,508,133bytes. Apple completed
+processing after4m40s. This is not an installability confirmation by itself.
+
+The remaining post-processing task failed at explicit association with the
+existing internal group: `Cannot add internal group to a build`. The vendor's
+maintainer discussion documents this exact error for automatic distribution
+(https://github.com/orgs/codemagic-ci-cd/discussions/2488). This suggests existing
+automatic access may already apply; account/phone confirmation is still required.
+App Store Connect tab9 is logged out and the user was asked to sign in privately.
+Do not claim build23 is installable before that confirmation.
+
+Future private-review workflow repair removes explicit beta-group assignment
+and sets `submit_to_testflight:false`. In the vendor CLI this option means
+submitting for beta review, distinct from basic internal availability. See
+https://github.com/codemagic-ci-cd/cli-tools/blob/master/src/codemagic/tools/app_store_connect/actions/publish_action.py
+and the maintainer's discussion2536. No group membership/settings, credentials,
+tester invitations or App Store publication are changed. This YAML-only repair
+does not rebuild, expire or alter the already uploaded build23. Preserve the
+actual post-processing failure and all unresolved accuracy/device flags.

@@ -39,7 +39,7 @@
     "scope": "30 targeted native regressions plus one real reader UI journey; not a complete app suite or actual device microphone test"
   },
   "sourceHashes": {
-    "codemagic.yaml": "88411e28d67f8f3cacf86d6be1153d846fd63e00462ccff9812722485b8de299",
+    "codemagic.yaml": "3cabf6336d827750fa1833dccae49f3912f335a19c951fd6c20daf24b80f4d5f",
     "content-sources/alquran-cloud/original-quran.json": "8afb00d2df6566fc6f9ef98ed7d23b47ab9e73c759dbd6cb675530e92859a304",
     "content-sources/haramain-catalog-review.json": "b8d1ccacbd762eedc6cbbc37b172bff2338babe5e1381fb2b4ebd6e4415cc2c1",
     "content-sources/hisn/1.json": "2058602720faa60454501a74a217b62c5e10d4ccdae26343a5a2c8b6e2e78d13",
@@ -561,5 +561,14 @@
     "nativeRetest": "NOT_REEXECUTED",
     "signedArchiveCompilation": "PENDING_CURRENT_BUILD"
   },
-  "microphoneCueValidation": "Five native manual-driver/asset tests passed; actual speaker/haptic/microphone acceptance remains USER_TO_TEST"
+  "microphoneCueValidation": "Five native manual-driver/asset tests passed; actual speaker/haptic/microphone acceptance remains USER_TO_TEST",
+  "ciDistributionRepair": {
+    "scope": "YAML only: automatic internal distribution without explicit beta group association or beta review request",
+    "binaryUnchangedFrom": "e5cf935614fac262f77eab15da9a501267a1f79c",
+    "existingAppleBuild": 23,
+    "newBuildRequired": false,
+    "appStoreSubmission": false,
+    "groupSettingsChanged": false,
+    "installabilityConfirmation": "PENDING_APPLE_LOGIN_OR_USER_PHONE_CONFIRMATION"
+  }
 }

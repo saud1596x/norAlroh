@@ -374,12 +374,12 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        # This flag submits to Apple's beta review, not basic internal access.
+        # Existing automatic internal groups receive eligible uploaded builds;
+        # Apple rejects an explicit build association to an automatic group.
+        # Leave membership/distribution settings in App Store Connect unchanged.
+        submit_to_testflight: false
         submit_to_app_store: false
-        # Existing group verified in the app's TestFlight sidebar. Distribute
-        # only this build; no tester invitations or new groups are created.
-        beta_groups:
-          - Internal Testers
   ios-testflight-verified-update:
     <<: *signed_ios
     name: Noor Alruh verified update / TestFlight webhook
