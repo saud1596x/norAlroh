@@ -63,9 +63,9 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertFalse(app.buttons["speech.listen"].exists)
         capture(app, "former-voice-entry-now-real-inline-microphone")
         app.buttons["study.finish"].tap()
-        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
+        XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists, "Acoustic tracking cannot invent an old self-assessment score")
-        app.buttons["study.result.close"].tap()
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "إغلاق المصحف")).count, 1,
                        "Only the presented reader must be exposed to accessibility")
         app.buttons["إغلاق المصحف"].tap()
@@ -117,10 +117,11 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertEqual(first.frame, originalFrame)
         capture(app, "39-practice-mushaf-revealed")
         app.buttons["study.finish"].tap()
-        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
+        XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.answered"].exists, "Heard-word evidence is not a subjective remembered-answer count")
         capture(app, "native-hint-assistance-result-after-recovery")
-        app.buttons["study.result.close"].tap(); app.buttons["إغلاق المصحف"].tap()
+        app.buttons["إغلاق المصحف"].tap()
     }
     func testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable() {
         // The full CI journey grants the simulator's actual OS permission for
@@ -164,10 +165,10 @@ final class NoorMushafStudyUITests: XCTestCase {
         capture(app, "study-real-recording-playback")
         play.tap(); app.buttons["study.recordings.close"].tap()
         app.buttons["study.finish"].tap()
-        XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
+        XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists)
         capture(app, "study-recording-finish-without-automatic-grades")
-        app.buttons["study.result.close"].tap()
         app.buttons["reader.study"].press(forDuration: 0.6); app.buttons["تسجيلاتي"].tap()
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "study.recording.session.")).firstMatch.waitForExistence(timeout: 15))
         capture(app, "native-durable-recording-history")
@@ -182,9 +183,9 @@ final class NoorMushafStudyUITests: XCTestCase {
         // make the new microphone journey appear to start successfully.
         if app.buttons["study.finish"].exists {
             app.buttons["study.finish"].tap()
-            XCTAssertTrue(app.staticTexts["study.result.saved"].waitForExistence(timeout: 30))
-            app.buttons["study.result.close"].tap()
-        }
+            XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
+        XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
+            }
         if let page {
             XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 10))
             app.buttons["reader.jump"].tap()

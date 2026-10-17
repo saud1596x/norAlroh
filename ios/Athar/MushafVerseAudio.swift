@@ -27,7 +27,9 @@ import MediaPlayer
     private var stopAtBoundary = false
     private var bookmarkSeconds: Double?
     private let recordingIdentity: String?
-    let displayName: String
+    var currentRecordingIdentity: String { recordingIdentity ?? selectedCatalogReciter?.id ?? "everyayah:" + reciterDirectory }
+    private let configuredDisplayName: String
+    var displayName: String { selectedCatalogReciter?.name ?? configuredDisplayName }
     private let keepAlive: Bool
     private var remoteTargets: [(MPRemoteCommand, Any)] = []
     // Never synchronously query media timing from UI, error handling or stop.
@@ -43,7 +45,14 @@ import MediaPlayer
     @Published private(set) var activeWordID: Int?
     var repetitionCount: Int { count }
     var currentCanonicalKey: String? { index < keys.count ? keys[index] : nil }
-    private var bookmarkKey: String { "noor.audio.bookmark." + (recordingIdentity ?? "everyayah:" + reciterDirectory) }
+    private var bookmarkKey: String { "noor.audio.bookmark." + (recordingIdentity ?? selectedCatalogReciter?.id ?? "everyayah:" + reciterDirectory) }
+    private(set) var selectedCatalogReciter: NoorMushafReciter?
+    func selectReciter(_ reciter: NoorMushafReciter) {
+        guard source == nil else { return }
+        stop()
+        reciterDirectory = reciter.verseDirectory ?? "Abdul_Basit_Murattal_64kbps"
+        selectedCatalogReciter = reciter
+    }
     private var playbackObservation: NSKeyValueObservation?
     private var observation: NSKeyValueObservation?
     private var player: AVPlayer?
@@ -79,7 +88,7 @@ import MediaPlayer
     private var onSequenceFinished: (() -> Void)?
     private var onSequenceInterrupted: (() -> Void)?
     var reciterDirectory = "Abdul_Basit_Murattal_64kbps" {
-        willSet { if newValue != reciterDirectory { stop() } }
+        willSet { if newValue != reciterDirectory { stop() }; selectedCatalogReciter = nil }
     }
     init(source: ((String) -> URL?)? = nil, cacheKey: ((String) -> String?)? = nil,
          cachedSource: ((String) async -> URL?)? = nil, loadTimeoutSeconds: Double = 15,
@@ -89,7 +98,7 @@ import MediaPlayer
         usesPublishedTimingSource = source == nil && cachedSource == nil && resolveSource == nil
         self.cachedSource = cachedSource ?? { await NoorAudioDownloads.shared.localURL($0) }
         self.recordingIdentity = recordingIdentity
-        self.displayName = displayName; self.keepAlive = keepAlive
+        self.configuredDisplayName = displayName; self.keepAlive = keepAlive
         self.resolveSource = resolveSource ?? Self.recitationURL
         loadTimeout = UInt64(max(0.05, min(60, loadTimeoutSeconds.isFinite ? loadTimeoutSeconds : 15)) * 1_000_000_000)
         let storedRate = UserDefaults.standard.float(forKey: bookmarkKey + ".rate")
@@ -97,6 +106,9 @@ import MediaPlayer
         NoorAudioFocus.shared.register(focusID) { [weak self] in self?.stop() }
     }
     static func recitationURL(_ key: String) async -> URL? {
+        if let (reciter, surah) = NoorAudioIntegrity.reciterRecording(key) {
+            return await NoorAudioDownloads.shared.localURL(key) ?? reciter.audioURL(surah: surah)
+        }
         let parts = key.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, let corpus = QuranResources.corpus,
               corpus.indices.contains(parts[0] - 1), corpus[parts[0] - 1].ayahs.indices.contains(parts[1] - 1),
@@ -107,6 +119,7 @@ import MediaPlayer
     func play(_ keys: [String], repetitions: Int = 1, delaySeconds: Int = 0,
               startingAt: Int = 0, seconds: Double = 0, completedPass: Int = 0,
               onFinished: (() -> Void)? = nil, onInterrupted: (() -> Void)? = nil) {
+        let keys = source == nil ? selectedCatalogReciter?.playbackKeys(keys) ?? keys : keys
         stop(); error = nil; lastPlaybackDiagnostic = ""
         guard NoorAudioFocus.shared.preparePlayback(focusID) else {
             error = "أوقف التسميع أولًا للاستماع إلى التلاوة."; return
@@ -159,10 +172,11 @@ import MediaPlayer
         return true
     }
     @discardableResult func switchReciter(to directory: String) -> Bool {
-        let permitted = ["Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_64kbps", "Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "Saood_ash-Shuraym_64kbps"]
-        guard source == nil, permitted.contains(directory), index < keys.count else { return false }
+        let permitted = NoorVerseReciter.directories
+        guard source == nil, permitted.contains(directory), index < keys.count,
+              keys[index].split(separator: ":").count == 2 else { return false }
         let range = keys, position = index, repetitions = count, completed = pass, pause = gap
-        reciterDirectory = directory
+        selectedCatalogReciter = nil; reciterDirectory = directory
         // No recording-specific word timing is available here. Start the same
         // canonical ayah from its own beginning, never copy elapsed seconds.
         play(range, repetitions: repetitions, delaySeconds: pause, startingAt: position, completedPass: completed)
@@ -262,7 +276,9 @@ import MediaPlayer
             resolvingSource = Task { [weak self] in
                 guard let self else { return }
                 let url: URL?
-                if self.reciterDirectory == "Abdul_Basit_Murattal_64kbps" {
+                if NoorAudioIntegrity.reciterRecording(key) != nil {
+                    url = await self.cachedSource(key) ?? NoorAudioIntegrity.url(key)
+                } else if self.reciterDirectory == "Abdul_Basit_Murattal_64kbps" {
                     url = await self.resolveSource(key)
                 } else {
                     if let cacheKey = NoorVerseReciter.cacheKey(directory: self.reciterDirectory, verse: key) {
@@ -277,7 +293,7 @@ import MediaPlayer
         }
     }
     private func startPlayer(url: URL, key: String, token: UUID) {
-        let candidate = source == nil ? NoorVerseReciter.cacheKey(directory: reciterDirectory, verse: key) : cacheKey?(key)
+        let candidate = source == nil ? (NoorAudioIntegrity.reciterRecording(key) != nil ? key : NoorVerseReciter.cacheKey(directory: reciterDirectory, verse: key)) : cacheKey?(key)
         // Never cache a different recording under a canonical reciter key
         // (including injected/local reference sources used by tests).
         automaticCacheKey = candidate.flatMap { NoorAudioIntegrity.url($0) == url && !url.isFileURL ? $0 : nil }

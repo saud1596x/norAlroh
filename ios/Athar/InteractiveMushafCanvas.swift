@@ -6,7 +6,7 @@ import CryptoKit
 /// Research candidate: QCF V2 page fonts and authored V2 row alignment.
 /// Word IDs always come from Content Sync; QUL's token IDs are never imported.
 struct OriginalMushafRows: Decodable, Sendable {
-    struct Row: Decodable, Sendable { let page: Int; let line: Int; let type: String; let centered: Bool; let chapter: Int? }
+    struct Row: Decodable, Sendable, Equatable { let page: Int; let line: Int; let type: String; let centered: Bool; let chapter: Int? }
     let rows: [Row]
     static func load() throws -> Self {
         guard let url = Bundle.main.url(forResource: "qpc-v2-line-layout", withExtension: "json") else { throw QCFV2Snapshot.Invalid.page }
@@ -45,10 +45,10 @@ struct OriginalMushafRows: Decodable, Sendable {
     static let basmala = "\u{FB5A} \u{FB5B} \u{FB5C} \u{FB5D}"
 }
 
-struct OriginalPageWord {
+struct OriginalPageWord: Equatable {
     let id: Int; let verse: String; let code: String; let line: Int; let order: Int
 }
-struct OriginalPageData {
+struct OriginalPageData: Equatable {
     let number: Int; let words: [OriginalPageWord]; let rows: [OriginalMushafRows.Row]
     static func index(snapshot: QCFV2Snapshot, rows: OriginalMushafRows, keys: [String]) -> [Int: Self] {
         let records = Dictionary(grouping: snapshot.records.filter { $0.record_type == "mushaf_word" }, by: { $0.page_number! })
@@ -95,6 +95,22 @@ struct OriginalPageData {
     private var shapedTexts: [NSAttributedString] = []
     private var lineWordRanges: [[(NSRange, Int)]] = []
     private var wordLines: [Int: Int] = [:]
+    private struct ShapedPage {
+        let page: OriginalPageData
+        let style: UIUserInterfaceStyle
+        let lines: [(CTLine, CGPoint)]
+        let texts: [NSAttributedString]
+        let ranges: [[(NSRange, Int)]]
+        let regions: [Hit]
+        let wordLines: [Int: Int]
+        let decorations: [CGPath]
+        let geometry: [RowGeometry]
+        let clearances: [CGFloat]
+    }
+    // Bound the cache to nearby pages, and validate the complete authored page
+    // rather than only its number. Never retain reader/session highlights here.
+    private var shapedPages: [ShapedPage] = []
+    private(set) var shapingPasses = 0
     var hiddenWordIDs: Set<Int> = [] {
         didSet {
             guard oldValue != hiddenWordIDs else { return }
@@ -145,6 +161,15 @@ struct OriginalPageData {
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
+        if let saved = shapedPages.first(where: { $0.page == page && $0.style == traitCollection.userInterfaceStyle }) {
+            lines = saved.lines; shapedTexts = saved.texts; lineWordRanges = saved.ranges
+            regions = saved.regions; wordLines = saved.wordLines; decorationPaths = saved.decorations
+            rowGeometry = saved.geometry; headerClearances = saved.clearances
+            renderedSuccessfully = true; failureReason = nil
+            configureAccessibility(page: page, corpus: corpus)
+            return
+        }
+        shapingPasses += 1
         lines = []; shapedTexts = []; lineWordRanges = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
         wordLines = Dictionary(uniqueKeysWithValues: page.words.map { ($0.id, $0.line) })
         guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: Metrics.bodyPointSize),
@@ -248,6 +273,14 @@ struct OriginalPageData {
         // Authored FC20 ornament paths remain independent of title text.
         // Matching the target edition and distribution rights are review gates.
         renderedSuccessfully = true
+        shapedPages.removeAll { $0.page.number == page.number }
+        shapedPages.append(ShapedPage(page: page, style: traitCollection.userInterfaceStyle,
+            lines: lines, texts: shapedTexts, ranges: lineWordRanges, regions: regions,
+            wordLines: wordLines, decorations: decorationPaths, geometry: rowGeometry, clearances: headerClearances))
+        if shapedPages.count > 3 { shapedPages.removeFirst(shapedPages.count - 3) }
+        configureAccessibility(page: page, corpus: corpus)
+    }
+    private func configureAccessibility(page: OriginalPageData, corpus: [Surah]) {
         accessibilityElements = orderedKeys(page).compactMap { key -> UIAccessibilityElement? in
             let parts = key.split(separator: ":").compactMap { Int($0) }
             guard parts.count == 2, corpus.indices.contains(parts[0] - 1), corpus[parts[0] - 1].ayahs.indices.contains(parts[1] - 1) else { return nil }
@@ -504,6 +537,7 @@ struct OriginalPageData {
     let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
     private var fitted: CGFloat = 0
     var pageNumber = 1
+    var pageRange: ClosedRange<Int> = 1...604
     private(set) var turningPage = false
     private var turnSnapshot: UIView?
     private var turnGeneration = UUID()
@@ -560,7 +594,7 @@ struct OriginalPageData {
         case .began, .changed:
             guard canTurnPages, motionAllowed else { return }
             canvas.layer.removeAnimation(forKey: "pageDragReturn")
-            let edge = (distance > 0 && pageNumber == 604) || (distance < 0 && pageNumber == 1)
+            let edge = (distance > 0 && pageNumber == pageRange.upperBound) || (distance < 0 && pageNumber == pageRange.lowerBound)
             let travel = max(-bounds.width * 0.85, min(bounds.width * 0.85, distance)) * (edge ? 0.15 : 1)
             CATransaction.begin(); CATransaction.setDisableActions(true)
             canvas.layer.sublayerTransform = CATransform3DMakeTranslation(travel / max(zoomScale, 0.001), 0, 0)
@@ -568,7 +602,7 @@ struct OriginalPageData {
         case .ended, .cancelled, .failed:
             let velocity = gesture.velocity(in: self).x
             let target = pageNumber + (distance > 0 ? 1 : -1)
-            let committed = gesture.state == .ended && canTurnPages && (1...604).contains(target)
+            let committed = gesture.state == .ended && canTurnPages && pageRange.contains(target)
                 && (abs(distance) >= bounds.width * 0.18 || (abs(distance) >= max(12, bounds.width * 0.08) && abs(velocity) >= 550 && distance * velocity > 0))
             let previous = canvas.layer.sublayerTransform
             if committed {
@@ -693,6 +727,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     var hiddenWordIDs: Set<Int> = []
     var reviewWordIDs: Set<Int> = []
     var activeWordID: Int? = nil
+    var pageRange: ClosedRange<Int> = 1...604
     var allowsVerseSelection = true
     var readingMagnification: CGFloat = 1
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة."
@@ -702,6 +737,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
         view.readingMagnification = readingMagnification
+        view.pageRange = pageRange
         view.allowsVerseSelection = allowsVerseSelection
         view.canvas.hiddenTextAccessibilityHint = hiddenTextAccessibilityHint
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion

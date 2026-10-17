@@ -33,7 +33,7 @@ import os
         referenceAudio = audio; guidedPhase = .reference
         // Conservatively retain listening assistance for this entire session,
         // including interrupted reference playback and later microphone takes.
-        referenceExposure = audio.reciterDirectory
+        referenceExposure = audio.currentRecordingIdentity
         if var current = record, current.phase != .finished {
             current.referenceExposure = referenceExposure
             do { try save(current); record = current }
@@ -49,7 +49,7 @@ import os
         }
         let onFinished: () -> Void = { [weak self, weak audio] in
             guard let self, let audio, self.guidedRevision == token else { return }
-            self.referenceExposure = audio.reciterDirectory
+            self.referenceExposure = audio.currentRecordingIdentity
             self.guidedPhase = .clearance
             self.guidedDelay = Task { [weak self] in
                 do { try await Task.sleep(nanoseconds: UInt64(max(1, min(30, responsePause))) * 1_000_000_000) }
@@ -146,7 +146,7 @@ import os
         // Keep the reader usable until actual saved word evidence establishes
         // a position, and expose the text again if the engine becomes unavailable.
         guard hasSession, recognitionAvailable,
-              record?.closedTextRequested == true || !revealed.isEmpty else { return [] }
+              record?.closedTextRequested == true else { return [] }
         return expectedIDs.subtracting(revealed).subtracting(Set(record?.textHintIDs ?? []))
     }
     private func noteExposedPracticeText(_ value: inout QuranRecitationRecord) {
@@ -429,6 +429,13 @@ import os
             record = next
             let recognized: QuranRecognitionWorker.Result
             do {
+                let activity = await Task.detached(priority: .userInitiated) {
+                    try? QuranVoiceActivity.scan(QuranRecognitionAudio.conditioned(window.samples))
+                }.value
+                guard revision == token, !Task.isCancelled else { return }
+                if activity?.hasSpeech == false {
+                    recognized = .init(runs: [], hasUnresolvedSpeech: false, observations: [])
+                } else {
                 if !prepared {
                     // Cold model loading has its own bounded deadline, after
                     // capture is already writing PCM. Do not charge model
@@ -439,6 +446,7 @@ import os
                 }
                 recognized = try await NoorOperationDeadline.run(seconds: recognitionTimeout) {
                     try await self.recognizeWindow(window)
+                }
                 }
             }
             catch is CancellationError { return }

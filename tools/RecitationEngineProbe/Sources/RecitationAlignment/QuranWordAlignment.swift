@@ -126,6 +126,8 @@ public struct QuranRecitationTracker {
     public let expected: [QuranAlignedWord]
     public private(set) var cursor = 0
     public private(set) var evidence: [QuranWordEvidence] = []
+    /// Work count, not a confidence or an accuracy measurement.
+    public private(set) var candidateComparisons = 0
     private let starts: [String: Set<Int>]
     public var revealedIDs: Set<Int> { Set(evidence.map(\.nativeID)) }
     public init(expected: [QuranAlignedWord]) {
@@ -191,9 +193,14 @@ public struct QuranRecitationTracker {
         // A slow device or an intentional return can move outside the local
         // window. Reacquire only with a longer unique exact anchor; never reveal
         // the skipped interval or convert it into a confirmed reader mistake.
-        let possible = Set(tokens).reduce(into: Set<Int>()) { $0.formUnion(starts[$1] ?? []) }
-        for first in possible.sorted() {
-            for heardStart in tokens.indices {
+        candidateComparisons = 0
+        // Index each actual starting token. The previous union then Cartesian
+        // product compared every corpus occurrence against every heard offset,
+        // even when their first tokens differed. Keep exactly the same matching
+        // and ambiguity policy while avoiding that quadratic cross-product.
+        for heardStart in tokens.indices {
+            for first in (starts[tokens[heardStart]] ?? []).sorted() {
+                candidateComparisons += 1
                 var word = first, token = heardStart, bounds: [(Int, Int, Int)] = []
                 while word < expected.count && token < tokens.count {
                     if token > heardStart && heard[token].start - heard[token - 1].end > 2 { break }

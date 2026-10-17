@@ -6,6 +6,8 @@ options:
     iOS: "17.0"
   developmentLanguage: ar
 packages:
+  NoorVAD:
+    path: ../tools/NoorVAD
   WhisperKit:
     url: https://github.com/argmaxinc/argmax-oss-swift.git
     revision: 1e2a163736dfa5a198e637ae44c114e1c6d5cc2d
@@ -47,6 +49,8 @@ targets:
         INFOPLIST_FILE: Athar/Info.plist
         CODE_SIGN_ENTITLEMENTS: NoorWidgetShared/NoorWidgets.entitlements
     dependencies:
+      - package: NoorVAD
+        product: CNoorVAD
       - target: NoorWidgets
         embed: true
       - package: Adhan
