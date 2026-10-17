@@ -3,7 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p release/continuous-reader
-xcodegen generate --spec ios/project.yml --project ios
+project_spec=${NOOR_PROJECT_SPEC:-ios/project.yml}
+case "$project_spec" in ios/project.yml|ios/project-accounts.yml) ;; *) echo 'Unsupported native test project'; exit 2;; esac
+test_deadline=${NOOR_NATIVE_TEST_DEADLINE:-600}
+case "$test_deadline" in 600|720) ;; *) echo 'Unsupported native test deadline'; exit 2;; esac
+xcodegen generate --spec "$project_spec" --project ios
 device=$(python3 - <<'PY'
 import json,subprocess
 from pathlib import Path
@@ -30,7 +34,7 @@ test_log=release/continuous-reader/native-test-log.txt
 : > "$test_log"
 python3 scripts/record-reader-test.py "$device" "$test_log" release/continuous-reader &
 video_watch=$!
-python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+python3 scripts/run-native-with-deadline.py "$test_deadline" xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
   -destination "platform=iOS Simulator,id=$device" \
   -derivedDataPath release/continuous-reader-derived-data CODE_SIGNING_ALLOWED=NO \
   ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO \
@@ -41,7 +45,9 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Ath
   -only-testing:AtharTests/NoorReaderCoreRegressionTests \
   -only-testing:AtharTests/NoorMicrophoneCueTests \
   -only-testing:AtharTests/NoorReciterWordTimingTests \
+  -only-testing:AtharTests/QuranRemoteProtocolTests \
   -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \
+  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualRecognitionSessionPausesRestoresResumesAndFinishesWithoutReplacingAudio \
   -only-testing:AtharTests/QuranWordAlignmentTests \
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
   -only-testing:AtharTests/QuranRecognitionCapabilityTests \

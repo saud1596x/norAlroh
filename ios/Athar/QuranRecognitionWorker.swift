@@ -10,6 +10,7 @@ actor QuranRecognitionWorker {
         let hasUnresolvedSpeech: Bool
         var observations: [QuranObservedWord]? = nil
         var windowID: UUID? = nil
+        var processingConfiguration: String? = nil
     }
     private var engine: WhisperKit?
     private var loading: Task<Void, Error>?
@@ -63,7 +64,8 @@ actor QuranRecognitionWorker {
     private func decode(_ window: QuranAudioWindow) async throws -> Result {
         let inferenceSamples = try QuranRecognitionAudio.conditioned(window.samples)
         if let activity = try? QuranVoiceActivity.scan(inferenceSamples), !activity.hasSpeech {
-            return Result(runs: [], hasUnresolvedSpeech: false, observations: [])
+            return Result(runs: [], hasUnresolvedSpeech: false, observations: [],
+                          processingConfiguration: "NoorVAD/webrtc-no-speech/no-ASR")
         }
         try await prepare()
         try Task.checkCancellation()
@@ -124,7 +126,8 @@ actor QuranRecognitionWorker {
             "accepted=%{public}d invalidAudio=%{public}d timing=%{public}d confidence=%{public}d quiet=%{public}d tokenBoundary=%{public}d",
             accepted, rejectedAudio, rejectedTiming, rejectedConfidence, rejectedQuiet, rejectedTokenBoundary)
         return Result(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved,
-                      observations: observations, windowID: UUID())
+                      observations: observations, windowID: UUID(),
+                      processingConfiguration: QuranRecognitionModelDescriptor.bundled?.configuration)
     }
 }
 

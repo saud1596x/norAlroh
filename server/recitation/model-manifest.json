@@ -1,0 +1,12 @@
+{
+  "model": "OdyAsh/faster-whisper-base-ar-quran",
+  "revision": "8578bafd427d122f671b187706650e76edf6f86f",
+  "weightsLicense": "Apache-2.0 as declared by publisher; existing notices retained",
+  "tokenizer": "Same hash-verified tokenizer as the local benchmark; no download fallback",
+  "files": {
+    "model.bin": "49cd91cffb609d8ecbe026748f332c1026c4f65e3cdba9610a8729dd3ae4148b",
+    "config.json": "74ae07510d79935e99d12b4ce8184b2fa491d8c3671468d5a5c116c58a20bf75",
+    "tokenizer.json": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+    "vocabulary.json": "ec4bc27240fb6d7bb8b3d084a1257d98c0b04c16f76142ca0263459ce04436a2"
+  }
+}

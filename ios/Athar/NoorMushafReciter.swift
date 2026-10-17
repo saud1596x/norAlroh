@@ -12,7 +12,11 @@ struct NoorMushafReciter: Identifiable {
     var supportsVersePlayback: Bool { verseDirectory != nil }
     var scopeLabel: String { supportsVersePlayback ? "من الآية المحددة" : "السورة كاملة من بدايتها" }
     var trackingLabel: String {
-        guard let verseDirectory else { return "السورة من بدايتها · دون تتبّع" }
+        guard let verseDirectory else {
+            return recording.map { NoorSurahAyahTimings.supports($0) } == true
+                ? "السورة من بدايتها · تتبّع الآيات حيث يتوفر التوقيت"
+                : "السورة من بدايتها · دون تتبّع"
+        }
         return NoorReciterWordTimings.timedDirectories.contains(verseDirectory)
             ? "من الآية المحددة · تتبّع الكلمات حيث يتوفر التوقيت"
             : "من الآية المحددة · تتبّع الآيات"

@@ -1,0 +1,17 @@
+.git
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/.env
+**/.env.*
+**/*.db
+**/*.db-*
+**/*.p8
+**/*.p12
+**/*.mobileprovision
+**/GoogleService-Info.plist
+backend/node_modules
+ios/Athar/Fonts
+ios/RecitationModel
+release/*.xcresult
+release/*.zip

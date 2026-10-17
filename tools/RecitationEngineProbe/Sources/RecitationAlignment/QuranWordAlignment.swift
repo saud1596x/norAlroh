@@ -170,6 +170,11 @@ public struct QuranRecitationTracker: Sendable {
             throw QuranAlignmentFailure.invalidEvidence
         }
         evidence.removeAll { $0.takeID == takeID && $0.start >= start && $0.end <= end }
+        // A retracted interpretation cannot remain a short-anchor location
+        // prior. Rebuild the cursor from surviving source evidence only.
+        if let last = evidence.last, let index = expected.firstIndex(where: { $0.id == last.nativeID }) {
+            cursor = index + 1
+        } else { cursor = 0 }
     }
 
     /// Exact, local, multi-group anchoring. Ambiguous phrases wait for context.
@@ -190,6 +195,9 @@ public struct QuranRecitationTracker: Sendable {
         struct Match { let first: Int; let bounds: [(Int, Int, Int)] }
         var candidates: [Match] = []
         let lower = max(0, cursor - 12), upper = min(expected.count, cursor + 13)
+        let neighboringVerses = Set([cursor - 1, cursor].compactMap {
+            expected.indices.contains($0) ? expected[$0].verse : nil
+        })
         // A slow device or an intentional return can move outside the local
         // window. Reacquire only with a longer unique exact anchor; never reveal
         // the skipped interval or convert it into a confirmed reader mistake.
@@ -222,7 +230,15 @@ public struct QuranRecitationTracker: Sendable {
                 // confidence; ordinary/multi-group scopes keep their anchors.
                 let singleScope = expected.count == 1 && bounds.count == 1
                     && heard[bounds[0].1..<bounds[0].2].allSatisfy { $0.probability >= 0.95 }
-                let minimumAnchor = singleScope ? 1 : (lower..<upper).contains(first) ? 2 : 3
+                // A nearby different passage is not evidence of continuation.
+                // After112:1, a partial "قل أعوذ" must not select113:1 merely
+                // because it lies within12 words while114:1 is farther away.
+                // Two-group context is allowed only inside the current verse
+                // or the actual next pending verse; other locations still need
+                // the full independent3-group/ambiguity-safe anchor.
+                let nearbyContinuation = (lower..<upper).contains(first)
+                    && neighboringVerses.contains(expected[first].verse)
+                let minimumAnchor = singleScope ? 1 : nearbyContinuation ? 2 : 3
                 if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
             }
         }

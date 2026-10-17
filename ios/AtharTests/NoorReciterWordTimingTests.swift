@@ -2,6 +2,33 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterWordTimingTests: XCTestCase {
+    func testSurahTimingKeepsPublishedAyahBoundariesAndRejectsNumberingShifts() throws {
+        let track = try XCTUnwrap(NoorSurahAyahTimingTrack(surah: 112, ayahCount: 4,
+            spans: [[1, 100, 500], [2, 600, 1000], [3, 1000, 1400], [4, 1500, 1900]]))
+        XCTAssertNil(track.verse(at: 0.05, duration: 2))
+        XCTAssertEqual(track.verse(at: 0.1, duration: 2), "112:1")
+        XCTAssertNil(track.verse(at: 0.5, duration: 2))
+        XCTAssertEqual(track.verse(at: 1, duration: 2), "112:3")
+        XCTAssertNil(track.verse(at: 1, duration: 1.5), "Another/truncated recording cannot use the timeline")
+        XCTAssertNil(NoorSurahAyahTimingTrack(surah: 1, ayahCount: 2, spans: [[0, 0, 100], [1, 100, 200]]),
+                     "Never shift a zero-indexed publisher document into canonical ayah numbers")
+        XCTAssertNil(NoorSurahAyahTimingTrack(surah: 1, ayahCount: 2, spans: [[1, 0, 200], [2, 100, 300]]))
+    }
+    func testPublishedSurahTimingBindsExactRecordingAndExcludedTracksStayUnavailable() async throws {
+        let reciter = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 54 })
+        let track = await NoorSurahAyahTimings.shared.track(reciter: reciter, surah: 2, ayahCount: 286)
+        XCTAssertEqual(try XCTUnwrap(track).verse(at: 5, duration: 5625), "2:1")
+        XCTAssertEqual(try XCTUnwrap(track).verse(at: 10, duration: 5625), "2:2")
+        let changed = NoorReciter(id: reciter.id, name: reciter.name, recordingID: reciter.recordingID + 1,
+            server: reciter.server, surahs: reciter.surahs)
+        let wrongRecording = await NoorSurahAyahTimings.shared.track(reciter: changed, surah: 2, ayahCount: 286)
+        XCTAssertNil(wrongRecording)
+        let hudhaify = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 74 })
+        let excluded = await NoorSurahAyahTimings.shared.track(reciter: hudhaify, surah: 2, ayahCount: 286)
+        XCTAssertNil(excluded, "Incomplete/misnumbered publisher timelines are not repaired by guessing")
+        XCTAssertTrue(NoorSurahAyahTimings.supports(reciter))
+        XCTAssertFalse(NoorSurahAyahTimings.supports(changed))
+    }
     func testTimingUsesActualIntervalsAndClearsDuringGapsOrInvalidDuration() throws {
         // Boundary policy fixture, not acoustic evidence or generated timings
         // shipped to users. Real bundled data is tested separately below.

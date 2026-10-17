@@ -1,0 +1,25 @@
+services:
+  recitation:
+    build:
+      context: ../..
+      dockerfile: server/recitation/Dockerfile
+    environment:
+      NOOR_DATABASE_URL: ${NOOR_DATABASE_URL:?existing TLS PostgreSQL connection required}
+      NOOR_DATA_KEY: ${NOOR_DATA_KEY:?supply protected Fernet key outside repository}
+      NOOR_FIREBASE_PROJECT_ID: noor-alruh
+      NOOR_ENVIRONMENT: production
+      NOOR_MAX_SESSIONS: '4'
+    ports:
+      - '127.0.0.1:8080:8080'
+    volumes:
+      - ${NOOR_VERIFIED_MODEL_PATH:?local verified model folder required}:/model:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 96
+    mem_limit: 2g
+    cpus: 2
+    stop_grace_period: 45s
+    restart: unless-stopped

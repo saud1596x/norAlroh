@@ -1,5 +1,9 @@
 .DS_Store
 __pycache__/
+.pytest_cache/
+.venv/
+server/recitation/*.db
+server/recitation/*.db-*
 *.pyc
 ios/*.xcodeproj/
 ios/Athar/Fonts/

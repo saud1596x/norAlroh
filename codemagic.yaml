@@ -17,7 +17,7 @@ workflows:
         script: bash scripts/test-reader-ease.sh
     artifacts:
       - release/reader-ease/**
-  continuous-reader-check:
+  continuous-reader-check: &continuous_reader_check
     name: Noor continuous recognition, all604 pages and complete reciter selection
     instance_type: mac_mini_m2
     max_build_duration: 14
@@ -37,6 +37,15 @@ workflows:
         script: bash scripts/test-continuous-reader.sh
     artifacts:
       - release/continuous-reader/**
+  continuous-account-reader-check:
+    <<: *continuous_reader_check
+    name: Noor account-enabled reader, remote contracts and canonical transitions
+    max_build_duration: 15
+    environment:
+      xcode: "26.3"
+      vars:
+        NOOR_PROJECT_SPEC: ios/project-accounts.yml
+        NOOR_NATIVE_TEST_DEADLINE: '720'
   daily-ease-check:
     name: Noor daily ward, automatic setup and clear adhkar
     instance_type: mac_mini_m2

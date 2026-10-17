@@ -24,7 +24,7 @@ struct NoorVerseReciter: Identifiable {
     }
 }
 
-struct NoorReciter: Codable, Identifiable, Hashable {
+struct NoorReciter: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     let name: String
     let recordingID: Int

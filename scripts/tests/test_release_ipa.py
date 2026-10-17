@@ -27,6 +27,9 @@ class ReleasePayloadTests(unittest.TestCase):
         self.quran_files = {'quran.json': b'synthetic-pinned-quran',
                             'reciter-word-timings.json': b'synthetic-pinned-timings',
                             'Reciter-Timings-LICENSE.txt': b'synthetic-timing-license',
+                            'surah-ayah-timings.json': b'synthetic-pinned-ayah-timings',
+                            'surah-ayah-timing-coverage.json': b'synthetic-pinned-coverage',
+                            'Reciter-Ayah-Timings-SOURCE.txt': b'synthetic-timing-source',
                             'mushaf-snapshot.json': b'synthetic-pinned-mushaf-edition',
                             'quran-basmalas.json': b'synthetic-pinned-basmalas',
                             'haramain-reciters.json': json.dumps({'schema': 1, 'reciters': [

@@ -20,7 +20,10 @@ protocol QuranSpeechRecognitionProvider: Sendable {
     var capabilities: QuranRecognitionCapabilities { get }
     func prepare() async throws
     func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result
+    func endTake() async
 }
+
+extension QuranSpeechRecognitionProvider { func endTake() async {} }
 
 extension QuranRecognitionWorker: QuranSpeechRecognitionProvider {
     nonisolated var capabilities: QuranRecognitionCapabilities {

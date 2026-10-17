@@ -1,0 +1,50 @@
+{
+  "sourceCommit": "00e26124413e87cde58830c6a011c188a2584e89",
+  "xcode": "Xcode 26.3\nBuild version 17C529",
+  "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+  "device": "iPhone 17 Pro",
+  "configuration": "Release",
+  "scope": "All604 native canvas rendering, reciter identity/search, public PCM continuous cross-surah recognition, VAD; not device microphone or calibrated error/Tajweed acceptance",
+  "testExit": 0,
+  "buildID": "6ad3f7097550aed8108fb1ab",
+  "url": "https://codemagic.io/app/6ac3b8b756235b59ec04e90a/build/6ad3f7097550aed8108fb1ab",
+  "unitTests": 53,
+  "uiTests": 1,
+  "failures": 0,
+  "machineDurationSeconds": 593,
+  "actualVideo": {
+    "started": true,
+    "exit": 0,
+    "bytes": 56102263,
+    "retrieved": false
+  },
+  "images": [
+    {
+      "name": "9B95BAC5-84BF-42E9-A2B8-2A19180C34DE.png",
+      "bytes": 724091,
+      "sha256": "ce8b0fdb24e62c7b294c93a0cbcfcf83ee78c3d97545330e98695107cc5a0684"
+    },
+    {
+      "name": "E8FA9AC7-ECF4-425D-8A3F-124AAE70C6BD.png",
+      "bytes": 696906,
+      "sha256": "5fe8e4b9997d2d00e3df20082138f55817e5560064422813936a24d739582718"
+    },
+    {
+      "name": "3B00F480-A134-4775-8B21-DA334E1770AE.png",
+      "bytes": 678939,
+      "sha256": "c09338ef5910c5bf6b4fe7a2aac5dc741c328eb510ce215d3410fcb27d580be0"
+    },
+    {
+      "name": "FC1A84B4-F344-4651-B78F-E2EFC1556EF4.png",
+      "bytes": 729606,
+      "sha256": "322cb6ecd0d97783072c3f66b4600462750ce054fe875adf03439364f066795d"
+    }
+  ],
+  "logSHA256": "303d059c4f559029f45db3a850ce29e1a53f78516442d89a7e3e23dd2a3f5ece",
+  "limitations": [
+    "Not physical microphone input, speaker cue or haptics",
+    "Not calibration, Tajweed judgment or unseen learner accuracy",
+    "Not full application release suite",
+    "New publisher ayah timings and self-hosted service/client were added AFTER this source and are not covered"
+  ]
+}

@@ -8,6 +8,7 @@ import json
 import plistlib
 from pathlib import Path
 import zipfile
+from urllib.parse import urlsplit
 from account_privacy import validate_accounts
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,25 @@ EXTENSIONS = {
     BUNDLE + '.focus-shield': 'com.apple.ManagedSettingsUI.shield-configuration-service',
     BUNDLE + '.focus-action': 'com.apple.ManagedSettings.shield-action-service',
 }
+
+def verify_remote_policy(info, legal):
+    endpoint = info.get('NoorRecitationServerURL')
+    if endpoint is None: return False
+    parsed = urlsplit(endpoint)
+    if (parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password
+        or parsed.query or parsed.fragment or parsed.path not in ['', '/']):
+        raise ValueError('Unsafe remote recitation endpoint')
+    declaration = legal.get('remoteRecitation', {})
+    privacy = next((d for d in legal.get('documents', []) if d.get('id') == 'privacy'), {})
+    notice = next((s for s in privacy.get('sections', []) if s.get('id') == 'remote-recitation'), {})
+    if (info.get('NoorRemoteProcessingPolicyVersion') != 1
+        or declaration.get('policyVersion') != 1 or declaration.get('explicitConsent') is not True
+        or declaration.get('audioRetention') != 'none' or declaration.get('derivedRetentionSeconds') != 3600
+        or declaration.get('accountDeletionIncludesInference') is not True
+        or declaration.get('serverOrigin') != endpoint.rstrip('/')
+        or len(notice.get('text', '')) < 60):
+        raise ValueError('Remote recitation cannot ship under the old local-processing privacy policy')
+    return True
 
 def verify_recitation_resources(ipa, root):
     manifest = json.loads((ROOT / 'content-sources/recitation-model-manifest.json').read_text())
@@ -76,6 +96,7 @@ def verify(path):
         configuration = plistlib.loads(ipa.read(root + 'GoogleService-Info.plist'))
         module.validate(configuration)
         legal = json.loads(ipa.read(root + 'app-legal.json'))
+        verify_remote_policy(info, legal)
         validate_accounts(plistlib.loads(ipa.read(root + 'PrivacyInfo.xcprivacy')))
         if legal.get('accountMode') != 'firebase-opt-in':
             raise ValueError('Bundled privacy policy still describes local-only use; review and publish the actual account policy first')
@@ -106,7 +127,8 @@ def verify(path):
         recognition_count = verify_recitation_resources(ipa, root)
         tajweed_count = verify_tajweed_resources(ipa, root)
         for resource in ['quran.json', 'quran-basmalas.json', 'haramain-reciters.json', 'mushaf-snapshot.json',
-                         'reciter-word-timings.json', 'Reciter-Timings-LICENSE.txt']:
+                         'reciter-word-timings.json', 'Reciter-Timings-LICENSE.txt',
+                         'surah-ayah-timings.json', 'surah-ayah-timing-coverage.json', 'Reciter-Ayah-Timings-SOURCE.txt']:
             if ipa.read(root + resource) != (ROOT / 'ios/Athar' / resource).read_bytes():
                 raise ValueError('Incorrect bundled Quran or reciter resource: ' + resource)
         if ipa.read(root + 'mic-start.wav') != (ROOT / 'ios/Athar/mic-start.wav').read_bytes():

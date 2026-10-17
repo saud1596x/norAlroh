@@ -2,6 +2,30 @@ import XCTest
 @testable import Athar
 
 final class NoorReaderCoreRegressionTests: XCTestCase {
+    func testShortSharedOpeningDoesNotJumpFromIkhlasToFalaqBeforeDistinctiveWord() throws {
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let native = snapshot.records.filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }.map {
+            QuranNativeWord(id:$0.id, verse:keys[$0.verse_id! - 1], position:$0.position_in_verse!,
+                page:$0.page_number!, glyph:$0.text!)
+        }
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf:
+            XCTUnwrap(Bundle.main.url(forResource:"recitation-word-script", withExtension:"json"))))
+        var tracker = QuranRecitationTracker(expected:try script.bind(native:native, verseKeys:keys))
+        let take = UUID()
+        func heard(_ text:[String], at offset:Double) -> [QuranHeardWord] {
+            text.enumerated().map { .init(text:$0.element, start:offset+Double($0.offset)*0.4,
+                end:offset+Double($0.offset)*0.4+0.3, probability:0.99) }
+        }
+        XCTAssertFalse(try tracker.consume(heard(["قل","هو","الله","أحد"], at:0), takeID:take).isEmpty)
+        XCTAssertTrue(try tracker.consume(heard(["قل","أعوذ"], at:2), takeID:take).isEmpty,
+                      "A shared partial is not a reliable nearby surah transition")
+        let resolved = try tracker.consume(heard(["قل","أعوذ","برب","الناس"], at:3), takeID:take)
+        XCTAssertEqual(Set(resolved.map(\.verse)), ["114:1"])
+        XCTAssertFalse(tracker.evidence.contains { $0.verse == "113:1" })
+    }
     func testTimedPlaybackFollowsRealPageBoundaryAndDoesNotInventWholeSurahOffsets() throws {
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
             from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()

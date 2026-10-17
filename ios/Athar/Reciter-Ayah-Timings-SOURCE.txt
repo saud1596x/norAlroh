@@ -1,0 +1,5 @@
+Published ayah boundaries: MP3Quran.net API v3.
+https://www.mp3quran.net/eng/api
+https://mp3quran.net/api/v3/ayat_timing/reads
+Retrieved 2026-10-18. Recording-specific numeric start/end times only.
+No Quran text or page artwork copied. No word interpolation or learner assessment.

@@ -1,0 +1,7166 @@
+{
+  "sourceBase": "00e26124413e87cde58830c6a011c188a2584e89",
+  "scope": "Source/dependency inventory, not a claim that every behavior was exercised. Uncommitted ayah-timing integration recorded separately.",
+  "files": [
+    {
+      "path": ".github/workflows/ctc-coreml-candidate.yml",
+      "sha256": "2b8aa49277ba3a5c2cbca1ef9940e8b77c593b908e465baeab7861beedd3647e",
+      "lines": 74,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/ctc-wording-candidate.yml",
+      "sha256": "ce2285438e1faaddfea861049fabfe99b377865e81f375db38970d601bede38c",
+      "lines": 36,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/final-integration.yml",
+      "sha256": "f46fdd4c43fe5e58079128d7c95722c5c8aac806c49cfa1b3a6339f227e394b8",
+      "lines": 155,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/firebase-security.yml",
+      "sha256": "e451cda8f42f7b41d5f5426975833a0e41d129ccc86cbeb470151411345ee51b",
+      "lines": 30,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/home-flow.yml",
+      "sha256": "b04891f6145f2ba8278ed68b34d207441b10322d41a36fbb12b2a3a1db11cc1b",
+      "lines": 56,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/interactive-mushaf-review.yml",
+      "sha256": "89bfeea58972b5739130256d6af3632020f87ba34d6a2b42321a996f3827ff40",
+      "lines": 26,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/ios-checks.yml",
+      "sha256": "210eeb48840a363f3217fa4c5eaedd65ced41355d66d400b8d3c60d0c79c70e6",
+      "lines": 84,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/khatmah-journey.yml",
+      "sha256": "6d9e2de0a97bbde60c46218e77309b23b4314538967eb129d3afba0dd96d12b8",
+      "lines": 79,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/khatmah-protection.yml",
+      "sha256": "d983d19c0a655a6c799e221aeb547fc8a2d69cf17c5ea5345512d4944be1ccd0",
+      "lines": 48,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/mushaf-artwork-check.yml",
+      "sha256": "c8b865d13202e6e7b865dde4bd2d1548372f48453e2e00391a5a53fd85ecefe5",
+      "lines": 37,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/mushaf-cache.yml",
+      "sha256": "6e7b135cdba0d85ca59083cfd9090ca716a8972a407e05d4191b0f73245793ab",
+      "lines": 48,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/mushaf-reader.yml",
+      "sha256": "ca79811a9df98d1f5ecfcd8cad7d07948313c06f5acf14d16fb631da403983d6",
+      "lines": 91,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/mushaf-study.yml",
+      "sha256": "e77ea53270531b75f3a94769b71f51db18169a21e94b727ee219bf935816be9b",
+      "lines": 144,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/native-evidence-export.yml",
+      "sha256": "ce7b40d456d8f140d306b14b703eed906d71c02aaca48ee71102de1c0b2df21f",
+      "lines": 93,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/personal-reminders.yml",
+      "sha256": "a649eb186921b87579f784940a3ca72177103d3d5628493fbdc0f90ee7e0d314",
+      "lines": 48,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/phoneme-evaluation.yml",
+      "sha256": "f471fd950cfe7d8dda220720d0faf2c6761600832d316080e6d0b4af0e0a8a51",
+      "lines": 65,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/phonetic-category-evaluation.yml",
+      "sha256": "aff5db336b1dfedca410f9f674a15b1fc85feef917193a16a057b87d634f201f",
+      "lines": 36,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/prayer-display.yml",
+      "sha256": "16f048e0915d922fc1597aca7ce3972b404fbfc2224e4775bbd30d5fbfcb9d67",
+      "lines": 78,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/quran-visual-audit.yml",
+      "sha256": "c9e5aa16d1e7555db92ef88ff39954d934f3920cf17228641b7f420697ac90de",
+      "lines": 38,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/reader-compact-diagnosis.yml",
+      "sha256": "63922fd0163f37d0e4a3a8081e2c8e591d864836a61c4e4aab9814fc53ec3c08",
+      "lines": 104,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/reader-failure-evidence.yml",
+      "sha256": "47d6a754d2ecfac711312e8fce575f71df3d39edbb63c3d51934562caa3c1098",
+      "lines": 54,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/recitation-app-integration.yml",
+      "sha256": "c1ad93f7d413ce9cd8ee0811aea7e0d382927f5087c091fe0a9ee34a2015a781",
+      "lines": 106,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/recitation-engine-probe.yml",
+      "sha256": "e4726a7e27c3469e3a4196df73fbe4adbb7da47fd656b1358f737452d228edf3",
+      "lines": 37,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/retired-features.yml",
+      "sha256": "4f1df690727d0fc034ae73f6cc797eb3f2ca14cad247561fcf56df34c10ebe57",
+      "lines": 91,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/widget-progress.yml",
+      "sha256": "67c41d4b38ea731a78d210f979b819207e437b759b033c772c282541a551e517",
+      "lines": 48,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": ".github/workflows/wording-behavior.yml",
+      "sha256": "89915da5452dd8dc139cc58e378813e2559d10a653d9d5a996a5b04a56bc85d8",
+      "lines": 27,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "backend/firebase.json",
+      "sha256": "8aa7fcd376dd78552cee271d3a9e911f8306e9dc83138ebfb228534547aa6e60",
+      "lines": 4,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "backend/firestore.rules",
+      "sha256": "03f3b4f248029eca2c0f8e567ec1554914d2254d3d533c00847552f742ee4f0a",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "backend/firestore.test.mjs",
+      "sha256": "09397b86ea69706c4acb3a68ee6bfcc0dd8159a6e9ff5e65651fb539f816e08d",
+      "lines": 108,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "backend/package.json",
+      "sha256": "9467339beab31dfd27e6f3ffe17500717041b41801c42cb8cc8125e571336335",
+      "lines": 7,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "codemagic.yaml",
+      "sha256": "3cabf6336d827750fa1833dccae49f3912f335a19c951fd6c20daf24b80f4d5f",
+      "lines": 527,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/haramain-catalog-review.json",
+      "sha256": "b8d1ccacbd762eedc6cbbc37b172bff2338babe5e1381fb2b4ebd6e4415cc2c1",
+      "lines": 114,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/1.json",
+      "sha256": "2058602720faa60454501a74a217b62c5e10d4ccdae26343a5a2c8b6e2e78d13",
+      "lines": 37,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/10.json",
+      "sha256": "5b4da9d98276bcae85037fadbce5fee32cc3a7f5c6f593557f0d257f4043a35b",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/100.json",
+      "sha256": "af3ac72f567c3d8d0b9ecec5fe44115d5778fab2e79c9718bf7df853ace92817",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/101.json",
+      "sha256": "5aa2b93e497838dbce9c4228476046abd5c00b95f1a2a2b8a48838c96dafec16",
+      "lines": 23,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/102.json",
+      "sha256": "b41ea8e7360e0848e415876497f5e3916cacc954818eef62a9cb35b1a729f43c",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/103.json",
+      "sha256": "954dd97a21d9eb3ba7fe28a1d1ecfeb023a2a279a993ad09a677a85ef0644a7f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/104.json",
+      "sha256": "c75943e2ac384413d6df5cfd1e4398fc62a73bb8184fc512aa605e86eb1b0a21",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/105.json",
+      "sha256": "83812b922afac4a34f26ccc4a9f498e6d3d18111e3a1a85fced187783bb5e41d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/106.json",
+      "sha256": "f0c867432735f39287ba6fa66e90441a88582c145733e3d75be12387b3479fc6",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/107.json",
+      "sha256": "601ed83969f8b465bcf6a831797ed2b67c2f8775ef4ea55ab5530f9fc4715e0d",
+      "lines": 45,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/108.json",
+      "sha256": "b44d2325a6ffef12bbb175b0a8ec74ce39c0ffb47042e58a8a8a6f5075b7b1bd",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/109.json",
+      "sha256": "c0850b53d274e72d69ae88f9cde7de4cb82ccb35b9cef5410d40552282bea130",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/11.json",
+      "sha256": "7baca8e4bbb860b18c7a60f41f0805502554887a62b453e44441d2ef8e2026e9",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/110.json",
+      "sha256": "47a9bd3e6a988d5343ca286babae5f186f3c71acca8c4c0a29ee8f25e66485d2",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/111.json",
+      "sha256": "a9edfcf000b67b152d451458b244d126556e8c053102216cf2fe51ec73f54da1",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/112.json",
+      "sha256": "e6dc6089fe59d66a6076abf070d8b361ad88a1af09c0cbd803450d8ebaddee75",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/113.json",
+      "sha256": "41c951960e9c36df57d4aa25d242ade27026300efa1e8662100dd012c19da906",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/114.json",
+      "sha256": "ba71e71fe46436c334556b63f9d1a47d0dd809428555ab5594f68c03aff94669",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/115.json",
+      "sha256": "398a99f19ba33e10af305175f416820056f593107bf9578bbad1d9203dbd494f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/116.json",
+      "sha256": "c4bcb13d9d0162b6604a3288ae5856628b0d1459eff00b5bfd3731c555ac55b4",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/117.json",
+      "sha256": "1285b32f205494f0fc1b12cfeaefe3d7a58f46bfd4e4d58aadf4bb8c17a88c39",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/118.json",
+      "sha256": "00b4cc3a6de928d59daeae4344fb66abe41ad98457d182ed026cd0de50585fcc",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/119.json",
+      "sha256": "f98198d0054159eb812a50ff645f6b30c93a52c0347b98d7da4d112b359f2a56",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/12.json",
+      "sha256": "881b377a5eb1ef6e0342a905bcb3ab812fd1116f2149d844c160474df22539c4",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/120.json",
+      "sha256": "0520c871e0b39981112c991d1578bc474802b629e961a17488e19c725309529c",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/121.json",
+      "sha256": "da531ebb991f2a5efad3e9ff3d2e67ef5649c4d0394cbe58d63d37ffa26833d6",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/122.json",
+      "sha256": "41d62506b9d1f4291ab43bf6d1478b57a18b4198c776d3c3d7c7264c41471b5d",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/123.json",
+      "sha256": "0b939a67ff9245981de82de754ea5be92d88518f07e352b7b22f20b5d804b4eb",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/124.json",
+      "sha256": "3a4a9c9479ea8a803d76e2ea9694a74f7f21e0f3227baa75a8d4b9be9c0a00a8",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/125.json",
+      "sha256": "ff360da2faf75f053c4a812eeea36bfebf6870be7826d121a7c12b87fe68e7b8",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/126.json",
+      "sha256": "c26d2e74f7a7f9d6ddb069a745270d1b74b89827fd619339ed80e071673bfc62",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/127.json",
+      "sha256": "e78367f5bbbb718b7d9a48888415656081a139079b60cb06119481079e7b50e0",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/128.json",
+      "sha256": "10fe4852909d72b4401b4d9ec404bd46887aa53105e42a44dab8e0224deab9d8",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/129.json",
+      "sha256": "27ddfa2e468222683fd083b5764a1ef9200fa83dcc4f6f4ccae02fdf9246ffca",
+      "lines": 53,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/13.json",
+      "sha256": "3d799d43f0105103de927c3284532f2f8bb481fd7bca07bf4423a1e0cc182903",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/130.json",
+      "sha256": "6b5345d9e55d11fcb2a49055a8423755cc3c5700f4e7761e5a589ae190cc1c59",
+      "lines": 101,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/131.json",
+      "sha256": "1065b6568dd9fb4c52dc475759ac40c6b8d3c66a5693aefe146858fbb4603b05",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/132.json",
+      "sha256": "ff7d9d2dd998e33841e1abbc2d87452582ea2bb11ee91d7f6cad15103fe5fa36",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/14.json",
+      "sha256": "e592e78ada3b1ff7dae0dcc694829cb78cb0549b8494a27e676bb89d9cb87d59",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/15.json",
+      "sha256": "64303add239429428ec4ba1bd698dd9e5293c042087a54c5eba42ae07737af91",
+      "lines": 45,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/16.json",
+      "sha256": "d352ef9d25d87efd7fd043ff155fcf6d57644d0fb53f628e86475d06c13aada2",
+      "lines": 53,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/17.json",
+      "sha256": "be3bedf21a920394d48b8a19d1e5c4baf84ea009456739a898f141afff99ac7a",
+      "lines": 45,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/18.json",
+      "sha256": "4f7f8a9d3a95cbc84324af6436a40296265ce4642f8d5d110283cf1062f22071",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/19.json",
+      "sha256": "345edb19460d7228758e4dd6494e53aa6b7fc0ecf8c40731f22886ba68220d40",
+      "lines": 61,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/2.json",
+      "sha256": "db46eabc055bf3b6c588648be8fdcb9b1111701b9ba473c8dc111b5854ae964c",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/20.json",
+      "sha256": "df665a43405aa5fa50e83944b1aec5ede12469e0e17c4e952f82b0b5cabb3083",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/21.json",
+      "sha256": "aff98fb24b49c5ca4ed3a4f4c2d7b2b1c85516d0bac6a4d7bc8fbf7959c6d8aa",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/22.json",
+      "sha256": "5145b2651d12a79c306497b4aada81fad3d5d357a715ca4fb324de985464f799",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/23.json",
+      "sha256": "5e9489396b397e998d7b9e733ca6206df0e24f7833fcc97c80274b6d8b16c609",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/24.json",
+      "sha256": "e3cf8c9bdc12bbfa76157d46de43a59951977b093ce31b999c647822a07848a0",
+      "lines": 93,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/25.json",
+      "sha256": "2c449726d64788690c94df500f596cc90481da42453a7132cce9de5641c08f90",
+      "lines": 69,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/26.json",
+      "sha256": "b5630258b9f2e4c28ae28cab51cd143da4ba32137ef0ebef81698e23b242f4e1",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/27.json",
+      "sha256": "64cd10f23a2e98c8bf17aac1efa2ccbd268bece799b91dbf1e3b91ffeec8dbc1",
+      "lines": 197,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/28.json",
+      "sha256": "c6be847bfa7804e6b2b10b7e01e3d6d13d0fcb2b3bee43778e10058ba8b7ae48",
+      "lines": 109,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/29.json",
+      "sha256": "0915b0cac1fe92921a10739752699ef9590b4df9a8d4227dfa6653401bb47379",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/3.json",
+      "sha256": "2017f73bb4ac59e860061b9756db76ad5d34e154db897af0d5cbf55cce861e8d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/30.json",
+      "sha256": "a63827cbf5c84798611c9e847948db5dd5372f58fe00ec66518c809874d2d3d7",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/31.json",
+      "sha256": "5fa4d56a8de12b7fa85bb1bb69b7c856b5b671d8115c81d0d9131fcb576e0af5",
+      "lines": 22,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/32.json",
+      "sha256": "db9e3f2e9214ea17f73a734f9aad75d3ee68ab45127d770f4ec52f7c4f87b69d",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/33.json",
+      "sha256": "1719c1684e723068c9cc02086c9bd697381059cda3272cd3747c6a13cadb69b9",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/34.json",
+      "sha256": "f37ee2bf043bd0a043aa26aaa764cde6c5116611e4ba29ba9408786e593d7ad7",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/35.json",
+      "sha256": "31cd45e9c0fcd272e5b423b8369a7b62ef6d8d2d9f3f75d8de82438ae4415909",
+      "lines": 37,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/36.json",
+      "sha256": "d9c68b5dd79214dd24af489decf2fcb0a7fd77c18a4c55b3d4ed6c5d3229f51f",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/37.json",
+      "sha256": "c664734094af5503e93a86e2391624454596732110efea1219ceaae1b3b6ce96",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/38.json",
+      "sha256": "7d2200e9af376b155c5e353682872c049838064d90ffab2e8d8a7956ffc583bb",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/39.json",
+      "sha256": "0ee45707f548eb2e9f4d8c282f57594183aa8bc21225ea6adfd1a091d4cd7725",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/4.json",
+      "sha256": "43294020ace46d26ff60aa96ea5d2168eb0b2a61dc9759669f76e565f1a9ee0a",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/40.json",
+      "sha256": "8f7c6eb95a8ad58f9d8fef93a8d05d2d088831ec0872df2fd9bfbbcc067cca47",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/41.json",
+      "sha256": "88d649ff9607b43c8e322311be4727640358cd8af1584587f3be3b169dc3740a",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/42.json",
+      "sha256": "a1857c1383f086b1582e7d6fe453e2e02d0b8cbaa11cb2aa28bfa393adedbc26",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/43.json",
+      "sha256": "64aea639fa2a7baa111f595e7322e7d9d6461095258ee389a9519c9b681a129f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/44.json",
+      "sha256": "bd3bc473bfa147c0afd9f676662be2cf09145964f0b4f060b91ced7518d8de39",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/45.json",
+      "sha256": "e24a0e46946e88cb93813a3979b3a0dbe6fc49ab3e71a3151e29646950c79eb7",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/46.json",
+      "sha256": "7bd4efb122083b6e1c05498f61be593e31111e60c184705f9e94ffc2d098a7a1",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/47.json",
+      "sha256": "34a57f14c044df1e8c6479e483daee1a92ed56c678e0088c709f54addf7dd226",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/48.json",
+      "sha256": "dc730e0d9a94c2d3c3a8167dd3f4b133080a399aaecdc5edef484fb3500ab614",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/49.json",
+      "sha256": "f1b85fdd00dce9c70eabcc7aa96096be49387836618e776856b7ce43f67346b4",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/5.json",
+      "sha256": "be99aae8d4ff97c888503c23b46f5135ab7afd2ed60a59624c144af55f0701e7",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/50.json",
+      "sha256": "0d4888244a76e85294feb3da9730d8fb851d16e3db544ac3f09a002ec6dd00e1",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/51.json",
+      "sha256": "73dea2979704333a1ec7107759a78aa11ec6f739e5bb27d91d59396554d78199",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/52.json",
+      "sha256": "ddf26cf9f33173e104b8a0f24fc30766b18c99180fa06bf119ce61daba6f4af3",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/53.json",
+      "sha256": "0a16f8e02f267d762a3659daf125b4fde2760e6125edc142fcfec557337aa8f6",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/54.json",
+      "sha256": "8e29a7ac8e669e9e70afb32fefe6546dee58fbff01ff564ec3b589957c86fa4d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/55.json",
+      "sha256": "0e324bf362f94db669e91b2de94be522b5adc47494f537c2fa81376043dbbd4e",
+      "lines": 37,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/56.json",
+      "sha256": "2143f1801f9d004320ab06aae77d90f3894a2ad7767cbb1d6ef8db358b1a9dda",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/57.json",
+      "sha256": "f41b55a85df64d6c6197b16ab4e371036644613bc7bbded4438c14738a30313c",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/58.json",
+      "sha256": "8892010811767b5ce5bde461ed5ad9f0ca673f058540594ca1948c1ea94891c1",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/59.json",
+      "sha256": "8d72caa99682e5682e75e7202540cbad7b8bd8e86d9948cd26eb383866aaf4dd",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/6.json",
+      "sha256": "51dbe0c0f5bc75efda0ce2fc13b7177ff0e46d49f96f706828795489ce1220da",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/60.json",
+      "sha256": "9cb43da28408f42735e8036ebcfd140f270984fd8ad4ee72a9591327151e0af6",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/61.json",
+      "sha256": "e5160ca871a052597f74a60f400b32ac859d28137bce53b9d9bbfdc15672c996",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/62.json",
+      "sha256": "f693d9bfb69b2d22dc7f2803abe248806dc7e771d78749c7b65d3d8a411a8916",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/63.json",
+      "sha256": "0e2fcd32e4e8f4bcfe97a5f4ee2d34c102759cbe96e6545992ed15dfefa943ec",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/64.json",
+      "sha256": "df89209070456b75ed9de17bbb1d92172caf8a499966527cb86cc1fffa253077",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/65.json",
+      "sha256": "f4e37578cad4b2e2415993f38e9c64d6caeb8934e9973efb0603ce859392e46f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/66.json",
+      "sha256": "cf0aab6fcafd0e5602faca2934e33ed4521134031567550c0f17b9e554e09878",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/67.json",
+      "sha256": "b5eb009e255c437095fd649994af78ae215691b104d761a32075f52608e74d6d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/68.json",
+      "sha256": "1529a07cefc0647d08cdc1dcb8acef35b37bcbd9800c56a167aea3664e76a89e",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/69.json",
+      "sha256": "8f4684a9c2a4f3c802ba5300cf4192ec6e625f6bdccce4348d34437d324668f3",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/7.json",
+      "sha256": "cdb995d311a416945e3df1a055b5ff614565191bd5e322a0eb8684cf05b31eb2",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/70.json",
+      "sha256": "7350865aad753127563361e9bf156a5017e67203a6ed1a3d48e15f700624ae2b",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/71.json",
+      "sha256": "caa42a3e70134793eb16a02e4b5ae03e195b3da0f441c2f73caa149eaa680960",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/72.json",
+      "sha256": "d3bdff4cd0be4ee766354d70668aecd387b8ab5a534e5d25215dbf5e6a775d9d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/73.json",
+      "sha256": "e5844e16c3e6ac8c2569846dfc3984cbb400cd3a7ec3d476a26558c3efccc021",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/74.json",
+      "sha256": "daa4bc220e75a0d950cc1ed7166553cf63ecc6302b7a500c891e5ef1ee5a8e56",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/75.json",
+      "sha256": "1a451b38134dbe7d2e066f1ca16b3895d62971d3927c6e2d95a4c5939a4b9e48",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/76.json",
+      "sha256": "eb5dbcf6c9ac31af225ee69a3099706783e5474eb36551c49a569cd7d34f7df3",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/77.json",
+      "sha256": "d600018746b548af1dcc7e79a7a43283fb8608ff349041002b42907b0a68ee32",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/78.json",
+      "sha256": "534d5dd5745b93ce161a75548057f5eae59869edc3ef0901ab60ba1f96eb306f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/79.json",
+      "sha256": "d9be82d167df7244a88cc500c124cc30e1f4d33186031eba9945bd56ae9dd3f0",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/8.json",
+      "sha256": "d672077f25675e0f4f888a907df81b1331bf27750a72b5b779e917483b61c854",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/80.json",
+      "sha256": "13f755afc42f2d6a695954f34d38ab3e679d2c377e882e40c31a05d42c682560",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/81.json",
+      "sha256": "17e8ab7f250914bc43732f04345b190674b0e7a04d38d9a39ca64f9db40e587b",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/82.json",
+      "sha256": "70b3e09c76c6e911f09b23f8547e44eb2be16662ca1ccd7fcc7048199cf9344f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/83.json",
+      "sha256": "2d87c114db2476b12cfe8383b23d11e7fdbcc5307ac0d8318bcb15f8a2d82a72",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/84.json",
+      "sha256": "7d017ec3a094055a4deac929e5e05c9035f15fac675b4f9b1abf946c7043e70b",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/85.json",
+      "sha256": "182f98202e620bb9d85f1bccb40af2adccf563f42c8dcb30a57d710baff67e09",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/86.json",
+      "sha256": "12a9c9a6467d317b3c83019f000ae4934dfbeaa3688848cff6f1b6b3328d692d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/87.json",
+      "sha256": "12a9c9a6467d317b3c83019f000ae4934dfbeaa3688848cff6f1b6b3328d692d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/88.json",
+      "sha256": "90bfe1f49ab4fea35d58281d8fc90d0f25f09e4bc002919f7c2c77e0f2d745a1",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/89.json",
+      "sha256": "b383f4d3797d50d1586c964e0b7d7aef7888007459f50205c52d98ade832a38d",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/9.json",
+      "sha256": "bca7158e6d7183ec082f6985eb63f5b40274b30d761639d3fec12c01311203cd",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/90.json",
+      "sha256": "5dd4001e7fb7021c98213d552a880724ae56fbb0a33fb8f80935c16a163fd923",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/91.json",
+      "sha256": "bfd29df12547072da85e436655bf8953f1124eac0e73583cbe3a9255e23daf23",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/92.json",
+      "sha256": "7579cd48eb4400a7446e609521562787ae9b033690b7c70518aa70d9842a9cf4",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/93.json",
+      "sha256": "e4a4fa0af1bcfa8151959e6f03d5c468139e002489be68a51d259ce440316c7f",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/94.json",
+      "sha256": "ac7e109c69fcfae07b71e5f4967f5fc00a56f8cbfbd121db2d7b7a41e21b731c",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/95.json",
+      "sha256": "141ef05cd4ca5e777d78df5f6006a4829ed47206cc7a024ffbc32a085817dbb3",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/96.json",
+      "sha256": "1f0de54bf03e989dc902d2c6281e1d581ffdff6e42522f1aa0929bdbf74f1c56",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/97.json",
+      "sha256": "b2b8dc00df03519d883eb353e115c72a5083b0c5482be5ac0d69a66427d9500a",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/98.json",
+      "sha256": "e99fcea584a7015797540b1e438eb3137edd9fe09d185e359ae1a2529fd1c87b",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/99.json",
+      "sha256": "c0711ff1ec1d6482b0127bfc92732129313c6ec28150e2eaedfdfa7fff3d5e04",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/index.json",
+      "sha256": "d48599a7ede75e9299c063729af1ea153b46767306c512eac7a6fec5e4c4c797",
+      "lines": 797,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/hisn/receipt.json",
+      "sha256": "e067c1921759584e853ee941ead70023eff8b2b5f072830b32950f2570571a4a",
+      "lines": 933,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/mushaf-snapshot-manifest.json",
+      "sha256": "0891cda6ecca6bd8b2ce6051985467ba962ed088ecd66421eb3642a7d4ca04d6",
+      "lines": 11,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/qcf-v2-reviewed-compounds.json",
+      "sha256": "96af255900c20793a329dd9abd5402ee27dfc2ad33cec9cc315cc1305f366b77",
+      "lines": 67,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/recitation-model-manifest.json",
+      "sha256": "462363ccc954959fca3cd579c9c273d539ac69c81972ba57b0f48df2a078b1b8",
+      "lines": 163,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/reciter-timings/receipt.json",
+      "sha256": "b585bf68ff4d941eb06cf22b8399cfaf4612c5eff04946ce72b5d18c0c7428aa",
+      "lines": 40,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/tanzil/app-receipt.json",
+      "sha256": "62ab485d361bab567239d7507961af6b592e5b6eb37b52574dfa4d184cf486f5",
+      "lines": 8,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "content-sources/tanzil/receipt.json",
+      "sha256": "a53070dfd1ac12b595702f3f0843ec1870def2ed9cf90d140c45525f7008e487",
+      "lines": 6,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/AdhkarViews.swift",
+      "sha256": "722ecb3531964e125d462cc2a51022751330ce66012c0e9d4bc5ea4adaf3a699",
+      "lines": 314,
+      "imports": [
+        "SwiftUI",
+        "UIKit",
+        "Foundation"
+      ],
+      "types": [
+        "NoorArabicSearchField",
+        "DhikrEntry",
+        "DhikrGroup",
+        "AdhkarContent",
+        "DhikrCounterStore",
+        "AdhkarView",
+        "DhikrListView",
+        "DhikrReadingSession",
+        "DhikrSessionView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "1b2cc6b6e1ad340faeaae5f07d292eb20c7a22c9995ac8795ea6aa604efa491d",
+      "lines": 1,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/Assets.xcassets/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576",
+      "lines": 1,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/Assets.xcassets/NoorLaunchBackground.colorset/Contents.json",
+      "sha256": "a22e7ccf2d8ed4f82d84833e971caa8823b005cbb358bd6e4a89b8de466ebac5",
+      "lines": 38,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/AtharApp.swift",
+      "sha256": "812f2a39848e387ba4fdd91e24fc948d72195a5fc52153c7e1f044c67ca3d13b",
+      "lines": 231,
+      "imports": [
+        "SwiftUI",
+        "UIKit"
+      ],
+      "types": [
+        "AtharApp",
+        "Theme",
+        "Card",
+        "PrimaryButton",
+        "RootView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/DhikrDayPeriod.swift",
+      "sha256": "54bb60478ef9b08c1e5c9e1b657e5419bac410bb420982d5d5a6dd2360454f78",
+      "lines": 51,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "DhikrDayPeriod"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/DhikrReadingContent.swift",
+      "sha256": "eaa4fee3b158e91b256fb28b4f061bddcd2e2ebab176f77f8d09415acfdaa5a6",
+      "lines": 69,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "DhikrQuranReference",
+        "DhikrReadingBlock",
+        "DhikrReadingContent"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/DhikrReadingText.swift",
+      "sha256": "f9feb04359d5d3fb9542aa9b514e2bf367e977b9d827af85961d8b69c09faa30",
+      "lines": 47,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "DhikrReadingText"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/FeatureViews.swift",
+      "sha256": "a3f869c9a76c10a2a4fb0c5ac63ccea16848d9f0a0b6df090a1c49ef173bcf0e",
+      "lines": 340,
+      "imports": [
+        "SwiftUI",
+        "UniformTypeIdentifiers",
+        "AVFoundation",
+        "UIKit"
+      ],
+      "types": [
+        "QuranView",
+        "QuranReader",
+        "LibraryView",
+        "SettingsView",
+        "PrivacyView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/HomeJourney.swift",
+      "sha256": "7d3e0d406114e85807066b7d7a985dc0667c2574b163f3793a39749279c20d8e",
+      "lines": 38,
+      "imports": [
+        "SwiftUI",
+        "Combine"
+      ],
+      "types": [
+        "FocusView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/Info.plist",
+      "sha256": "488cd52e5e0807c1e3047530db247f17191b50446923a64a326ca00945053e6a",
+      "lines": 79,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/InteractiveMushafCanvas.swift",
+      "sha256": "de5016168c5bdba36916ac9337c684bcd3a7c33b57005dbc624b32f8c73d37c4",
+      "lines": 864,
+      "imports": [
+        "UIKit",
+        "SwiftUI",
+        "CoreText",
+        "CryptoKit"
+      ],
+      "types": [
+        "OriginalMushafRows",
+        "OriginalMushafCompanion",
+        "OriginalPageWord",
+        "OriginalPageData",
+        "OriginalMushafCanvas",
+        "OriginalMushafInk",
+        "MushafVerseAccessibility",
+        "OriginalMushafViewport",
+        "MushafPagingGestureDelegate",
+        "OriginalMushafDrawing"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/InteractiveMushafReader.swift",
+      "sha256": "62c54751e022d6a6e4c31b1207ea7453717869d3c9682c0f496d49bb29ca99fb",
+      "lines": 1172,
+      "imports": [
+        "SwiftUI",
+        "UIKit",
+        "AVFoundation",
+        "Combine"
+      ],
+      "types": [
+        "NoorMushafMicrophonePressStyle",
+        "MushafTafsir",
+        "MushafInitialEntry",
+        "MushafReaderInsets",
+        "MushafRenderIdentity",
+        "InteractiveMushafReader",
+        "ReaderControlHeight",
+        "VerseSelection",
+        "VerseToolAction",
+        "VerseTools",
+        "TafsirContentHeight"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/KhatmahJourney.swift",
+      "sha256": "d2360dc9b359ff716cd9e1693b023fd8b8263fedc8754bd3a4d73b968ac45ad1",
+      "lines": 305,
+      "imports": [
+        "Foundation",
+        "Combine",
+        "UserNotifications"
+      ],
+      "types": [
+        "KhatmahDay",
+        "KhatmahSession",
+        "KhatmahStop",
+        "KhatmahReadingScope",
+        "KhatmahPlan",
+        "KhatmahReminder",
+        "KhatmahReminderPlan",
+        "KhatmahFailure",
+        "KhatmahCalculator",
+        "KhatmahStore"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/KhatmahJourneyView.swift",
+      "sha256": "42a542b8f8d9f0ace0e25a0199d9eb860216d757858c35e8d834b1b9f5c8ca68",
+      "lines": 239,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "KhatmahJourneyView",
+        "KhatmahSetupView",
+        "KhatmahPlanPreview"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/LocalRecitationRecorder.swift",
+      "sha256": "47b4d7ac43185db6178214178658b947523813520cd4128c2ef1c2999e8dd353",
+      "lines": 282,
+      "imports": [
+        "SwiftUI",
+        "AVFoundation",
+        "UIKit",
+        "Combine",
+        "UniformTypeIdentifiers"
+      ],
+      "types": [
+        "RecitationArchive",
+        "LocalRecitationRecorder",
+        "RecitationRecordingControls"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/LocalSpeechRecitation.swift",
+      "sha256": "41d634d36fdcaeded55d6985724d96f418aa4f02c47e00e4d6e272d441689c31",
+      "lines": 44,
+      "imports": [
+        "Foundation",
+        "Combine"
+      ],
+      "types": [
+        "LegacySpeechArchive"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MemorizationCloudMerge.swift",
+      "sha256": "c5633f49f673e453683e47c514515d121b8c71885f991c5e550bd85e4c44e0f5",
+      "lines": 69,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "MemorizationCloudMerge"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MemorizationViews.swift",
+      "sha256": "cd8823cec8ba9677e816442efd19c6de6c9e61c18ccd00a1b38d5848f1412585",
+      "lines": 807,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "MemorizationPlan",
+        "MemorizationAnswer",
+        "MemorizationResult",
+        "MemorizationSession",
+        "MemorizationPracticeSession",
+        "VerseReviewState",
+        "MemorizationProgress",
+        "ConfirmedRecitationMistake",
+        "MemorizationArchive",
+        "MemorizationStore",
+        "MemorizationView",
+        "MemorizationPracticeView",
+        "NoorDailyWardCard",
+        "MemorizationInsightsView",
+        "MemorizationPlanView",
+        "MemorizationTestView",
+        "MemorizationHistoryView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafArtwork.swift",
+      "sha256": "1539d4fe847a1a47ee7bb857b344f55523d3e111d624e23a85759244704bc629",
+      "lines": 213,
+      "imports": [
+        "Foundation",
+        "CoreGraphics",
+        "CryptoKit"
+      ],
+      "types": [
+        "MushafArtworkManifest",
+        "MushafPageTransform",
+        "MushafArtworkGeometry",
+        "MushafArtworkLibrary"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafArtworkReader.swift",
+      "sha256": "a373a3afd69d86b43bcb990db080c1eb61889887bae5ef16833d3ee76dac2eba",
+      "lines": 116,
+      "imports": [
+        "SwiftUI",
+        "UIKit"
+      ],
+      "types": [
+        "MushafArtworkReader"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafArtworkView.swift",
+      "sha256": "a802359efa61bbdce720307a32586709eefd829c3a04f7f3171afd41a045d856",
+      "lines": 148,
+      "imports": [
+        "SwiftUI",
+        "UIKit"
+      ],
+      "types": [
+        "MushafArtworkView",
+        "MushafArtworkViewport",
+        "MushafArtworkCanvas",
+        "MushafArtworkAccessibilityElement"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafReader.swift",
+      "sha256": "f29a8850a505daba94432e29d5977c57c64005c2e97aa78860c369ccead988ad",
+      "lines": 401,
+      "imports": [
+        "SwiftUI",
+        "UIKit",
+        "CoreText",
+        "CryptoKit"
+      ],
+      "types": [
+        "MushafWord",
+        "MushafLayout",
+        "MushafPage",
+        "MushafDatabase",
+        "MushafFonts",
+        "MushafReader",
+        "MushafLineRepresentable",
+        "MushafLineCanvas",
+        "MushafAccessibilityElement"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafSessionRecorder.swift",
+      "sha256": "3c175cd0d7aff0621d0e69150329610c9be4cbe4cfaf9ddedd3e715cf83fd5a5",
+      "lines": 391,
+      "imports": [
+        "Foundation",
+        "AVFoundation",
+        "UIKit",
+        "Combine"
+      ],
+      "types": [
+        "MushafRecordingTake",
+        "MushafRecordingSessionRow",
+        "MushafRecordingFileMetadata",
+        "MushafRecordingExport",
+        "MushafRecordingSessionMetadata",
+        "MushafRecordingArchive",
+        "MushafSessionRecorder",
+        "MushafCaptureAudio"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafStudySession.swift",
+      "sha256": "17e5300b60e344f8ad196dce3c100db7ead8701669ce97b97118a9087fa736e4",
+      "lines": 176,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "MushafStudyAssistance",
+        "MushafStudyAnswer",
+        "MushafStudySession",
+        "MushafStudySummary",
+        "MushafRepeatPreferences",
+        "MushafStudyArchive",
+        "MushafStudyWordIndex"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafStudyViews.swift",
+      "sha256": "63c9761b8a2b88732d2762bfc00a6ccd6d20299f48dc540a5051115ffefb2522",
+      "lines": 371,
+      "imports": [
+        "SwiftUI",
+        "AVFoundation"
+      ],
+      "types": [
+        "MushafStudyButtonStyle",
+        "MushafStudySetup",
+        "MushafStudySummaryContent",
+        "MushafStudyResultView",
+        "MushafRecordingList",
+        "MushafAudioTime",
+        "MushafRecordingSelection",
+        "MushafRecordingBrowser"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafTajweedFonts.swift",
+      "sha256": "42b1dd7f1ab76ce91752d30cfdfaf3ff88c1606ed5b9f4fd2672e1eecd2a8b28",
+      "lines": 71,
+      "imports": [
+        "UIKit",
+        "CoreText",
+        "CryptoKit"
+      ],
+      "types": [
+        "MushafTajweedFonts"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafTrainingPage.swift",
+      "sha256": "f2e7cbee4f942d296ae287cf6c0a32044a5785e3e2bcf0ce4e17f2933f8b1912",
+      "lines": 96,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "MushafTrainingPage"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafTypesetter.swift",
+      "sha256": "c480ff025dca3b9543d41c63c9cb292b42bef32e2fb6bdb159e6737f157cb83b",
+      "lines": 80,
+      "imports": [
+        "UIKit",
+        "CoreText"
+      ],
+      "types": [
+        "MushafTypesetter"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/MushafVerseAudio.swift",
+      "sha256": "fdf153930e30f88eac6c97647077287c60cbd555847f8f9517d11d9d6db7ac56",
+      "lines": 492,
+      "imports": [
+        "AVFoundation",
+        "Combine",
+        "Foundation",
+        "MediaPlayer"
+      ],
+      "types": [
+        "MushafVerseAudio"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorAccountDeletionState.swift",
+      "sha256": "e5c935494bfb4e073ae1e8ec5dc78891f8f1332aec0f18243f9826d10114f803",
+      "lines": 42,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "NoorAccountOperationIdentity",
+        "NoorAccountDeletionState"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorAccountView.swift",
+      "sha256": "43c670891933920f07e9b3e75474bdbb4c0ac2dbe878a4e8e9b8e19743000e52",
+      "lines": 552,
+      "imports": [
+        "SwiftUI",
+        "AuthenticationServices",
+        "CryptoKit",
+        "Security",
+        "Network",
+        "FirebaseCore",
+        "FirebaseAuth",
+        "FirebaseFirestore"
+      ],
+      "types": [
+        "NoorAccountStore",
+        "MemorizationCloudBackup",
+        "NoorAccountView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorAudioDownloads.swift",
+      "sha256": "a41ba82f2a7c44c704635d069bf0fcc8242462dece488eb45526d8baffdec501",
+      "lines": 468,
+      "imports": [
+        "Foundation",
+        "AVFoundation",
+        "CryptoKit",
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorAudioFile",
+        "NoorAudioDiskStore",
+        "NoorAudioIntegrity",
+        "NoorAudioTransfer",
+        "NoorAudioDownloads",
+        "NoorAudioDownloadsView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorAudioFocus.swift",
+      "sha256": "b620610c81516da38450516f6d326daee7c86ebbd872ad6bfc0f7b90cafefdce",
+      "lines": 37,
+      "imports": [
+        "Foundation",
+        "Combine"
+      ],
+      "types": [
+        "NoorAudioFocus"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorAudioMiniPlayer.swift",
+      "sha256": "470e5dfd998a054e550e21cbd7468ffca94435fb4ca406620493d1ec9b9227b4",
+      "lines": 25,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorAudioMiniPlayer",
+        "NoorAudioMiniPlayerControls"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorCloudPayload.swift",
+      "sha256": "3bee0df461d42ebbbaa44bca2f71aa5bcb1463933ed91e32d81423b99cf933b4",
+      "lines": 54,
+      "imports": [
+        "Foundation",
+        "zlib"
+      ],
+      "types": [
+        "NoorCloudPayload"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorFocusView.swift",
+      "sha256": "f0b5b774833fc39cb371270f37279ff73840e459f56f976ab05675b5ac4a8108",
+      "lines": 194,
+      "imports": [
+        "SwiftUI",
+        "FamilyControls",
+        "DeviceActivity",
+        "ManagedSettings"
+      ],
+      "types": [
+        "NoorFocusController",
+        "NoorFocusView",
+        "NoorKhatmahProtectionCard"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorJourneyIndex.swift",
+      "sha256": "843b4f43fbd1cd46f0b3fb00fb71e7a69f8ab278237b963170b1be613e1fe114",
+      "lines": 36,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "NoorReadingEvent",
+        "NoorJourneyIndex"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorLaunch.swift",
+      "sha256": "86bf78a264467a4650fea0153538e919a2dedef20d090366cee88ef97fc83c92",
+      "lines": 100,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorLaunchGate",
+        "NoorLaunchView",
+        "NoorArch"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorLegalContent.swift",
+      "sha256": "c9c9b38794f50fab58de242c76b5a517ae1e63977c097e0b4258ec1cc9137a2a",
+      "lines": 109,
+      "imports": [
+        "Foundation",
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorLegalSection",
+        "NoorLegalDocument",
+        "NoorLegalContent",
+        "NoorLegalDocumentView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorMicrophoneCue.swift",
+      "sha256": "f9ad360b67f68076fdbc5d4a1db131b03a907d1f9753a8783660c979caeac2d2",
+      "lines": 83,
+      "imports": [
+        "AudioToolbox",
+        "Combine",
+        "Foundation",
+        "UIKit"
+      ],
+      "types": [
+        "NoorMicrophoneCueDriver",
+        "NoorSystemMicrophoneCue",
+        "NoorMicrophoneCue"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorMotion.swift",
+      "sha256": "38fbef28bcf7cabaf5694e0713a4023c76682846486cfd79ac65d7e396918831",
+      "lines": 110,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorEntrance",
+        "NoorPressStyle",
+        "NoorScreenChrome",
+        "NoorComfortBackdrop",
+        "NoorAmbientOrnament",
+        "ArabicSearch"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorMushafReciter.swift",
+      "sha256": "a33d2342813f5e93be73dc7a03d2546d0ca6c0ad7beed6525ed98e7ee8fd4581",
+      "lines": 90,
+      "imports": [
+        "Foundation",
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorMushafReciter",
+        "NoorMushafReciterPicker"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorMyJourneyView.swift",
+      "sha256": "757f2bf341a45f969e5a1fb7de9ee689fa914979605ff5c0a04305584d799291",
+      "lines": 167,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorMyJourneyView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorOperationDeadline.swift",
+      "sha256": "445a1445243184ed91476542ab8bf5aca6842c7f3e8c8f6db6aae16a12943c0e",
+      "lines": 43,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "NoorOperationDeadline"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorPersonalReminders.swift",
+      "sha256": "20b290fecafe08da7efc94b5ba70e5de1d4543309efd8bb640adfb90d17236cf",
+      "lines": 101,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "NoorReminderKind",
+        "NoorReminderPreference",
+        "NoorReminderArchive",
+        "NoorPersonalReminderPlan"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorProgress.swift",
+      "sha256": "5b0c5175bbd79ae90fe43a071bba2b312d289cadfb3a79b2d2d80ab680328e05",
+      "lines": 53,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorProgressBar",
+        "NoorCompletionMark",
+        "NoorPrimaryStyle"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorReaderControls.swift",
+      "sha256": "bf1a9db443b3d635e0b0094fb0ec9d4700dd8314124dc8ced6ab15e97b8b11ac",
+      "lines": 56,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorReaderUtilityLabel",
+        "NoorReaderMicrophoneFace",
+        "NoorReaderControlPressStyle"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorReadingSync.swift",
+      "sha256": "680b2d84ca18bbba0d91f4466f1d834f12c5702f970ec78d0c6ef18a95463b50",
+      "lines": 152,
+      "imports": [
+        "Foundation",
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorSyncStamp",
+        "NoorSyncedValue",
+        "NoorReadingCloudState",
+        "NoorReadingSyncJournal",
+        "NoorSyncResult",
+        "NoorReadingLocalSnapshot"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorReciterCatalog.swift",
+      "sha256": "eae229b6846531fcaa937e01e97d39f5c8496885ca2dbd187f2fdf27a7d80514",
+      "lines": 64,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "NoorVerseReciter",
+        "NoorReciter",
+        "NoorReciterCatalog"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorReciterWordTimings.swift",
+      "sha256": "08019cd6b7d3b8420a10ca1914ee93c5fa0b5d467bc0d5b8b0034246d3409d6f",
+      "lines": 53,
+      "imports": [
+        "Foundation",
+        "CryptoKit"
+      ],
+      "types": [
+        "NoorReciterTimingTrack",
+        "NoorReciterWordTimings"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorRecitersView.swift",
+      "sha256": "5227227d18e252e61405c2e781b9953850cc9d75b8ce20424bf7096ca2f4e845",
+      "lines": 188,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorRecitersView",
+        "NoorReciterSurahsView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorReminderSettings.swift",
+      "sha256": "3f11387173950ec5eab809249bb29d10d1eb10d5d9c5efb7059fa3db2699367a",
+      "lines": 143,
+      "imports": [
+        "SwiftUI",
+        "UIKit"
+      ],
+      "types": [
+        "NoorReminderSettings",
+        "NoorReminderEditor"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorRetiredFridayCleanup.swift",
+      "sha256": "b6140d1712b0019d2fe2be150e2a0d3590fc69f2e7ca9b54093221efb48cba65",
+      "lines": 123,
+      "imports": [
+        "Foundation",
+        "Combine",
+        "UserNotifications",
+        "AlarmKit"
+      ],
+      "types": [
+        "NoorRetiredNotificationClient",
+        "NoorRetiredAlarmClient",
+        "NoorSystemRetiredNotifications",
+        "NoorSystemRetiredAlarms",
+        "NoorRetiredFridayCleanup"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorSalawat.swift",
+      "sha256": "da637881db0e7e9647969836e5de32536676b24174d8cd906df1b08ba242cda6",
+      "lines": 104,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorSalawatStore",
+        "NoorSalawatView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorTodayView.swift",
+      "sha256": "9f20311155c3bebdcb90ba1db45be754ee35a1740db65db811805f5dd0699467",
+      "lines": 241,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorTodayView",
+        "NoorRosette"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorVisuals.swift",
+      "sha256": "6f66d19f5bc776ea138fe1587d9e0496342f3a5a13df2baba76602f5be409f37",
+      "lines": 65,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "NoorMotionSurface",
+        "NoorAnimatedSymbol",
+        "NoorProgressDial"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorWelcome.swift",
+      "sha256": "34809106ccfa94779796340a68dd1f801badd41e4a268e5f9b9da1ede5acbb0f",
+      "lines": 88,
+      "imports": [
+        "SwiftUI",
+        "AuthenticationServices"
+      ],
+      "types": [
+        "NoorWelcomeView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/NoorWidgetBridge.swift",
+      "sha256": "867665ec3cd33bc2945ba5ba9a2986a364a1debf8475b3517f6b8123dacafd56",
+      "lines": 92,
+      "imports": [
+        "SwiftUI",
+        "WidgetKit"
+      ],
+      "types": [
+        "NoorWidgetBridge",
+        "NoorWidgetRouter",
+        "NoorWidgetGuide"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/PrayerAlertSound.swift",
+      "sha256": "524260e71e521447e1a3e7f3b557d161d02824dc7f1e6fbc8f5311a15624ffff",
+      "lines": 18,
+      "imports": [
+        "Foundation",
+        "AVFoundation",
+        "UserNotifications"
+      ],
+      "types": [
+        "PrayerAlertSound"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/PrayerBackgroundRefresh.swift",
+      "sha256": "463da96461b5c53c4d21cf6e62cee8c61849c92b183906934c35e5608b6d8c82",
+      "lines": 19,
+      "imports": [
+        "Foundation",
+        "BackgroundTasks"
+      ],
+      "types": [
+        "PrayerBackgroundRefresh"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/PrayerLocationController.swift",
+      "sha256": "6ed24cedceb1f49a36f71ac99f68c295dcf72e74fa04d222c06477efd17b689b",
+      "lines": 131,
+      "imports": [
+        "Foundation",
+        "CoreLocation",
+        "Combine"
+      ],
+      "types": [
+        "PrayerLocationController"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/PrayerNotificationPlan.swift",
+      "sha256": "28655419d920bc8468dc8bf8620de6f8eac0059290ab655449d1bd99ddcff3d9",
+      "lines": 49,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "PrayerNotificationPreferences",
+        "PlannedPrayerNotification",
+        "PrayerNotificationPlan"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/PrayerNotificationSettings.swift",
+      "sha256": "8a63a0b59bcb3ef6dadc9cdc64b0ec31922a86e612b5cae5209f4415319010e2",
+      "lines": 69,
+      "imports": [
+        "SwiftUI",
+        "UIKit"
+      ],
+      "types": [
+        "PrayerNotificationSettings"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/PrayerView.swift",
+      "sha256": "51c60a20e557fc84cc287d0ad184480d6567243413723ab7f5c1459b42458e47",
+      "lines": 158,
+      "imports": [
+        "SwiftUI",
+        "UIKit"
+      ],
+      "types": [
+        "PrayerView",
+        "SaudiCityPicker"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QCFV2Content.swift",
+      "sha256": "e3e4d17747ef25deafbd175658416366beb1b3c8e368e2802870501761b40b20",
+      "lines": 280,
+      "imports": [
+        "Foundation",
+        "CryptoKit",
+        "FoundationNetworking"
+      ],
+      "types": [
+        "QCFV2Snapshot",
+        "QCFV2ContentCache",
+        "MushafReadingResources",
+        "MushafReadingPreparation"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QCFV2PageLayout.swift",
+      "sha256": "0edbee7081230cd31b3d74f82a2d05db14a005ab6a47d4a8a6c496c40eeb99b5",
+      "lines": 63,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "QCFV2PageLayout"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranMicrophoneCapture.swift",
+      "sha256": "07d20e18b111933f19108cff5bc04c7388b13deed0b9cdf64d22daba48a7aed7",
+      "lines": 200,
+      "imports": [
+        "AVFoundation",
+        "Foundation"
+      ],
+      "types": [
+        "QuranAudioCapture",
+        "QuranMicrophoneCapture",
+        "QuranAudioInputFailure",
+        "QuranAudioInputEvents",
+        "QuranWindowMailbox"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranRecitationController.swift",
+      "sha256": "b55c91bb2cd387febecf556b6886ac93e70aa7b9a5c51400a290eaa12ee7532b",
+      "lines": 635,
+      "imports": [
+        "Foundation",
+        "AVFoundation",
+        "Combine",
+        "os"
+      ],
+      "types": [
+        "QuranRecitationController"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranRecitationScope.swift",
+      "sha256": "3af51d01b1ca6178f896f527a952a2fef5be74967b9387bc7c8b0eaa06aa25a8",
+      "lines": 113,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "QuranRecitationScope"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranRecognitionAudio.swift",
+      "sha256": "18d407cb275366e3198bd3a46730d47cd5f0e3322c7ec662a2dd378035d40703",
+      "lines": 23,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "QuranRecognitionAudio"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranRecognitionProvider.swift",
+      "sha256": "ca3f7691b2844536394d89d626aff11fc429a96725537819f6d5ef89105a992e",
+      "lines": 49,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "QuranRecognitionCapabilities",
+        "QuranSpeechRecognitionProvider",
+        "QuranRecognitionModelDescriptor"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranRecognitionWorker.swift",
+      "sha256": "8cf17baf876f336a065053b69fbcefd196f87a820aeebd36953f73f6d64bca55",
+      "lines": 164,
+      "imports": [
+        "Foundation",
+        "WhisperKit",
+        "os"
+      ],
+      "types": [
+        "QuranRecognitionWorker",
+        "QuranRecognitionFailure",
+        "QuranRecognitionReference"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranResources.swift",
+      "sha256": "630c124eec7a20023ab314a29f4475f5b68ea3e1bf2ab07fd28ad90d866ca6d0",
+      "lines": 32,
+      "imports": [
+        "Foundation",
+        "CryptoKit"
+      ],
+      "types": [
+        "QuranResources"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranTypography.swift",
+      "sha256": "479c29b67c128cf8302103b661173971f4dc07c978e1a5871f6db00277479b6e",
+      "lines": 42,
+      "imports": [
+        "SwiftUI",
+        "UIKit",
+        "CoreText"
+      ],
+      "types": [
+        "QuranTypography",
+        "QuranVerseText"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/QuranVoiceActivity.swift",
+      "sha256": "d55e37aab6a3995eea8a441afbe4de9878f8925a6a7633656b89216375bca116",
+      "lines": 43,
+      "imports": [
+        "Foundation",
+        "CNoorVAD"
+      ],
+      "types": [
+        "QuranVoiceActivity"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/RecitationComparison.swift",
+      "sha256": "e881188af1383d6620bc783f6e8b74e137f7efc531f968a0799cb0272f1bca63",
+      "lines": 128,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "RecitationExpectedWord",
+        "RecitationDifference",
+        "RecitationComparison",
+        "RecitationAudioBuffer"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/RecitationObservations.swift",
+      "sha256": "924201ce4e32ebfa4ae077b29fa029ebc7abaf2d0d2671197d66d07f3e1f493b",
+      "lines": 34,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "RecitationObservation",
+        "RecitationObservationLedger"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/SalawatNotificationPlan.swift",
+      "sha256": "ae9c968899805049ecb36d498e32864b85f43062e735131a7f3ea17cb4f7bfe8",
+      "lines": 29,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "SalawatPreferences",
+        "SalawatSlot",
+        "SalawatNotificationPlan"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/Services.swift",
+      "sha256": "16da6deaf9f3950cbc1e4e445ee256a6eec7968d4a0be994d8dd751289211c72",
+      "lines": 500,
+      "imports": [
+        "Foundation",
+        "Combine",
+        "UserNotifications",
+        "Adhan"
+      ],
+      "types": [
+        "PrayerNotificationPresenter",
+        "PrayerNotificationClient",
+        "SystemPrayerNotificationClient",
+        "PrayerNotifications"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/SpeechRecitationView.swift",
+      "sha256": "d66088b013f7576fccaa474384fff0cae7d2f1e8146afb3590e0792586e3fbc2",
+      "lines": 14,
+      "imports": [
+        "SwiftUI"
+      ],
+      "types": [
+        "SpeechRecitationView"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/SpeechSessionPosition.swift",
+      "sha256": "085db8999c4085bdaa7249a629b7f5ccf46d53cdc01e772cd85f68b405c5ac6a",
+      "lines": 59,
+      "imports": [
+        "Foundation",
+        "CryptoKit"
+      ],
+      "types": [
+        "SpeechSessionPosition",
+        "SpeechPositionStore"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/Store.swift",
+      "sha256": "fa2dd6ba4317f6c1802096e21d06e4a2211c8bf77fca55deb5bd01be71c43f24",
+      "lines": 290,
+      "imports": [
+        "Foundation",
+        "SwiftUI",
+        "UniformTypeIdentifiers"
+      ],
+      "types": [
+        "Ayah",
+        "Surah",
+        "Mood",
+        "JourneyRecord",
+        "JournalNote",
+        "City",
+        "DeviceData",
+        "AtharStore",
+        "ExportDocument",
+        "QuranText",
+        "NoorPrivacyExport"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/app-legal.json",
+      "sha256": "4c51097c74977ed3dbe9ed317ae7bb4ced29460cade5e314fefced788a487913",
+      "lines": 125,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/haramain-reciters.json",
+      "sha256": "3677ce535894a7c0a0ab9c74f5ce73b128d4e5c4050edd537e9287a5000b2568",
+      "lines": 2447,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/king-fahd-chapter-pages.json",
+      "sha256": "3202fe9ea2cd18259ebf37c0d3c2baabbe396e9ccd96e1498f53d41960ab11a1",
+      "lines": 125,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/mushaf-headers.json",
+      "sha256": "609a9f810c1e897adda140c338064b704b23f62902d4be71b02d5407d76e411e",
+      "lines": 1,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/quran-basmalas.json",
+      "sha256": "ac7127e9dcf8cb1abb254474eeb843c2ce22ac52a6d625b01d89c1ebb45cae58",
+      "lines": 114,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/quran-resource-hashes.json",
+      "sha256": "fb383207fd6865a54829884362eecd4b6f3333b7a464f6df7c0ce0a87ad2dc86",
+      "lines": 57,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/Athar/saudi-cities.json",
+      "sha256": "dbb3ee109e5c6b3450dcc39a246b32b91bd331a038a24c1be5e42f8e42065c90",
+      "lines": 932,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/AtharTests/AdhkarCounterTests.swift",
+      "sha256": "4c2c8c5f0c971f12657f19f6c4ca80ca1533919ac90e22d73ca2c6e10e308ef8",
+      "lines": 28,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "AdhkarCounterTests"
+      ],
+      "tests": [
+        [
+          "testCounterClampingSaudiDayRolloverAndFavoritePersistence",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/AdhkarReadingTests.swift",
+      "sha256": "949c028292aa233d2e41d2c2984c984aaba24995099362602c2412b7197beb2a",
+      "lines": 56,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "AdhkarReadingTests"
+      ],
+      "tests": [
+        [
+          "testMorningAndEveningHaveIndependentContentAndCounters",
+          ""
+        ],
+        [
+          "testChapterSearchPrioritizesRequestedTitleAndPreservesFavorites",
+          ""
+        ],
+        [
+          "testEverySourceCharacterRemainsAvailableAfterSplitting",
+          ""
+        ],
+        [
+          "testMorningOrderAndShortSurahsAreSeparateAndCanonical",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/AtharTests.swift",
+      "sha256": "2e2cdd4c84d648c6e779b94f2d02c799b70e44638d6285f5fb6ddd9d3a205235",
+      "lines": 38,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "AtharTests"
+      ],
+      "tests": [
+        [
+          "testBundledQuranIsComplete",
+          ""
+        ],
+        [
+          "testPrayerOrderAndNextPrayerAcrossMidnight",
+          ""
+        ],
+        [
+          "testOnlySaudiCitiesAreSelectableAndLegacyCitiesMigrate",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/AudioDownloadTests.swift",
+      "sha256": "dac2a63ff808ae800ecf2bedc8604c338b7773f66a3dc4e54ab44d35a0865f35",
+      "lines": 304,
+      "imports": [
+        "XCTest",
+        "AVFoundation"
+      ],
+      "types": [
+        "AudioDownloadTests"
+      ],
+      "tests": [
+        [
+          "testReciterDownloadIdentityRejectsDifferentRecordingAndPartialTransfers",
+          ""
+        ],
+        [
+          "testInstalledReciterAudioReopensAndPlaysLocalBytesWithoutNetworkSource",
+          ""
+        ],
+        [
+          "testIndexWriteFailureRollsBackNewAudioAndPreservesPreviousVerifiedAudio",
+          ""
+        ],
+        [
+          "testErasingDuringVerifiedMediaInstallCannotRecreateAudioOrIndex",
+          ""
+        ],
+        [
+          "testBackgroundPlaybackLookupRechecksSameSizedChangedBytesAndRejectsOldEpoch",
+          ""
+        ],
+        [
+          "testStoppingWhileDiskSourceResolvesCannotStartLatePlayback",
+          ""
+        ],
+        [
+          "testResponseLengthRejectsPlayablePrefixesAndAcceptsAssembledResume",
+          ""
+        ],
+        [
+          "testInstalledDigestRejectsTruncationReplacementAndInvalidVerseKeys",
+          ""
+        ],
+        [
+          "testOfflineIndexSurvivesRestartAndDeletionDoesNotTouchMemorization",
+          ""
+        ],
+        [
+          "testPendingRetrySurvivesRestartAndExplicitEraseRemovesOnlyAudioState",
+          ""
+        ],
+        [
+          "testLiveServerCancellationRetryPlayableFilesAndOfflineRestart",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/AudioFileProtectionTests.swift",
+      "sha256": "bf3a7db4a4b298b61420b3bbb96ae3b751d67b47ea9febd8cb005f3dfbc2500c",
+      "lines": 111,
+      "imports": [
+        "XCTest",
+        "AVFoundation"
+      ],
+      "types": [
+        "AudioFileProtectionTests"
+      ],
+      "tests": [
+        [
+          "testActualPCMAndJournalAttributesPreserveReferenceAudio",
+          ""
+        ],
+        [
+          "testActualLegacyCaptureProtectionDoesNotWeakenCompletedArchive",
+          ""
+        ],
+        [
+          "testPhysicalDeviceProtectionAttributesForActualAudioAndMetadata",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/AutomaticPrayerTests.swift",
+      "sha256": "c1d75934087477f941bf7e1b201f5cc5e791931c2fe09fef2643fe57d1791241",
+      "lines": 132,
+      "imports": [
+        "XCTest",
+        "CoreLocation"
+      ],
+      "types": [
+        "AutomaticPrayerTests"
+      ],
+      "tests": [
+        [
+          "testPrayerClockAlwaysUsesTwentyFourHoursAndDestinationTimeZone",
+          ""
+        ],
+        [
+          "testPrayerDatesFollowCityMidnightAndHijriCalendarAcrossTimeZones",
+          ""
+        ],
+        [
+          "testClockHandlesDSTRepeatedAndMissingHoursWithoutChangingPrayerInstants",
+          ""
+        ],
+        [
+          "testRegionalDefaultsReplaceLegacyChoicesInApplicationAndWidgetInputs",
+          ""
+        ],
+        [
+          "testRamadanIntervalIsAutomaticAndOrdinaryMonthReturnsToNinetyMinutes",
+          ""
+        ],
+        [
+          "testDeviceLocationAcceptanceRejectsStaleInvalidAndVeryInaccurateReadings",
+          ""
+        ],
+        [
+          "testLastResolvedLocationAndOtherUserDataSurviveRestart",
+          ""
+        ],
+        [
+          "testLegacyArchiveAndSoundPreferencesDecodeWithoutLosingSelections",
+          ""
+        ],
+        [
+          "testSalawatIsQuietBoundedAndIndependentOfPrayerPreferences",
+          ""
+        ],
+        [
+          "testBundledAlertIsValidAndSoundOffIsRespected",
+          ""
+        ],
+        [
+          "testCalendarUsesDestinationDateAcrossInternationalDayBoundary",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/CloudPayloadTests.swift",
+      "sha256": "4f724a6f0b4326ffcb6052ef2220a3480bb397ca88743f0bb97eb68ed41c188b",
+      "lines": 43,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "CloudPayloadTests"
+      ],
+      "tests": [
+        [
+          "testExistingFoundationBackupRemainsReadable",
+          ""
+        ],
+        [
+          "testLimitIsEnforcedWhileInflatingHighlyCompressedPayload",
+          ""
+        ],
+        [
+          "testExactLimitSucceedsAndOneMoreByteFails",
+          ""
+        ],
+        [
+          "testTruncatedOrAppendedStreamsCannotBecomeSuccessfulRestores",
+          ""
+        ],
+        [
+          "testInvalidCompressedInputsAndInvalidLimitsAreRejected",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/DailyWardTests.swift",
+      "sha256": "34effb60d4cc9a41a766fbdb68469e9d6f35c1e82ce0ff30d728e5ebcaa6e65f",
+      "lines": 75,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "DailyWardTests"
+      ],
+      "tests": [
+        [
+          "testSameDayRepetitionDoesNotManufactureMastery",
+          ""
+        ],
+        [
+          "testSkippedVerseDoesNotErasePriorMasteryOrCountAsPractice",
+          ""
+        ],
+        [
+          "testWardContractCountsUniqueSelectedVersesOnly",
+          ""
+        ],
+        [
+          "testWardRollsOverAtLocalMidnight",
+          ""
+        ],
+        [
+          "testFullHistoryAndProgressSurviveRestartBeyondFormerLimit",
+          ""
+        ],
+        [
+          "testMalformedNewArchiveIsProtected",
+          ""
+        ],
+        [
+          "testConfirmedDifferenceIsSavedWithoutClaimingWardCompletion",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/FridayTests.swift",
+      "sha256": "ba9188aecc61746a160f1fec0e2951b8728675ba29fad92c39408f36638367ef",
+      "lines": 19,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "FridayTests"
+      ],
+      "tests": [
+        [
+          "testCloudRestoreValidatesBeforeWritingAndDoesNotCompleteTodaysWard",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/InteractiveMushafTests.swift",
+      "sha256": "4a16222ec752e7f63f03cc17dc8d58adfaec1c4221905bc810b65c4b1275ee7b",
+      "lines": 152,
+      "imports": [
+        "XCTest",
+        "UIKit"
+      ],
+      "types": [
+        "InteractiveMushafTests"
+      ],
+      "tests": [
+        [
+          "testFittedViewportCentersWholePageAcrossPhoneSizesAndPageResets",
+          ""
+        ],
+        [
+          "testAll604ShapedPagesAndActualWordHitRegions",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/KhatmahJourneyTests.swift",
+      "sha256": "af75cefa697a000115c9f08123e54f4acbc81624dd6d0cf377d2966a5aa8f9bc",
+      "lines": 181,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "KhatmahJourneyTests"
+      ],
+      "tests": [
+        [
+          "testDailyScopeIsCappedDoesNotAccumulateMissedDaysAndResumesOnlyRemainingQuota",
+          ""
+        ],
+        [
+          "testDailyConfirmationRejectsBeyondRangeRepeatedAndStaleDay",
+          ""
+        ],
+        [
+          "testExactVerseStopPersistsWithoutCompletingUnreadPages",
+          ""
+        ],
+        [
+          "testEveryStartingPageAndDailyAmountCoversExactlyRemainingPages",
+          ""
+        ],
+        [
+          "testDeadlineAllocationNeverDuplicatesOrSkipsPages",
+          ""
+        ],
+        [
+          "testOpeningDoesNotCompleteAndConfirmationDoesNotDoubleCountRereading",
+          ""
+        ],
+        [
+          "testMissedDayRequiresExplicitChoiceAndBothChoicesKeepProgress",
+          ""
+        ],
+        [
+          "testReadingAheadResumesAtFirstUnconfirmedPage",
+          ""
+        ],
+        [
+          "testRemindersExcludeExpiredDaysBeforeBudgetAndResumeUnconfirmedPage",
+          ""
+        ],
+        [
+          "testRemindersUsePlanCalendarAcrossDaylightSavingTransition",
+          ""
+        ],
+        [
+          "testPauseEditEarlyCompletionAndPersistence",
+          ""
+        ],
+        [
+          "testUnreadableArchiveIsNeverOverwritten",
+          ""
+        ],
+        [
+          "testExportPreservesRawArchiveAndExplicitEraseRemovesIt",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/LegacyRecordingFocusTests.swift",
+      "sha256": "afd08ad4caab6bf0089e861bd98776e811af2cc74879cc013f8ebd42de1a7f0d",
+      "lines": 32,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "LegacyRecordingFocusTests"
+      ],
+      "tests": [
+        [
+          "testIdleLegacyStopDoesNotDeactivateAnotherAudioOwner",
+          ""
+        ],
+        [
+          "testLegacyStartCannotTakeAudioFromActiveRecitation",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/LocalDataRecoveryTests.swift",
+      "sha256": "376c8694f961edd81faac2da156f2cb1e0c71ead1cb14578ee3a5143bad0edf5",
+      "lines": 337,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "LocalDataRecoveryTests"
+      ],
+      "tests": [
+        [
+          "testRetiredReflectionNotesAndBookmarksRemainInArchiveAndExportAfterRelaunch",
+          ""
+        ],
+        [
+          "testCombinedExportRetainsBothJourneyAndStudyArchivesAndReadsEarlierExports",
+          ""
+        ],
+        [
+          "testLegacyArchiveOpeningKeepsPositionPreviousRangeAndModelBytesWithoutAnalysis",
+          ""
+        ],
+        [
+          "testLegacyDamagedPositionAndNeighborRecordingSurviveOpeningAndExplicitModelErase",
+          ""
+        ],
+        [
+          "testStaleUploadRetainsNewerRemoteProgressAndIsIdempotent",
+          ""
+        ],
+        [
+          "testUploadMergeRejectsConflictingEventAndInvalidRemoteArchive",
+          ""
+        ],
+        [
+          "testSpeechPositionRestoresTrustedRangeAndAssistanceWithoutSavingTranscript",
+          ""
+        ],
+        [
+          "testSpeechPositionPreservesDamagedDataAndPreviousRangeUntilExplicitErase",
+          ""
+        ],
+        [
+          "testCloudMergePreservesLocalSessionPlanAndHistoryWithoutDuplicatingEvents",
+          ""
+        ],
+        [
+          "testOlderCloudReviewCannotReplaceMoreRecentIndependentPractice",
+          ""
+        ],
+        [
+          "testCloudMergeRejectsConflictingImmutableResultBeforeWritingAnything",
+          ""
+        ],
+        [
+          "testMushafPracticeRestoresPositionAndHelpWithoutCountingOpeningAsCompletion",
+          ""
+        ],
+        [
+          "testUnreadablePracticeIsNotOverwrittenByNewTraining",
+          ""
+        ],
+        [
+          "testUnreadableDeviceFileIsExportableAndCannotBeOverwrittenUntilErase",
+          ""
+        ],
+        [
+          "testMalformedMemorizationHistoryIsNotReplacedByNewResults",
+          ""
+        ],
+        [
+          "testUpgradeAndNewResultPreserveAllHistoryAndOriginalBytes",
+          ""
+        ],
+        [
+          "testArchiveDoesNotDropNotesOrPlanAfterNewResult",
+          ""
+        ],
+        [
+          "testArabicPersianAndAsciiPageNumbers",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafArtworkTests.swift",
+      "sha256": "2eba82f6e82bcb4a95ba90ef9ad316d22b6943969021ea6df182e8d603c4588b",
+      "lines": 148,
+      "imports": [
+        "XCTest",
+        "UIKit",
+        "CryptoKit"
+      ],
+      "types": [
+        "MushafArtworkTests"
+      ],
+      "tests": [
+        [
+          "testCompletePageFitsUniformlyInPortraitLandscapeAndTablet",
+          ""
+        ],
+        [
+          "testSelectionAcrossThreeLinesDoesNotSelectNeighborOrTheGap",
+          ""
+        ],
+        [
+          "testMissingApprovalCannotActivateEvenACompleteManifest",
+          ""
+        ],
+        [
+          "testMissingPageWrongVerseOrderAndOutsideCoordinatesAreRejected",
+          ""
+        ],
+        [
+          "testOriginalPublisherPDFIsCompleteAndNativeCanvasMatchesDirectPDFRendering",
+          ""
+        ],
+        [
+          "testProductionCanvasDrawsAnUnchangedVectorPageAndSelectionOverlay",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafMemorizationTests.swift",
+      "sha256": "8d0877f87e2cc30ef2bf7044136ebe54eb08fb77e4373289dc7e110f18ef84c4",
+      "lines": 95,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "MushafMemorizationTests"
+      ],
+      "tests": [
+        [
+          "testAllPagesHaveCanonicalVerseEndCoverageAndCorrectHeaders",
+          ""
+        ],
+        [
+          "testChangedReligiousResourceIsRejected",
+          ""
+        ],
+        [
+          "testOpeningVerseDoesNotDoubleCountUnnumberedBasmala",
+          ""
+        ],
+        [
+          "testPlanRangeValidationPersistenceAndErase",
+          ""
+        ],
+        [
+          "testInterruptedSessionRestoresAnswersAndHints",
+          ""
+        ],
+        [
+          "testReviewPrioritizesHelpedAndWeakVersesThenUnseenVerses",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafRecordingTests.swift",
+      "sha256": "aad95fc12436de9e3e73b0b7a808fa685d5f5c6f512e6223b5eb5dd4ebc59fbc",
+      "lines": 316,
+      "imports": [
+        "XCTest",
+        "AVFoundation",
+        "Combine"
+      ],
+      "types": [
+        "MushafRecordingTests"
+      ],
+      "tests": [
+        [
+          "testReferenceAudioFixtureUsesActualApplicationArchiveAndReopens",
+          ""
+        ],
+        [
+          "testActualCaptureCategoryAndModeAreCompatibleWithoutActivatingMicrophone",
+          ""
+        ],
+        [
+          "testDeniedPermissionLeavesSelfSessionAndFilesUntouched",
+          ""
+        ],
+        [
+          "testGrantedPermissionCannotRecordAfterAppLeavesForeground",
+          ""
+        ],
+        [
+          "testCancelWhilePermissionIsPendingCannotStartLateRecording",
+          ""
+        ],
+        [
+          "testActualAACChunksReopenWithoutReplacingEarlierAudioAndLongFilesAreNotCapped",
+          ""
+        ],
+        [
+          "testActualLocalPlaybackCompletesAndPreservesOriginalAACFile",
+          ""
+        ],
+        [
+          "testActualPlaybackTransportSeeksPausesResumesAndReopensOriginalFile",
+          ""
+        ],
+        [
+          "testResumeActivationFailurePreservesPausedPositionAndAllowsRetry",
+          ""
+        ],
+        [
+          "testFailedRealDecodeReleasesOnlyOwnedAudioSessionWithoutDeletingBytes",
+          ""
+        ],
+        [
+          "testFailedDeactivationCanRetryWithoutReactivatingOrReplacingAudio",
+          ""
+        ],
+        [
+          "testFailedDeactivationCannotRetryAfterAnotherRecordingTakesOver",
+          ""
+        ],
+        [
+          "testUnreadableMetadataAndAudioArePreservedAndConflictingHeaderCannotReplaceSession",
+          ""
+        ],
+        [
+          "testRecoverableDeletionSurvivesArchiveReopeningAndRestoresIdenticalAudio",
+          ""
+        ],
+        [
+          "testExplicitEraseTouchesOnlyNewRecordingRoot",
+          ""
+        ],
+        [
+          "testDurationFormattingRejectsNonfiniteValuesAndKeepsEnglishDigits",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafRepetitionTests.swift",
+      "sha256": "7d0ccc9945dd155ee68809473a868a7a6be26436990b415e78a285efac5454de",
+      "lines": 153,
+      "imports": [
+        "XCTest",
+        "AVFoundation",
+        "Combine",
+        "Network"
+      ],
+      "types": [
+        "MushafRepetitionTests"
+      ],
+      "tests": [
+        [
+          "testNonRespondingStreamTimesOutAndCannotReviveStoppedPlayer",
+          ""
+        ],
+        [
+          "testPracticeHelpStartsOnlyWithActualPlaybackAndIgnoresOtherVerse",
+          ""
+        ],
+        [
+          "testRealPlayerRepeatsWholeRangeWithGapAfterEachEndAndNoTrailingGap",
+          ""
+        ],
+        [
+          "testStoppingRealInterVerseGapPreventsDelayedRestart",
+          ""
+        ],
+        [
+          "testReplacementDuringRealGapCannotResumeOldRange",
+          ""
+        ],
+        [
+          "testOldArchiveDecodesAndRepeatOptionsSurviveRelaunchWithoutChangingLegacyPlan",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafStudySessionTests.swift",
+      "sha256": "a63cdd9feb72012be35574bb346de4285d6aac2b9086562a7fc3980915707413",
+      "lines": 172,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "MushafStudySessionTests"
+      ],
+      "tests": [
+        [
+          "testTrustedWordMaskKeepsVerseEndMarkersAcrossRangePages",
+          ""
+        ],
+        [
+          "testContinuationProjectionFixturePreservesWordsOnBothPages",
+          ""
+        ],
+        [
+          "testCanonicalRangeSupportsEntireQuranAndRejectsGapsAliasesAndInvalidAssistance",
+          ""
+        ],
+        [
+          "testCrossSurahPracticePreservesLegacyPlanSessionsAndPartialResultsAcrossRelaunch",
+          ""
+        ],
+        [
+          "testInterruptedFinalizationRetriesWithoutDuplicateHistoryOrProgress",
+          ""
+        ],
+        [
+          "testConflictingResultIDIsRejectedWithoutReplacingExistingUserHistory",
+          ""
+        ],
+        [
+          "testCorruptSessionBytesRemainAvailableAndCannotBeOverwritten",
+          ""
+        ],
+        [
+          "testPauseAndExistingSessionPreventUnexpectedHelpAnswersAndPlanReplacement",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafTypesettingTests.swift",
+      "sha256": "e13802a960819a130b18f0cb406ac64f770c1b3843620635f8e5c36364dd71c6",
+      "lines": 96,
+      "imports": [
+        "XCTest",
+        "UIKit",
+        "CoreText"
+      ],
+      "types": [
+        "MushafTypesettingTests"
+      ],
+      "tests": [
+        [
+          "testShortLineSpacingIsBoundedRatherThanExpandedToScreenWidth",
+          ""
+        ],
+        [
+          "testAll604PagesFitInkBoundsAtPhoneAndTabletWidths",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/MushafViewportTests.swift",
+      "sha256": "b4cd49359f932d0f2508ae947142088fe033e45fb420a38d4f130ae546e34e2d",
+      "lines": 264,
+      "imports": [
+        "XCTest",
+        "UIKit"
+      ],
+      "types": [
+        "MushafViewportTests"
+      ],
+      "tests": [
+        [
+          "testPlaybackLockCancelsManualDragButAllowsAutomaticPageReplacement",
+          ""
+        ],
+        [
+          "testPreparingNeighborFontsPreservesVisiblePageErrorAndPreparesBothDirections",
+          ""
+        ],
+        [
+          "testNonAnimatedReplacementClearsDraggedTransformAndKeepsPageCentered",
+          ""
+        ],
+        [
+          "testMeasuredReaderInsetsKeepReferenceDefaultsAndFitLargeControls",
+          ""
+        ],
+        [
+          "testQueuedFailureCannotReplaceNewPageOrRetryGeneration",
+          ""
+        ],
+        [
+          "testVerifiedFontRecoveryClearsFailureOnlyAfterSuccessfulRegistration",
+          ""
+        ],
+        [
+          "testInitialEntryRetriesAfterReadyPageAndConsumesScopeOnlyOnce",
+          ""
+        ],
+        [
+          "testCancelledOrInvisibleInitialEntryCannotStartLateRecitation",
+          ""
+        ],
+        [
+          "testAuthoredInkAndHeadingAlignmentAtReferencePages",
+          ""
+        ],
+        [
+          "testCompletePageIsCenteredWithoutStretchingAcrossReadingSizes",
+          ""
+        ],
+        [
+          "testLargerReadingPreferenceEnlargesWholePageAndRetainsScrollAccess",
+          ""
+        ],
+        [
+          "testTurningAfterZoomAndPanRestoresCenteredPage",
+          ""
+        ],
+        [
+          "testResizingRefitsAndPreservesRelativeZoom",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorAccountDeletionStateTests.swift",
+      "sha256": "652608fd3d5d8c9a9bf1e5cf421248602c55827f089a6fa02ce65ad76b3c521c",
+      "lines": 66,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorAccountDeletionStateTests"
+      ],
+      "tests": [
+        [
+          "testEveryPendingDeletionPhaseBlocksCloudDataActions",
+          ""
+        ],
+        [
+          "testOldIdentityFailureCannotApplyToAnotherAccountOrSameOwnerNewSession",
+          ""
+        ],
+        [
+          "testUncertainCommitPersistsUntilSuccessfulCleanupEvenBeforeMarkerAppears",
+          ""
+        ],
+        [
+          "testCommittedDeletionSurvivesRestartAndRemainsBoundToItsOwner",
+          ""
+        ],
+        [
+          "testCommitIsIdempotentAndPreservesOtherOwnersAndUnrelatedData",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorContinuousMushafTests.swift",
+      "sha256": "179727cadbf9131dd29f9a0ba7c688b5be7fc057357cc25640dcd1869ee78cd0",
+      "lines": 309,
+      "imports": [
+        "XCTest",
+        "UIKit",
+        "WhisperKit"
+      ],
+      "types": [
+        "NoorContinuousMushafTests",
+        "ContinuousReferenceCapture"
+      ],
+      "tests": [
+        [
+          "testRollingWindowTracksIndependentPassagesInAudioOrderWithoutFillingTheGap",
+          ""
+        ],
+        [
+          "testTextVisibilityChangesDuringCaptureWithoutLosingAssistanceOrSession",
+          ""
+        ],
+        [
+          "testDelayedAnalysisCannotOverwriteVisibilityOrTextAssistance",
+          ""
+        ],
+        [
+          "testAnalysisPersistsActualWindowFramesWithoutReopeningALaterClosedTake",
+          ""
+        ],
+        [
+          "testEveryCatalogRecordingHasASelectableStableIdentityAndRestorableKeys",
+          ""
+        ],
+        [
+          "testSelectingEveryReciterPreservesRecordingOwnershipAndDoesNotStartPlayback",
+          ""
+        ],
+        [
+          "testAll604OriginalPagesRenderWithoutClippingAndCacheMatchesExactSource",
+          ""
+        ],
+        [
+          "testVoiceActivityRetainsAllRealReferenceClipsAndRejectsDigitalSilence",
+          ""
+        ],
+        [
+          "testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry",
+          ""
+        ],
+        [
+          "testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorJourneyIndexTests.swift",
+      "sha256": "7f43b927d8d50a5c173f38e4bea4847614ce9091bec8585ab43b42ad1fceeb19",
+      "lines": 50,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorJourneyIndexTests"
+      ],
+      "tests": [
+        [
+          "testTimelineGroupsByUserDayWithoutDoubleCountingRereading",
+          ""
+        ],
+        [
+          "testMonthDaysAcrossLeapYearAndDSTHaveNoDuplicateOrMissingDays",
+          ""
+        ],
+        [
+          "testFinishedJourneysAndHistoryRemainSeparateWhenStartingAgain",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorKhatmahProtectionTests.swift",
+      "sha256": "cd9af183d7471a5d2b678539654d8ac3b880ebbfdebd5ce7d84327d010be3dba",
+      "lines": 82,
+      "imports": [
+        "XCTest",
+        "DeviceActivity"
+      ],
+      "types": [
+        "NoorKhatmahProtectionTests"
+      ],
+      "tests": [
+        [
+          "testConfirmedPagesReleaseWardAndRestDayUntilNextRiyadhMidnight",
+          ""
+        ],
+        [
+          "testSystemMonitoringIntervalUsesTheRecordedKhatmahCalendarAndZone",
+          ""
+        ],
+        [
+          "testAnotherKhatmahBackwardProgressAndInvalidPagesCannotUnlock",
+          ""
+        ],
+        [
+          "testRevisedActualPlanCanBeProtectedWithoutCountingOldPagesAgain",
+          ""
+        ],
+        [
+          "testExplicitErasureRemovesOnlyOwnedProtectionState",
+          ""
+        ],
+        [
+          "testMalformedScheduleDoesNotShield",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorMicrophoneCueTests.swift",
+      "sha256": "61301f32015676220afdc6cab762ee3b32924363b2f0e527b8586751c9cc51a6",
+      "lines": 66,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorMicrophoneCueTests"
+      ],
+      "tests": [
+        [
+          "testCaptureWaitsForSoundCompletionAndAcousticClearance",
+          ""
+        ],
+        [
+          "testLeavingReaderInvalidatesLateSoundCompletion",
+          ""
+        ],
+        [
+          "testUnavailableFileStartsQuietlyWithoutQueuingAudio",
+          ""
+        ],
+        [
+          "testSoundTimeoutNeverStartsCaptureFromAnUnconfirmedCue",
+          ""
+        ],
+        [
+          "testBundledUIFeedbackIsBriefQuietPCMNotARecitationFixture",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorOperationDeadlineTests.swift",
+      "sha256": "a9fb40d576ccc0fad7861fc2c6d204643388bad4b5ea87be5df006b8c96136cc",
+      "lines": 53,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorOperationDeadlineTests"
+      ],
+      "tests": [
+        [
+          "testCallerCancellationReturnsBeforeUncooperativeSDKAndMarksItsTaskCancelled",
+          ""
+        ],
+        [
+          "testSDKThatIgnoresCancellationCannotKeepScreenBusyOrResumeTwice",
+          ""
+        ],
+        [
+          "testFailureReturnsWithoutWaitingForDeadline",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorPersonalReminderTests.swift",
+      "sha256": "8e1e0bf1584e4cfaa7e3bfc721c84c87aa62658b3f2cec2b4a94f4fb7447dbd1",
+      "lines": 166,
+      "imports": [
+        "XCTest",
+        "UserNotifications"
+      ],
+      "types": [
+        "PersonalNotificationClient",
+        "NoorPersonalReminderTests"
+      ],
+      "tests": [
+        [
+          "testLocalDaysFrequencyQuietOvernightAndNoDuplicates",
+          ""
+        ],
+        [
+          "testDSTMissingAndRepeatedTimeProduceOneSlotPerLocalDay",
+          ""
+        ],
+        [
+          "testIndependentPersistenceBudgetDeliveredDedupDisableAndFailure",
+          ""
+        ],
+        [
+          "testDisableDuringPermissionAndUnreadableArchiveCannotBeOverwritten",
+          ""
+        ],
+        [
+          "testDeniedPermissionAndExplicitErasePreserveForeignRequests",
+          ""
+        ],
+        [
+          "testExplicitSalawatEditorAdoptsOneScheduleWithoutDuplicatingLegacy",
+          ""
+        ],
+        [
+          "testReminderRoutesOpenActualSectionsAndRejectUnknownPayload",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorReaderCoreRegressionTests.swift",
+      "sha256": "353a46b325f87e3116847dd6fd1accb7f179de378d63a05a65c4dd20216ba99e",
+      "lines": 130,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorReaderCoreRegressionTests"
+      ],
+      "tests": [
+        [
+          "testTimedPlaybackFollowsRealPageBoundaryAndDoesNotInventWholeSurahOffsets",
+          ""
+        ],
+        [
+          "testExistingReaderPreferencesRestoreTheSameLegacyRecordingAndCacheKey",
+          ""
+        ],
+        [
+          "testActualDecodedRollingWindowKeepsBothSurahsDespiteCrossBoundaryBridge",
+          ""
+        ],
+        [
+          "testEqualOptimalInterpretationsRemainUnresolved",
+          ""
+        ],
+        [
+          "testVisibilityAndAnalysisPreserveEvidenceInBothDiskWriteOrders",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorReciterTests.swift",
+      "sha256": "e28732ae682e75af484083f4cb57908b8233b7c9d7d9ed0e3a12b3e2b290d8e4",
+      "lines": 83,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorReciterTests"
+      ],
+      "tests": [
+        [
+          "testVerseCacheKeepsEachReciterSeparateAndRejectsInventedDirectories",
+          ""
+        ],
+        [
+          "testCatalogContainsVerifiedCoverageAndDistinctRecordings",
+          ""
+        ],
+        [
+          "testUntrustedServersCannotBecomeAudioSources",
+          ""
+        ],
+        [
+          "testDirectoryURLProducesAnAudioFileOnFoundation",
+          ""
+        ],
+        [
+          "testRecordingStopsPlaybackAndStaleLeaseCannotUnlockIt",
+          ""
+        ],
+        [
+          "testActualPlayerCannotStartReferenceAudioDuringRecording",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorReciterWordTimingTests.swift",
+      "sha256": "cbd2c0e56cb7693ecb51bfc5918e2be79fe9dd6ee9a365b5c7b5e21dbd89720d",
+      "lines": 59,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorReciterWordTimingTests"
+      ],
+      "tests": [
+        [
+          "testSurahTimingKeepsPublishedAyahBoundariesAndRejectsNumberingShifts",
+          ""
+        ],
+        [
+          "testPublishedSurahTimingBindsExactRecordingAndExcludedTracksStayUnavailable",
+          ""
+        ],
+        [
+          "testTimingUsesActualIntervalsAndClearsDuringGapsOrInvalidDuration",
+          ""
+        ],
+        [
+          "testPublishedDefaultTimingUsesNativeEditionIDsAndNeverAnotherBitrate",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorRemovedFeatureRetentionTests.swift",
+      "sha256": "8cee892a2f7f92e49d3bd0f03547ff0d7aecd718f6f5aa8ee31a45d1b4ea4fcf",
+      "lines": 20,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorRemovedFeatureRetentionTests"
+      ],
+      "tests": [
+        [
+          "testPersonalReflectionNotesAndBookmarksStillReopenAfterFeatureRetirement",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorRetiredFridayCleanupTests.swift",
+      "sha256": "379214248060641da8b4ec230f5e43458fc731defcefb5a3e14083dd4d109382",
+      "lines": 194,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "RetiredNotificationsFixture",
+        "RetiredAlarmsFixture",
+        "NoorRetiredFridayCleanupTests"
+      ],
+      "tests": [
+        [
+          "testCancelsOnlyRetiredPendingAndDeliveredRequestsPreservingUserRecords",
+          ""
+        ],
+        [
+          "testPartialAlarmFailureRetainsFailedIDsAndRetriesAfterRelaunch",
+          ""
+        ],
+        [
+          "testFailedListingOrUnavailableOSNeverForgetsCancellationIDs",
+          ""
+        ],
+        [
+          "testMalformedIDDoesNotPreventOtherOwnedAlarmCancellation",
+          ""
+        ],
+        [
+          "testUnreadableAlarmStorageIsPreservedAndReported",
+          ""
+        ],
+        [
+          "testConcurrentLaunchAndForegroundCleanupCoalesce",
+          ""
+        ],
+        [
+          "testExplicitErasureKeepsUncancelledAlarmIDsAndUnrelatedData",
+          ""
+        ],
+        [
+          "testRetiredFridayLinksOpenSavedReaderWithoutTouchingSalawat",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NoorSalawatTests.swift",
+      "sha256": "ba08e4a1d57c19d193947ca65feb2020246c741cd138b5c843427d6e75393c46",
+      "lines": 88,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorSalawatTests"
+      ],
+      "tests": [
+        [
+          "testGoalDoesNotCapCountAndDaysSurviveRelaunchAndMidnight",
+          ""
+        ],
+        [
+          "testUnreadableArchiveAndWriteRefusalKeepPriorBytesAndCount",
+          ""
+        ],
+        [
+          "testWidgetMidnightUsesRecordedDeviceZoneAndLegacySnapshotStillDecodes",
+          ""
+        ],
+        [
+          "testKhatmahWidgetMatchesRealConfirmedAndRescheduledPlan",
+          ""
+        ],
+        [
+          "testNewWidgetRoutesArePreservedUntilConsumed",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/NotificationReconciliationTests.swift",
+      "sha256": "d9031eb5ac80eb2863dccb471b56cb70dba3cdceb27c414115a25bd8d9d0d4b7",
+      "lines": 349,
+      "imports": [
+        "XCTest",
+        "UserNotifications"
+      ],
+      "types": [
+        "TestNotificationClient",
+        "NotificationReconciliationTests"
+      ],
+      "tests": [
+        [
+          "testFirstUseDefaultsRequirePermissionAndDoNotReturnAfterOptOut",
+          ""
+        ],
+        [
+          "testDeniedFirstUseNeverSchedulesOrRepeatedlyPrompts",
+          ""
+        ],
+        [
+          "testFirstUseKeepsExistingDisabledPreferences",
+          ""
+        ],
+        [
+          "testDisablingDuringFirstUsePermissionCannotReactivateAlerts",
+          ""
+        ],
+        [
+          "testAfterPrayerIsSilentAndExactlyTwentyMinutesAfterPrayerTime",
+          ""
+        ],
+        [
+          "testFiveMinuteSalawatRepeatsSilentlyAndStopsWhenDisabled",
+          ""
+        ],
+        [
+          "testCancelledRefreshRestoresOriginalPayloadAndForeignRequests",
+          ""
+        ],
+        [
+          "testRollbackFailureReportsIncompleteScheduleWithoutRemovingForeignRequests",
+          ""
+        ],
+        [
+          "testDisablingDuringRollbackCannotRestoreRetiredPrayerSchedule",
+          ""
+        ],
+        [
+          "testDisablingDuringPermissionDoesNotReenableNotifications",
+          ""
+        ],
+        [
+          "testPreferenceChangeReplacesOnlyOwnRequestsAndFailureIsReported",
+          ""
+        ],
+        [
+          "testIndependentSalawatBudgetAndLocationReplacementSurviveRestart",
+          ""
+        ],
+        [
+          "testDeliveredPrayerIsNotScheduledAgainAfterClockOrLocationChange",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/PrayerLocationLifecycleTests.swift",
+      "sha256": "4a4db52a600e4d0e54642ed2fd85f11c3e1656e3b9c7fae771720c0cd7708102",
+      "lines": 44,
+      "imports": [
+        "XCTest",
+        "CoreLocation"
+      ],
+      "types": [
+        "PrayerLocationLifecycleTests"
+      ],
+      "tests": [
+        [
+          "testHungGeocoderTimesOutAllowsRetryAndCannotApplyItsLateCity",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/PrayerNotificationPlanTests.swift",
+      "sha256": "32a3db3c5886f0a92b54653d71f03e726a8ee598f003d3e2b006a57fe3e4101b",
+      "lines": 48,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "PrayerNotificationPlanTests"
+      ],
+      "tests": [
+        [
+          "testPlanExcludesSunriseAndPastDatesAndStaysBelowSystemLimit",
+          ""
+        ],
+        [
+          "testOnlySelectedPrayersAreScheduledAtRequestedAdvance",
+          ""
+        ],
+        [
+          "testSaudiDayBoundaryUsesRiyadhTimezone",
+          ""
+        ],
+        [
+          "testBundledAdhkarReferencesAndTargetsAreAvailable",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/PublishingContentTests.swift",
+      "sha256": "4547734e63cb00420a98116b602eacef5167cf40013862d3ecb4a7c0eaf4ef78",
+      "lines": 79,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "PublishingContentTests"
+      ],
+      "tests": [
+        [
+          "testBundledLegalDocumentsLoadOfflineWithoutAUserAccount",
+          ""
+        ],
+        [
+          "testOfflinePoliciesDescribeLocalRecognitionAndExplicitAudioRemoval",
+          ""
+        ],
+        [
+          "testRequiredContentNoticesRemainBundledOutsidePrivacyCopy",
+          ""
+        ],
+        [
+          "testIncompleteOrUnknownLegalResourceIsRejected",
+          ""
+        ],
+        [
+          "testAccountPolicyRequiresTheNewSchemaAndRemainsAvailableOffline",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QCFV2ContentTests.swift",
+      "sha256": "a1f42cd362f6fe144f4c09f0fe24a2cd6b209fb33ad98b3eb0d4a87f6f9edcf6",
+      "lines": 209,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QCFV2ContentTests",
+        "SnapshotFetchGate",
+        "SnapshotOpeningSignal"
+      ],
+      "tests": [
+        [
+          "testFirstOpenUsesVerifiedPackagedEditionWhileConnectionFails",
+          ""
+        ],
+        [
+          "testLiveSnapshotAndAtomicOfflineRecovery",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranAccuracyTests.swift",
+      "sha256": "3edbc46124a243f129809105156f4e0aca5430bee56107de839680ecb5f08aa6",
+      "lines": 36,
+      "imports": [
+        "XCTest",
+        "UIKit"
+      ],
+      "types": [
+        "QuranAccuracyTests"
+      ],
+      "tests": [
+        [
+          "testIkhlasAndNasAreNumberedVersesWithoutInjectedBasmala",
+          ""
+        ],
+        [
+          "testTrustedArabicFontCoversEverySourceCharacter",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+      "sha256": "68d1c337af87a2dc1cd2ccb178b48d103df0eeb42720e9ef277b931a2bba7b0e",
+      "lines": 66,
+      "imports": [
+        "XCTest",
+        "AVFoundation",
+        "WhisperKit"
+      ],
+      "types": [
+        "QuranCaptureWindowLatencyTests"
+      ],
+      "tests": [
+        [
+          "testHourOfPCMRetainsEveryFrameWithBoundedRecognitionWindows",
+          ""
+        ],
+        [
+          "testProductionLowLatencyStartsAtTwoSecondsWithoutChangingRecordedPCM",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranGuidedPracticeTests.swift",
+      "sha256": "7db0a0810e585ef2f845b11fbdf0966a2638278c27602c051e1688770f80f598",
+      "lines": 144,
+      "imports": [
+        "XCTest",
+        "AVFoundation"
+      ],
+      "types": [
+        "QuranAudioBackendControlTests",
+        "QuranGuidedPracticeTests"
+      ],
+      "tests": [
+        [
+          "testPlainAVPlayerActuallyCompletesSameReference",
+          ""
+        ],
+        [
+          "testPlainAVAudioPlayerActuallyCompletesSameReference",
+          ""
+        ],
+        [
+          "testStoppingActualReferenceDuringPreparationDoesNotWaitForMediaTiming",
+          ""
+        ],
+        [
+          "testReplacingOrStoppingReferenceCannotFinishAnUnheardGuide",
+          ""
+        ],
+        [
+          "testAsynchronousReferenceFailureReleasesGuidedGateWithoutOpeningMicrophone",
+          ""
+        ],
+        [
+          "testCancelledReferenceFailureCannotCancelAReplacementGuide",
+          ""
+        ],
+        [
+          "testActualReferencePlaybackNeverOpensMicrophoneOrAwardsProgress",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranMicrophoneInputLifecycleTests.swift",
+      "sha256": "9e40bf6988726c0837a61727a8d20f1abfcbf1c81543e90b8764718c9dfcbbc2",
+      "lines": 143,
+      "imports": [
+        "XCTest",
+        "AVFoundation",
+        "WhisperKit"
+      ],
+      "types": [
+        "QuranMicrophoneInputLifecycleTests"
+      ],
+      "tests": [
+        [
+          "testBackgroundInputNotificationCanHandOffToMainActor",
+          ""
+        ],
+        [
+          "testEngineConfigurationChangeReportsOwnedInputLossOnlyOnceWhileArmed",
+          ""
+        ],
+        [
+          "testNewAndRemovedInputRoutesAndMediaServiceLossRequireExplicitResume",
+          ""
+        ],
+        [
+          "testConfigurationEventDuringStartPausesActualReferenceAudioAndRouteChangeOnResumePreservesBothTakes",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranObservedSpeechTests.swift",
+      "sha256": "f56180b982437ec9743cc54357097bac5c483d4413c890a16edb15d169bd4de0",
+      "lines": 114,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QuranObservedSpeechTests"
+      ],
+      "tests": [
+        [
+          "testHourEquivalentObservationJournalPreservesEverySourceOccurrence",
+          ""
+        ],
+        [
+          "testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes",
+          ""
+        ],
+        [
+          "testWordTimingConfidenceAndRepeatedOccurrencesSurviveJournalRoundTrip",
+          ""
+        ],
+        [
+          "testObservedWordsRemainSeparateFromReferenceAndSurviveReopening",
+          ""
+        ],
+        [
+          "testLegacyRecordWithoutObservedSpeechStillLoads",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranRecognitionAudioTests.swift",
+      "sha256": "e84c23a739f152456280ccea123be5895a0d7cbceee885dfc882e9d79ab4d506",
+      "lines": 36,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QuranRecognitionAudioTests"
+      ],
+      "tests": [
+        [
+          "testQuietInferenceGainPreservesOriginalSamplesAndSilence",
+          ""
+        ],
+        [
+          "testAlreadyAudibleInputIsNotClippedOrChanged",
+          ""
+        ],
+        [
+          "testWeakInputWithTransientKeepsPeakHeadroomAndSampleTiming",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranRecognitionCapabilityTests.swift",
+      "sha256": "7b27b5217d7040c7826795d3e7917656ab14084793fca3deda8be3d3917b976a",
+      "lines": 15,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QuranRecognitionCapabilityTests"
+      ],
+      "tests": [
+        [
+          "testWindowedRecognizerDoesNotAdvertisePronunciationOrCalibratedCorrectness",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranRecognitionIntegrationTests.swift",
+      "sha256": "b5ab58d029c12f473c6480d99199e9eec4d1414c178e4b63f822aa9712c045c4",
+      "lines": 711,
+      "imports": [
+        "XCTest",
+        "AVFoundation",
+        "UIKit",
+        "WhisperKit",
+        "CryptoKit"
+      ],
+      "types": [
+        "QuranRecognitionIntegrationTests",
+        "ReferenceCapture",
+        "UnavailableStartupProvider"
+      ],
+      "tests": [
+        [
+          "testOpeningAndResumingCaptureDoesNotWaitForModelPreparation",
+          ""
+        ],
+        [
+          "testPauseClosesActualAudioWhileAnalysisSaveIsDelayedWithoutReopeningTake",
+          ""
+        ],
+        [
+          "testActualReferenceFindsItsVerseAcrossEntireQuranWithoutStartingPageHint",
+          ""
+        ],
+        [
+          "testClosedTextStartsHiddenAndHintsNeverBecomeRecognitionEvidence",
+          ""
+        ],
+        [
+          "testClosedTextCaptureFailureRestoresReadingAndRecordsExposedAssistance",
+          ""
+        ],
+        [
+          "testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional",
+          ""
+        ],
+        [
+          "testShortStreamingReferenceWindowsAnchorOnlyTheActuallySpokenVerse",
+          ""
+        ],
+        [
+          "testVerifiedReferenceMatrixProducesUsefulAnchorsAtOrdinaryAndQuietLevels",
+          ""
+        ],
+        [
+          "testInterruptedActualReferenceProgressStaysVisibleThroughEmptyResumeUntilFreshRecognition",
+          ""
+        ],
+        [
+          "testDrainTimeoutWithActualPriorEvidenceExposesTextAndRejectsLateDecode",
+          ""
+        ],
+        [
+          "testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords",
+          ""
+        ],
+        [
+          "testInterruptedPermissionCannotStartLateSession",
+          ""
+        ],
+        [
+          "testCaptureStartupFailureClosesAudioAndRetainsResumableSession",
+          ""
+        ],
+        [
+          "testActualRecognitionSessionPausesRestoresResumesAndFinishesWithoutReplacingAudio",
+          ""
+        ],
+        [
+          "testRecognizedRevealKeepsActualPageAndAccessibleTextStable",
+          ""
+        ],
+        [
+          "testRecitationBuildContainsCompleteMushafResources",
+          ""
+        ],
+        [
+          "testDeniedMicrophoneDoesNotCreateOrHideSession",
+          ""
+        ],
+        [
+          "testBundledOfflineModelProducesTimedQuranAnchorsAndRejectsSilence",
+          ""
+        ],
+        [
+          "testQuietActualReferenceStillAnchorsWhileNoiseCannotRevealWords",
+          ""
+        ],
+        [
+          "testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot",
+          ""
+        ],
+        [
+          "testActualAudioAndSessionEvidenceSurviveIndependentReopening",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranRecognitionWorkerLifecycleTests.swift",
+      "sha256": "d2c2717a81bbd9d62b35a63ef0b6061d91e9fa0ba2736013a892667995d490ed",
+      "lines": 134,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QuranRecognitionWorkerLifecycleTests"
+      ],
+      "tests": [
+        [
+          "testQuranBindingRemainsAvailableWhileOldInferenceCannotReturn",
+          ""
+        ],
+        [
+          "testWarmBindingDoesNotTrustSameEditionWithAlteredWords",
+          ""
+        ],
+        [
+          "testCancellingDeadlineCallerMarksWorkerInferenceAndDoesNotQueueNextSession",
+          ""
+        ],
+        [
+          "testCancelledStuckInferenceDoesNotQueueLaterSessionAndWorkerRecoversAfterReturn",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranWindowMailboxTests.swift",
+      "sha256": "49b698a53a4d545e5d16b0619e32eefc80c75d85d4009d252af67861819cc4de",
+      "lines": 62,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QuranWindowMailboxTests"
+      ],
+      "tests": [
+        [
+          "testColdPreparationKeepsBeginningAndEveryInterveningFrame",
+          ""
+        ],
+        [
+          "testWaitingConsumerGetsNewestWindowWithoutLosingInitialAudio",
+          ""
+        ],
+        [
+          "testOverflowReportsUnavailableInsteadOfDroppingAudioSilently",
+          ""
+        ],
+        [
+          "testNoncontiguousFirstWindowCannotInventCoverage",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/QuranWordingAssessmentTests.swift",
+      "sha256": "9306b09b507242dcf4eed6281d9bb39f432e9f3fa4111e35a0dc2b6864b3975b",
+      "lines": 212,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "QuranWordingAssessmentTests"
+      ],
+      "tests": [
+        [
+          "testCorrectSpeechAndSilenceDoNotGenerateMistakes",
+          ""
+        ],
+        [
+          "testRecognizerWindowRevisionRetractsOnlyItsCoveredTakeEvidence",
+          ""
+        ],
+        [
+          "testDisputedFindingSurvivesReevaluationAndReopeningWithoutChangingSource",
+          ""
+        ],
+        [
+          "testRecognizerRetractionPreservesPriorFindingAndIsNotSelfCorrection",
+          ""
+        ],
+        [
+          "testRealCorrectionCreatesRevisionAndRepeatedEvaluationIsIdempotent",
+          ""
+        ],
+        [
+          "testSubstitutionRetainsSpokenWordAndRequiresFollowingContext",
+          ""
+        ],
+        [
+          "testAssistedRetryUsesNewTakeAndNeverBecomesIndependentRecall",
+          ""
+        ],
+        [
+          "testOmissionRequiresLaterSpeechAndUnclearAudioAbstains",
+          ""
+        ],
+        [
+          "testSameAudioReplacementIsNotSelfCorrectionAndLaterAttemptIsLinked",
+          ""
+        ],
+        [
+          "testAdditionalSpeechIsPreservedAsProvisionalInsertion",
+          ""
+        ],
+        [
+          "testSwappedWordsRetainBothAcousticOccurrencesAndCanonicalTargets",
+          ""
+        ],
+        [
+          "testSkippedPassageNeedsBothAnchorsAndPartialRetryCannotResolveIt",
+          ""
+        ],
+        [
+          "testRepeatedWordInLaterUnrelatedContextDoesNotResolveIncident",
+          ""
+        ],
+        [
+          "testConflictingOverlappingWindowsAbstainInsteadOfInventingSelfCorrection",
+          ""
+        ],
+        [
+          "testAssessmentAndCorrectionSurviveReopeningWithoutDuplicateEvents",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/ReadingSyncTests.swift",
+      "sha256": "b28afc68275ec08efb525a30b06be179a2869685d9dc92f06048dc069cad07ba",
+      "lines": 140,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "ReadingSyncTests"
+      ],
+      "tests": [
+        [
+          "testProgressSerializationIsStableAcrossSetInsertionOrdersAndLegacyDecode",
+          ""
+        ],
+        [
+          "testNewDeviceDoesNotOverwriteRemotePositionPlanOrReadingSettingsWithDefaults",
+          ""
+        ],
+        [
+          "testDeletionTombstoneSurvivesOldUploadsAndMergeIsCommutativeAndIdempotent",
+          ""
+        ],
+        [
+          "testConcurrentStampTieHasStableDeviceOrderAndConflictingSameStampIsRejected",
+          ""
+        ],
+        [
+          "testOfflineDeletionPersistsAndAnotherAccountCannotAdoptOrEnableIt",
+          ""
+        ],
+        [
+          "testDamagedJournalIsExportableAndCannotBeSilentlyOverwritten",
+          ""
+        ],
+        [
+          "testSyncedPlanCannotDiscardAnActiveLocalSession",
+          ""
+        ],
+        [
+          "testExcludedRecognitionNoteSurvivesRestartAndStaleCloudRestore",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/RecitationArchiveTests.swift",
+      "sha256": "1ebf486858da887a933b49eb17e7fa399a00ca35d02c0a78652a79c7249e8762",
+      "lines": 56,
+      "imports": [
+        "XCTest",
+        "AVFoundation"
+      ],
+      "types": [
+        "RecitationArchiveTests"
+      ],
+      "tests": [
+        [
+          "testFailedFinalizationPreservesActualCaptureForRetry",
+          ""
+        ],
+        [
+          "testDamagedCaptureDoesNotReplaceSavedVoice",
+          ""
+        ],
+        [
+          "testDecodableCaptureIsSavedAndReopens",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/RecitationComparisonTests.swift",
+      "sha256": "53d061216a9774e227eb296d4c28930de67af7d5097e887883f2032d6069abb9",
+      "lines": 74,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "RecitationComparisonTests"
+      ],
+      "tests": [
+        [
+          "testExactPartialAndDifferentWordsAreDistinct",
+          ""
+        ],
+        [
+          "testAudioBufferIsBoundedAndCannotReceiveAfterErase",
+          ""
+        ],
+        [
+          "testIncrementalWindowsReuseOnlyShortOverlapAndDoNotReplayWithoutNewAudio",
+          ""
+        ],
+        [
+          "testSlowDecoderReportsEvictionInsteadOfSilentlySkippingAudio",
+          ""
+        ],
+        [
+          "testRepeatedVerseCanMoveFollowPositionBackwards",
+          ""
+        ],
+        [
+          "testUthmaniComparisonAnnotationsDoNotAlterDisplayedText",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/RecitationFixtures/recitation-reference-sources.json",
+      "sha256": "051a944853f37b7556c49edf08160f1598f3a4cb9255f703b0e090fc16c66b3b",
+      "lines": 62,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/AtharTests/RecitationObservationTests.swift",
+      "sha256": "099ea91d4fb8306a06c007a4b4ce0c058b2f97ab58a28edffaf32cee11a0d3fb",
+      "lines": 38,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "RecitationObservationTests"
+      ],
+      "tests": [
+        [
+          "testCorrectionResolvesCandidateAndLaterRecurrenceGetsNewGracePeriod",
+          ""
+        ],
+        [
+          "testUncertainRecognitionDoesNotCreateOrResolveNotesAndDismissedNotesStayExcluded",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharTests/WidgetTests.swift",
+      "sha256": "9679a45b700ee8c28c9da8fa724ccf96b5f290607a2dfde7583862c22c29a146",
+      "lines": 82,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "WidgetTests"
+      ],
+      "tests": [
+        [
+          "testRetiredShortcutsAndNotificationsOpenSavedReaderPageWithoutChangingUserData",
+          ""
+        ],
+        [
+          "testRetiredRouteFallsBackToValidPageForMissingOrDamagedPosition",
+          ""
+        ],
+        [
+          "testNotificationDestinationSurvivesColdStartAndRejectsUnknownPayload",
+          ""
+        ],
+        [
+          "testWidgetAndNotificationPrayerInputsUseIdenticalTimesAcrossMidnight",
+          ""
+        ],
+        [
+          "testWidgetDoesNotCarryYesterdayWardCountIntoToday",
+          ""
+        ],
+        [
+          "testColdStartDestinationPersistsUntilRootConsumesItAndRejectsInvalidPages",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorAllScreensTests.swift",
+      "sha256": "6825824d5d3421a5881e40c4a59a1e4ce89449002040047efc3732faf46b27fc",
+      "lines": 303,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorAllScreensTests"
+      ],
+      "tests": [
+        [
+          "testMemorizationWorkspaceAndManualReviewAreReachableFromMushaf",
+          ""
+        ],
+        [
+          "testAllScreensWalkthrough",
+          ""
+        ],
+        [
+          "testPrayerSettingsExposeIndependentSalawatAndNoCalculationPicker",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorContinuousReaderUITests.swift",
+      "sha256": "f1ebff7a104fbd5775585aa14d6ad0cecec68d4bc5d4f3d660769fa4c96ea654",
+      "lines": 128,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorContinuousReaderUITests"
+      ],
+      "tests": [
+        [
+          "testLastCatalogReciterIsSearchableSelectedAndPersistsWithoutStartingAudio",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorDailyEaseTests.swift",
+      "sha256": "afba3dc8ff74fd08a0cac4f052f7be08fe957556c4b0ef176e7410d91ea36673",
+      "lines": 25,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorDailyEaseTests"
+      ],
+      "tests": [
+        [
+          "testSeparateMorningAndEveningOpenReadableSessions",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorFridayRetirementUITests.swift",
+      "sha256": "790a2a9a9e5221b3f020801000a86a4b87f457fd076c55e5340f1f9c57a9cd8d",
+      "lines": 56,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorFridayRetirementUITests"
+      ],
+      "tests": [
+        [
+          "testSettingsRetiredWhileKahfAndSalawatRemainUsableAfterRelaunch",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorHomeFlowUITests.swift",
+      "sha256": "9e22b370230561b197ecf09252d76a4fbdce1a7e92f0b8d88c8b74c2b065dca1",
+      "lines": 95,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorHomeFlowUITests"
+      ],
+      "tests": [
+        [
+          "testFourTabsAndVisibleOptionalAccountSurviveRelaunch",
+          ""
+        ],
+        [
+          "testReviewOpensScopeInMushafAndBookmarksPersistWithoutReflectionEditor",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorInteractiveMushafUITests.swift",
+      "sha256": "60423bc633cfd8c1a427621250ec1c3dfd86aa542cf76240923f24c66c4b0366",
+      "lines": 260,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorInteractiveMushafUITests"
+      ],
+      "tests": [
+        [
+          "testYellowAyahActionsReciterPickerAndPageTurnKeepFullPage",
+          ""
+        ],
+        [
+          "testRenderingFailureWithHiddenToolsHasAccessibleRecovery",
+          ""
+        ],
+        [
+          "testExplicitRecitationRemovalAndMicrophoneSettings",
+          ""
+        ],
+        [
+          "test604ActualReaderEveryVerseToolsAndZoom",
+          ""
+        ],
+        [
+          "testMicrophoneDenialKeepsReaderAvailableAndStationary",
+          ""
+        ],
+        [
+          "testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone",
+          ""
+        ],
+        [
+          "testActualVersePlaybackFailureShowsNoticeAndRestoresReader",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorKhatmahProtectionUITests.swift",
+      "sha256": "bb543583fecb390911dbb9e9b1c64081e4ac7c3c57cac99d149ffdd1e2522ff9",
+      "lines": 29,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorKhatmahProtectionUITests"
+      ],
+      "tests": [
+        [
+          "testProtectionIsVisibleOnHomeAndLinksToKhatmah",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorKhatmahUITests.swift",
+      "sha256": "1ecbabdb0c3a370e8a8c75d88badbd54a63c7cd039b5787cba4ee0fcacafff32",
+      "lines": 158,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorKhatmahUITests"
+      ],
+      "tests": [
+        [
+          "testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction",
+          ""
+        ],
+        [
+          "testKhatmahControlInMushafOpensRealPlanWithoutHiddenHomeTools",
+          ""
+        ],
+        [
+          "testPreviewConfirmationPauseAndRelaunch",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorLaunchTests.swift",
+      "sha256": "6e2f10efb1e61707713c4deea87c8ab89538550553538657a272a12f87521497",
+      "lines": 47,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorLaunchTests"
+      ],
+      "tests": [
+        [
+          "testFirstWelcomeGuestContinuationPersistsAfterRelaunch",
+          ""
+        ],
+        [
+          "testEntranceCanBeSkippedAndDoesNotRepeatDuringNavigation",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorMushafStudyUITests.swift",
+      "sha256": "2a909b7f51fe3157bd7b446142ddc21c9c68091a876cd283d158c6d11ee60ea1",
+      "lines": 203,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorMushafStudyUITests"
+      ],
+      "tests": [
+        [
+          "testActualRepeatControlsPersistAndGapCancels",
+          ""
+        ],
+        [
+          "testFormerVoiceEntryOpensActualInlineMushafWithBundledModelWithoutAccount",
+          ""
+        ],
+        [
+          "testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch",
+          ""
+        ],
+        [
+          "testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorNavigationTests.swift",
+      "sha256": "9a86139177f067172624f51b23e1abe92251205d68270e5b1104562e19ac0a55",
+      "lines": 97,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorNavigationTests"
+      ],
+      "tests": [
+        [
+          "testNativeHomeSaudiCitySelectionAndAdhkarSearch",
+          ""
+        ],
+        [
+          "testArabicSurahSearchAndInteractiveTextReader",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorOriginalMushafUITests.swift",
+      "sha256": "a8d83d3328e3ffff57f3f3ffccc132cd7197d0b4cf2b43f85166f9fcd79089e6",
+      "lines": 68,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorMushafPageNavigationUITests"
+      ],
+      "tests": [
+        [
+          "testText604NavigationAndToolsDoNotMoveCanvas",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorPrayerDisplayUITests.swift",
+      "sha256": "11144c4b6b2f4da07c8b96a27a7557c3666f1033ff12d7767d65e48cefa46995",
+      "lines": 46,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorPrayerDisplayUITests"
+      ],
+      "tests": [
+        [
+          "testPrayerDatesClocksAndCityPersistAcrossRestart",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorReaderComfortUITests.swift",
+      "sha256": "bc045867ca7c683d334ea1f760945699b843d6e233d189b46161f80c9a014a02",
+      "lines": 324,
+      "imports": [
+        "XCTest",
+        "UIKit"
+      ],
+      "types": [
+        "NoorReaderComfortUITests"
+      ],
+      "tests": [
+        [
+          "testPage14LargeDynamicTypeControlsDoNotCoverVerses",
+          ""
+        ],
+        [
+          "testUserReferencePage14IsCenteredAndFullyVisible",
+          ""
+        ],
+        [
+          "testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone",
+          ""
+        ],
+        [
+          "testPageToolsGesturesAndRelaunchPreservePosition",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorReciterLibraryTests.swift",
+      "sha256": "f98ca48d15f21f3b6fe0d99f185474317513822501745aac90408c20f31ddcb4",
+      "lines": 20,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorReciterLibraryTests"
+      ],
+      "tests": [
+        [
+          "testCompleteReciterLibraryCanFindFinalSurahWithoutStartingRecording",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorReminderUITests.swift",
+      "sha256": "8a6dbc8aa90906ab729ba79d95f2a26ae7b43f04dbc77a8e5e297409869d43dd",
+      "lines": 116,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorReminderUITests"
+      ],
+      "tests": [
+        [
+          "testIndependentEditorsSaveDaysAndQuietSettingsAcrossRelaunch",
+          ""
+        ],
+        [
+          "testSalawatEditorHasFixedFiveMinuteSilentMessageWithoutTimeFields",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorRemovedFeaturesUITests.swift",
+      "sha256": "2dad770be3b25d9dd492f108587f495e0922c49ff28a37dde48b38ce18f62fc3",
+      "lines": 35,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorRemovedFeaturesUITests"
+      ],
+      "tests": [
+        [
+          "testRetiredActionsAreAbsentAndJourneyRemainsReachable",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/AtharUITests/NoorSalawatUITests.swift",
+      "sha256": "2ccb130159717a153a934fb60a71bc66d1e6fe0fa215f9d26bb6f746b664a981",
+      "lines": 38,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "NoorSalawatUITests"
+      ],
+      "tests": [
+        [
+          "testActualCounterIncrementUndoAndRelaunchPersist",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "ios/NoorFocusExtensions/NoorFocusAction.swift",
+      "sha256": "1e6f8b882b0ffd61bfad54202ed7cd16e5f3374ce0f0f782acfd6279e2c2f5b0",
+      "lines": 10,
+      "imports": [
+        "ManagedSettings"
+      ],
+      "types": [
+        "NoorFocusAction"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/NoorFocusExtensions/NoorFocusMonitor.swift",
+      "sha256": "a1d3260c8fad336dc16230d3ea9536bacd12ff12d386ace234461b39ad71020c",
+      "lines": 9,
+      "imports": [
+        "DeviceActivity"
+      ],
+      "types": [
+        "NoorFocusMonitor"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/NoorFocusExtensions/NoorFocusShield.swift",
+      "sha256": "28fbf966bec34ffcff102af12e2cfee391f6f28bae5a51a36cf94d0eaa2eaa48",
+      "lines": 15,
+      "imports": [
+        "ManagedSettings",
+        "ManagedSettingsUI",
+        "UIKit"
+      ],
+      "types": [
+        "NoorFocusShield"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/NoorFocusShared/NoorFocusState.swift",
+      "sha256": "ba893eaf2b091ee19711a7eae894bf8ac352a99f38252f0d1c948fc25b94fe33",
+      "lines": 108,
+      "imports": [
+        "Foundation",
+        "FamilyControls",
+        "ManagedSettings",
+        "DeviceActivity"
+      ],
+      "types": [
+        "NoorWardContract",
+        "NoorKhatmahWardContract",
+        "NoorFocusPersistence",
+        "NoorFocusState"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/NoorWidgetShared/PrayerEngine.swift",
+      "sha256": "1929245e557daa004014edf727f83a96906390b7e33d864033fa736dbbf295e6",
+      "lines": 146,
+      "imports": [
+        "Foundation",
+        "Adhan"
+      ],
+      "types": [
+        "PrayerLocation",
+        "PrayerInputs",
+        "PrayerRow",
+        "PrayerCalculator",
+        "PrayerDisplay",
+        "AutomaticPrayerProfile"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/NoorWidgetShared/WidgetSnapshot.swift",
+      "sha256": "698b9bbcc82f1d166cac493ea5265bb72341a8a512d7e87f9ba929b3d3d0e360",
+      "lines": 83,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "NoorSalawatCounts",
+        "NoorKhatmahWidgetState",
+        "NoorWidgetSnapshot"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/NoorWidgets/NoorWidgets.swift",
+      "sha256": "1a2b453e06716b0eaa86db881d34a75123ad037e55f32ead622ed0306dd23264",
+      "lines": 219,
+      "imports": [
+        "SwiftUI",
+        "WidgetKit"
+      ],
+      "types": [
+        "NoorEntry",
+        "NoorProvider",
+        "NoorWidgetKind",
+        "NoorWidgetView",
+        "NoorWidget"
+      ],
+      "tests": []
+    },
+    {
+      "path": "ios/project-accounts.yml",
+      "sha256": "72c3cfcab81d96521fbaadae8c9d93cb9b8a7661ee0d56796c685007220eafe0",
+      "lines": 20,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/project-focus.yml",
+      "sha256": "f7afd7cf391b87fa26a5e1b6978b3e0491e8aff3e244c4e3228d83a013881dc1",
+      "lines": 72,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "ios/project.yml",
+      "sha256": "604c8076e9313b1e2c52fa9aa347b6a88308b2a24edde0eb18a8d3ce2f98c1cb",
+      "lines": 107,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/app-store-connect-draft.json",
+      "sha256": "88c1916334785000db520f43bfcc2ff6ff92e33b8f3bed176cfb4d1e6d124f16",
+      "lines": 33,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/apple-guidelines-review.json",
+      "sha256": "aa0da9a8c0ac9b369cd5f3c69c1cebdb99d7f1bf66b596a553218ce042c020ca",
+      "lines": 30,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/config.json",
+      "sha256": "9ee2e3f11db8875e994924886deec515c828dfcdb30f78dd6ecc97ea322f8b37",
+      "lines": 29,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/content-audit.json",
+      "sha256": "d50ceb9dcaa171799898b306d85ff3c4572da5784be904522293708966a5e6b1",
+      "lines": 46,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/current-native-preview-evidence.json",
+      "sha256": "c3d8ab7c4ce8eb077903f70f1f30224416e0d09fff2ced82ea90d23ffc8b2d14",
+      "lines": 545,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/final-integration-ready.json",
+      "sha256": "63f9aee6525ea7c5047d3a65df092b8d138cadc17cb20918ada38722ac2d9cdd",
+      "lines": 193,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/foundation-logic-report.json",
+      "sha256": "4e0158a2ad9c5bda3a97aaebef17462645eed9440cb049d5b4f9d042e6f11a92",
+      "lines": 103,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/interactive-mushaf-review.json",
+      "sha256": "514498e5b8018adc1d8f727848f06959f2abfb8c89cd08298b808da5125ea3db",
+      "lines": 124,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/khatmah-protection-ready.json",
+      "sha256": "833713e035946987bf5796dad185403be80035d111ac35962772f67b3de198bc",
+      "lines": 17,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/king-fahd-native-review.json",
+      "sha256": "e46a5556da4e3ac63f9feb329607da58ca584a0a8f40e4337c1f1f781b169686",
+      "lines": 358,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/king-fahd-source-audit.json",
+      "sha256": "b2f47002e89f32db1390d9e0779e94835b12045c0d37a1e7130c19bc7e43e139",
+      "lines": 3633,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/legal-content-accounts.json",
+      "sha256": "f17deb19cf9ec46f5976be6b2ba516fbea7943f38baa37044a75125587f9c23b",
+      "lines": 120,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/legal-content.json",
+      "sha256": "41b56530f9ed33a30ccb7f10012e952d29888ba8dda306cc51ec2c42a0451406",
+      "lines": 116,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/license-review.json",
+      "sha256": "dc6b9b5782293ec7ffa965e039e57ccb123a01155ccc534bd40efd50334d8f1f",
+      "lines": 14,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/local-speech-source-review.json",
+      "sha256": "91b865805cda5dc9bc0a21fb3ef39211cf728e9fd8c29acd2710c72b5ffa0fa9",
+      "lines": 51,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/mushaf-artwork-readiness.json",
+      "sha256": "5f2c0a254053a3c65e24b9db3fc187eacbab7a99b61b48bed7885179cf1a7ce3",
+      "lines": 123,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/mushaf-before-comparison.json",
+      "sha256": "c110a508bef36e9127f401223310a10c10b2a3c469bdf52b69c1ebaa336d9a50",
+      "lines": 230,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/mushaf-cache-ready.json",
+      "sha256": "ebd4c638d194bd3942488a8f0af012c552f104331408ce7ae240d17c515e6373",
+      "lines": 146,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/mushaf-study-ready.json",
+      "sha256": "87075ca136aa7601f0bba86cff20a1a7e6be3d95b8edaad64a097ab07978e5f1",
+      "lines": 39,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/mushaf-text-review.json",
+      "sha256": "3facc45838ef554199f0bdebb115811d3149f57a1486dd1a041d688c65c970f4",
+      "lines": 609,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/native-development-report.json",
+      "sha256": "28592619b8de2b0b2cabb5fd64177540c43f15fbe422e03b2f971bb6eb6584de",
+      "lines": 80,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/personal-reminders-ready.json",
+      "sha256": "12ebee5d3c44a9ba770594cb322d5d6d1b35155e82ad5b8eb7cd3c9f9bb1f753",
+      "lines": 21,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/preflight-report.json",
+      "sha256": "15ee1a9e90e32dadd900fc24f0b109611eb51c828bd2885f58dafa7e975b4282",
+      "lines": 54,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/preview-content-parity.json",
+      "sha256": "89d783d0bfcaf7defa7e20289e9cd37b232c7002f250883deec6c325edd7909d",
+      "lines": 16,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/publishing-content-report.json",
+      "sha256": "c57d96e300273bf0954b3351e6f85df9c5ed32f13359225f42083945239e1f3b",
+      "lines": 19,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/publishing-pages-check.json",
+      "sha256": "bb5e65c089007cf82417d552c43b9afe5af0482ca48774304c6dc83e97416b2d",
+      "lines": 134,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/qcf-v2-manifest.json",
+      "sha256": "72a50837bbd8d0719e023cd8c6b65ed7876f977a3f35db41feb0f1a4a6c92fad",
+      "lines": 4241,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/qcf-v4-manifest.json",
+      "sha256": "a195e77369aaacdf61ca0fd09d1ec9893be68877cfd325b559c378cad3c0670a",
+      "lines": 4841,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/quran-text-integrity.json",
+      "sha256": "18226399c06d8700609a10e69542ebb83c7e14568e2235495fec6352d4719666",
+      "lines": 20,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/quran-visual-review.json",
+      "sha256": "4f1f54efdb7b77d8cdd1a3c27e4b37632e10ff51ec35c195724b23528879068c",
+      "lines": 673,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/reader-repair-audit-20261018.json",
+      "sha256": "4204a0878b805e4acb5d089546c9247743ae96ef530b787d91f7f87b95a19f6e",
+      "lines": 62,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/recitation-acoustic-investigations.json",
+      "sha256": "99c7c2941516fd186e52320761931e860ec4e5cfa56e0a1fe03e27b53dadf357",
+      "lines": 160,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/recitation-lexicon-audit.json",
+      "sha256": "56d01f84870e6eb8b324217a11063984e1632e0dc840f43a19149506b6a7156b",
+      "lines": 13,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/recitation-production-audit.json",
+      "sha256": "8995297bb8357baf8d9cc95a7ea80e16b935fd944c90c1a4281d240a80e4512a",
+      "lines": 1992,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/release-readiness.json",
+      "sha256": "5d62b8920532d38a18407273aba3a05e62447f26469203abe177a2cf7b477b47",
+      "lines": 159,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/revision16-review.json",
+      "sha256": "bd95fee88f16c07269a15769febe53203fdbae38c75afc259c501fe54a28b277",
+      "lines": 12,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/screen-inventory.json",
+      "sha256": "00a8b02af4e64f0d6e3ac29c2ec0a752073a9025fed51d9b23fcb84c3fd48f2d",
+      "lines": 143,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/source-checks.json",
+      "sha256": "0693da0e0ae7f62b5118eb6aa12b9708c79edddc2570a72075d35ccdc7453c00",
+      "lines": 88,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/testflight-13-upload-report.json",
+      "sha256": "6fa552eeddab4412d010cb20940a4dedf62dfc186fa9a98be44082cf780c1dd3",
+      "lines": 20,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/testflight-preview-review.json",
+      "sha256": "23229311a0d7f950d2190b6457395ad81278be87579ac5482704355dc7fb1305",
+      "lines": 172,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/user-testflight-review.json",
+      "sha256": "643df407e8bb65d022cdd971c8125bfb58780daedbdc441a1793d4179e5f79c8",
+      "lines": 574,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "release/widget-progress-ready.json",
+      "sha256": "347f1884dd5f8356eb41569cabb60fff85329729c24ca86e38d333125df6fb2f",
+      "lines": 18,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/account_privacy.py",
+      "sha256": "f2cb49024915c31d7bf03784d7a6e79988d70920698ac1d730b07b61da764b6c",
+      "lines": 30,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/audit-content.py",
+      "sha256": "00481b7a29c7404cb4fc0a8b46400eeb742af425dd69bc66b83a6b7e3c5fba59",
+      "lines": 80,
+      "imports": [
+        "argparse",
+        "pathlib",
+        "plistlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/audit-recitation-lexicon.py",
+      "sha256": "af6d9da885af6419a2a8344998594a530c19c898ea1fab2de0a4eb12855c483b",
+      "lines": 175,
+      "imports": [
+        "argparse",
+        "collections",
+        "hashlib",
+        "json",
+        "pathlib",
+        "zipfile",
+        "unicodedata"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/benchmark-phoneme-backend.py",
+      "sha256": "d30ed771b743060ad90c32e44a70919e46e60473e185827ca154cb4042787348",
+      "lines": 194,
+      "imports": [
+        "hashlib",
+        "json",
+        "pathlib",
+        "time",
+        "urllib.request",
+        "resource",
+        "csv",
+        "re",
+        "collections",
+        "av",
+        "numpy",
+        "onnxruntime",
+        "transformers"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/build-mushaf.py",
+      "sha256": "8928569d25c1d934425ae71d94ed166856b1f38fbe848a3496f2e03ad9347ba9",
+      "lines": 47,
+      "imports": [
+        "json",
+        "pathlib",
+        "fontTools.ttLib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/build-quran-corpus.py",
+      "sha256": "8454e0cd254ef7049c0265a2420514e1f1d520bbb4bc4022191f162861d9d58a",
+      "lines": 45,
+      "imports": [
+        "hashlib",
+        "json",
+        "xml.etree.ElementTree",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/build-saudi-cities.py",
+      "sha256": "6893c395595a9039db8f4a8d06aab0024d47c49bd66e97ea88fd7f41e387346a",
+      "lines": 111,
+      "imports": [
+        "json",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/check-mushaf-publication.py",
+      "sha256": "508a94e14ffcaa319953a1d2a6dba5a178aa62b472dad3623e2e9b0aab05d216",
+      "lines": 54,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/check-publishing-pages.mjs",
+      "sha256": "74dfd2c8fcb0091209b7c9ac7c374220069311174868958ed03335b5dfa00746",
+      "lines": 54,
+      "imports": [
+        "fs",
+        "path"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/check-source.py",
+      "sha256": "2690592454dba157d29d3c7a9b7b19fe86501403371204a8c4d7ae80977268df",
+      "lines": 52,
+      "imports": [
+        "argparse",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/check-upload-toolchain.py",
+      "sha256": "03b2e1c5bc8ebdecd922cda8788f734ddefa35d8dd2b26e9cce365c03d5221c2",
+      "lines": 5,
+      "imports": [
+        "subprocess"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/check-user-testflight.py",
+      "sha256": "27fef2c0d69ef00029a7740f9ddf99ecfbcf4f6b77994df86d26acec1dd5e354",
+      "lines": 58,
+      "imports": [
+        "hashlib",
+        "json",
+        "pathlib",
+        "subprocess"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/compare-mushaf-reference.py",
+      "sha256": "76cab1f048aea97781ed28e91494e0d7c21ad752128d8b8dff53cb6fdf053289",
+      "lines": 89,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "pathlib",
+        "numpy",
+        "PIL",
+        "scipy.ndimage"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/configure-firebase.py",
+      "sha256": "9b4220c35e4ff0931c6432e3f29eff591f1b7e8ad9e7d379a8808714abd27440",
+      "lines": 48,
+      "imports": [
+        "argparse",
+        "plistlib",
+        "pathlib",
+        "shutil"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/evaluate-phonetic-qalqala.py",
+      "sha256": "60bc41db4ea061236b9067e5c602b539a2fcb30be21239b1e9ce11cb66e9f0b8",
+      "lines": 195,
+      "imports": [
+        "concurrent.futures",
+        "csv",
+        "hashlib",
+        "io",
+        "json",
+        "pathlib",
+        "re",
+        "resource",
+        "time",
+        "urllib.request",
+        "av",
+        "numpy",
+        "onnxruntime",
+        "sklearn.linear_model",
+        "sklearn.pipeline",
+        "sklearn.preprocessing",
+        "transformers"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/evaluate-qalqala-acoustics.py",
+      "sha256": "f527933885f0c42919c62f416e70ccb21b5b9d2104e5ab5d03ec4635217110e5",
+      "lines": 129,
+      "imports": [
+        "concurrent.futures",
+        "csv",
+        "hashlib",
+        "io",
+        "json",
+        "pathlib",
+        "re",
+        "time",
+        "urllib.request",
+        "av",
+        "numpy",
+        "sklearn",
+        "sklearn.linear_model",
+        "sklearn.pipeline",
+        "sklearn.preprocessing"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/export-mushaf-contact-sheets.py",
+      "sha256": "6afe0e1fe1c50c65f8255c455df903d7cefa7327aee045775e52e1a078421408",
+      "lines": 45,
+      "imports": [
+        "argparse",
+        "json",
+        "re",
+        "pathlib",
+        "PIL"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/export-native-gallery.py",
+      "sha256": "93195d19d6663799ea309f498d8295871bc43bea8a76483c329461d8cca91bf3",
+      "lines": 89,
+      "imports": [
+        "datetime",
+        "html",
+        "json",
+        "platform",
+        "re",
+        "subprocess",
+        "zipfile",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/export-quran-visual-audit.py",
+      "sha256": "d7fd09b432f2d35c71633041c2ab42ae2bbefbe1d3593b2247793ad449165b4c",
+      "lines": 72,
+      "imports": [
+        "argparse",
+        "datetime",
+        "hashlib",
+        "html",
+        "json",
+        "platform",
+        "re",
+        "shutil",
+        "subprocess",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/export-reader-proof.py",
+      "sha256": "ed95fda28e1e809242e93d493b2f05808d1b52158e7dfb881b05380021d48b69",
+      "lines": 38,
+      "imports": [
+        "base64",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/import-reciter-word-timings.py",
+      "sha256": "f847f2a275461a6fb061e3fa3285d8d6fc4be7a86ae902f1db58c5a263967f87",
+      "lines": 98,
+      "imports": [
+        "argparse",
+        "collections",
+        "gzip",
+        "hashlib",
+        "json",
+        "pathlib",
+        "unicodedata",
+        "zipfile"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/inspect-reviewed-recitation-dataset.py",
+      "sha256": "c4c7a6ccc48cc190f8a14e921a13da3a5edd4edbccf45f3dffcc9cfa79a408b9",
+      "lines": 68,
+      "imports": [
+        "collections",
+        "csv",
+        "hashlib",
+        "io",
+        "json",
+        "pathlib",
+        "urllib.request",
+        "urllib.error",
+        "zipfile",
+        "openpyxl"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/install-production-firebase.py",
+      "sha256": "24eff591f8fbcc2631fae4061d44e0a177075a5f4242aac8903adbeb87cdc423",
+      "lines": 31,
+      "imports": [
+        "base64",
+        "importlib.util",
+        "os",
+        "pathlib",
+        "tempfile"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/install-release-fonts.py",
+      "sha256": "12b17249d366f7e747759a7dbc510c88224224e6b1ae5b3f80c491084f3601b5",
+      "lines": 31,
+      "imports": [
+        "os",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/native-build-report.py",
+      "sha256": "414b02507596395a76e31ddde4d4bcc0b95a8657c05540302b372843aa7c3693",
+      "lines": 17,
+      "imports": [
+        "json",
+        "pathlib",
+        "release_evidence"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/package-native.py",
+      "sha256": "23335e1f1d7c04b4c1cabd46d998f1a35be3dcaad8aeda4a06d69d2dde279ab3",
+      "lines": 22,
+      "imports": [
+        "pathlib",
+        "argparse"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-bundled-mushaf.py",
+      "sha256": "69cea155047f8fafd94dba4489e236e606d83e4442c81de1261aa66bba8b1453",
+      "lines": 49,
+      "imports": [
+        "gzip",
+        "hashlib",
+        "json",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-king-fahd-mushaf.py",
+      "sha256": "74522664d6aa8390df7ee19caad87492bf66e8df0ed2bff1033e0dc34eb271cb",
+      "lines": 52,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "pathlib",
+        "shutil",
+        "urllib.request"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-mushaf-companion.py",
+      "sha256": "24ec02b9175c5a1807a683df15f307015d17630d61faca9fb98a8f57aeaf5d3e",
+      "lines": 18,
+      "imports": [
+        "hashlib",
+        "pathlib",
+        "urllib.request"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-publishing.py",
+      "sha256": "c9c217908490a9cabb2fd60bdbb7a4cae002e359d344a091c9512828d6b3d9e2",
+      "lines": 73,
+      "imports": [
+        "argparse",
+        "account_privacy",
+        "pathlib",
+        "urllib.parse"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-qcf-v2.py",
+      "sha256": "b9d473c9d9d8ec110930ce7c4ae70c7dfb3404afa393af101e631485cec586d2",
+      "lines": 176,
+      "imports": [
+        "argparse",
+        "concurrent.futures",
+        "hashlib",
+        "json",
+        "os",
+        "pathlib",
+        "struct",
+        "time",
+        "urllib.error",
+        "urllib.request"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-recitation-model.py",
+      "sha256": "cd60cbe91bc5af09b42aa8768afe5aff2a4d5abe0a66d99fe8b5348adf03bc69",
+      "lines": 79,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "os",
+        "pathlib",
+        "shutil",
+        "tempfile",
+        "urllib.request"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-recitation-probe.py",
+      "sha256": "feffcdd426dac53f1297c033c4347dc1e916de45d2108beb564ea16458b1a885",
+      "lines": 94,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "random",
+        "subprocess",
+        "urllib.request",
+        "wave",
+        "pathlib",
+        "huggingface_hub"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/prepare-tajweed-fonts.py",
+      "sha256": "6de79877c493b4424f5ae66175bcc22331be48c06824ebae1ab20ce6398309b7",
+      "lines": 72,
+      "imports": [
+        "argparse",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/record-reader-test.py",
+      "sha256": "7afc0dd28d4e2d5070ee29c488de9205a343ba96c6cedfa5d8ffdd1a2ad9b35b",
+      "lines": 42,
+      "imports": [
+        "json",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/recording_ui_evidence.py",
+      "sha256": "7a6a906a62061057d4a8a508f3e0c5bf1fa2c441f8ad7438bff7fd1cc155fb2c",
+      "lines": 77,
+      "imports": [
+        "hashlib",
+        "os",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/release-preflight.py",
+      "sha256": "92b1d9bd3cdc24c7f0047225ff8c72eab0125f2557910767eb3a30f5c1b7c97e",
+      "lines": 94,
+      "imports": [
+        "argparse",
+        "pathlib",
+        "urllib.parse",
+        "release_evidence",
+        "struct"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/release_evidence.py",
+      "sha256": "ab9a2a2c2c5324a9151af14407ac6ab0d2514da81ff73bbb40e7800d6db02559",
+      "lines": 10,
+      "imports": [
+        "hashlib",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/review-mushaf-text.py",
+      "sha256": "c29dd3c39ce2380bb08a42dedd2c48b941ccab9d5904ddaf6efe25ca73002c41",
+      "lines": 25,
+      "imports": [
+        "json",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/run-native-with-deadline.py",
+      "sha256": "0982979f5ae22dd4b9143ef6d0d932b28016047b6e7918c5a9252f440d114886",
+      "lines": 33,
+      "imports": [
+        "os",
+        "signal",
+        "subprocess",
+        "sys"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/sample-test-audio-hang.py",
+      "sha256": "0a07c6860e41adcb6238d213ea1c9f772f83c1a2ebf2855bc2ad7a630a884b78",
+      "lines": 31,
+      "imports": [
+        "json",
+        "subprocess",
+        "sys",
+        "time",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/seed-recording-ui.py",
+      "sha256": "0acdf3c0af6ef9de7672eb4c36181d96111f7c02b7cdb090ce4ba9318c115329",
+      "lines": 14,
+      "imports": [
+        "json",
+        "pathlib",
+        "subprocess",
+        "sys",
+        "recording_ui_evidence"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/select-xcode.py",
+      "sha256": "a1b7a5814da7957db1fcc549d354d1ccc8ff20a93ffd90baac7adc01de5f8707",
+      "lines": 14,
+      "imports": [
+        "pathlib",
+        "subprocess"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/test-foundation-logic.py",
+      "sha256": "61159c36ffec0f30318d280a5f7b101b9a4f3e5b945e32f25383d2d51c3c8934",
+      "lines": 160,
+      "imports": [
+        "argparse",
+        "pathlib",
+        "Adhan"
+      ],
+      "types": [
+        "ObservableObject",
+        "QuranResources"
+      ],
+      "tests": []
+    },
+    {
+      "path": "scripts/test-wording-behavior.py",
+      "sha256": "8d654218d439154b01878f33127cd4aa392606dfc533d419916d88196e61e06e",
+      "lines": 38,
+      "imports": [
+        "hashlib",
+        "json",
+        "pathlib",
+        "shutil",
+        "subprocess",
+        "tempfile",
+        "PackageDescription"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/tests/test_account_privacy.py",
+      "sha256": "39937be2f1a8cef0b3df2cd63615c5d11fe03fd1d552dada6ca37560dd0b9ae4",
+      "lines": 41,
+      "imports": [
+        "pathlib",
+        "plistlib",
+        "shutil",
+        "subprocess",
+        "sys",
+        "tempfile",
+        "unittest",
+        "account_privacy"
+      ],
+      "types": [
+        "AccountPrivacyTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_generation_check_and_local_rollback_preserve_api_reasons"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_firebase_config.py",
+      "sha256": "53900a961b634a0fbfbb059b1e420c10b234d60686a899f96f777088c49dabe8",
+      "lines": 34,
+      "imports": [
+        "importlib.util",
+        "plistlib",
+        "pathlib",
+        "tempfile",
+        "unittest"
+      ],
+      "types": [
+        "FirebaseConfigurationTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_foreign_project_bundle_or_app_rejected"
+        ],
+        [
+          "",
+          "test_apple_configuration_needs_no_google_oauth_client_but_requires_api_key"
+        ],
+        [
+          "",
+          "test_install_preserves_deep_links_is_idempotent_and_saves_rollback"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_font_cmap.py",
+      "sha256": "f97f2e323800290a95d18c7f273f3312aceb64160ad097a90542e77701e01241",
+      "lines": 49,
+      "imports": [
+        "importlib.util",
+        "pathlib",
+        "struct",
+        "unittest"
+      ],
+      "types": [
+        "CmapRepairTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_preserves_unicode_offsets_and_every_non_cmap_byte_except_adjustment"
+        ],
+        [
+          "",
+          "test_valid_legacy_table_is_retained"
+        ],
+        [
+          "",
+          "test_unrecognized_truncation_is_rejected"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_font_download.py",
+      "sha256": "44cb13f4da9401ed3e4178cbcc42f917a25d21c0f7900314133ab82009fc2fac",
+      "lines": 48,
+      "imports": [
+        "importlib.util",
+        "pathlib",
+        "unittest",
+        "unittest.mock",
+        "urllib.error"
+      ],
+      "types": [
+        "FontDownloadTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_timeout_retries_then_returns_original_bytes"
+        ],
+        [
+          "",
+          "test_exhausted_retries_fail"
+        ],
+        [
+          "",
+          "test_access_denial_and_changed_source_are_not_retried"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_publishing_modes.py",
+      "sha256": "c3cc1e5ca05cf189f985b4e97098e21beff1a58bd37497e341a48c76ad10028e",
+      "lines": 62,
+      "imports": [
+        "json",
+        "hashlib",
+        "os",
+        "pathlib",
+        "shutil",
+        "subprocess",
+        "sys",
+        "tempfile",
+        "unittest"
+      ],
+      "types": [
+        "PublishingPolicyModeTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_local_app_and_optional_account_website_are_generated_and_checked_independently"
+        ],
+        [
+          "",
+          "test_signed_account_app_can_use_existing_account_website_without_weakening_policy"
+        ],
+        [
+          "",
+          "test_unknown_public_policy_mode_cannot_silently_remove_account_disclosures"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_reciter_catalog.py",
+      "sha256": "6f09e025e4705c907690f958bc5bc6d9d5d0b7df5ea3d307be56d41974ac7eed",
+      "lines": 35,
+      "imports": [
+        "json",
+        "pathlib",
+        "unittest",
+        "urllib.parse"
+      ],
+      "types": [
+        "ReciterCatalogTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_catalog_requires_complete_quran_and_safe_distinct_sources"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_reciter_timing_resources.py",
+      "sha256": "8dba3a412579ff0739a5675b4fee6d082190ad8da43a516b680bc69f959ccc3b",
+      "lines": 51,
+      "imports": [
+        "gzip",
+        "hashlib",
+        "json",
+        "pathlib",
+        "unittest"
+      ],
+      "types": [
+        "ReciterTimingResourcesTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_integrity_and_recording_identity"
+        ],
+        [
+          "",
+          "test_every_segment_binds_to_its_own_native_verse_with_nonoverlapping_intervals"
+        ],
+        [
+          "",
+          "test_licenses_remain_in_distribution"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_recording_ui_evidence.py",
+      "sha256": "0b04ef23ede15fd40338bb28b89f26568b9e76eb35252a4cad3e598b8674215e",
+      "lines": 102,
+      "imports": [
+        "pathlib",
+        "shutil",
+        "sys",
+        "tempfile",
+        "unittest",
+        "unittest.mock",
+        "recording_ui_evidence"
+      ],
+      "types": [
+        "RecordingEvidenceTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_same_container_removed"
+        ],
+        [
+          "",
+          "test_relocated_container_removed"
+        ],
+        [
+          "",
+          "test_relocated_existing_archive_rejected"
+        ],
+        [
+          "",
+          "test_changed_marker_rejected"
+        ],
+        [
+          "",
+          "test_stale_execution_or_simulator_rejected"
+        ],
+        [
+          "",
+          "test_missing_execution_job_or_display_rejected"
+        ],
+        [
+          "",
+          "test_wrong_source_attempt_or_display_rejected"
+        ],
+        [
+          "",
+          "test_unrelated_or_traversing_marker_rejected"
+        ],
+        [
+          "",
+          "test_current_symlink_escape_rejected"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_release_ipa.py",
+      "sha256": "571fadc4fdea796bac25d075d59ef54de68b0900ff3c82543951897ab8475966",
+      "lines": 214,
+      "imports": [
+        "importlib.util",
+        "hashlib",
+        "json",
+        "shutil",
+        "pathlib",
+        "plistlib",
+        "tempfile",
+        "unittest",
+        "unittest.mock",
+        "zipfile",
+        "sys",
+        "account_privacy"
+      ],
+      "types": [
+        "ReleasePayloadTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_complete_payload_reports_without_claiming_device_acceptance"
+        ],
+        [
+          "",
+          "test_missing_model_or_tokenizer_is_rejected"
+        ],
+        [
+          "",
+          "test_missing_or_corrupted_original_tajweed_font_or_layers_is_rejected"
+        ],
+        [
+          "",
+          "test_same_size_corrupted_model_or_tokenizer_is_rejected"
+        ],
+        [
+          "",
+          "test_model_notices_and_word_script_must_match"
+        ],
+        [
+          "",
+          "test_each_extension_requires_a_nonempty_display_name"
+        ],
+        [
+          "",
+          "test_each_missing_extension_is_rejected"
+        ],
+        [
+          "",
+          "test_local_only_or_wrong_firebase_project_is_rejected"
+        ],
+        [
+          "",
+          "test_stale_extension_build_is_rejected"
+        ],
+        [
+          "",
+          "test_account_build_with_stale_local_privacy_is_rejected"
+        ],
+        [
+          "",
+          "test_missing_or_corrupted_quran_resources_are_rejected"
+        ],
+        [
+          "",
+          "test_missing_or_corrupted_microphone_feedback_is_rejected"
+        ],
+        [
+          "",
+          "test_identical_but_incomplete_reciter_catalog_is_rejected"
+        ],
+        [
+          "",
+          "test_missing_or_local_only_privacy_manifest_is_rejected"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/tests/test_user_testflight.py",
+      "sha256": "b0faca086f98baea6445409cad2c391d5c70fe3a43414d5cf92725a63cb80802",
+      "lines": 47,
+      "imports": [
+        "copy",
+        "hashlib",
+        "importlib.util",
+        "pathlib",
+        "tempfile",
+        "unittest"
+      ],
+      "types": [
+        "UserReviewTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_exact_unverified_user_build_is_allowed"
+        ],
+        [
+          "",
+          "test_source_changes_or_inventory_omissions_are_rejected"
+        ],
+        [
+          "",
+          "test_no_production_or_false_pass_claim"
+        ]
+      ]
+    },
+    {
+      "path": "scripts/verify-quran-text.py",
+      "sha256": "b73ae237b47969965b06bf9ea291d5a465d57e44538ce9dba311ff247e41c6b7",
+      "lines": 40,
+      "imports": [
+        "hashlib",
+        "json",
+        "sys",
+        "xml.etree.ElementTree",
+        "pathlib"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/verify-recording-ui-removal.py",
+      "sha256": "6a1aca79723a589808eb61e313def268962e9faf3b634f647a62889439d0ae5a",
+      "lines": 12,
+      "imports": [
+        "json",
+        "pathlib",
+        "subprocess",
+        "sys",
+        "recording_ui_evidence"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "scripts/verify-release-ipa.py",
+      "sha256": "ca50c83119ae125d37d02fd2c25072dd840782822b2789c409b28a81b234419d",
+      "lines": 143,
+      "imports": [
+        "glob",
+        "hashlib",
+        "importlib.util",
+        "json",
+        "plistlib",
+        "pathlib",
+        "zipfile",
+        "account_privacy"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "server/quran-sync/package.json",
+      "sha256": "e1e218924ec27433ecdddb0ed255f6608c515f48632dba12af35b8e874d598cd",
+      "lines": 7,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "server/quran-sync/server.mjs",
+      "sha256": "9ccdbabc501c8d251e44bae224c105839be53c1e6793ca18d95e38f0d140e9cf",
+      "lines": 54,
+      "imports": [
+        "http"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "server/quran-sync/server.test.mjs",
+      "sha256": "2c2b2c2edc60da37fa01372610d49489f68843553c4614cdf5289188a6f65b33",
+      "lines": 24,
+      "imports": [
+        "test",
+        "assert"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "server/quran-sync/worker.mjs",
+      "sha256": "8f16271cf9ebe046fac758a47ee6548550c3cac35dcbf87da3ae339549a409f1",
+      "lines": 106,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "server/quran-sync/worker.test.mjs",
+      "sha256": "a865345378fc3d2e43538b2935fee591dfd1073b8e4bb8bc9a66bc07e9269e8f",
+      "lines": 109,
+      "imports": [
+        "test",
+        "assert"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "server/quran-sync/wrangler.json",
+      "sha256": "4b19a4ca2da96f8a3934be15493cb4c5323586fe923442a40bbf764463e3a13e",
+      "lines": 9,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/LinuxRecitationBenchmark/benchmark.py",
+      "sha256": "630e1c4a82855ce2cbccc0d14dfcf8c41b512a2f57ee97884435401eb3ffc998",
+      "lines": 121,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "pathlib",
+        "platform",
+        "shutil",
+        "time",
+        "unicodedata",
+        "urllib.request"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/NoorVAD/Package.swift",
+      "sha256": "ad81a0c44dd483c97792b5c465dcffe838c2ea4af4fcc00c57a9e87ad0f88f23",
+      "lines": 9,
+      "imports": [
+        "PackageDescription"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/NoorVAD/upstream.json",
+      "sha256": "dd3a55525538849ee3134ceadf4a84cb2b23d3a0eeb5509237dd98111cdd1445",
+      "lines": 31,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Package.swift",
+      "sha256": "e642014513c26011ee02a19440d6bc88d7aa179045c26c7b03d41472d1f4e88a",
+      "lines": 25,
+      "imports": [
+        "PackageDescription"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+      "sha256": "2ac3fd1f44fd311dea254d3c9721315629427fd351b02ec2077df4b0b7f4f9db",
+      "lines": 300,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "QuranWordScript",
+        "QuranAlignmentFailure",
+        "QuranNativeWord",
+        "QuranAlignedWord",
+        "QuranHeardWord",
+        "QuranWordEvidence",
+        "QuranRecitationTracker"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranInputQuality.swift",
+      "sha256": "c295d429b25660220d643eae996b273654002cb15126ca3329780010e6527f47",
+      "lines": 28,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "QuranInputQuality"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMResampler.swift",
+      "sha256": "07e464ab583e8ef2d04b8e5d366e1c32d756f389a3f4d8e960121ac98e795ade",
+      "lines": 54,
+      "imports": [
+        "AVFoundation",
+        "Foundation"
+      ],
+      "types": [
+        "QuranPCMResampler"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift",
+      "sha256": "c4e3fc4ca1b07a4e041312d50beac400168061e4b6932a5ca4d0a9c68568d689",
+      "lines": 108,
+      "imports": [
+        "Foundation",
+        "AVFoundation"
+      ],
+      "types": [
+        "QuranAudioWindow",
+        "QuranCaptureFailure",
+        "QuranPCMWriter"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift",
+      "sha256": "21208b9a81ce91b2f324a2b14b62177fb9d744b554187fa5d9be6f3566e569c4",
+      "lines": 39,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [
+        "AudioEvidenceGate"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/Probe.swift",
+      "sha256": "1f097b1acc72f4e3551952651c6b7581fef9660a87436790fbc6984f04eb165c",
+      "lines": 222,
+      "imports": [
+        "Foundation",
+        "RecitationEvidence",
+        "RecitationAlignment",
+        "WhisperKit",
+        "Darwin",
+        "CryptoKit"
+      ],
+      "types": [
+        "ProbeFixture",
+        "ProbeWindow",
+        "ProbeReport",
+        "ProbeFailure"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+      "sha256": "2e49e011faab9ef9bcd31dee0cc857f19a3b68ab271b8ebd8d3bd1680ba30616",
+      "lines": 280,
+      "imports": [
+        "Foundation",
+        "RecitationAlignment"
+      ],
+      "types": [
+        "QuranRecitationTake",
+        "QuranObservedWord",
+        "QuranObservedSpeech",
+        "QuranRecitationRecord",
+        "QuranJournalFailure",
+        "QuranRecitationJournal"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranWordingAssessment.swift",
+      "sha256": "6bbbb8a92df664e50c15d814cdbdc4cfc64ed1838ffee390c0937b596dbd78cf",
+      "lines": 311,
+      "imports": [
+        "Foundation",
+        "RecitationAlignment"
+      ],
+      "types": [
+        "QuranWordingEvent",
+        "QuranWordingAssessment"
+      ],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/AudioEvidenceGateTests.swift",
+      "sha256": "f059191e2bfc4467153e5b573b2a22eff48064b70fb3da97671b00f891e1e6f7",
+      "lines": 40,
+      "imports": [
+        "XCTest"
+      ],
+      "types": [
+        "AudioEvidenceGateTests"
+      ],
+      "tests": [
+        [
+          "testObservedSilenceHallucinationCannotReachReader",
+          ""
+        ],
+        [
+          "testUncertainAndLowVolumeAudioStaysUnresolved",
+          ""
+        ],
+        [
+          "testBadEvidenceCannotBeClampedIntoValidWord",
+          ""
+        ],
+        [
+          "testWordNeedsSoundAtItsOwnTimeNotElsewhereInWindow",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/QuranPCMResamplerTests.swift",
+      "sha256": "0ad0d6ca4743cd47691c929129ea427589a9ce74e935a1b69da98302212a8abf",
+      "lines": 38,
+      "imports": [
+        "XCTest",
+        "AVFoundation"
+      ],
+      "types": [
+        "QuranPCMResamplerTests"
+      ],
+      "tests": [
+        [
+          "testContinuousMicrophoneRatesPreserveDurationAndDoNotRepeatBuffers",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/QuranPCMWriterTests.swift",
+      "sha256": "3257d2c0a7a0b000dedb91bbf2daa48d7f6fa83d5582c9cd61135e977cc29373",
+      "lines": 78,
+      "imports": [
+        "XCTest",
+        "AVFoundation",
+        "WhisperKit"
+      ],
+      "types": [
+        "QuranPCMWriterTests"
+      ],
+      "tests": [
+        [
+          "testLowLatencyWindowsStartAtTwoSecondsAndKeepEveryRecordedSample",
+          ""
+        ],
+        [
+          "testActualReferenceAudioSurvivesWriterClosureWithExactSampleClock",
+          ""
+        ],
+        [
+          "testInvalidInputRetainsAlreadySavedAudioAndNeverFeedsRecognition",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/QuranRecitationJournalTests.swift",
+      "sha256": "e4c1990f6ff28b3eb3ebe2e8f3bf793328cb211c7a00df2eef1fbd9160f71ae1",
+      "lines": 50,
+      "imports": [
+        "XCTest",
+        "RecitationAlignment",
+        "RecitationSessions"
+      ],
+      "types": [
+        "QuranRecitationJournalTests"
+      ],
+      "tests": [
+        [
+          "testNewJournalRetainsTimedEvidenceAcrossReopeningAndRejectsCorruptReplacement",
+          ""
+        ],
+        [
+          "testAnUnclosedTakeCannotBePresentedAsFinishedOrPaused",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/QuranWordAlignmentTests.swift",
+      "sha256": "74e8fdb0fedd37b396748981fb45efd7b7f919adf530a6725f7d61050a18c2a6",
+      "lines": 151,
+      "imports": [
+        "XCTest",
+        "CryptoKit"
+      ],
+      "types": [
+        "QuranWordAlignmentTests"
+      ],
+      "tests": [
+        [
+          "testFull6236VerseScriptBindsActualEditionAndRejectsChangedGlyph",
+          ""
+        ],
+        [
+          "testRealAnchorsKeepRepetitionAndBacktrackingWithTakeTimes",
+          ""
+        ],
+        [
+          "testCompoundNeedsBothWordsAndDoesNotShiftFollowingIDs",
+          ""
+        ],
+        [
+          "testSingleGroupScopeRequiresItsFullFormAndStrongerConfidence",
+          ""
+        ],
+        [
+          "testDistantReturnNeedsUniqueLongAnchorAndDoesNotRevealSkippedText",
+          ""
+        ],
+        [
+          "testAmbiguousCommonPhraseAndWrongWordStayUnresolved",
+          ""
+        ],
+        [
+          "testLowConfidenceInvalidTimesAndPauseDoNotCreateProgress",
+          ""
+        ],
+        [
+          "testBothAuthoritativeSpellingsWithoutFuzzyMatching",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "tools/RecitationEngineProbe/experiments/CTCWordingBridge.swift",
+      "sha256": "0f0e75e7a817527733fb3172f9e59be5e0791d718f6739bfad815ee240b324df",
+      "lines": 65,
+      "imports": [
+        "Foundation"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/experiments/benchmark_ctc_wording.py",
+      "sha256": "935f0d660b7bdeaeada75d49256d6dc16965e74c4b05c8129353395bf6c956c2",
+      "lines": 130,
+      "imports": [
+        "hashlib",
+        "argparse",
+        "json",
+        "pathlib",
+        "resource",
+        "time",
+        "urllib.request",
+        "av",
+        "numpy",
+        "torch",
+        "transformers"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/experiments/benchmark_phonetic_candidate.py",
+      "sha256": "01df4a6cd1f01fb2af05a797dd3a487e9f899d4c3747f53ff911c20618319090",
+      "lines": 77,
+      "imports": [
+        "argparse",
+        "hashlib",
+        "json",
+        "math",
+        "os",
+        "pathlib",
+        "sys",
+        "time",
+        "numpy",
+        "scipy.signal",
+        "soundfile",
+        "torch",
+        "transformers"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/experiments/ctc_coreml.py",
+      "sha256": "6628f3511c15076b14011d02e4c03b75029aee71c9fbe94deb8e6a5af61832c6",
+      "lines": 196,
+      "imports": [
+        "gc",
+        "hashlib",
+        "json",
+        "os",
+        "pathlib",
+        "platform",
+        "resource",
+        "sys",
+        "time",
+        "unicodedata",
+        "urllib.request",
+        "coremltools",
+        "numpy",
+        "ctc_frames"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/experiments/ctc_frames.py",
+      "sha256": "1c7a4453009e4382de7fc6701ccd94572e73aa905043bca63d2d17f77f275786",
+      "lines": 50,
+      "imports": [
+        "math"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/RecitationEngineProbe/experiments/test_ctc_frames.py",
+      "sha256": "72764289b43aeca04b2979fa0843a42af10f5e8bfacd84a48702ac8fbf9c641f",
+      "lines": 47,
+      "imports": [
+        "unittest",
+        "ctc_frames"
+      ],
+      "types": [
+        "FrameEvidenceTests"
+      ],
+      "tests": [
+        [
+          "",
+          "test_blank_separates_actual_repeated_characters"
+        ],
+        [
+          "",
+          "test_delimiter_occurrences_never_invent_empty_words"
+        ],
+        [
+          "",
+          "test_unknown_source_is_preserved_but_unassessable"
+        ],
+        [
+          "",
+          "test_nonfinite_or_out_of_audio_evidence_is_rejected"
+        ],
+        [
+          "",
+          "test_only_closed_acoustically_ended_input_finalizes_existing_last_group"
+        ]
+      ]
+    },
+    {
+      "path": "tools/RecitationEngineProbe/fixtures/sources.json",
+      "sha256": "051a944853f37b7556c49edf08160f1598f3a4cb9255f703b0e090fc16c66b3b",
+      "lines": 62,
+      "imports": [],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/StandaloneAudioProbe/App/ProbeApp.swift",
+      "sha256": "abfc0f9a15ac9ba9a04a3ade9cc71a7d6bd893b309aa747530cd987fef584436",
+      "lines": 16,
+      "imports": [
+        "UIKit"
+      ],
+      "types": [],
+      "tests": []
+    },
+    {
+      "path": "tools/StandaloneAudioProbe/Tests/ActualAudioTests.swift",
+      "sha256": "e4134844851a960272d035f133d034b8f495976766c99ed96ef6b0799df53661",
+      "lines": 49,
+      "imports": [
+        "XCTest",
+        "AVFoundation"
+      ],
+      "types": [
+        "ActualAudioTests"
+      ],
+      "tests": [
+        [
+          "testAVAudioPlayerReachesActualEnd",
+          ""
+        ],
+        [
+          "testAVPlayerReachesActualEnd",
+          ""
+        ]
+      ]
+    },
+    {
+      "path": "tools/StandaloneAudioProbe/project.yml",
+      "sha256": "8eff3d8066cbac976d56abc161ff560d52b270451095def4846203b90a84f39a",
+      "lines": 39,
+      "imports": [],
+      "types": [],
+      "tests": []
+    }
+  ]
+}

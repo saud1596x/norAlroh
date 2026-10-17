@@ -41,8 +41,11 @@ import MediaPlayer
     private var durationTask: Task<Void, Never>?
     private var wordTimingTask: Task<Void, Never>?
     private var wordTiming: NoorReciterTimingTrack?
+    private var ayahTimingTask: Task<Void, Never>?
+    private var ayahTiming: NoorSurahAyahTimingTrack?
     private let usesPublishedTimingSource: Bool
     @Published private(set) var activeWordID: Int?
+    @Published private(set) var activeVerseKey: String?
     var repetitionCount: Int { count }
     var currentCanonicalKey: String? { index < keys.count ? keys[index] : nil }
     private var bookmarkKey: String { "noor.audio.bookmark." + currentRecordingIdentity }
@@ -227,6 +230,7 @@ import MediaPlayer
         playing = nil; loadingKey = nil; reportedStart = false
         automaticCacheKey = nil
         wordTimingTask?.cancel(); wordTimingTask = nil; wordTiming = nil; activeWordID = nil
+        ayahTimingTask?.cancel(); ayahTimingTask = nil; ayahTiming = nil; activeVerseKey = nil
         isPaused = false
         traceAudio("player.release.end")
     }
@@ -320,15 +324,30 @@ import MediaPlayer
                 let word = self.isPaused || playback.timeControlStatus != .playing ? nil
                     : self.wordTiming?.word(at: seconds, duration: self.durationSeconds)
                 if self.activeWordID != word { self.activeWordID = word }
+                if !self.isPaused, playback.timeControlStatus == .playing {
+                    let verse = self.ayahTiming?.verse(at: seconds, duration: self.durationSeconds)
+                    if self.activeVerseKey != verse { self.activeVerseKey = verse }
+                }
             }
         }
         if usesPublishedTimingSource {
-            let directory = reciterDirectory
-            wordTimingTask = Task { [weak self, weak playback] in
-                let timing = await NoorReciterWordTimings.shared.track(directory: directory, verse: key)
-                guard let self, let playback, !Task.isCancelled, self.revision == token,
-                      self.player === playback else { return }
-                self.wordTiming = timing
+            if let (reciter, surah) = NoorAudioIntegrity.reciterRecording(key),
+               let corpus = QuranResources.corpus, corpus.indices.contains(surah - 1) {
+                let ayahCount = corpus[surah - 1].ayahs.count
+                ayahTimingTask = Task { [weak self, weak playback] in
+                    let timing = await NoorSurahAyahTimings.shared.track(reciter: reciter, surah: surah, ayahCount: ayahCount)
+                    guard let self, let playback, !Task.isCancelled, self.revision == token,
+                          self.player === playback else { return }
+                    self.ayahTiming = timing
+                }
+            } else {
+                let directory = reciterDirectory
+                wordTimingTask = Task { [weak self, weak playback] in
+                    let timing = await NoorReciterWordTimings.shared.track(directory: directory, verse: key)
+                    guard let self, let playback, !Task.isCancelled, self.revision == token,
+                          self.player === playback else { return }
+                    self.wordTiming = timing
+                }
             }
         }
         // Metadata loading may wait for media services; suspension must not

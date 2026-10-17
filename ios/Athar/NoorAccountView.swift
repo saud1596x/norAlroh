@@ -358,6 +358,11 @@ import FirebaseFirestore
                   Auth.auth().currentUser?.uid == user.uid else { throw CocoaError(.userCancelled) }
         }
         try verifyIdentity()
+        // If remote inference is configured, purge its derived session state
+        // while the freshly reauthenticated Apple/Firebase identity is valid.
+        // A network failure leaves account deletion explicitly retryable.
+        try await QuranRemoteAccountDeletion.deleteIfConfigured()
+        try verifyIdentity()
         let running = syncTask
         disconnectLocalSync()
         // Firestore SDK work may ignore Task cancellation. A deletion marker
@@ -387,6 +392,7 @@ import FirebaseFirestore
     }
     func signOut() {
         guard available, !busy else { return }
+        QuranRemoteConsent.configure(false, owner:nil)
         identityGeneration = UUID()
         suspendSync()
         do { try Auth.auth().signOut(); signedIn = false; uid = nil; deletionRequested = false; deletionNeedsCompletion = false; name = "" }

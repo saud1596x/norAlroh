@@ -85,7 +85,7 @@ import os
          archiveRoot: URL? = nil, drainTimeout: Double = 8, recognitionTimeout: Double = 20,
          recognizeWindow: ((QuranAudioWindow) async throws -> QuranRecognitionWorker.Result)? = nil,
          analysisPersistence: ((QuranRecitationRecord) async throws -> Void)? = nil,
-         recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared,
+         recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionRouter(),
          makeCapture: @escaping (QuranPCMWriter, @escaping @Sendable (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
@@ -450,8 +450,9 @@ import os
                     try? QuranVoiceActivity.scan(QuranRecognitionAudio.conditioned(window.samples))
                 }.value
                 guard revision == token, !Task.isCancelled else { return }
-                if activity?.hasSpeech == false {
-                    recognized = .init(runs: [], hasUnresolvedSpeech: false, observations: [])
+                if activity?.hasSpeech == false && worker.capabilities.processesLocally {
+                    recognized = .init(runs: [], hasUnresolvedSpeech: false, observations: [],
+                                       processingConfiguration: "NoorVAD/webrtc-no-speech/no-ASR")
                 } else {
                 if !prepared {
                     // Cold model loading has its own bounded deadline, after
@@ -515,7 +516,7 @@ import os
                     observed.recognitionWindowID = recognized.windowID
                     observed.recognitionRevision = 0
                     observed.wordObservations = observations
-                    observed.processingConfiguration = QuranRecognitionModelDescriptor.bundled?.configuration
+                    observed.processingConfiguration = recognized.processingConfiguration
                 }
                 var spans = current.observedSpeech ?? []
                 // Keep recognizer revisions as source evidence. Assessment can
@@ -598,6 +599,7 @@ import os
             recognitionAvailable = false; uncertain = true
         }
         pump = nil; mailbox = nil
+        try? await NoorOperationDeadline.run(seconds: 3) { await self.worker.endTake() }
         if var current = record {
             current.phase = finishRequest ? .finished : .paused
             current.finishedAt = finishRequest ? Date() : nil

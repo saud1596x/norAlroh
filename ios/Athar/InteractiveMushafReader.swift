@@ -188,6 +188,7 @@ struct InteractiveMushafReader: View {
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     @AppStorage("noor.mushaf.followAudio") private var followAudio = true
     @AppStorage("noor.recitation.closedText") private var closedPracticeText = false
+    @AppStorage("noor.recitation.remoteConsent.v1") private var remoteRecitationConsent = false
     @AppStorage("noor.recitation.feedbackTiming") private var feedbackTiming = "live"
     @AppStorage("noor.recitation.feedbackHaptics") private var feedbackHaptics = false
     @State private var feedbackVerse: String?
@@ -248,6 +249,7 @@ struct InteractiveMushafReader: View {
             // to its first page. The next real word supplies its own page.
             if word != nil { followPlayback() }
         }
+        .onChange(of: audio.activeVerseKey) { _, _ in followPlayback() }
         .onChange(of: playbackLocksPage) { _, locked in
             if locked { picker = false; pageInputFocused = false; followAudio = true; followPlayback() }
         }
@@ -699,6 +701,20 @@ struct InteractiveMushafReader: View {
                         readerActionRow("الختمة وموضع التوقف", icon: "bookmark", action: .khatmah)
                         readerActionRow("قراءة بملء الشاشة", icon: "arrow.up.left.and.arrow.down.right", action: .fullScreen)
                         readerActionRow("اختيار مقطع التسميع", icon: "mic", action: .scope)
+                        if QuranRemoteRecognitionConfiguration.bundled != nil {
+                            Section {
+                                Toggle("معالجة التسميع عبر الخادم", isOn: Binding(
+                                    get: { remoteRecitationConsent && QuranRemoteConsent.enabled },
+                                    set: { value in
+                                        QuranRemoteConsent.configure(value, owner:QuranRemoteConsent.owner)
+                                        remoteRecitationConsent = QuranRemoteConsent.enabled
+                                    }))
+                                    .disabled(studyOpen || QuranRemoteConsent.owner == nil)
+                                    .accessibilityIdentifier("reader.remoteRecitation.consent")
+                            } footer: {
+                                Text("اختياري ويتطلب حساب Apple. يرسل صوت الجلسة للتحليل دون حفظه على الخادم. تُحفظ النتائج مشفّرة لمدة ساعة للاستئناف وتُحذف عند إنهاء الجلسة. المعالجة المحلية متاحة عند إيقافه. لا يمثل تقييمًا معتمدًا للنطق أو التجويد.")
+                            }
+                        }
                         readerActionRow("تسجيلاتي", icon: "waveform", action: .recordings)
                         readerActionRow("الحفظ والمراجعة", icon: "repeat", action: .memorization)
                     }
@@ -976,13 +992,20 @@ struct InteractiveMushafReader: View {
         // not suppress the selected reciter (including listen-then-repeat).
         guard readerVisible, recitation.state != .listening,
               manualSelection == nil, sheetVerse == nil,
-              let key = audio.playing,
-              let location = studyIndex?.playbackLocation(key: key, wordID: audio.activeWordID,
+              let mediaKey = audio.playing else { return }
+        let wholeSurah = NoorAudioIntegrity.reciterRecording(mediaKey) != nil
+        // A gap or an unavailable timing track must not jump back to ayah1
+        // after playback has advanced. Only the known start can navigate there.
+        if wholeSurah, audio.activeVerseKey == nil, audio.currentSeconds > 0.1 {
+            selected = nil; return
+        }
+        let key = audio.activeVerseKey ?? mediaKey
+        guard let location = studyIndex?.playbackLocation(key: key, wordID: audio.activeWordID,
                   currentPage: number, allowedPages: allowedPages) else { return }
         followAudio = true
         // Navigating to a surah's known beginning is not evidence that its
         // first ayah is still being read many seconds later.
-        selected = NoorAudioIntegrity.reciterRecording(key) == nil ? location.verse : nil
+        selected = !wholeSurah || audio.activeVerseKey != nil ? location.verse : nil
         if number != location.page { lastPage = location.page; number = location.page }
     }
     private func load() async {

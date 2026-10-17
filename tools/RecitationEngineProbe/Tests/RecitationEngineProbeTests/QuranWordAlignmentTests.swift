@@ -126,6 +126,17 @@ final class QuranWordAlignmentTests: XCTestCase {
         XCTAssertEqual(tracker.cursor, 3)
         XCTAssertFalse(tracker.revealedIDs.contains(15))
     }
+    func testRetractedAudioCannotLeaveAStaleShortAnchorPrior() throws {
+        let words = (1...30).map { word($0, [["فاصل"]]) }
+            + [word(31, [["من"]]), word(32, [["شر"]]), word(33, [["الوسواس"]])]
+        var tracker = QuranRecitationTracker(expected: words)
+        let take = UUID()
+        XCTAssertEqual(try tracker.consume(heard(["من","شر","الوسواس"]), takeID:take).count,3)
+        try tracker.reconsiderAudio(takeID:take, start:0, end:4)
+        XCTAssertTrue(tracker.evidence.isEmpty)
+        XCTAssertEqual(tracker.cursor,0)
+        XCTAssertTrue(try tracker.consume(heard(["من","شر"], offset:5), takeID:take).isEmpty)
+    }
     func testAmbiguousCommonPhraseAndWrongWordStayUnresolved() throws {
         var tracker = QuranRecitationTracker(expected: [word(1, [["الله"]]), word(2, [["الصمد"]]),
             word(3, [["الله"]]), word(4, [["الصمد"]])])
