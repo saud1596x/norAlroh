@@ -58,9 +58,12 @@ Inspection identified a separate deterministic alignment defect: a rolling
 window's independent passages competed for one global longest match. Equal
 length passages at different audio positions were treated as ambiguous, and a
 long older passage suppressed a shorter later one. Alignment now resolves
-alternatives at each heard offset, retaining exact unique anchors and existing
-confidence/timing thresholds, and consumes non-overlapping matches in audio
-order. A direct regression covers two surahs and an unresolved common phrase.
+alternatives in connected overlapping heard intervals, retaining the strongest
+unique exact anchor and existing confidence/timing thresholds, then consumes
+independent passages in audio order. A direct regression covers two surahs,
+an unresolved common phrase and a stronger overlapping anchor. A subsequent
+dad771a run was cancelled before testing after that overlap counterexample was
+identified; it is not a test pass.
 The original shared alignment suite is also included in the native test target.
 Whether this resolves the real PCM failure is **pending**. Failure attachments
 now retain actual public-fixture observed words and timing for diagnosis.

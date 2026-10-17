@@ -24,6 +24,18 @@ import WhisperKit
         XCTAssertTrue(try ambiguous.consume([
             .init(text: "الله", start: 0, end: 0.8, probability: 0.99),
             .init(text: "الصمد", start: 1, end: 1.8, probability: 0.99)], takeID: UUID()).isEmpty)
+        // A shorter prefix cannot preempt a stronger overlapping anchor.
+        // These isolated lexical fixtures are not rendered Quran content.
+        let overlap = ["قال", "رب", "اني"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "2:1", page: 2, aliases: [[$0.element]])
+        } + ["رب", "اني", "اعوذ", "بك"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 4, verse: "2:2", page: 2, aliases: [[$0.element]])
+        }
+        var overlapping = QuranRecitationTracker(expected: overlap)
+        let actual = ["قال", "رب", "اني", "اعوذ", "بك"].enumerated().map {
+            QuranHeardWord(text: $0.element, start: Double($0.offset), end: Double($0.offset) + 0.8, probability: 0.99)
+        }
+        XCTAssertEqual(try overlapping.consume(actual, takeID: UUID()).map(\.nativeID), [4, 5, 6, 7])
     }
     func testTextVisibilityChangesDuringCaptureWithoutLosingAssistanceOrSession() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

@@ -229,13 +229,23 @@ public struct QuranRecitationTracker {
         // One rolling window can contain two independent passages. Comparing
         // every passage globally let an older, longer anchor suppress a newer
         // surah, or treated equal-length passages at different audio times as
-        // ambiguity. Resolve alternatives at the SAME heard position, then
-        // consume non-overlapping unique anchors in actual audio order.
-        let grouped = Dictionary(grouping: candidates, by: { $0.bounds[0].1 })
+        // ambiguity. Competing OVERLAPPING interpretations still need the
+        // strongest unique exact anchor. Disjoint passages do not compete.
+        let ordered = candidates.sorted {
+            $0.bounds[0].1 == $1.bounds[0].1 ? $0.first < $1.first : $0.bounds[0].1 < $1.bounds[0].1
+        }
+        var groups: [[Match]] = [], groupEnd = -1
+        for candidate in ordered {
+            let end = candidate.bounds.last!.2
+            if candidate.bounds[0].1 >= groupEnd {
+                groups.append([candidate]); groupEnd = end
+            } else {
+                groups[groups.count - 1].append(candidate); groupEnd = max(groupEnd, end)
+            }
+        }
         var added: [QuranWordEvidence] = []
-        var nextHeard = 0
-        for heardStart in grouped.keys.sorted() where heardStart >= nextHeard {
-            guard let alternatives = grouped[heardStart], let length = alternatives.map({ $0.bounds.count }).max() else { continue }
+        for alternatives in groups {
+            guard let length = alternatives.map({ $0.bounds.count }).max() else { continue }
             let best = alternatives.filter { $0.bounds.count == length }
             guard Set(best.map(\.first)).count == 1, let match = best.first else { continue }
             for (index, first, end) in match.bounds {
@@ -250,7 +260,6 @@ public struct QuranRecitationTracker {
                 }
                 if !duplicate { evidence.append(record); added.append(record) }
             }
-            nextHeard = match.bounds.last!.2
             cursor = match.bounds.last!.0 + 1
         }
         return added
