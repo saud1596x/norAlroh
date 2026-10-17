@@ -136,6 +136,8 @@ struct InteractiveMushafReader: View {
     @State private var tools = true
     @State private var recitationOptionsOpen = false
     @State private var readerActionsOpen = false
+    private enum ReaderAction { case khatmah, scope, recordings, memorization }
+    @State private var pendingReaderAction: ReaderAction?
     @State private var recitersOpen = false
     @ObservedObject private var audioFocus = NoorAudioFocus.shared
     @AppStorage("noor.mushaf.reciter") private var preferredReciter = "Abdul_Basit_Murattal_64kbps"
@@ -625,13 +627,40 @@ struct InteractiveMushafReader: View {
             Label("المزيد", systemImage: "ellipsis.circle")
                 .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
         }.buttonStyle(.plain).accessibilityIdentifier("reader.more")
-            .confirmationDialog("خيارات المصحف", isPresented: $readerActionsOpen, titleVisibility: .visible) {
-                Button("الختمة وموضع التوقف") { khatmah = true }
-                Button("اختيار مقطع التسميع") { scopeOpen = true }
-                Button("تسجيلاتي") { recordingBrowserOpen = true }
-                Button("الحفظ والمراجعة") { memorizationOpen = true }
-                Button("إلغاء", role: .cancel) {}
+            .sheet(isPresented: $readerActionsOpen, onDismiss: {
+                let action = pendingReaderAction; pendingReaderAction = nil
+                switch action {
+                case .khatmah: khatmah = true
+                case .scope: scopeOpen = true
+                case .recordings: recordingBrowserOpen = true
+                case .memorization: memorizationOpen = true
+                case nil: break
+                }
+            }) {
+                NavigationStack {
+                    List {
+                        readerActionRow("الختمة وموضع التوقف", icon: "bookmark", action: .khatmah)
+                        readerActionRow("اختيار مقطع التسميع", icon: "mic", action: .scope)
+                        readerActionRow("تسجيلاتي", icon: "waveform", action: .recordings)
+                        readerActionRow("الحفظ والمراجعة", icon: "repeat", action: .memorization)
+                    }
+                    .navigationTitle("خيارات المصحف").navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("إغلاق") { readerActionsOpen = false }
+                                .accessibilityIdentifier("reader.options.close")
+                        }
+                    }
+                }.presentationDetents([.medium, .large])
             }
+    }
+    private func readerActionRow(_ title: String, icon: String, action: ReaderAction) -> some View {
+        Button {
+            pendingReaderAction = action; readerActionsOpen = false
+        } label: {
+            Label(title, systemImage: icon).frame(minHeight: 44)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
     private var pageNavigationControls: some View {
         HStack(spacing: 12) {

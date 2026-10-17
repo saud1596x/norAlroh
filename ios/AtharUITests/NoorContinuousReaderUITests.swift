@@ -22,7 +22,10 @@ final class NoorContinuousReaderUITests: XCTestCase {
         readerScreenshot.name = "reader-controls-spaced-no-overlap"; readerScreenshot.lifetime = .keepAlways; add(readerScreenshot)
         more.tap()
         XCTAssertTrue(app.buttons["اختيار مقطع التسميع"].waitForExistence(timeout: 5))
-        app.buttons["إلغاء"].tap()
+        let closeOptions = app.buttons["reader.options.close"]
+        XCTAssertTrue(closeOptions.isHittable, "Options always have an explicit close button")
+        closeOptions.tap()
+        XCTAssertTrue(more.waitForExistence(timeout: 5))
         if visibility.value as? String == "الآيات مخفية" { visibility.tap() }
         XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
         visibility.tap()
