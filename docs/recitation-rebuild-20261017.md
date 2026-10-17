@@ -110,12 +110,27 @@ hiding it again cannot erase this. An analysis-specific journal merge prevents
 delayed off-main inference saves from overwriting newer visibility, assistance
 or take-close state. Added regressions cover the live toggle, same capture/take,
 reopening, a stale analysis save, VoiceOver masking and the real UI button.
-Swift syntax parsing passed; these additions are **not** in the already-running
-30c37a6 native run and are not yet verified by native execution.
+Actual c2c0568 Release run6ad3c2b27550aed8108fa5d5 passed the hide/show UI
+journey, same-session/take visibility changes and restored preference,
+concurrent visibility/assistance preservation, stronger overlapping-anchor
+regression and all8 original canonical alignment tests. All604 pages rendered
+in21.132s with VoiceOver masking and non-uniform pixel checks. Overall35/36
+unit cases passed and1/1 UI passed; the real PCM case failed4 assertions.
+
+The new analysis-only merge introduced a real regression: it kept the disk's
+earlier zero/short take length instead of the window's actual captured frames.
+Timed observations therefore failed journal validation and paused capture.
+The fix merges monotonically growing frame counts by take ID while preserving
+later close/phase/visibility flags. A new regression checks a zero-frame active
+take growing to16000 and a later closed32000-frame take resisting rollback or
+reopening. This fix is pending native verification; c2c0568 is not a pass.
 
 The user's latest request also reactivates Tajweed colors. QUL's actual matching
 V4 layout resource is https://qul.tarteel.ai/resources/mushaf-layout/19 ; this
 page explicitly still describes V4 as pending proofreading, while font 240 is
 downloadable. Its glyphs cannot be substituted into the app's V2 source. No
 color toggle or guessed colors have been shipped; the edition/proofreading and
-canonical-word mapping remain unresolved for that feature.
+canonical-word mapping remain unresolved for that feature. The official sample
+font CDN returned HTTP403 and authenticated TTF archive downloads did not
+produce a file after two bounded waits. Actual blocker evidence is recorded in
+outputs/tajweed-font-audit/status.json outside the repository.

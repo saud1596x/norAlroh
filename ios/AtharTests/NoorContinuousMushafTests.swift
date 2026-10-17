@@ -91,6 +91,32 @@ import WhisperKit
                        "Recognizer failure that exposes text also survives the analysis merge")
     }
 
+    func testAnalysisPersistsActualWindowFramesWithoutReopeningALaterClosedTake() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journal = QuranRecitationJournal(root: root)
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        record.phase = .recording
+        record.takes = [.init(startedAt: record.startedAt)]
+        try journal.create(record)
+        var analysis = record
+        analysis.takes[0].frames = 16_000
+        analysis.observedSpeech = [.init(takeID: record.takes[0].id, start: 0, end: 1,
+            words: ["قل"], unresolved: true, backendID: "journal-regression")]
+        try journal.saveAnalysis(analysis)
+        var paused = try journal.load(record.id)
+        XCTAssertEqual(paused.takes[0].frames, 16_000)
+        XCTAssertEqual(paused.observedSpeech, analysis.observedSpeech)
+        paused.takes[0].frames = 32_000; paused.takes[0].closed = true; paused.phase = .paused
+        paused.practiceTextHidden = false; paused.textExposureOccurred = true
+        try journal.save(paused)
+        try journal.saveAnalysis(analysis)
+        let saved = try journal.load(record.id)
+        XCTAssertEqual(saved.phase, .paused); XCTAssertTrue(saved.takes[0].closed)
+        XCTAssertEqual(saved.takes[0].frames, 32_000)
+        XCTAssertEqual(saved.practiceTextHidden, false); XCTAssertEqual(saved.textExposureOccurred, true)
+    }
+
     func testEveryCatalogRecordingHasASelectableStableIdentityAndRestorableKeys() throws {
         let voices = NoorMushafReciter.all
         XCTAssertEqual(voices.count, NoorVerseReciter.all.count + NoorReciterCatalog.reciters.count)

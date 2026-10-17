@@ -232,9 +232,14 @@ public struct QuranRecitationJournal {
         latest.evidence = analysis.evidence
         latest.recognitionUnavailable = analysis.recognitionUnavailable
         if analysis.textExposureOccurred == true { latest.textExposureOccurred = true }
-        let exposedTakes = Set(analysis.takes.filter { $0.textExposureOccurred == true }.map(\.id))
-        for index in latest.takes.indices where exposedTakes.contains(latest.takes[index].id) {
-            latest.takes[index].textExposureOccurred = true
+        let analyzedTakes = Dictionary(uniqueKeysWithValues: analysis.takes.map { ($0.id, $0) })
+        for index in latest.takes.indices {
+            guard let analyzed = analyzedTakes[latest.takes[index].id] else { continue }
+            // Window frames grow in memory before inference is saved. Keeping
+            // the disk's earlier zero/short length would reject genuine timed
+            // evidence. Grow the frame count, preserving a later pause/close.
+            latest.takes[index].frames = max(latest.takes[index].frames, analyzed.frames)
+            if analyzed.textExposureOccurred == true { latest.takes[index].textExposureOccurred = true }
         }
         try latest.validate(); try write(latest)
     }
