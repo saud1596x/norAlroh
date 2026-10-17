@@ -84,6 +84,12 @@ struct NoorLegalDocumentView: View {
                     }
                     if documentID == "terms" {
                         VStack(alignment: .leading, spacing: 8) {
+                            Text("حقوق خطوط المصحف").font(.headline)
+                            Text("خطوط المصحف وألوان التجويد من مجمع الملك فهد لطباعة المصحف الشريف، بإتاحة Quran Foundation. تُستخدم داخل هذا التطبيق مع الحفاظ على رموزها وألوانها الأصلية.")
+                                .fixedSize(horizontal: false, vertical: true)
+                            Link("Quran Foundation", destination: URL(string: "https://quran.foundation")!)
+                        }
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("ترخيص توقيت كلمات التلاوة").font(.headline)
                             Text("© 2016 Collin Fair — quran-align. استُخدمت بيانات التوقيت بترخيص CC BY 4.0، ورُبطت بمعرّفات المصحف مع استبعاد المقاطع الملتبسة والمجمّعة، دون تقدير أزمنة بديلة. التوقيت إرشاد للاستماع ولا يقيّم التجويد.")
                                 .fixedSize(horizontal: false, vertical: true)

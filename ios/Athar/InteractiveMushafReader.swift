@@ -136,6 +136,7 @@ struct InteractiveMushafReader: View {
     @State private var tools = true
     @State private var recitationOptionsOpen = false
     @State private var readerActionsOpen = false
+    @AppStorage("noor.mushaf.tajweedColors") private var tajweedColors = false
     private enum ReaderAction { case khatmah, scope, recordings, memorization }
     @State private var pendingReaderAction: ReaderAction?
     @State private var recitersOpen = false
@@ -492,6 +493,7 @@ struct InteractiveMushafReader: View {
                         hiddenWordIDs: hiddenStudyWords,
                         reviewWordIDs: visibleReviewWordIDs,
                         activeWordID: recitation.state == .listening ? recitation.record?.evidence.last?.nativeID : audio.activeWordID,
+                        tajweedEnabled: tajweedColors,
                         pageRange: allowedPages,
                         allowsManualPageTurns: !playbackLocksPage,
                         allowsVerseSelection: true,
@@ -639,6 +641,9 @@ struct InteractiveMushafReader: View {
             }) {
                 NavigationStack {
                     List {
+                        Toggle("ألوان التجويد", isOn: $tajweedColors)
+                            .accessibilityIdentifier("reader.tajweed")
+                            .listRowSeparator(.visible)
                         readerActionRow("الختمة وموضع التوقف", icon: "bookmark", action: .khatmah)
                         readerActionRow("اختيار مقطع التسميع", icon: "mic", action: .scope)
                         readerActionRow("تسجيلاتي", icon: "waveform", action: .recordings)

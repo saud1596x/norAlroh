@@ -203,6 +203,47 @@ import WhisperKit
             XCTAssertTrue(scan.intervals.allSatisfy { $0.start >= 0 && $0.end <= Double(samples.count) / 16_000 })
         }
     }
+
+    func testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry() async throws {
+        executionTimeAllowance = 180
+        try OriginalMushafCompanion.register()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let rows = try OriginalMushafRows.load(), corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
+        canvas.tajweedEnabled = true
+        for number in 1...604 {
+            let page = OriginalPageData.page(number, snapshot: snapshot, rows: rows, keys: keys)
+            for style in [UIUserInterfaceStyle.light, .dark] {
+                canvas.overrideUserInterfaceStyle = style
+                canvas.configure(page: page, corpus: corpus)
+                XCTAssertTrue(canvas.renderedSuccessfully, "Tajweed \(number)/\(style.rawValue): \(canvas.failureReason ?? "")")
+                XCTAssertEqual(Set(canvas.regions.map(\.word)), Set(page.words.map(\.id)))
+                XCTAssertTrue(canvas.regions.allSatisfy { canvas.bounds.contains($0.rect) })
+                if [1, 2, 151, 305, 560, 604].contains(number) {
+                    let format = UIGraphicsImageRendererFormat(); format.preferredRange = .standard; format.scale = 1
+                    let image = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
+                        (style == .dark ? UIColor.black : .white).setFill(); context.fill(canvas.bounds)
+                        canvas.layer.render(in: context.cgContext)
+                    }
+                    let pixels = try XCTUnwrap(image.cgImage?.dataProvider?.data), bytes = try XCTUnwrap(CFDataGetBytePtr(pixels))
+                    XCTAssertTrue(stride(from: 0, to: CFDataGetLength(pixels) - 4, by: 4).contains { i in
+                        max(max(bytes[i], bytes[i + 1]), bytes[i + 2]) - min(min(bytes[i], bytes[i + 1]), bytes[i + 2]) > 35
+                    }, "Original colored layers must actually draw, not a monochrome fallback")
+                    let proof = XCTAttachment(image: image); proof.name = "tajweed-\(number)-\(style.rawValue)"; proof.lifetime = .keepAlways; add(proof)
+                }
+            }
+            let passes = canvas.shapingPasses, geometry = canvas.regions.map(\.rect)
+            canvas.hiddenWordIDs = Set(page.words.map(\.id))
+            XCTAssertTrue((canvas.accessibilityElements as? [UIAccessibilityElement] ?? []).allSatisfy { $0.accessibilityLabel?.contains(canvas.hiddenTextAccessibilityHint) == true })
+            canvas.hiddenWordIDs = []
+            XCTAssertEqual(canvas.shapingPasses, passes); XCTAssertEqual(canvas.regions.map(\.rect), geometry)
+        }
+        let page = OriginalPageData.page(1, snapshot: snapshot, rows: rows, keys: keys)
+        let fonts = MushafFonts(); await fonts.load("QCF2001")
+        canvas.tajweedEnabled = false; canvas.configure(page: page, corpus: corpus)
+        XCTAssertTrue(canvas.renderedSuccessfully, "Turning colors off restores the approved original V2 edition")
+    }
     func testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults() async throws {
         executionTimeAllowance = 120
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

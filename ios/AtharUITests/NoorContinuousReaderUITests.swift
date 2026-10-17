@@ -22,10 +22,19 @@ final class NoorContinuousReaderUITests: XCTestCase {
         readerScreenshot.name = "reader-controls-spaced-no-overlap"; readerScreenshot.lifetime = .keepAlways; add(readerScreenshot)
         more.tap()
         XCTAssertTrue(app.buttons["اختيار مقطع التسميع"].waitForExistence(timeout: 5))
+        let tajweed = app.switches["reader.tajweed"]
+        XCTAssertTrue(tajweed.exists)
+        if tajweed.value as? String == "0" { tajweed.tap() }
         let closeOptions = app.buttons["reader.options.close"]
         XCTAssertTrue(closeOptions.isHittable, "Options always have an explicit close button")
         closeOptions.tap()
         XCTAssertTrue(more.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["reader.page.ready"].waitForExistence(timeout: 10))
+        let colorScreenshot = XCTAttachment(screenshot: app.screenshot())
+        colorScreenshot.name = "tajweed-reader-full-screen"; colorScreenshot.lifetime = .keepAlways; add(colorScreenshot)
+        more.tap()
+        XCTAssertTrue(tajweed.waitForExistence(timeout: 5)); tajweed.tap()
+        closeOptions.tap()
         if visibility.value as? String == "الآيات مخفية" { visibility.tap() }
         XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
         visibility.tap()

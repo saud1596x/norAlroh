@@ -95,9 +95,13 @@ struct OriginalPageData: Equatable {
     private var shapedTexts: [NSAttributedString] = []
     private var lineWordRanges: [[(NSRange, Int)]] = []
     private var wordLines: [Int: Int] = [:]
+    var tajweedEnabled = false
+    private var coloredInk: [(Int, CGPath, UIColor)] = []
     private struct ShapedPage {
         let page: OriginalPageData
         let style: UIUserInterfaceStyle
+        let tajweed: Bool
+        let coloredInk: [(Int, CGPath, UIColor)]
         let lines: [(CTLine, CGPoint)]
         let texts: [NSAttributedString]
         let ranges: [[(NSRange, Int)]]
@@ -161,18 +165,25 @@ struct OriginalPageData: Equatable {
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
-        if let saved = shapedPages.first(where: { $0.page == page && $0.style == traitCollection.userInterfaceStyle }) {
+        if let saved = shapedPages.first(where: { $0.page == page && $0.style == traitCollection.userInterfaceStyle && $0.tajweed == tajweedEnabled }) {
             lines = saved.lines; shapedTexts = saved.texts; lineWordRanges = saved.ranges
             regions = saved.regions; wordLines = saved.wordLines; decorationPaths = saved.decorations
             rowGeometry = saved.geometry; headerClearances = saved.clearances
+            coloredInk = saved.coloredInk
             renderedSuccessfully = true; failureReason = nil
             configureAccessibility(page: page, corpus: corpus)
             return
         }
         shapingPasses += 1
+        coloredInk = []
         lines = []; shapedTexts = []; lineWordRanges = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
         wordLines = Dictionary(uniqueKeysWithValues: page.words.map { ($0.id, $0.line) })
-        guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: Metrics.bodyPointSize),
+        let tajweedPage: MushafTajweedFonts.Page?
+        do { tajweedPage = tajweedEnabled ? try MushafTajweedFonts.load(page.number) : nil }
+        catch { fail("Original Tajweed font integrity failed"); return }
+        // V4 has its own em/advances. One fixed edition size fits all authored
+        // rows; never horizontally squeeze glyphs or change size per line.
+        guard let body = UIFont(name: tajweedPage?.family ?? String(format: "QCF2%03d", page.number), size: tajweedEnabled ? 23 : Metrics.bodyPointSize),
               let companion = UIFont(name: OriginalMushafCompanion.name, size: Metrics.bodyPointSize) else { fail("Missing page or companion font"); return }
         // Content Sync contains ASCII separators both between logical words and
         // inside multi-glyph words. Some page fonts omit FB50 entirely. Keep
@@ -252,16 +263,20 @@ struct OriginalPageData: Equatable {
                 CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
                 guard !glyphs.contains(0) else { fail("Missing shaped glyph, row \(row.line)"); return }
                 for i in 0..<count {
-                    guard let path = CTFontCreatePathForGlyph(runFont, glyphs[i], nil) else { continue }
-                    let box = path.boundingBoxOfPath
-                    guard !box.isEmpty, let entry = ranges.first(where: { NSLocationInRange(indices[i], $0.0) }) else { continue }
-                    let rect = CGRect(x: origin.x + positions[i].x + box.minX,
-                                      y: baseline - positions[i].y - box.maxY,
-                                      width: box.width, height: box.height)
-                    wordRects[entry.1.id] = wordRects[entry.1.id].map { $0.union(rect) } ?? rect
+                    guard let entry = ranges.first(where: { NSLocationInRange(indices[i], $0.0) }) else { continue }
+                    let parts: [(CGPath, UIColor)]
+                    if let tajweedPage {
+                        parts = tajweedPage.paths(glyph: glyphs[i], font: runFont, dark: traitCollection.userInterfaceStyle == .dark)
+                    } else { parts = CTFontCreatePathForGlyph(runFont, glyphs[i], nil).map { [($0, UIColor.label)] } ?? [] }
                     var transform = CGAffineTransform(a: 1, b: 0, c: 0, d: -1,
                         tx: origin.x + positions[i].x, ty: baseline - positions[i].y)
-                    if let placed = path.copy(using: &transform) { wordPaths[entry.1.id, default: []].append(placed) }
+                    for (path, color) in parts where !path.boundingBoxOfPath.isEmpty {
+                        guard let placed = path.copy(using: &transform) else { continue }
+                        let rect = placed.boundingBoxOfPath
+                        wordRects[entry.1.id] = wordRects[entry.1.id].map { $0.union(rect) } ?? rect
+                        wordPaths[entry.1.id, default: []].append(placed)
+                        if tajweedEnabled { coloredInk.append((entry.1.id, placed, color)) }
+                    }
                 }
             }
             for (_, word) in ranges {
@@ -273,8 +288,9 @@ struct OriginalPageData: Equatable {
         // Authored FC20 ornament paths remain independent of title text.
         // Matching the target edition and distribution rights are review gates.
         renderedSuccessfully = true
-        shapedPages.removeAll { $0.page.number == page.number }
+        shapedPages.removeAll { $0.page.number == page.number && $0.tajweed == tajweedEnabled }
         shapedPages.append(ShapedPage(page: page, style: traitCollection.userInterfaceStyle,
+            tajweed: tajweedEnabled, coloredInk: coloredInk,
             lines: lines, texts: shapedTexts, ranges: lineWordRanges, regions: regions,
             wordLines: wordLines, decorations: decorationPaths, geometry: rowGeometry, clearances: headerClearances))
         if shapedPages.count > 3 { shapedPages.removeFirst(shapedPages.count - 3) }
@@ -446,6 +462,7 @@ struct OriginalPageData: Equatable {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
             highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
+            ink.setNeedsDisplay()
         }
     }
     func reviewPath() -> CGPath? {
@@ -488,12 +505,16 @@ struct OriginalPageData: Equatable {
         context.saveGState()
         context.setFillColor(UIColor.secondaryLabel.withAlphaComponent(0.55).cgColor)
         for path in decorationPaths { context.addPath(path); context.fillPath() }
+        for (word, path, color) in coloredInk where !hiddenWordIDs.contains(word) {
+            context.setFillColor(color.resolvedColor(with: traitCollection).cgColor); context.addPath(path); context.fillPath()
+        }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height); context.scaleBy(x: 1, y: -1)
         for (index, entry) in lines.enumerated() {
             let (line, origin) = entry
             context.textPosition = CGPoint(x: origin.x, y: bounds.height - origin.y)
             let ranges = lineWordRanges[index]
+            if tajweedEnabled && !ranges.isEmpty { continue }
             if !ranges.contains(where: { hiddenWordIDs.contains($0.1) }) {
                 CTLineDraw(line, context)
             } else {
@@ -738,6 +759,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     var hiddenWordIDs: Set<Int> = []
     var reviewWordIDs: Set<Int> = []
     var activeWordID: Int? = nil
+    var tajweedEnabled = false
     var pageRange: ClosedRange<Int> = 1...604
     var allowsManualPageTurns = true
     var allowsVerseSelection = true
@@ -756,11 +778,14 @@ struct OriginalMushafDrawing: UIViewRepresentable {
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
         view.onToggleTools = onToggleTools
-        if context.coordinator.page != page.number || !view.canvas.renderedSuccessfully {
+        if context.coordinator.page != page.number || context.coordinator.tajweed != tajweedEnabled || context.coordinator.style != view.traitCollection.userInterfaceStyle || !view.canvas.renderedSuccessfully {
             let animate = context.coordinator.page != nil && context.coordinator.page != page.number
                 && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
             context.coordinator.page = page.number
+            context.coordinator.tajweed = tajweedEnabled
+            context.coordinator.style = view.traitCollection.userInterfaceStyle
             let change = {
+                view.canvas.tajweedEnabled = self.tajweedEnabled
                 view.canvas.configure(page: self.page, corpus: self.corpus)
                 view.canvas.selected = self.selected
                 view.canvas.hiddenWordIDs = self.hiddenWordIDs
@@ -777,6 +802,6 @@ struct OriginalMushafDrawing: UIViewRepresentable {
         view.canvas.reviewWordIDs = reviewWordIDs
         view.canvas.activeWordID = activeWordID
     }
-    final class Coordinator { var page: Int? }
+    final class Coordinator { var page: Int?; var tajweed: Bool?; var style: UIUserInterfaceStyle? }
     func makeCoordinator() -> Coordinator { Coordinator() }
 }
