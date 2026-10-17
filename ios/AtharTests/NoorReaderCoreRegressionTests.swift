@@ -2,6 +2,21 @@ import XCTest
 @testable import Athar
 
 final class NoorReaderCoreRegressionTests: XCTestCase {
+    @MainActor func testExistingReaderPreferencesRestoreTheSameLegacyRecordingAndCacheKey() throws {
+        for directory in ["Abdurrahmaan_As-Sudais_64kbps", "Saood_ash-Shuraym_64kbps"] {
+            let saved = try XCTUnwrap(NoorMushafReciter.selected(directory))
+            XCTAssertEqual(saved.verseDirectory, directory); XCTAssertNil(saved.recording)
+            let audio = MushafVerseAudio(); audio.selectReciter(saved)
+            XCTAssertEqual(audio.reciterDirectory, directory)
+            XCTAssertEqual(audio.currentRecordingIdentity, directory)
+            XCTAssertNil(audio.playing, "Restoring a preference never starts playback")
+            let cache = try XCTUnwrap(NoorVerseReciter.cacheKey(directory: directory, verse: "112:1"))
+            XCTAssertEqual(NoorAudioIntegrity.url(cache)?.absoluteString,
+                           "https://everyayah.com/data/\(directory)/112001.mp3")
+            audio.stop()
+        }
+        XCTAssertNil(NoorMushafReciter.selected("unknown-recording"))
+    }
     func testActualDecodedRollingWindowKeepsBothSurahsDespiteCrossBoundaryBridge() throws {
         let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf:
             XCTUnwrap(Bundle.main.url(forResource: "recitation-word-script", withExtension: "json"))))

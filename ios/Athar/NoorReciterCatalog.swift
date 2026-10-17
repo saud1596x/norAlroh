@@ -12,7 +12,11 @@ struct NoorVerseReciter: Identifiable {
     ]
     // Keep older bookmarks and verified cache files readable. Timings never
     // transfer between bitrates; only the exact published recording is used.
-    static let directories = Set(all.map(\.id) + ["Abdurrahmaan_As-Sudais_64kbps", "Saood_ash-Shuraym_64kbps"])
+    static let legacyRecordings: [Self] = [
+        .init(id: "Abdurrahmaan_As-Sudais_64kbps", name: "عبد الرحمن السديس"),
+        .init(id: "Saood_ash-Shuraym_64kbps", name: "سعود الشريم")
+    ]
+    static let directories = Set((all + legacyRecordings).map(\.id))
     static func cacheKey(directory: String, verse: String) -> String? {
         guard directories.contains(directory),
               NoorAudioIntegrity.url(verse) != nil, !verse.hasPrefix("v:"), !verse.hasPrefix("r:") else { return nil }

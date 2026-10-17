@@ -16,7 +16,13 @@ struct NoorMushafReciter: Identifiable {
             .init(id: "surah:\($0.id):\($0.recordingID)", name: $0.name, verseDirectory: nil, recording: $0)
         }
     }
-    static func selected(_ id: String) -> Self? { all.first { $0.id == id } }
+    static func selected(_ id: String) -> Self? {
+        if let current = all.first(where: { $0.id == id }) { return current }
+        // Restore the exact older recording, not another bitrate with a
+        // similar voice name or somebody else's cached/timed media.
+        guard let legacy = NoorVerseReciter.legacyRecordings.first(where: { $0.id == id }) else { return nil }
+        return .init(id: legacy.id, name: legacy.name, verseDirectory: legacy.id, recording: nil)
+    }
     func playbackKeys(_ verses: [String]) -> [String] {
         guard let recording else { return verses }
         var seen = Set<Int>()
@@ -39,7 +45,11 @@ struct NoorMushafReciterPicker: View {
     @State private var search = ""
     private var matches: [NoorMushafReciter] {
         let query = ArabicSearch.normalize(search)
-        return NoorMushafReciter.all.filter { query.isEmpty || ArabicSearch.normalize($0.name).contains(query) }
+        var choices = NoorMushafReciter.all
+        if let saved = NoorMushafReciter.selected(selectedID), !choices.contains(where: { $0.id == saved.id }) {
+            choices.insert(saved, at: 0)
+        }
+        return choices.filter { query.isEmpty || ArabicSearch.normalize($0.name).contains(query) }
     }
     var body: some View {
         NavigationStack {

@@ -86,6 +86,15 @@ Original screenshot attachments are exported through bounded, SHA256-verified
 CI log chunks as well as private artifacts; the desktop artifact download
 returned HTTP401 without authentication, and no API token was read to bypass it.
 
+Additional confirmed preference bug: older64kbps Sudais/Shuraym directories
+remained valid for cache/bookmark loading, but `NoorMushafReciter.selected` only
+searched the modern25 entries and could not restore them. Preserve the exact
+legacy recording and its cache namespace; do not silently choose AbdulBasit or
+transfer192/128kbps word timing. The older choice appears in the picker only for
+an existing saved preference. A new controller-level regression must verify
+restoration, zero automatic playback and the exact112001 media URL. This small
+catalog migration is not part of the earlier8fb native result until checked.
+
 The private TestFlight workflow now targets the previously existing **Internal
 Testers** group, confirmed in the app's saved Apple sidebar. Codemagic performs
 post-processing through the existing integration; no new group, invitation,
