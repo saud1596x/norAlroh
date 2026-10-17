@@ -212,14 +212,24 @@ import WhisperKit
         let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
         let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
         canvas.tajweedEnabled = true
+        let reference = OriginalMushafCanvas(frame: canvas.frame), fonts = MushafFonts()
         for number in 1...604 {
+            await fonts.load(String(format: "QCF2%03d", number))
+            XCTAssertNil(fonts.error)
             let page = OriginalPageData.page(number, snapshot: snapshot, rows: rows, keys: keys)
+            reference.configure(page: page, corpus: corpus)
+            XCTAssertTrue(reference.renderedSuccessfully)
+            let referenceWidth = reference.rowGeometry.filter { $0.kind == "ayah" }.map(\.ink.width).max() ?? 0
             for style in [UIUserInterfaceStyle.light, .dark] {
                 canvas.overrideUserInterfaceStyle = style
                 canvas.configure(page: page, corpus: corpus)
                 XCTAssertTrue(canvas.renderedSuccessfully, "Tajweed \(number)/\(style.rawValue): \(canvas.failureReason ?? "")")
                 XCTAssertEqual(Set(canvas.regions.map(\.word)), Set(page.words.map(\.id)))
                 XCTAssertTrue(canvas.regions.allSatisfy { canvas.bounds.contains($0.rect) })
+                let coloredWidth = canvas.rowGeometry.filter { $0.kind == "ayah" }.map(\.ink.width).max() ?? 0
+                XCTAssertGreaterThanOrEqual(coloredWidth, referenceWidth * 0.95,
+                    "Colors must not shrink the reading extent: page \(number)")
+                XCTAssertLessThanOrEqual(coloredWidth, referenceWidth + 0.1)
                 try autoreleasepool {
                     let format = UIGraphicsImageRendererFormat(); format.preferredRange = .standard; format.scale = 1
                     let image = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
@@ -242,7 +252,7 @@ import WhisperKit
             XCTAssertEqual(canvas.shapingPasses, passes); XCTAssertEqual(canvas.regions.map(\.rect), geometry)
         }
         let page = OriginalPageData.page(1, snapshot: snapshot, rows: rows, keys: keys)
-        let fonts = MushafFonts(); await fonts.load("QCF2001")
+        await fonts.load("QCF2001")
         canvas.tajweedEnabled = false; canvas.configure(page: page, corpus: corpus)
         XCTAssertTrue(canvas.renderedSuccessfully, "Turning colors off restores the approved original V2 edition")
     }

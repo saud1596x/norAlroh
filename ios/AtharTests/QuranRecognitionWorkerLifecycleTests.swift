@@ -3,6 +3,30 @@ import XCTest
 
 /// Explicitly injected non-cancellable backend; not microphone/ASR evidence.
 final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
+    @MainActor func testQuranBindingRemainsAvailableWhileOldInferenceCannotReturn() async throws {
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let backend = StuckBackend()
+        let worker = QuranRecognitionWorker(decodeOverride: { try await backend.decode($0) })
+        let inference = Task { try await worker.recognize(.init(samples: [0.06], startFrame: 0, endFrame: 1)) }
+        let deadline = Date().addingTimeInterval(3)
+        while (await backend.calls) == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
+        let started = await backend.calls
+        XCTAssertEqual(started, 1)
+        inference.cancel()
+        do {
+            let bound = try await NoorOperationDeadline.run(seconds: 5) {
+                try await worker.bind(snapshot: snapshot, verseKeys: keys)
+            }
+            XCTAssertEqual(Set(bound.map(\.verse)), Set(keys))
+        } catch {
+            await backend.release(); _ = try? await inference.value
+            throw error
+        }
+        await backend.release(); _ = try? await inference.value
+    }
     func testWarmBindingDoesNotTrustSameEditionWithAlteredWords() async throws {
         let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let original = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
@@ -28,7 +52,7 @@ final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
             try await NoorOperationDeadline.run(seconds: 30) { try await worker.recognize(window) }
         }
         let readyBy = Date().addingTimeInterval(3)
-        while await backend.calls == 0 && Date() < readyBy {
+        while (await backend.calls) == 0 && Date() < readyBy {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         let started = await backend.calls
@@ -67,7 +91,7 @@ final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
         let window = QuranAudioWindow(samples: [0.06], startFrame: 0, endFrame: 1)
         let first = Task { try await worker.recognize(window) }
         let deadline = Date().addingTimeInterval(3)
-        while await backend.calls == 0 && Date() < deadline {
+        while (await backend.calls) == 0 && Date() < deadline {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         let started = await backend.calls

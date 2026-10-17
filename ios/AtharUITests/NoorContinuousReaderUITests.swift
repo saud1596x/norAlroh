@@ -78,6 +78,19 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.study"].exists)
         visibility.tap()
         XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
+        let readingHeight = viewport.frame.height
+        more.tap()
+        let fullScreen = app.buttons["قراءة بملء الشاشة"]
+        XCTAssertTrue(fullScreen.waitForExistence(timeout: 5)); fullScreen.tap()
+        let hiddenControls = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: more)
+        XCTAssertEqual(XCTWaiter.wait(for: [hiddenControls], timeout: 5), .completed)
+        waitForVisibleReader(viewport, mode: "القراءة العادية")
+        XCTAssertGreaterThan(viewport.frame.height, readingHeight + 44,
+                             "Hiding tools must reclaim their actual reading space")
+        let fullScreenProof = XCTAttachment(screenshot: app.screenshot())
+        fullScreenProof.name = "full-screen-reclaimed-reading-space"; fullScreenProof.lifetime = .keepAlways; add(fullScreenProof)
+        viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.01)).tap()
+        XCTAssertTrue(more.waitForExistence(timeout: 5), "A blank margin tap restores the reader tools")
         picker.tap()
         let reciterSearch = app.searchFields.firstMatch
         XCTAssertTrue(reciterSearch.waitForExistence(timeout: 10))

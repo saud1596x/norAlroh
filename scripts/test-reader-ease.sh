@@ -38,6 +38,8 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Ath
  -maximum-test-execution-time-allowance 180 \
  -only-testing:AtharTests/NoorReaderCoreRegressionTests \
  -only-testing:AtharTests/NoorMicrophoneCueTests \
+ -only-testing:AtharTests/NoorReciterWordTimingTests \
+ -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
  -only-testing:AtharTests/QuranWordAlignmentTests \
  -only-testing:AtharTests/MushafViewportTests \
  -only-testing:AtharUITests/NoorContinuousReaderUITests \

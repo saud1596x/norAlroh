@@ -354,7 +354,7 @@ import MediaPlayer
                 guard let self, let playback, self.revision == token,
                       self.player === playback, playback.currentItem === item else { return }
                 if item.status == .failed {
-                    self.error = "تعذّر تشغيل الآية. أعد تنزيلها أو تحقق من الاتصال."; self.stop()
+                    self.error = "تعذّر تشغيل الآية. تحقق من الاتصال ثم أعد المحاولة."; self.stop()
                 } else {
                     // Readiness and time-control notifications can arrive in
                     // either order. Both must converge on the same state.

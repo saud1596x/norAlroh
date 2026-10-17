@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "date": "2026-10-18",
+  "baseCommit": "9ab6b21a0c9ec62c96bb92eae91aaa3863bf52cf",
+  "scope": "Reciter-follow wiring, main-thread alignment, startup binding isolation, full-width/focus reading and Tajweed size regression. Not a claim that every app gap or all-reciter timings are complete.",
+  "confirmedDefects": [
+    {
+      "issue": "Paused learner session suppressed reciter navigation",
+      "change": "Follow actual playing/active-word state; live microphone state still owns its evidence"
+    },
+    {
+      "issue": "One-shot playback callback could be discarded while ayah tools were closing",
+      "change": "Reconcile observable playback when it changes, after resources load and after sheet dismissal"
+    },
+    {
+      "issue": "Full-Quran alignment ran repeatedly on MainActor",
+      "change": "Sendable value copy in a cancellable detached task; current take/revision checked before persistence and reveal"
+    },
+    {
+      "issue": "Reference binding shared the inference executor",
+      "change": "Separate QuranRecognitionReference actor; exact full snapshot and key comparisons retained"
+    },
+    {
+      "issue": "Fixed23pt colored font shrank most pages",
+      "change": "One uniform size per page measured against original V2 authored reading width; fixed baselines and original outlines retained"
+    },
+    {
+      "issue": "Hidden tools still reserved header/footer space, with extra side padding",
+      "change": "Reclaim hidden tool insets, remove duplicate side margins; explicit full-screen action and margin-tap return"
+    },
+    {
+      "issue": "Untimed full-surah playback left a misleading first-ayah highlight",
+      "change": "Known-start navigation does not label that ayah as continuously heard; picker states timing support honestly"
+    }
+  ],
+  "correction": "The validated current604-page edition has no ayah split across page boundaries; that earlier hypothesized diagnosis was not present in the source. Regression uses the real page3-to4 ayah transition.",
+  "localVerification": {
+    "pythonTests": 21,
+    "failures": 0,
+    "unicodeQuran": "6236 verses and112 separate basmalas identical to pinned source",
+    "swiftSyntax": "14 changed Swift files parsed; NOT iOS compilation",
+    "fontMetricAudit": {
+      "pages": 604,
+      "method": "FontTools direct-PUA outlines/advances; NOT CoreText or device rendering",
+      "minReadingExtentRatio": 0.9997418208856576,
+      "medianUniformColorPointSize": 29.923711286106315,
+      "previousColorPointSize": 23
+    }
+  },
+  "nativeVerification": "NOT_RUN_FOR_THIS_SOURCE; prepared continuous-reader-check includes all604 native render/paint, real public PCM recognition, lifecycle/startup, cue, timing-resource and actual UI regression",
+  "remainingBlockers": [
+    "20 whole-surah recording identities have no verified ayah/word timestamps; no inferred offsets substituted",
+    "3 EveryAyah timing datasets are partial and recording-specific; Sudais1:1 and2:1 notably unavailable",
+    "Real device microphone, latency across devices, acoustic mistake/Tajweed accuracy remain unverified",
+    "Build23 predates these changes; uploaded/processed but internal availability not confirmed while Apple session is logged out",
+    "Ordinary preview/AppStore evidence and user-review source inventory are not refreshed to claim a pass for these changes"
+  ],
+  "primaryReferences": [
+    "https://raw.githubusercontent.com/quran/qf-api-docs/main/docs/tutorials/fonts/font-rendering.md",
+    "https://raw.githubusercontent.com/argmaxinc/argmax-oss-swift/1e2a163736dfa5a198e637ae44c114e1c6d5cc2d/Sources/WhisperKit/Core/WhisperKit.swift"
+  ]
+}

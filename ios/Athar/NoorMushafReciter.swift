@@ -11,6 +11,12 @@ struct NoorMushafReciter: Identifiable {
     var recordingIdentity: String { verseDirectory.map { "everyayah:" + $0 } ?? id }
     var supportsVersePlayback: Bool { verseDirectory != nil }
     var scopeLabel: String { supportsVersePlayback ? "من الآية المحددة" : "السورة كاملة من بدايتها" }
+    var trackingLabel: String {
+        guard let verseDirectory else { return "السورة من بدايتها · دون تتبّع" }
+        return NoorReciterWordTimings.timedDirectories.contains(verseDirectory)
+            ? "من الآية المحددة · تتبّع الكلمات حيث يتوفر التوقيت"
+            : "من الآية المحددة · تتبّع الآيات"
+    }
     static var all: [Self] {
         NoorVerseReciter.all.map { .init(id: $0.id, name: $0.name, verseDirectory: $0.id, recording: nil) }
         + NoorReciterCatalog.reciters.map {
@@ -62,7 +68,7 @@ struct NoorMushafReciterPicker: View {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(reciter.name).foregroundStyle(.primary)
-                                Text(reciter.scopeLabel).font(.caption).foregroundStyle(.secondary)
+                                Text(reciter.trackingLabel).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             if selectedID == reciter.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.gold) }

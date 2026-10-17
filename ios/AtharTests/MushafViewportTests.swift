@@ -48,6 +48,9 @@ import UIKit
         assertFitted(viewport)
     }
     func testMeasuredReaderInsetsKeepReferenceDefaultsAndFitLargeControls() {
+        XCTAssertEqual(MushafReaderInsets.reserved(96, minimum: 44, visible: false), 0)
+        XCTAssertEqual(MushafReaderInsets.reserved(120, minimum: 60, visible: false), 0,
+                       "Full-screen reading must reclaim the hidden toolbar space")
         XCTAssertEqual(MushafReaderInsets.reserved(nil, minimum: 44), 44)
         XCTAssertEqual(MushafReaderInsets.reserved(44, minimum: 44), 44)
         XCTAssertEqual(MushafReaderInsets.reserved(60, minimum: 60), 60)

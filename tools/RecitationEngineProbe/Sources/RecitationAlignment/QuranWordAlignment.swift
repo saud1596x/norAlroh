@@ -113,7 +113,7 @@ public struct QuranHeardWord: Sendable {
     }
 }
 
-public struct QuranWordEvidence: Codable, Equatable {
+public struct QuranWordEvidence: Codable, Equatable, Sendable {
     public let nativeID: Int
     public let verse: String
     public let takeID: UUID
@@ -122,7 +122,7 @@ public struct QuranWordEvidence: Codable, Equatable {
     public let minimumConfidence: Double
 }
 
-public struct QuranRecitationTracker {
+public struct QuranRecitationTracker: Sendable {
     public let expected: [QuranAlignedWord]
     public private(set) var cursor = 0
     public private(set) var evidence: [QuranWordEvidence] = []

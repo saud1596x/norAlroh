@@ -2,6 +2,28 @@ import XCTest
 @testable import Athar
 
 final class NoorReaderCoreRegressionTests: XCTestCase {
+    func testTimedPlaybackFollowsRealPageBoundaryAndDoesNotInventWholeSurahOffsets() throws {
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let index = MushafStudyWordIndex(snapshot: snapshot, keys: keys)
+        let nextVerse = try XCTUnwrap(keys.first { index.pages[$0]?.first == 4 })
+        let finalWord = try XCTUnwrap(index.words[nextVerse]?.last)
+        XCTAssertEqual(index.playbackLocation(key: nextVerse, wordID: finalWord, currentPage: 3,
+            allowedPages: 1...604)?.page, 4)
+        XCTAssertEqual(index.playbackLocation(key: nextVerse, wordID: nil, currentPage: 4,
+            allowedPages: 1...604)?.page, 4, "A pause between words must not jump back")
+        XCTAssertNil(index.playbackLocation(key: nextVerse, wordID: finalWord, currentPage: 3,
+            allowedPages: 3...3), "Playback cannot leave a reading-only daily range")
+        let unrelatedWord = try XCTUnwrap(index.words["1:1"]?.first)
+        XCTAssertEqual(index.playbackLocation(key: nextVerse, wordID: unrelatedWord, currentPage: 3,
+            allowedPages: 1...604)?.page, 4, "Another ayah cannot provide a word cursor")
+        let reciter = try XCTUnwrap(NoorReciterCatalog.reciters.first)
+        let recording = try XCTUnwrap(NoorAudioIntegrity.reciterKey(reciter, surah: 2))
+        XCTAssertEqual(index.playbackLocation(key: recording, wordID: finalWord, currentPage: 50,
+            allowedPages: 1...604)?.verse, "2:1", "An untimed surah has only its known starting position")
+    }
     @MainActor func testExistingReaderPreferencesRestoreTheSameLegacyRecordingAndCacheKey() throws {
         for directory in ["Abdurrahmaan_As-Sudais_64kbps", "Saood_ash-Shuraym_64kbps"] {
             let saved = try XCTUnwrap(NoorMushafReciter.selected(directory))

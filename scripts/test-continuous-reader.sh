@@ -39,6 +39,9 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Ath
   -maximum-test-execution-time-allowance 180 \
   -only-testing:AtharTests/NoorContinuousMushafTests \
   -only-testing:AtharTests/NoorReaderCoreRegressionTests \
+  -only-testing:AtharTests/NoorMicrophoneCueTests \
+  -only-testing:AtharTests/NoorReciterWordTimingTests \
+  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \
   -only-testing:AtharTests/QuranWordAlignmentTests \
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
   -only-testing:AtharTests/QuranRecognitionCapabilityTests \
@@ -48,6 +51,7 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Ath
   -resultBundlePath release/continuous-reader/actual-tests.xcresult 2>&1 | tee "$test_log" || test_exit=$?
 touch release/continuous-reader/test-finished
 wait "$video_watch" || true
+python3 scripts/export-reader-proof.py release/continuous-reader/actual-tests.xcresult
 python3 - "$test_exit" <<'PY'
 import json,sys
 from pathlib import Path

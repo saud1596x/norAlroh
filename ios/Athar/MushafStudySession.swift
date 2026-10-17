@@ -131,8 +131,13 @@ struct MushafStudyArchive: Codable, Equatable {
 
 /// Word masks use the validated edition's IDs and ordering, never text guesses.
 struct MushafStudyWordIndex: Sendable {
+    struct PlaybackLocation: Equatable, Sendable {
+        let verse: String
+        let page: Int
+    }
     let words: [String: [Int]]
     let pages: [String: [Int]]
+    let locations: [Int: PlaybackLocation]
     init(snapshot: QCFV2Snapshot, keys: [String]) {
         let records = snapshot.records.filter { $0.record_type == "mushaf_word" }
         let grouped = Dictionary(grouping: records) { keys[$0.verse_id! - 1] }
@@ -141,6 +146,23 @@ struct MushafStudyWordIndex: Sendable {
                 .sorted { $0.position_in_verse! < $1.position_in_verse! }.map(\.id)
         }
         pages = grouped.mapValues { Array(Set($0.compactMap(\.page_number))).sorted() }
+        locations = Dictionary(uniqueKeysWithValues: records.compactMap { record -> (Int, PlaybackLocation)? in
+            guard let page = record.page_number, let verse = record.verse_id else { return nil }
+            return (record.id, PlaybackLocation(verse: keys[verse - 1], page: page))
+        })
+    }
+    /// Only a timed word in this exact ayah can move across a page boundary.
+    /// Surah recordings have a known starting ayah, not inferred later offsets.
+    func playbackLocation(key: String, wordID: Int?, currentPage: Int,
+                          allowedPages: ClosedRange<Int>) -> PlaybackLocation? {
+        let canonical = NoorAudioIntegrity.reciterRecording(key).map { "\($0.1):1" } ?? key
+        guard let versePages = pages[canonical] else { return nil }
+        if let wordID, let location = locations[wordID], location.verse == canonical {
+            return allowedPages.contains(location.page) ? location : nil
+        }
+        let target = versePages.contains(currentPage) ? currentPage : versePages.first
+        guard let target, allowedPages.contains(target) else { return nil }
+        return PlaybackLocation(verse: canonical, page: target)
     }
     func hiddenIDs(session: MushafStudySession) -> Set<Int> {
         var result = Set<Int>()

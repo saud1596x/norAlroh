@@ -481,14 +481,26 @@ import os
                 }
                 continue // Recording remains independent of model failure.
             }
-            guard revision == token, !Task.isCancelled, var current = record, var updatedTracker = tracker else { return }
+            guard revision == token, !Task.isCancelled, var current = record, let inputTracker = tracker else { return }
             do {
-                try updatedTracker.reconsiderAudio(takeID: take, start: window.offset,
-                    end: Double(window.endFrame) / 16_000)
-                var additions: [QuranWordEvidence] = []
-                for run in recognized.runs {
-                    additions += try updatedTracker.consume(run, takeID: take, offset: window.offset)
+                // Full-Quran candidate matching and ambiguity resolution must
+                // not run on MainActor for every audio window. Work on a value
+                // copy; only this still-current take may publish its result.
+                let alignment = Task.detached(priority: .userInitiated) {
+                    var nextTracker = inputTracker
+                    try Task.checkCancellation()
+                    try nextTracker.reconsiderAudio(takeID: take, start: window.offset,
+                        end: Double(window.endFrame) / 16_000)
+                    var additions: [QuranWordEvidence] = []
+                    for run in recognized.runs {
+                        try Task.checkCancellation()
+                        additions += try nextTracker.consume(run, takeID: take, offset: window.offset)
+                    }
+                    return (nextTracker, additions)
                 }
+                let (updatedTracker, additions) = try await withTaskCancellationHandler(
+                    operation: { try await alignment.value }, onCancel: { alignment.cancel() })
+                guard revision == token, !Task.isCancelled else { return }
                 let available = recognitionAvailable || !additions.isEmpty
                 // Persist only actually decoded, quality-accepted words. Missing
                 // speech remains unresolved; the Quran reference never fills it.
@@ -541,7 +553,8 @@ import os
                 revealed = Set(current.evidence.map(\.nativeID))
                 currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
-            } catch { guard revision == token else { return }; stopForJournalFailure(); return }
+            } catch is CancellationError { return }
+            catch { guard revision == token else { return }; stopForJournalFailure(); return }
 
         }
     }

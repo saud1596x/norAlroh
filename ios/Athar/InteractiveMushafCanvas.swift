@@ -164,6 +164,50 @@ struct OriginalPageData: Equatable {
         shouldGroupAccessibilityChildren = true
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
+    /// V2 and V4 have different advances. Match the original page's widest
+    /// authored row with one uniform V4 size, rather than shrinking all 604
+    /// pages to the worst-case 23pt size. No word/row is squeezed separately.
+    private func tajweedBodyFont(page: OriginalPageData, reference: UIFont,
+                                 colored: UIFont, space: UIFont) -> UIFont? {
+        let texts = page.rows.filter { $0.type == "ayah" }.map { row in
+            (row.line, page.words.filter { $0.line == row.line }.map(\.code).joined(separator: " "))
+        }
+        func bounds(_ text: String, font: UIFont) -> CGRect {
+            let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
+            let value = NSMutableAttributedString(string: text, attributes: [.font: font, .writingDirection: [direction]])
+            for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
+                value.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
+            }
+            return CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(value as CFAttributedString), .useGlyphPathBounds)
+        }
+        let target = texts.map { bounds($0.1, font: reference).width }.max() ?? 0
+        guard target.isFinite, target > 0 else { return nil }
+        var size: CGFloat = 64
+        let top = page.number <= 2 ? Metrics.openingTop : Metrics.verticalMargin
+        for (row, text) in texts {
+            let half = bounds(text, font: colored.withSize(16))
+            let full = bounds(text, font: colored.withSize(32))
+            let slope = (full.width - half.width) / 16
+            guard slope.isFinite, slope > 0 else { return nil }
+            // Blank companion separators retain their original advances. Two
+            // measurements account for that fixed width instead of scaling it.
+            let fixed = full.width - slope * 32
+            size = min(size, (target - 0.1 - fixed) / slope)
+            let baseline = top + CGFloat(row - 1) * Metrics.baselineInterval + Metrics.baselineOffset
+            if full.maxY > 0 { size = min(size, (baseline - 0.1) * 32 / full.maxY) }
+            if full.minY < 0 { size = min(size, (Self.pageSize.height - baseline - 0.1) * 32 / -full.minY) }
+        }
+        guard size.isFinite, size > 0 else { return nil }
+        let result = colored.withSize(size)
+        for (row, text) in texts {
+            let ink = bounds(text, font: result)
+            let baseline = top + CGFloat(row - 1) * Metrics.baselineInterval + Metrics.baselineOffset
+            guard !ink.isNull, !ink.isInfinite, ink.width <= target + 0.1,
+                  baseline - ink.maxY >= -0.01,
+                  baseline - ink.minY <= Self.pageSize.height + 0.01 else { return nil }
+        }
+        return result
+    }
     func configure(page: OriginalPageData, corpus: [Surah]) {
         if let saved = shapedPages.first(where: { $0.page == page && $0.style == traitCollection.userInterfaceStyle && $0.tajweed == tajweedEnabled }) {
             lines = saved.lines; shapedTexts = saved.texts; lineWordRanges = saved.ranges
@@ -181,9 +225,7 @@ struct OriginalPageData: Equatable {
         let tajweedPage: MushafTajweedFonts.Page?
         do { tajweedPage = tajweedEnabled ? try MushafTajweedFonts.load(page.number) : nil }
         catch { fail("Original Tajweed font integrity failed"); return }
-        // V4 has its own em/advances. One fixed edition size fits all authored
-        // rows; never horizontally squeeze glyphs or change size per line.
-        guard let body = UIFont(name: tajweedPage?.family ?? String(format: "QCF2%03d", page.number), size: tajweedEnabled ? 23 : Metrics.bodyPointSize),
+        guard let original = UIFont(name: String(format: "QCF2%03d", page.number), size: Metrics.bodyPointSize),
               let companion = UIFont(name: OriginalMushafCompanion.name, size: Metrics.bodyPointSize) else { fail("Missing page or companion font"); return }
         // Content Sync contains ASCII separators both between logical words and
         // inside multi-glyph words. Some page fonts omit FB50 entirely. Keep
@@ -191,6 +233,14 @@ struct OriginalPageData: Equatable {
         // converted from its 2048-unit em to the body's 2500-unit em.
         // No Qur'anic glyph is permitted to use this separator font.
         let space = companion.withSize(Metrics.bodyPointSize * 2048 / 2500)
+        let body: UIFont
+        if let tajweedPage {
+            guard let colored = UIFont(name: tajweedPage.family, size: Metrics.bodyPointSize),
+                  let fitted = tajweedBodyFont(page: page, reference: original, colored: colored, space: space) else {
+                fail("Tajweed page cannot retain the original reading extent"); return
+            }
+            body = fitted
+        } else { body = original }
         let rowHeight = Metrics.baselineInterval
         let top = page.number <= 2 ? Metrics.openingTop : Metrics.verticalMargin
         for row in page.rows {

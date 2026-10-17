@@ -27,6 +27,9 @@ struct NoorReciterTimingTrack: Sendable {
 
 actor NoorReciterWordTimings {
     static let shared = NoorReciterWordTimings()
+    static let timedDirectories: Set<String> = [
+        "Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps", "Saood_ash-Shuraym_128kbps"
+    ]
     private struct Document: Decodable {
         let schema: Int
         let recordings: [String: [String: [[Int]]]]

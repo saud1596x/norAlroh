@@ -15,34 +15,14 @@ actor QuranRecognitionWorker {
     private var loading: Task<Void, Error>?
     private var inference: Task<Result, Error>?
     private var inferenceID: UUID?
-    private var boundNative: [QuranNativeWord] = []
-    private var boundSnapshot: QCFV2Snapshot?
-    private var boundKeys: [String] = []
-    private var boundWords: [QuranAlignedWord] = []
     private let decodeOverride: ((QuranAudioWindow) async throws -> Result)?
     init(decodeOverride: ((QuranAudioWindow) async throws -> Result)? = nil) {
         self.decodeOverride = decodeOverride
     }
-    // Decode, validate and normalize the full edition away from the UI actor.
-    // Reuse only after comparing every native ID, glyph, position and page.
-    func bind(snapshot: QCFV2Snapshot, verseKeys: [String]) throws -> [QuranAlignedWord] {
-        guard verseKeys.count == 6236 else { throw QuranAlignmentFailure.invalidEdition }
-        // Reuse only an exactly equal, previously validated immutable copy.
-        // Array value equality also permits the shared COW storage fast path.
-        // IDs, revision numbers, or counts alone are insufficient evidence.
-        if snapshot == boundSnapshot, verseKeys == boundKeys, !boundWords.isEmpty { return boundWords }
-        let native = try snapshot.validated().records
-            .filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }
-            .map { QuranNativeWord(id: $0.id, verse: verseKeys[$0.verse_id! - 1],
-                position: $0.position_in_verse!, page: $0.page_number!, glyph: $0.text!) }
-        if native == boundNative, verseKeys == boundKeys, !boundWords.isEmpty { return boundWords }
-        guard let url = Bundle.main.url(forResource: "recitation-word-script", withExtension: "json") else {
-            throw QuranAlignmentFailure.invalidScript
-        }
-        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: url))
-        let words = try script.bind(native: native, verseKeys: verseKeys)
-        boundNative = native; boundKeys = verseKeys; boundWords = words; boundSnapshot = snapshot
-        return words
+    // Script validation has its own executor: an SDK decode/model load must
+    // never hold the reference binding needed before starting the microphone.
+    nonisolated func bind(snapshot: QCFV2Snapshot, verseKeys: [String]) async throws -> [QuranAlignedWord] {
+        try await QuranRecognitionReference.shared.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
     func prepare() async throws {
         if engine != nil { return }
@@ -150,4 +130,35 @@ actor QuranRecognitionWorker {
 
 enum QuranRecognitionFailure: Error {
     case previousInferenceStillRunning
+}
+
+/// Immutable Quran/script binding is independent of the inference actor. This
+/// cache still compares the complete edition and keys, never only a revision.
+actor QuranRecognitionReference {
+    static let shared = QuranRecognitionReference()
+    private var boundNative: [QuranNativeWord] = []
+    private var boundSnapshot: QCFV2Snapshot?
+    private var boundKeys: [String] = []
+    private var boundWords: [QuranAlignedWord] = []
+    // Decode, validate and normalize the full edition away from the UI actor.
+    // Reuse only after comparing every native ID, glyph, position and page.
+    func bind(snapshot: QCFV2Snapshot, verseKeys: [String]) throws -> [QuranAlignedWord] {
+        guard verseKeys.count == 6236 else { throw QuranAlignmentFailure.invalidEdition }
+        // Reuse only an exactly equal, previously validated immutable copy.
+        // Array value equality also permits the shared COW storage fast path.
+        // IDs, revision numbers, or counts alone are insufficient evidence.
+        if snapshot == boundSnapshot, verseKeys == boundKeys, !boundWords.isEmpty { return boundWords }
+        let native = try snapshot.validated().records
+            .filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }
+            .map { QuranNativeWord(id: $0.id, verse: verseKeys[$0.verse_id! - 1],
+                position: $0.position_in_verse!, page: $0.page_number!, glyph: $0.text!) }
+        if native == boundNative, verseKeys == boundKeys, !boundWords.isEmpty { return boundWords }
+        guard let url = Bundle.main.url(forResource: "recitation-word-script", withExtension: "json") else {
+            throw QuranAlignmentFailure.invalidScript
+        }
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: url))
+        let words = try script.bind(native: native, verseKeys: verseKeys)
+        boundNative = native; boundKeys = verseKeys; boundWords = words; boundSnapshot = snapshot
+        return words
+    }
 }
