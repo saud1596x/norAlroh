@@ -125,7 +125,7 @@ import os
         guard let journal else { throw QuranJournalFailure.invalidRecord }
         // Large source histories must not freeze page turns while JSON is
         // validated/encoded. The journal serializes this with pause/recovery.
-        try await Task.detached(priority: .utility) { try journal.save(value) }.value
+        try await Task.detached(priority: .utility) { try journal.saveAnalysis(value) }.value
     }
     private func mergeAnalysis(_ value: QuranRecitationRecord) {
         guard var latest = record, latest.id == value.id else { return }
@@ -133,6 +133,11 @@ import os
         // Preserve its current frames, closed flag, and phase.
         latest.observedSpeech = value.observedSpeech; latest.wordingEvents = value.wordingEvents
         latest.evidence = value.evidence; latest.recognitionUnavailable = value.recognitionUnavailable
+        if value.textExposureOccurred == true { latest.textExposureOccurred = true }
+        let exposedTakes = Set(value.takes.filter { $0.textExposureOccurred == true }.map(\.id))
+        for index in latest.takes.indices where exposedTakes.contains(latest.takes[index].id) {
+            latest.takes[index].textExposureOccurred = true
+        }
         record = latest
     }
     var hasSession: Bool { record != nil && state != .stopped && state != .idle }
@@ -141,16 +146,23 @@ import os
         let decibels = 20 * log10(Double(peak))
         return min(1, max(0, (decibels + 60) / 60))
     }
+    var practiceTextHidden: Bool { record?.practiceTextHidden ?? record?.closedTextRequested ?? false }
     var hiddenIDs: Set<Int> {
-        // Starting a microphone session is not proof that recognition works.
-        // Keep the reader usable until actual saved word evidence establishes
-        // a position, and expose the text again if the engine becomes unavailable.
+        // Expose the text again if recognition becomes unavailable. Only saved
+        // word evidence or an explicit hint can reveal individual hidden words.
         guard hasSession, recognitionAvailable,
-              record?.closedTextRequested == true else { return [] }
+              practiceTextHidden else { return [] }
         return expectedIDs.subtracting(revealed).subtracting(Set(record?.textHintIDs ?? []))
     }
+    @discardableResult func setPracticeTextHidden(_ hidden: Bool) -> Bool {
+        guard hasSession, state == .listening || state == .paused, var current = record else { return false }
+        if !hidden { noteExposedPracticeText(&current) }
+        current.practiceTextHidden = hidden
+        do { try save(current); record = current; return true }
+        catch { message = "تعذّر حفظ وضع عرض الآيات. أعد المحاولة."; return false }
+    }
     private func noteExposedPracticeText(_ value: inout QuranRecitationRecord) {
-        if value.closedTextRequested == true {
+        if value.closedTextRequested == true || value.practiceTextHidden == true {
             value.textExposureOccurred = true
             if value.phase == .recording, let index = value.takes.indices.last, !value.takes[index].closed {
                 value.takes[index].textExposureOccurred = true
@@ -229,6 +241,7 @@ import os
             let next = QuranRecitationRecord(keys: keys, originPage: page)
             var prepared = next
             prepared.closedTextRequested = closedText
+            prepared.practiceTextHidden = closedText
             prepared.textExposureOccurred = !closedText
             prepared.automaticScope = automaticScope
             prepared.referenceExposure = referenceExposure

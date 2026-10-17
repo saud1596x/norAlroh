@@ -4,6 +4,60 @@ import WhisperKit
 @testable import Athar
 
 @MainActor final class NoorContinuousMushafTests: XCTestCase {
+    func testTextVisibilityChangesDuringCaptureWithoutLosingAssistanceOrSession() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, _ in ContinuousReferenceCapture(writer) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus, closedText: true)
+        let id = try XCTUnwrap(controller.record?.id), takeID = try XCTUnwrap(controller.record?.takes.last?.id)
+        XCTAssertEqual(controller.hiddenIDs.count, 4)
+        XCTAssertTrue(controller.setPracticeTextHidden(false))
+        XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertEqual(controller.record?.textExposureOccurred, true)
+        XCTAssertEqual(controller.record?.takes.last?.textExposureOccurred, true)
+        XCTAssertTrue(controller.setPracticeTextHidden(true))
+        XCTAssertEqual(controller.hiddenIDs.count, 4)
+        XCTAssertEqual(controller.record?.textExposureOccurred, true, "Hiding again cannot erase assistance")
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.record?.id, id); XCTAssertEqual(controller.record?.takes.last?.id, takeID)
+        XCTAssertTrue(controller.revealed.isEmpty); XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        await controller.pause()
+        XCTAssertTrue(controller.setPracticeTextHidden(false))
+        let saved = try QuranRecitationJournal(root: root).load(id)
+        XCTAssertEqual(saved.practiceTextHidden, false)
+        let reopened = QuranRecitationController(archiveRoot: root)
+        await reopened.restore(id: id, snapshot: snapshot, corpus: corpus)
+        XCTAssertFalse(reopened.practiceTextHidden); XCTAssertTrue(reopened.hiddenIDs.isEmpty)
+        await controller.finish()
+    }
+
+    func testDelayedAnalysisCannotOverwriteVisibilityOrTextAssistance() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let journal = QuranRecitationJournal(root: root)
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        record.closedTextRequested = true; record.practiceTextHidden = true; record.textExposureOccurred = false
+        try journal.create(record)
+        var oldAnalysis = record
+        record.practiceTextHidden = false; record.textExposureOccurred = true
+        try journal.save(record)
+        oldAnalysis.observedSpeech = []
+        try journal.saveAnalysis(oldAnalysis)
+        let saved = try journal.load(record.id)
+        XCTAssertEqual(saved.practiceTextHidden, false); XCTAssertEqual(saved.textExposureOccurred, true)
+        XCTAssertEqual(saved.observedSpeech, [])
+        record.practiceTextHidden = true; record.textExposureOccurred = false
+        try journal.save(record)
+        oldAnalysis.textExposureOccurred = true; oldAnalysis.recognitionUnavailable = true
+        try journal.saveAnalysis(oldAnalysis)
+        XCTAssertEqual(try journal.load(record.id).textExposureOccurred, true,
+                       "Recognizer failure that exposes text also survives the analysis merge")
+    }
+
     func testEveryCatalogRecordingHasASelectableStableIdentityAndRestorableKeys() throws {
         let voices = NoorMushafReciter.all
         XCTAssertEqual(voices.count, NoorVerseReciter.all.count + NoorReciterCatalog.reciters.count)
@@ -51,12 +105,23 @@ import WhisperKit
             canvas.configure(page: page, corpus: corpus)
             XCTAssertEqual(canvas.shapingPasses, passes)
             XCTAssertEqual(canvas.rowGeometry.map(\.ink), geometry)
+            if number == 1 {
+                canvas.hiddenWordIDs = Set(page.words.map(\.id))
+                let elements = try XCTUnwrap(canvas.accessibilityElements as? [UIAccessibilityElement])
+                XCTAssertTrue(elements.allSatisfy { $0.accessibilityLabel?.contains(canvas.hiddenTextAccessibilityHint) == true },
+                              "VoiceOver must not read hidden Quran text")
+                canvas.hiddenWordIDs = []
+                XCTAssertEqual(canvas.shapingPasses, passes, "Visibility cannot reshape or shift Quran glyphs")
+            }
             // Exercise actual Core Text drawing, not metadata validation alone.
             autoreleasepool {
-                let renderer = UIGraphicsImageRenderer(size: OriginalMushafCanvas.pageSize)
+                let format = UIGraphicsImageRendererFormat(); format.preferredRange = .standard
+                let renderer = UIGraphicsImageRenderer(size: OriginalMushafCanvas.pageSize, format: format)
                 let image = renderer.image { context in canvas.layer.render(in: context.cgContext) }
                 if let pixels = image.cgImage?.dataProvider?.data, let bytes = CFDataGetBytePtr(pixels) {
-                    XCTAssertTrue(stride(from: 0, to: CFDataGetLength(pixels), by: 113).contains { bytes[$0] != 0 }, "Blank rendering on page \(number)")
+                    XCTAssertTrue(stride(from: 4, to: CFDataGetLength(pixels) - 4, by: 4).contains { offset in
+                        (0..<4).contains { bytes[offset + $0] != bytes[$0] }
+                    }, "Uniform blank rendering on page \(number)")
                 } else { XCTFail("Missing rendered pixels on page \(number)") }
                 if [1, 2, 151, 305, 560, 604].contains(number) {
                     let attachment = XCTAttachment(image: image)

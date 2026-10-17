@@ -73,6 +73,9 @@ public struct QuranRecitationRecord: Codable, Identifiable {
     public var observedSpeech: [QuranObservedSpeech]? = nil
     public var wordingEvents: [QuranWordingEvent]? = nil
     public var closedTextRequested: Bool? = nil
+    // Current visibility is independent of the initial practice mode. Showing
+    // the text must never erase the record that a take received assistance.
+    public var practiceTextHidden: Bool? = nil
     public var automaticScope: Bool? = nil
     public var textExposureOccurred: Bool? = nil
     public var referenceExposure: String? = nil
@@ -215,6 +218,25 @@ public struct QuranRecitationJournal {
             throw QuranJournalFailure.identityChanged
         }
         try write(record)
+    }
+    public func saveAnalysis(_ analysis: QuranRecitationRecord) throws {
+        Self.accessLock.lock(); defer { Self.accessLock.unlock() }
+        try analysis.validate()
+        var latest = try load(analysis.id)
+        guard latest.startedAt == analysis.startedAt, latest.keys == analysis.keys,
+              latest.originPage == analysis.originPage else { throw QuranJournalFailure.identityChanged }
+        // Inference saves run off the main actor. A concurrent visibility
+        // toggle or pause owns its newer exposure flags and take state.
+        latest.observedSpeech = analysis.observedSpeech
+        latest.wordingEvents = analysis.wordingEvents
+        latest.evidence = analysis.evidence
+        latest.recognitionUnavailable = analysis.recognitionUnavailable
+        if analysis.textExposureOccurred == true { latest.textExposureOccurred = true }
+        let exposedTakes = Set(analysis.takes.filter { $0.textExposureOccurred == true }.map(\.id))
+        for index in latest.takes.indices where exposedTakes.contains(latest.takes[index].id) {
+            latest.takes[index].textExposureOccurred = true
+        }
+        try latest.validate(); try write(latest)
     }
     private func write(_ record: QuranRecitationRecord) throws {
         let bytes = try JSONEncoder().encode(record)

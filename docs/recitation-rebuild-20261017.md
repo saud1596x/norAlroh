@@ -75,3 +75,27 @@ matching Hafs phonetic references bound to canonical native word IDs, and
 calibration/evaluation against independent learner audio. Published model
 authors' metrics cannot be reused as this app's metrics. Public benchmark
 availability is recorded; it has not yet been evaluated by this app.
+# Explicit text visibility control (latest request)
+
+The unrestricted Mushaf now has a labelled eye button before recording and
+during a listening/paused session. It hides the authored page text before a
+session, or the remaining in-scope words during one; saved recognized words
+and explicit hints remain visible. The button neither stops capture nor opens
+another screen. The reading-only daily ward is unaffected. Existing VoiceOver
+masking prevents hidden verses from being read aloud.
+
+Current visibility is persisted separately from the initial closed-text request.
+Showing text permanently marks the session and current take as text-assisted;
+hiding it again cannot erase this. An analysis-specific journal merge prevents
+delayed off-main inference saves from overwriting newer visibility, assistance
+or take-close state. Added regressions cover the live toggle, same capture/take,
+reopening, a stale analysis save, VoiceOver masking and the real UI button.
+Swift syntax parsing passed; these additions are **not** in the already-running
+30c37a6 native run and are not yet verified by native execution.
+
+The user's latest request also reactivates Tajweed colors. QUL's actual matching
+V4 layout resource is https://qul.tarteel.ai/resources/mushaf-layout/19 ; this
+page explicitly still describes V4 as pending proofreading, while font 240 is
+downloadable. Its glyphs cannot be substituted into the app's V2 source. No
+color toggle or guessed colors have been shipped; the edition/proofreading and
+canonical-word mapping remain unresolved for that feature.

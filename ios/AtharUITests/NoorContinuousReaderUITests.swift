@@ -9,7 +9,17 @@ final class NoorContinuousReaderUITests: XCTestCase {
         let surah = app.buttons["surah.114"]
         XCTAssertTrue(surah.waitForExistence(timeout: 10)); surah.tap()
         let picker = app.buttons["reader.reciters"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 120)); picker.tap()
+        XCTAssertTrue(picker.waitForExistence(timeout: 120))
+        let visibility = app.buttons["reader.textVisibility"]
+        XCTAssertTrue(visibility.exists)
+        if visibility.value as? String == "الآيات مخفية" { visibility.tap() }
+        XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
+        visibility.tap()
+        XCTAssertEqual(visibility.value as? String, "الآيات مخفية")
+        XCTAssertTrue(app.buttons["reader.study"].exists)
+        visibility.tap()
+        XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
+        picker.tap()
         let reciterSearch = app.searchFields.firstMatch
         XCTAssertTrue(reciterSearch.waitForExistence(timeout: 10))
         reciterSearch.tap(); reciterSearch.typeText("برهجي")

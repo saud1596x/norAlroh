@@ -162,7 +162,11 @@ struct InteractiveMushafReader: View {
     @State private var requestedScope: [String]?
     @Environment(\.scenePhase) private var scenePhase
     private var studyOpen: Bool { recitation.hasSession || recitation.state == .permission || recitation.state == .preparing }
-    private var hiddenStudyWords: Set<Int> { recitation.hiddenIDs }
+    private var hiddenStudyWords: Set<Int> {
+        if recitation.hasSession { return recitation.hiddenIDs }
+        guard !readingOnly, closedPracticeText else { return [] }
+        return Set(page?.words.map(\.id) ?? [])
+    }
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     @AppStorage("noor.mushaf.followAudio") private var followAudio = true
     @AppStorage("noor.recitation.closedText") private var closedPracticeText = false
@@ -445,6 +449,7 @@ struct InteractiveMushafReader: View {
                         }
                     }
                     else { VStack(spacing: 4) {
+                        if !readingOnly { practiceTextVisibilityButton }
                         // Keep the microphone centered. Accessibility text needs
                         // its own row instead of expanding beneath the overlay.
                         if dynamicTypeSize.isAccessibilitySize { pageJumpControl }
@@ -612,6 +617,25 @@ struct InteractiveMushafReader: View {
                                    closedText: closedPracticeText, automaticScope: automatic)
         }
     }
+    private var practiceTextVisibilityButton: some View {
+        let hidden = recitation.hasSession ? recitation.practiceTextHidden : closedPracticeText
+        return Button {
+            let next = !hidden
+            if !recitation.hasSession || recitation.setPracticeTextHidden(next) {
+                closedPracticeText = next
+            }
+        } label: {
+            Label(hidden ? "إظهار الآيات" : "إخفاء الآيات للتسميع",
+                  systemImage: hidden ? "eye" : "eye.slash")
+                .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+                .padding(.horizontal, 12)
+                .background(Theme.panel, in: Capsule())
+        }.buttonStyle(.plain)
+            .accessibilityIdentifier("reader.textVisibility")
+            .accessibilityValue(hidden ? "الآيات مخفية" : "الآيات ظاهرة")
+            .accessibilityHint("يُظهر التسميع الكلمات التي تم التعرف عليها. لا يتوقف الميكروفون عند تغيير العرض.")
+            .disabled(recitation.hasSession && recitation.state != .listening && recitation.state != .paused)
+    }
     private var recitationControls: some View {
         VStack(spacing: 0) {
             if recitation.state == .listening, let guidance = recitation.inputGuidance {
@@ -681,6 +705,7 @@ struct InteractiveMushafReader: View {
                     .accessibilityIdentifier("study.finish")
             }.background { readerControlMeasurement("header") }
             Spacer(minLength: 0)
+            practiceTextVisibilityButton
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("الصفحة \(number)").font(.caption).monospacedDigit()
