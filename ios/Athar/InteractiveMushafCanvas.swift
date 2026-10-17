@@ -538,6 +538,17 @@ struct OriginalPageData: Equatable {
     private var fitted: CGFloat = 0
     var pageNumber = 1
     var pageRange: ClosedRange<Int> = 1...604
+    var allowsManualPageTurns = true {
+        didSet {
+            guard oldValue != allowsManualPageTurns, !allowsManualPageTurns else { return }
+            // Playback can begin while a finger is dragging. Cancel that visual
+            // offset as well as rejecting the gesture's eventual page commit.
+            canvas.layer.removeAnimation(forKey: "pageDragReturn")
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            canvas.layer.sublayerTransform = CATransform3DIdentity
+            CATransaction.commit()
+        }
+    }
     private(set) var turningPage = false
     private var turnSnapshot: UIView?
     private var turnGeneration = UUID()
@@ -555,7 +566,7 @@ struct OriginalPageData: Equatable {
     }
     private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
     var canTurnPages: Bool {
-        !turningPage && onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
+        allowsManualPageTurns && !turningPage && onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
             && zoomScale <= minimumZoomScale * max(1, readingMagnification) * 1.01
             && pinchGestureRecognizer?.state != .began && pinchGestureRecognizer?.state != .changed
     }
@@ -728,6 +739,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     var reviewWordIDs: Set<Int> = []
     var activeWordID: Int? = nil
     var pageRange: ClosedRange<Int> = 1...604
+    var allowsManualPageTurns = true
     var allowsVerseSelection = true
     var readingMagnification: CGFloat = 1
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة."
@@ -738,6 +750,7 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
         view.readingMagnification = readingMagnification
         view.pageRange = pageRange
+        view.allowsManualPageTurns = allowsManualPageTurns
         view.allowsVerseSelection = allowsVerseSelection
         view.canvas.hiddenTextAccessibilityHint = hiddenTextAccessibilityHint
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion

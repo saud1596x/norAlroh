@@ -111,6 +111,12 @@ struct InteractiveMushafReader: View {
     let opensStudyScope: Bool
     let readingScope: KhatmahReadingScope?
     private var readingOnly: Bool { readingScope != nil }
+    // Manual navigation is locked throughout this reader's playback sequence,
+    // including buffering, pauses and repeat gaps. Canonical playback callbacks
+    // can still advance the page; Stop releases the lock immediately.
+    private var playbackLocksPage: Bool {
+        audio.playing != nil || audio.loadingKey != nil || audio.waitingKey != nil
+    }
     @ObservedObject private var readingJourney = KhatmahStore.shared
     @State private var wardComplete = false
     private var allowedPages: ClosedRange<Int> { readingScope?.pages ?? 1...604 }
@@ -223,6 +229,9 @@ struct InteractiveMushafReader: View {
         .onChange(of: audio.playing) { _, value in
             if value == nil, audio.loadingKey == nil, audio.waitingKey == nil,
                recitation.guidedPhase == .reference { recitation.cancelGuided() }
+        }
+        .onChange(of: playbackLocksPage) { _, locked in
+            if locked { picker = false; pageInputFocused = false; followAudio = true }
         }
         .onChange(of: recitation.currentVerse) { _, key in
             if let previous = feedbackVerse, key != previous { completedFeedbackVerses.insert(previous) }
@@ -426,8 +435,10 @@ struct InteractiveMushafReader: View {
                     Spacer()
                     if manualSelection == nil && !readingOnly {
                         Button { recitersOpen = true } label: {
-                            Image(systemName: "headphones").frame(width: 44, height: 44)
+                            Label("القارئ", systemImage: "headphones")
+                                .font(.subheadline).frame(minHeight: 44)
                         }.accessibilityLabel("اختر القارئ").accessibilityIdentifier("reader.reciters")
+                            .accessibilityValue(audio.selectedCatalogReciter?.name ?? audio.displayName)
                     }
                     if let selection = manualSelection {
                         Button { openTools(selection, action: .details) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
@@ -435,7 +446,7 @@ struct InteractiveMushafReader: View {
                     } else if audioFocus.activePlayer != nil || audio.playing != nil || audio.waitingKey != nil { Button { audio.stop(); audioFocus.activePlayer?.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel(audio.waitingKey == nil ? "إيقاف التلاوة" : "إيقاف التكرار أثناء المهلة").accessibilityIdentifier("reader.audio.stop") }
                     else if audio.loadingKey != nil {
                         Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
-                    } else {
+                    } else if readingOnly {
                         Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
@@ -448,40 +459,15 @@ struct InteractiveMushafReader: View {
                             verseActions(selection)
                         }
                     }
-                    else { VStack(spacing: 4) {
-                        if !readingOnly { practiceTextVisibilityButton }
-                        // Keep the microphone centered. Accessibility text needs
-                        // its own row instead of expanding beneath the overlay.
-                        if dynamicTypeSize.isAccessibilitySize { pageJumpControl }
-                        ZStack {
-                    HStack {
-                    Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.disabled(number >= allowedPages.upperBound).accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
-                    Spacer()
-                        if !dynamicTypeSize.isAccessibilitySize { pageJumpControl }
-                    Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }.disabled(number <= allowedPages.lowerBound).accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
-                    }
-                        if !readingOnly { Button {
-                            if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
-                            else { showStudySetup() }
-                        } label: {
-                            Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
-                                .foregroundStyle(Theme.background).frame(width: 60, height: 60)
-                                .background(Theme.gold, in: Circle())
-                        }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
-                            .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
-                            .buttonStyle(NoorMushafMicrophonePressStyle(onOptions: { readerActionsOpen = true }))
-                            .confirmationDialog("خيارات المصحف", isPresented: $readerActionsOpen, titleVisibility: .visible) {
-                                Button("اختيار مقطع التسميع") { scopeOpen = true }
-                                Button("تسجيلاتي") { recordingBrowserOpen = true }
-                                Button("الحفظ والمراجعة") { memorizationOpen = true }
-                                Button("إلغاء", role: .cancel) {}
+                    else { VStack(spacing: 0) {
+                        if !readingOnly {
+                            HStack(spacing: 12) {
+                                practiceTextVisibilityButton.frame(maxWidth: .infinity)
+                                startRecitationButton
+                                readerOptionsButton.frame(maxWidth: .infinity)
                             }
-                            .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
-                            .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }
-                            .accessibilityAction(named: "الحفظ والمراجعة") { memorizationOpen = true }
-                            .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
                         }
-                    }
+                        pageNavigationControls
                         if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
                             HStack {
                                 Text(recitation.guidedPhase == .ready ? "جاهز · اضغط الميكروفون وابدأ" : recitation.guidedPhase == .clearance ? "استعد · الميكروفون مغلق" : "استمع · الميكروفون مغلق").font(.caption)
@@ -505,6 +491,7 @@ struct InteractiveMushafReader: View {
                         reviewWordIDs: visibleReviewWordIDs,
                         activeWordID: recitation.state == .listening ? recitation.record?.evidence.last?.nativeID : audio.activeWordID,
                         pageRange: allowedPages,
+                        allowsManualPageTurns: !playbackLocksPage,
                         allowsVerseSelection: true,
                         // Fit the complete page instead of automatically zooming
                         // past its edges. The larger-text preference uses a little
@@ -617,6 +604,51 @@ struct InteractiveMushafReader: View {
                                    closedText: closedPracticeText, automaticScope: automatic)
         }
     }
+    private var startRecitationButton: some View {
+        Button {
+            if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
+            else { showStudySetup() }
+        } label: {
+            Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(Theme.background).frame(width: 60, height: 60)
+                .background(Theme.gold, in: Circle())
+        }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
+            .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
+            .buttonStyle(NoorMushafMicrophonePressStyle(onOptions: { readerActionsOpen = true }))
+            .accessibilityAction(named: "اختيار مقطع التسميع") { scopeOpen = true }
+            .accessibilityAction(named: "تسجيلاتي") { recordingBrowserOpen = true }
+            .accessibilityAction(named: "الحفظ والمراجعة") { memorizationOpen = true }
+            .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
+    }
+    private var readerOptionsButton: some View {
+        Button { readerActionsOpen = true } label: {
+            Label("المزيد", systemImage: "ellipsis.circle")
+                .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+        }.buttonStyle(.plain).accessibilityIdentifier("reader.more")
+            .confirmationDialog("خيارات المصحف", isPresented: $readerActionsOpen, titleVisibility: .visible) {
+                Button("الختمة وموضع التوقف") { khatmah = true }
+                Button("اختيار مقطع التسميع") { scopeOpen = true }
+                Button("تسجيلاتي") { recordingBrowserOpen = true }
+                Button("الحفظ والمراجعة") { memorizationOpen = true }
+                Button("إلغاء", role: .cancel) {}
+            }
+    }
+    private var pageNavigationControls: some View {
+        HStack(spacing: 12) {
+            Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
+                .disabled(playbackLocksPage || number >= allowedPages.upperBound)
+                .accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
+            if playbackLocksPage {
+                Label("مع التلاوة · \(ArabicSearch.digits(number))", systemImage: "lock.fill")
+                    .font(.caption).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("reader.playbackPageLock")
+                    .accessibilityHint("أوقف التلاوة لتنتقل إلى صفحة أخرى")
+            } else { pageJumpControl }
+            Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
+                .disabled(playbackLocksPage || number <= allowedPages.lowerBound)
+                .accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
+        }.frame(maxWidth: .infinity)
+    }
     private var practiceTextVisibilityButton: some View {
         let hidden = recitation.hasSession ? recitation.practiceTextHidden : closedPracticeText
         return Button {
@@ -627,9 +659,9 @@ struct InteractiveMushafReader: View {
         } label: {
             Label(hidden ? "إظهار الآيات" : "إخفاء الآيات للتسميع",
                   systemImage: hidden ? "eye" : "eye.slash")
-                .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
-                .padding(.horizontal, 12)
-                .background(Theme.panel, in: Capsule())
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44)
         }.buttonStyle(.plain)
             .accessibilityIdentifier("reader.textVisibility")
             .accessibilityValue(hidden ? "الآيات مخفية" : "الآيات ظاهرة")
@@ -638,6 +670,7 @@ struct InteractiveMushafReader: View {
     }
     private var recitationControls: some View {
         VStack(spacing: 0) {
+            VStack(spacing: 0) {
             if recitation.state == .listening, let guidance = recitation.inputGuidance {
                 Text(guidance).font(.caption).foregroundStyle(.secondary)
                     .accessibilityIdentifier("study.inputGuidance")
@@ -647,9 +680,8 @@ struct InteractiveMushafReader: View {
                     Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle())
                 }.buttonStyle(.plain)
                     .accessibilityLabel("خيارات التسميع").accessibilityIdentifier("study.options")
-                    .popover(isPresented: $recitationOptionsOpen, arrowEdge: .top) {
-                    VStack(alignment: .leading, spacing: 12) {
-                    Text("خيارات التسميع").font(.headline)
+                    .sheet(isPresented: $recitationOptionsOpen) {
+                    NavigationStack { List {
                     Button("العودة للقراءة") {
                         recitationOptionsOpen = false
                         Task { await recitation.finish() }
@@ -686,9 +718,14 @@ struct InteractiveMushafReader: View {
                     if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance {
                         Button("إلغاء الاستماع") { recitationOptionsOpen = false; recitation.cancelGuided() }
                     }
-                    Button("إغلاق") { recitationOptionsOpen = false }.accessibilityIdentifier("study.options.close")
-                    }.buttonStyle(.bordered).controlSize(.large).padding(16)
-                        .frame(minWidth: 260, maxWidth: 320).presentationCompactAdaptation(.popover)
+                    }.environment(\.defaultMinListRowHeight, 52)
+                        .navigationTitle("خيارات التسميع")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            Button("إغلاق") { recitationOptionsOpen = false }
+                                .accessibilityIdentifier("study.options.close")
+                        }
+                    }.presentationDetents([.large])
                 }
                 Spacer(minLength: 8)
                 if showReviewFeedback {
@@ -703,8 +740,10 @@ struct InteractiveMushafReader: View {
                     Text("إنهاء").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                 }.disabled(recitation.state == .processing || recitation.state == .preparing || recitation.state == .permission)
                     .accessibilityIdentifier("study.finish")
+            }
             }.background { readerControlMeasurement("header") }
             Spacer(minLength: 0)
+            VStack(spacing: 0) {
             practiceTextVisibilityButton
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -736,6 +775,7 @@ struct InteractiveMushafReader: View {
                     .accessibilityLabel("إشارة صوت الميكروفون")
                     .accessibilityValue("\(Int(recitation.microphoneMeter * 100)) بالمئة")
                     .accessibilityIdentifier("study.microphoneLevel")
+            }
             }.background { readerControlMeasurement("footer") }
         }.padding(.horizontal, 10)
     }
@@ -749,6 +789,7 @@ struct InteractiveMushafReader: View {
             Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption)
                 .frame(minWidth: 70, minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain).foregroundStyle(Theme.gold)
+            .disabled(playbackLocksPage)
             .accessibilityLabel("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤")
             .accessibilityIdentifier("reader.jump")
     }
@@ -807,7 +848,7 @@ struct InteractiveMushafReader: View {
         return store.quran[n - 1].name
     }
     private func turn(_ amount: Int) {
-        guard allowedPages.contains(number + amount) else { return }
+        guard !playbackLocksPage, allowedPages.contains(number + amount) else { return }
         followAudio = false
         let destination = number + amount
         // Persist before publishing the new page, including a quick close/background.
@@ -851,11 +892,14 @@ struct InteractiveMushafReader: View {
                 lastPage = number
             }
             audio.onVerse = { key in
-                guard !key.hasPrefix("r:"), followAudio, !recitation.hasSession else { return }
+                guard followAudio, !recitation.hasSession else { return }
                 guard manualSelection == nil, sheetVerse == nil else { return }
-                selected = key
-                if page?.words.contains(where: { $0.verse == key }) != true,
-                   let target = versePages[key], allowedPages.contains(target) { lastPage = target; number = target }
+                // Whole-surah audio really starts at the beginning. Do not keep
+                // an unrelated late page on screen or invent subsequent offsets.
+                let canonical = NoorAudioIntegrity.reciterRecording(key).map { "\($0.1):1" } ?? key
+                selected = canonical
+                if page?.words.contains(where: { $0.verse == canonical }) != true,
+                   let target = versePages[canonical], allowedPages.contains(target) { lastPage = target; number = target }
             }
             if first, !readingOnly, let pending = UUID(uuidString: pendingRecitation) {
                 await recitation.restore(id: pending, snapshot: data, corpus: store.quran)

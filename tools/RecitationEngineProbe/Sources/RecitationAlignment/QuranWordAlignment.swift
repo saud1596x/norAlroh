@@ -226,29 +226,63 @@ public struct QuranRecitationTracker {
                 if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
             }
         }
-        // One rolling window can contain two independent passages. Comparing
-        // every passage globally let an older, longer anchor suppress a newer
-        // surah, or treated equal-length passages at different audio times as
-        // ambiguity. Competing OVERLAPPING interpretations still need the
-        // strongest unique exact anchor. Disjoint passages do not compete.
-        let ordered = candidates.sorted {
-            $0.bounds[0].1 == $1.bounds[0].1 ? $0.first < $1.first : $0.bounds[0].1 < $1.bounds[0].1
+        // Select non-overlapping exact anchors. Squared HEARD-token length
+        // favors a stronger continuous phrase over several weaker fragments.
+        // A shorter bridge (e.g. "أحد قل أعوذ برب" across112/113) must not
+        // join two independent passages into one giant ambiguity component.
+        // Retain only bindings shared by EVERY optimal interpretation. Never
+        // break an equal-coverage ambiguity by corpus position or iteration order.
+        let byStart = Dictionary(grouping: candidates) { $0.bounds[0].1 }
+        func weight(_ match: Match) -> Int {
+            let length = match.bounds.last!.2 - match.bounds[0].1
+            return length * length
         }
-        var groups: [[Match]] = [], groupEnd = -1
-        for candidate in ordered {
-            let end = candidate.bounds.last!.2
-            if candidate.bounds[0].1 >= groupEnd {
-                groups.append([candidate]); groupEnd = end
-            } else {
-                groups[groups.count - 1].append(candidate); groupEnd = max(groupEnd, end)
+        var prefix = Array(repeating: 0, count: heard.count + 1)
+        var suffix = prefix
+        for position in heard.indices {
+            prefix[position + 1] = max(prefix[position + 1], prefix[position])
+            for candidate in byStart[position] ?? [] {
+                let end = candidate.bounds.last!.2
+                prefix[end] = max(prefix[end], prefix[position] + weight(candidate))
             }
         }
+        for position in heard.indices.reversed() {
+            suffix[position] = suffix[position + 1]
+            for candidate in byStart[position] ?? [] {
+                let end = candidate.bounds.last!.2
+                suffix[position] = max(suffix[position], weight(candidate) + suffix[end])
+            }
+        }
+        struct Binding: Hashable { let index: Int; let first: Int; let end: Int }
+        let score = suffix[0]
+        var alternatives = Array(repeating: Set<Binding>(), count: heard.count)
+        var canBeUnmatched = Array(repeating: false, count: heard.count)
+        for position in heard.indices {
+            canBeUnmatched[position] = prefix[position] + suffix[position + 1] == score
+        }
+        let optimal = candidates.filter {
+            let first = $0.bounds[0].1, end = $0.bounds.last!.2
+            return prefix[first] + weight($0) + suffix[end] == score
+        }
+        for candidate in optimal {
+            for (index, first, end) in candidate.bounds {
+                let binding = Binding(index: index, first: first, end: end)
+                for position in first..<end { alternatives[position].insert(binding) }
+            }
+        }
+        var certain = Set<Binding>()
+        for candidate in optimal {
+            let bindings = candidate.bounds.map { Binding(index: $0.0, first: $0.1, end: $0.2) }
+            guard bindings.allSatisfy({ binding in
+                (binding.first..<binding.end).allSatisfy {
+                    !canBeUnmatched[$0] && alternatives[$0] == Set([binding])
+                }
+            }) else { continue }
+            certain.formUnion(bindings)
+        }
         var added: [QuranWordEvidence] = []
-        for alternatives in groups {
-            guard let length = alternatives.map({ $0.bounds.count }).max() else { continue }
-            let best = alternatives.filter { $0.bounds.count == length }
-            guard Set(best.map(\.first)).count == 1, let match = best.first else { continue }
-            for (index, first, end) in match.bounds {
+        for binding in certain.sorted(by: { $0.first < $1.first }) {
+                let index = binding.index, first = binding.first, end = binding.end
                 let record = QuranWordEvidence(nativeID: expected[index].id, verse: expected[index].verse,
                     takeID: takeID, start: offset + heard[first].start, end: offset + heard[end - 1].end,
                     minimumConfidence: heard[first..<end].map(\.probability).min()!)
@@ -259,8 +293,7 @@ public struct QuranRecitationTracker {
                         && min(previous.end, record.end) > max(previous.start, record.start)
                 }
                 if !duplicate { evidence.append(record); added.append(record) }
-            }
-            cursor = match.bounds.last!.0 + 1
+                cursor = index + 1
         }
         return added
     }

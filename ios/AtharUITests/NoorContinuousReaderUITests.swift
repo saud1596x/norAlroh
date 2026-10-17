@@ -12,6 +12,17 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: 120))
         let visibility = app.buttons["reader.textVisibility"]
         XCTAssertTrue(visibility.exists)
+        let mic = app.buttons["reader.study"], jump = app.buttons["reader.jump"]
+        XCTAssertTrue(mic.isHittable); XCTAssertTrue(jump.isHittable)
+        XCTAssertFalse(mic.frame.intersects(jump.frame), "Page navigation cannot sit underneath the microphone")
+        XCTAssertFalse(mic.frame.intersects(visibility.frame), "Visibility keeps its own touch area")
+        let more = app.buttons["reader.more"]
+        XCTAssertTrue(more.isHittable, "Options are discoverable without a hidden long press")
+        let readerScreenshot = XCTAttachment(screenshot: app.screenshot())
+        readerScreenshot.name = "reader-controls-spaced-no-overlap"; readerScreenshot.lifetime = .keepAlways; add(readerScreenshot)
+        more.tap()
+        XCTAssertTrue(app.buttons["اختيار مقطع التسميع"].waitForExistence(timeout: 5))
+        app.buttons["إلغاء"].tap()
         if visibility.value as? String == "الآيات مخفية" { visibility.tap() }
         XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
         visibility.tap()

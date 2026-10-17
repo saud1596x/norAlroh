@@ -1,4 +1,17 @@
 workflows:
+  reader-ease-check:
+    name: Noor spacious reader, playback page lock and evidence regressions
+    instance_type: mac_mini_m2
+    max_build_duration: 7
+    environment:
+      xcode: "26.3"
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify reader layout and shared core repairs
+        script: bash scripts/test-reader-ease.sh
+    artifacts:
+      - release/reader-ease/**
   continuous-reader-check:
     name: Noor continuous recognition, all604 pages and complete reciter selection
     instance_type: mac_mini_m2

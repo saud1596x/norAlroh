@@ -158,7 +158,11 @@ import os
         guard hasSession, state == .listening || state == .paused, var current = record else { return false }
         if !hidden { noteExposedPracticeText(&current) }
         current.practiceTextHidden = hidden
-        do { try save(current); record = current; return true }
+        do {
+            guard let journal else { throw QuranJournalFailure.invalidRecord }
+            record = try journal.savePracticeTextVisibility(current)
+            return true
+        }
         catch { message = "تعذّر حفظ وضع عرض الآيات. أعد المحاولة."; return false }
     }
     private func noteExposedPracticeText(_ value: inout QuranRecitationRecord) {

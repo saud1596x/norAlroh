@@ -3,6 +3,29 @@ import UIKit
 @testable import Athar
 
 @MainActor final class MushafViewportTests: XCTestCase {
+    func testPlaybackLockCancelsManualDragButAllowsAutomaticPageReplacement() async throws {
+        try OriginalMushafCompanion.register()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let rows = try OriginalMushafRows.load(), fonts = MushafFonts()
+        await fonts.load("QCF2003")
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+        viewport.canvas.configure(page: .page(3, snapshot: snapshot, rows: rows, keys: keys), corpus: corpus)
+        viewport.onTurn = { _ in XCTFail("Playback must reject manual page commits") }
+        viewport.layoutIfNeeded()
+        XCTAssertTrue(viewport.canTurnPages)
+        viewport.canvas.layer.sublayerTransform = CATransform3DMakeTranslation(100, 0, 0)
+        viewport.allowsManualPageTurns = false
+        XCTAssertFalse(viewport.canTurnPages)
+        XCTAssertTrue(CATransform3DIsIdentity(viewport.canvas.layer.sublayerTransform))
+        // This is the same replacement path used by accepted playback timing.
+        viewport.replacePage(number: 4, animated: false) { viewport.resetToFittedPage() }
+        XCTAssertEqual(viewport.pageNumber, 4)
+        XCTAssertFalse(viewport.canTurnPages)
+        viewport.allowsManualPageTurns = true
+        XCTAssertTrue(viewport.canTurnPages, "Stopping playback restores manual navigation")
+    }
     func testPreparingNeighborFontsPreservesVisiblePageErrorAndPreparesBothDirections() async {
         let fonts = MushafFonts()
         await fonts.load("invalid-current-font")

@@ -134,3 +134,11 @@ canonical-word mapping remain unresolved for that feature. The official sample
 font CDN returned HTTP403 and authenticated TTF archive downloads did not
 produce a file after two bounded waits. Actual blocker evidence is recorded in
 outputs/tajweed-font-audit/status.json outside the repository.
+# Reader comfort and playback lock — pending native verification
+
+- Replaced the overlaid page-number/microphone ZStack with separate touch areas. The microphone, visibility and More controls occupy one row; page navigation occupies its own row. More exposes the existing scope, recordings, review and khatmah options without requiring a long press.
+- Reciter entry has a visible label and the chosen name as its accessibility value. Recitation options use a full-width scrolling sheet instead of a fixed260–320pt popover. Measured session header/footer now include input guidance and the visibility row so they cannot overlap Quran ink.
+- Manual page turns, page arrows and page-number jumps lock during this reader's playback/loading/repeat gaps. The viewport clears an in-flight drag when locking. Canonical playback callbacks retain automatic page replacement. Stop unlocks navigation. Whole-surah recordings start on their actual first-ayah page; subsequent word/page tracking still requires recording-matched timing data and is not fabricated.
+- Actual22cff73 native result:36/37 unit and1/1UI passed,7m31s. The frame-growth regression passed. Captured ASR evidence contained all eight words from112:1 then114:1, but the old transitive overlap component confused a shorter cross-boundary112/113 prefix with both full anchors. A new optimal non-overlapping anchor selection retains only bindings shared by every best interpretation. The new regression replays those exact captured words/times against the entire authentic corpus; it is not a new acoustic benchmark.
+- Visibility now performs a visibility-only atomic merge, preserving newer on-disk word evidence in both disk-write orders. Showing then hiding text cannot erase assistance flags.
+- `reader-ease-check` is a bounded7-minute Release native regression for these changes. It does not replace actual-ASR, hardware microphone, full-release, visual approval, all-reciter timing or Tajweed acceptance. No new TestFlight build is claimed.

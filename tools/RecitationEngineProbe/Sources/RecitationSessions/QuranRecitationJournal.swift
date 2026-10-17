@@ -243,6 +243,28 @@ public struct QuranRecitationJournal {
         }
         try latest.validate(); try write(latest)
     }
+    @discardableResult public func savePracticeTextVisibility(_ visibility: QuranRecitationRecord) throws -> QuranRecitationRecord {
+        Self.accessLock.lock(); defer { Self.accessLock.unlock() }
+        try visibility.validate()
+        var latest = try load(visibility.id)
+        guard latest.startedAt == visibility.startedAt, latest.keys == visibility.keys,
+              latest.originPage == visibility.originPage else { throw QuranJournalFailure.identityChanged }
+        // The reverse race matters too: analysis may already be on disk before
+        // its MainActor continuation resumes. A display toggle must never save
+        // the UI's older word history over that newly durable evidence.
+        latest.practiceTextHidden = visibility.practiceTextHidden
+        if visibility.textExposureOccurred == true { latest.textExposureOccurred = true }
+        let exposed = Set(visibility.takes.filter { $0.textExposureOccurred == true }.map(\.id))
+        let visibleTakes = Dictionary(uniqueKeysWithValues: visibility.takes.map { ($0.id, $0) })
+        for index in latest.takes.indices {
+            if let take = visibleTakes[latest.takes[index].id] {
+                latest.takes[index].frames = max(latest.takes[index].frames, take.frames)
+            }
+            if exposed.contains(latest.takes[index].id) { latest.takes[index].textExposureOccurred = true }
+        }
+        try latest.validate(); try write(latest)
+        return latest
+    }
     private func write(_ record: QuranRecitationRecord) throws {
         let bytes = try JSONEncoder().encode(record)
         guard bytes.count <= 64_000_000 else { throw QuranJournalFailure.invalidRecord }
