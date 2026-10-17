@@ -8,6 +8,7 @@ struct NoorMushafReciter: Identifiable {
     let name: String
     let verseDirectory: String?
     let recording: NoorReciter?
+    var recordingIdentity: String { verseDirectory.map { "everyayah:" + $0 } ?? id }
     var supportsVersePlayback: Bool { verseDirectory != nil }
     var scopeLabel: String { supportsVersePlayback ? "من الآية المحددة" : "السورة كاملة من بدايتها" }
     static var all: [Self] {

@@ -8,8 +8,17 @@ final class NoorReaderCoreRegressionTests: XCTestCase {
             XCTAssertEqual(saved.verseDirectory, directory); XCTAssertNil(saved.recording)
             let audio = MushafVerseAudio(); audio.selectReciter(saved)
             XCTAssertEqual(audio.reciterDirectory, directory)
-            XCTAssertEqual(audio.currentRecordingIdentity, directory)
+            XCTAssertEqual(audio.currentRecordingIdentity, "everyayah:" + directory)
             XCTAssertNil(audio.playing, "Restoring a preference never starts playback")
+            let rateKey = "noor.audio.bookmark.everyayah:\(directory).rate"
+            let oldRate = UserDefaults.standard.object(forKey: rateKey)
+            defer {
+                if let oldRate { UserDefaults.standard.set(oldRate, forKey: rateKey) }
+                else { UserDefaults.standard.removeObject(forKey: rateKey) }
+            }
+            XCTAssertTrue(audio.setPlaybackRate(1.1))
+            XCTAssertEqual(UserDefaults.standard.float(forKey: rateKey), 1.1,
+                           "Existing EveryAyah bookmarks retain the same namespace through the unified picker")
             let cache = try XCTUnwrap(NoorVerseReciter.cacheKey(directory: directory, verse: "112:1"))
             XCTAssertEqual(NoorAudioIntegrity.url(cache)?.absoluteString,
                            "https://everyayah.com/data/\(directory)/112001.mp3")

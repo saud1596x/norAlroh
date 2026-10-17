@@ -27,7 +27,7 @@ import MediaPlayer
     private var stopAtBoundary = false
     private var bookmarkSeconds: Double?
     private let recordingIdentity: String?
-    var currentRecordingIdentity: String { recordingIdentity ?? selectedCatalogReciter?.id ?? "everyayah:" + reciterDirectory }
+    var currentRecordingIdentity: String { recordingIdentity ?? selectedCatalogReciter?.recordingIdentity ?? "everyayah:" + reciterDirectory }
     private let configuredDisplayName: String
     var displayName: String { selectedCatalogReciter?.name ?? configuredDisplayName }
     private let keepAlive: Bool
@@ -45,7 +45,7 @@ import MediaPlayer
     @Published private(set) var activeWordID: Int?
     var repetitionCount: Int { count }
     var currentCanonicalKey: String? { index < keys.count ? keys[index] : nil }
-    private var bookmarkKey: String { "noor.audio.bookmark." + (recordingIdentity ?? selectedCatalogReciter?.id ?? "everyayah:" + reciterDirectory) }
+    private var bookmarkKey: String { "noor.audio.bookmark." + currentRecordingIdentity }
     private(set) var selectedCatalogReciter: NoorMushafReciter?
     func selectReciter(_ reciter: NoorMushafReciter) {
         guard source == nil else { return }
