@@ -20,7 +20,7 @@ workflows:
   continuous-reader-check:
     name: Noor continuous recognition, all604 pages and complete reciter selection
     instance_type: mac_mini_m2
-    max_build_duration: 12
+    max_build_duration: 14
     environment:
       xcode: "26.3"
     cache:
@@ -28,6 +28,8 @@ workflows:
         - release/continuous-reader-derived-data/ModuleCache.noindex
         - release/continuous-reader-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
         - release/continuous-reader-derived-data/SourcePackages
+        - ios/Athar/Fonts
+        - ios/RecitationModel
     scripts:
       - name: Install project generator
         script: command -v xcodegen >/dev/null || brew install xcodegen

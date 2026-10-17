@@ -66,7 +66,7 @@ def main():
     if a.record_manifest:
         MANIFEST.write_text(json.dumps({'edition': 'Original QCF V4 COLR v0', 'mushafID': 19, 'source': BASE,
           'terms': 'https://api-docs.quran.foundation/legal/developer-terms/', 'fontCount': 604,
-          'fonts': fonts}, indent=2) + '\n')
+          'fonts': fonts}, indent=2) + '\n', newline='\n')
     print(json.dumps({'validated': len(fonts), 'bytes': sum(e['bytes'] for e in fonts)}))
 
 if __name__ == '__main__': main()

@@ -12,6 +12,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 SCOPES = ['ios', 'tools', 'content-sources', 'scripts', 'codemagic.yaml',
           'release/qcf-v2-manifest.json', 'release/config.json',
+          'release/qcf-v4-manifest.json',
           'release/legal-content-accounts.json']
 REQUEST = 'اريد تنشر ف تيست لايت انا بختبر التطبيق كامل'
 UNVERIFIED = {'actualSimulatorAudio': 'FAILED_OR_TIMED_OUT',

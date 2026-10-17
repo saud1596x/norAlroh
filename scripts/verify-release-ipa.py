@@ -40,6 +40,22 @@ def verify_recitation_resources(ipa, root):
         raise ValueError('Incorrect bundled recognition word script')
     return len(manifest['files'])
 
+def verify_tajweed_resources(ipa, root):
+    original = (ROOT / 'release/qcf-v4-manifest.json').read_bytes()
+    if ipa.read(root + 'qcf-v4-manifest.json') != original:
+        raise ValueError('Incorrect bundled original Tajweed manifest')
+    fonts = json.loads(original)['fonts']
+    if [e['page'] for e in fonts] != list(range(1, 605)):
+        raise ValueError('Incomplete original Tajweed edition')
+    for e in fonts:
+        data = ipa.read(root + e['file'])
+        if len(data) != e['bytes'] or hashlib.sha256(data).hexdigest() != e['sha256']:
+            raise ValueError('Incorrect original Tajweed font: ' + e['file'])
+        data = ipa.read(root + e['file'].removesuffix('.ttf') + '.json')
+        if hashlib.sha256(data).hexdigest() != e['layersSha256']:
+            raise ValueError('Incorrect original Tajweed color layers: ' + e['file'])
+    return len(fonts)
+
 def verify(path):
     spec = importlib.util.spec_from_file_location('noor_firebase', ROOT / 'scripts/configure-firebase.py')
     module = importlib.util.module_from_spec(spec)
@@ -88,6 +104,7 @@ def verify(path):
         if found != set(EXTENSIONS):
             raise ValueError('Missing required extensions: ' + ', '.join(sorted(set(EXTENSIONS) - found)))
         recognition_count = verify_recitation_resources(ipa, root)
+        tajweed_count = verify_tajweed_resources(ipa, root)
         for resource in ['quran.json', 'quran-basmalas.json', 'haramain-reciters.json', 'mushaf-snapshot.json',
                          'reciter-word-timings.json', 'Reciter-Timings-LICENSE.txt']:
             if ipa.read(root + resource) != (ROOT / 'ios/Athar' / resource).read_bytes():
@@ -103,6 +120,7 @@ def verify(path):
             raise ValueError('Reciter catalog contains an incomplete Quran')
     return {'version': version[0], 'build': version[1], 'extensions': sorted(found),
             'accountConfigurationIncluded': True, 'recognitionResourcesVerified': recognition_count,
+            'originalTajweedPagesVerified': tajweed_count,
             'quranTextResourcesMatchSource': True, 'completeReciterCatalogs': len(readers),
             'deviceTested': False}
 

@@ -35,6 +35,17 @@ class ReleasePayloadTests(unittest.TestCase):
             (root / 'ios/Athar' / name).write_bytes(data)
         for directory in ['scripts', 'content-sources', 'docs']:
             (root / directory).mkdir()
+        (root / 'release').mkdir()
+        self.tajweed_files = {}
+        tajweed = []
+        for page in range(1, 605):
+            font = f't4-p{page}.ttf'; data = f'synthetic-font-{page}'.encode(); layers = b'synthetic-layer'
+            self.tajweed_files[font] = data
+            self.tajweed_files[f't4-p{page}.json'] = layers
+            tajweed.append({'page': page, 'file': font, 'bytes': len(data),
+                            'sha256': hashlib.sha256(data).hexdigest(), 'layersSha256': hashlib.sha256(layers).hexdigest()})
+        self.tajweed_files['qcf-v4-manifest.json'] = json.dumps({'fonts': tajweed}).encode()
+        (root / 'release/qcf-v4-manifest.json').write_bytes(self.tajweed_files['qcf-v4-manifest.json'])
         snapshot = self.quran_files['mushaf-snapshot.json']
         (root / 'content-sources/mushaf-snapshot-manifest.json').write_text(json.dumps({
             'bytes': len(snapshot), 'sha256': hashlib.sha256(snapshot).hexdigest()}))
@@ -62,6 +73,7 @@ class ReleasePayloadTests(unittest.TestCase):
         with zipfile.ZipFile(path, 'w') as archive:
             resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
             resources.update(self.quran_files)
+            resources.update(self.tajweed_files)
             resources['RecitationModel/verified-model.json'] = json.dumps({
                 'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision',
                 'configuration': 'ar;wordTimestamps=true;temperatureFallbackCount=0;concurrentWorkerCount=1'
@@ -108,6 +120,14 @@ class ReleasePayloadTests(unittest.TestCase):
             for name in self.model_files:
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit='RecitationModel/' + name))
+
+    def test_missing_or_corrupted_original_tajweed_font_or_layers_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in ['t4-p1.ttf', 't4-p604.json', 'qcf-v4-manifest.json']:
+                with self.subTest(name=name), self.assertRaises(KeyError):
+                    gate.verify(self.payload(folder, omit=name))
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    gate.verify(self.payload(folder, corrupt=name))
 
     def test_same_size_corrupted_model_or_tokenizer_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
