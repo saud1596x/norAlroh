@@ -16,28 +16,27 @@
   },
   "basis": "User explicitly requested personal TestFlight testing after the unresolved audio and full-suite checks were disclosed. This supersedes the requirement to wait for those checks only for this pinned user-review build, not for the normal reviewed-preview or App Store channels.",
   "lastNarrowPass": {
-    "source": "2a36ee74b61a92583856da1fe52a1922af7b2ecd",
-    "build": "6ad3e3cd7550aed8108fad54",
+    "source": "9a00d6d842172a1b476226168aea8bd5720d1bb4",
+    "build": "6ad3e9387550aed8108faeae",
     "status": "PASSED",
-    "unitCases": 25,
+    "unitCases": 30,
     "uiCases": 1,
     "failures": 0,
     "configuration": "Release",
     "runtime": "iOS26.2",
     "device": "iPhone17Pro simulator",
-    "uiDurationSeconds": 76.735,
-    "unitDurationSeconds": 10.889,
-    "observedDurationSeconds": 594,
-    "videoBytes": 27674758,
+    "uiDurationSeconds": 83.33,
+    "unitDurationSeconds": 13.182,
+    "observedDurationSeconds": 523,
+    "videoBytes": 29678455,
     "videoExit": 0,
-    "sourceLog": "outputs/reader-2a36ee7-full-log.txt",
+    "sourceLog": "outputs/controls-9a00d6d-full-log.txt",
     "limits": [
-      "Not complete app Release suite",
-      "Not new actual ASR test; use8fb component evidence",
-      "Not device microphone/speaker or calibrated phonetic/Tajweed accuracy",
-      "Not universal reciter word timing"
+      "Cue ordering tests use a manual driver, not actual speaker/haptic acceptance",
+      "No hardware microphone or calibrated phonetic/Tajweed accuracy",
+      "Not universal reader word timings or complete app Release suite"
     ],
-    "scope": "25 targeted native regressions plus one real reader UI journey; not a complete app suite or actual device microphone test"
+    "scope": "30 targeted native regressions plus one real reader UI journey; not a complete app suite or actual device microphone test"
   },
   "sourceHashes": {
     "codemagic.yaml": "88411e28d67f8f3cacf86d6be1153d846fd63e00462ccff9812722485b8de299",
@@ -208,7 +207,7 @@
     "ios/Athar/HomeJourney.swift": "7d3e0d406114e85807066b7d7a985dc0667c2574b163f3793a39749279c20d8e",
     "ios/Athar/Info.plist": "488cd52e5e0807c1e3047530db247f17191b50446923a64a326ca00945053e6a",
     "ios/Athar/InteractiveMushafCanvas.swift": "260a61c40bcd53652cb3bb59b9e001f5b9d2834d289ae2cdf1ba22d4e90638ac",
-    "ios/Athar/InteractiveMushafReader.swift": "553ec02cafaa819507bafbe2bee8f8d2f8497d246e412fdeba9dcd5828374bc9",
+    "ios/Athar/InteractiveMushafReader.swift": "d41cdfbb282e240a058a4df716f6e7ffd8de24b875bad411c5cf25bf2032421e",
     "ios/Athar/KhatmahJourney.swift": "d2360dc9b359ff716cd9e1693b023fd8b8263fedc8754bd3a4d73b968ac45ad1",
     "ios/Athar/KhatmahJourneyView.swift": "42a542b8f8d9f0ace0e25a0199d9eb860216d757858c35e8d834b1b9f5c8ca68",
     "ios/Athar/LocalRecitationRecorder.swift": "47b4d7ac43185db6178214178658b947523813520cd4128c2ef1c2999e8dd353",
@@ -236,12 +235,14 @@
     "ios/Athar/NoorJourneyIndex.swift": "843b4f43fbd1cd46f0b3fb00fb71e7a69f8ab278237b963170b1be613e1fe114",
     "ios/Athar/NoorLaunch.swift": "86bf78a264467a4650fea0153538e919a2dedef20d090366cee88ef97fc83c92",
     "ios/Athar/NoorLegalContent.swift": "c9c9b38794f50fab58de242c76b5a517ae1e63977c097e0b4258ec1cc9137a2a",
+    "ios/Athar/NoorMicrophoneCue.swift": "f9ad360b67f68076fdbc5d4a1db131b03a907d1f9753a8783660c979caeac2d2",
     "ios/Athar/NoorMotion.swift": "38fbef28bcf7cabaf5694e0713a4023c76682846486cfd79ac65d7e396918831",
     "ios/Athar/NoorMushafReciter.swift": "aefedca427cf579e44b93c6b1d971129505509f871092d3581bf69c6a097adf1",
     "ios/Athar/NoorMyJourneyView.swift": "757f2bf341a45f969e5a1fb7de9ee689fa914979605ff5c0a04305584d799291",
     "ios/Athar/NoorOperationDeadline.swift": "445a1445243184ed91476542ab8bf5aca6842c7f3e8c8f6db6aae16a12943c0e",
     "ios/Athar/NoorPersonalReminders.swift": "20b290fecafe08da7efc94b5ba70e5de1d4543309efd8bb640adfb90d17236cf",
     "ios/Athar/NoorProgress.swift": "5b0c5175bbd79ae90fe43a071bba2b312d289cadfb3a79b2d2d80ab680328e05",
+    "ios/Athar/NoorReaderControls.swift": "bf1a9db443b3d635e0b0094fb0ec9d4700dd8314124dc8ced6ab15e97b8b11ac",
     "ios/Athar/NoorReadingSync.swift": "680b2d84ca18bbba0d91f4466f1d834f12c5702f970ec78d0c6ef18a95463b50",
     "ios/Athar/NoorReciterCatalog.swift": "513616b80a78eeccacfb7b355e15f067607705a7a23d1f3e6266c6727ec00e16",
     "ios/Athar/NoorReciterWordTimings.swift": "36af723398e01b4c229dced27ff9a4e95e54891ee1c7b8ab1a09a8edbca84df8",
@@ -290,6 +291,7 @@
     "ios/Athar/app-legal.json": "4c51097c74977ed3dbe9ed317ae7bb4ced29460cade5e314fefced788a487913",
     "ios/Athar/haramain-reciters.json": "3677ce535894a7c0a0ab9c74f5ce73b128d4e5c4050edd537e9287a5000b2568",
     "ios/Athar/king-fahd-chapter-pages.json": "3202fe9ea2cd18259ebf37c0d3c2baabbe396e9ccd96e1498f53d41960ab11a1",
+    "ios/Athar/mic-start.wav": "3e82e2e4304e8cc22687390c37b68d5848a0a67e0d64168078e185463417aa79",
     "ios/Athar/mushaf-headers.json": "609a9f810c1e897adda140c338064b704b23f62902d4be71b02d5407d76e411e",
     "ios/Athar/mushaf.json": "2c6e4e676ce46d4864adadd79d99c9e549fe313fefad4217eac5d91437701b83",
     "ios/Athar/prayer-adhan.caf": "861f272f20d9fb0b3742f3938fb766cdb7c96d3877d11c0f941450b613ac2883",
@@ -323,6 +325,7 @@
     "ios/AtharTests/NoorContinuousMushafTests.swift": "62265e56d740da041007bbfaf64d6e10c8c1155fef4812d15c9222821030a025",
     "ios/AtharTests/NoorJourneyIndexTests.swift": "7f43b927d8d50a5c173f38e4bea4847614ce9091bec8585ab43b42ad1fceeb19",
     "ios/AtharTests/NoorKhatmahProtectionTests.swift": "cd9af183d7471a5d2b678539654d8ac3b880ebbfdebd5ce7d84327d010be3dba",
+    "ios/AtharTests/NoorMicrophoneCueTests.swift": "61301f32015676220afdc6cab762ee3b32924363b2f0e527b8586751c9cc51a6",
     "ios/AtharTests/NoorOperationDeadlineTests.swift": "a9fb40d576ccc0fad7861fc2c6d204643388bad4b5ea87be5df006b8c96136cc",
     "ios/AtharTests/NoorPersonalReminderTests.swift": "8e1e0bf1584e4cfaa7e3bfc721c84c87aa62658b3f2cec2b4a94f4fb7447dbd1",
     "ios/AtharTests/NoorReaderCoreRegressionTests.swift": "a49ad36e213f8a04201d9cb36705c081e5b74e12b85e2fe591e04c7c4723dbaf",
@@ -364,7 +367,7 @@
     "ios/AtharTests/RecitationObservationTests.swift": "099ea91d4fb8306a06c007a4b4ce0c058b2f97ab58a28edffaf32cee11a0d3fb",
     "ios/AtharTests/WidgetTests.swift": "9679a45b700ee8c28c9da8fa724ccf96b5f290607a2dfde7583862c22c29a146",
     "ios/AtharUITests/NoorAllScreensTests.swift": "6825824d5d3421a5881e40c4a59a1e4ce89449002040047efc3732faf46b27fc",
-    "ios/AtharUITests/NoorContinuousReaderUITests.swift": "687c75e8e31b6f469a29b759e55b28a3eaeeae4b1c79cdc1aa22673e6c1d19f5",
+    "ios/AtharUITests/NoorContinuousReaderUITests.swift": "0ebb13d3bab38f44d1e6d9c9c13c2e9fc00f25af6294f5e129777368d895ec7f",
     "ios/AtharUITests/NoorDailyEaseTests.swift": "afba3dc8ff74fd08a0cac4f052f7be08fe957556c4b0ef176e7410d91ea36673",
     "ios/AtharUITests/NoorFridayRetirementUITests.swift": "790a2a9a9e5221b3f020801000a86a4b87f457fd076c55e5340f1f9c57a9cd8d",
     "ios/AtharUITests/NoorHomeFlowUITests.swift": "9e22b370230561b197ecf09252d76a4fbdce1a7e92f0b8d88c8b74c2b065dca1",
@@ -455,7 +458,7 @@
     "scripts/test-noor-linux.sh": "9215f57adbeb7d639c20866b112b07349ed19f8d0fcec1d8340624d729dc4d2d",
     "scripts/test-personal-reminders.sh": "0c9ea7d4100ee0154751230d0b5d3c125900c1fa09f27b0f2007d676ae4cd830",
     "scripts/test-rapid-repair.sh": "b2cb7f04182a675555d44435a8889eac0d7b6e28ade5781bc3e06616208ee1bb",
-    "scripts/test-reader-ease.sh": "e7b6aba6104f4ef6d6a6657364837539f884932744d38bc678657ce25b96d8b6",
+    "scripts/test-reader-ease.sh": "c32d2e7d9f54540ec1dcd4e84cd21c60a946c22a5dd01e4a53ca0de1078a4021",
     "scripts/test-recitation-app.sh": "94e88a434952ba148e199c9b9ff2159091f08edd9d910dcaf1cb4aea6f0bd7a7",
     "scripts/test-recitation-engine-current.sh": "cae4eff484355054433af9daa69bed641b40b0b1e670ddc71da230263fc7ecc1",
     "scripts/test-recitation-engine.sh": "34e81f7d66c36ce2429ae48d115e8d6e9e8328855557c1fb82633d00b387a54f",
@@ -471,11 +474,11 @@
     "scripts/tests/test_reciter_catalog.py": "6f09e025e4705c907690f958bc5bc6d9d5d0b7df5ea3d307be56d41974ac7eed",
     "scripts/tests/test_reciter_timing_resources.py": "8dba3a412579ff0739a5675b4fee6d082190ad8da43a516b680bc69f959ccc3b",
     "scripts/tests/test_recording_ui_evidence.py": "0b04ef23ede15fd40338bb28b89f26568b9e76eb35252a4cad3e598b8674215e",
-    "scripts/tests/test_release_ipa.py": "02d28ecea6ac4cb3895f2a65e393d34da56f7bd4af4056eed1da17985870a152",
+    "scripts/tests/test_release_ipa.py": "755129d46d574e00d1ca2e310aae037fa64d0fc9c7b03f51e9d8e11eab6d6988",
     "scripts/tests/test_user_testflight.py": "b0faca086f98baea6445409cad2c391d5c70fe3a43414d5cf92725a63cb80802",
     "scripts/verify-quran-text.py": "b73ae237b47969965b06bf9ea291d5a465d57e44538ce9dba311ff247e41c6b7",
     "scripts/verify-recording-ui-removal.py": "6a1aca79723a589808eb61e313def268962e9faf3b634f647a62889439d0ae5a",
-    "scripts/verify-release-ipa.py": "b9fc6ebb52b06f3563f12ceb202dac8f866f1b8c92a66703530818555ec37d7c",
+    "scripts/verify-release-ipa.py": "7c9b9eb7dd9b358818a7660713b10e0ad0a0d9f4e74b73a75fcbd497a31d6c92",
     "tools/LinuxRecitationBenchmark/README.md": "65d37a9185f6f5c803368dfe2bcf5a365f55751bffe19dccfb3f85e927f594c4",
     "tools/LinuxRecitationBenchmark/benchmark.py": "630e1c4a82855ce2cbccc0d14dfcf8c41b512a2f57ee97884435401eb3ffc998",
     "tools/LinuxRecitationBenchmark/requirements.txt": "ba405e49cc8c7598c80214525227dac82920afe51b46ab4cf73e37000511b4a1",
@@ -531,8 +534,8 @@
     "tools/StandaloneAudioProbe/Tests/ActualAudioTests.swift": "e4134844851a960272d035f133d034b8f495976766c99ed96ef6b0799df53661",
     "tools/StandaloneAudioProbe/project.yml": "8eff3d8066cbac976d56abc161ff560d52b270451095def4846203b90a84f39a"
   },
-  "latestRequest": "نعم اوافق لبى حد 10 دولار اكم واصلح كل شيء لاترجع لي ابدا",
-  "sourceCommit": "2a36ee74b61a92583856da1fe52a1922af7b2ecd",
+  "latestRequest": "اريد ايقونة الصوت و الي جنبها تصميمها سيء اريد تصميم مريح وجاذب اريده متحرك وفيها ردة فعل وصوت اذا ضغطت المايك",
+  "sourceCommit": "eaaebf91f2052ef803bd61a4771619455845d41b",
   "deferredFeatures": [
     "Word-level reader timing for every recording remains incomplete. Published partial timings exist only for three exact EveryAyah recordings; other audio must not use fabricated or mismatched timings.",
     "Calibrated wrong-word, phonetic and Tajweed acoustic assessment remains unestablished.",
@@ -547,5 +550,16 @@
       "scope": "All604 original and colored pages; actual colored paint in both themes; actual public PCM recognition across112:1 and114:1; not phonetic/Tajweed accuracy calibration",
       "uiFollowup": "Arabic bidi label formatting diagnosis confirmed by actual603/604 labels in aecde4a. Later25case run covers catalog/bookmark and actual rendered-mode UI deltas; do not attribute42case execution to later source."
     }
-  ]
+  ],
+  "runtimeDeltaAfterNarrowPass": {
+    "sourceCommit": "eaaebf91f2052ef803bd61a4771619455845d41b",
+    "files": [
+      "ios/Athar/InteractiveMushafReader.swift"
+    ],
+    "diffSha256": "1cedad5f41d6a3900fe7391cf1e067cbb469859d0141caa8da13bf9e1191d769",
+    "scope": "Apply the existing controller idle/stopped-only rule before cue, at cue completion and to the button enabled state; avoids a repeat decorative sound during pending bind/permission. No other runtime changes after30-case/UI pass.",
+    "nativeRetest": "NOT_REEXECUTED",
+    "signedArchiveCompilation": "PENDING_CURRENT_BUILD"
+  },
+  "microphoneCueValidation": "Five native manual-driver/asset tests passed; actual speaker/haptic/microphone acceptance remains USER_TO_TEST"
 }
