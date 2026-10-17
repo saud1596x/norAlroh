@@ -46,11 +46,13 @@ final class NoorKhatmahUITests: XCTestCase {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
-        let entry = app.buttons["reader.khatmah"]
+        let entry = app.buttons["reader.more"]
         XCTAssertTrue(entry.waitForExistence(timeout: 120))
         XCTAssertTrue(entry.isHittable)
         XCTAssertGreaterThanOrEqual(entry.frame.height, 44)
         entry.tap()
+        let khatmah = app.buttons["الختمة وموضع التوقف"]
+        XCTAssertTrue(khatmah.waitForExistence(timeout: 5)); khatmah.tap()
         let setup = app.navigationBars["إعداد الختمة"]
         let journey = app.staticTexts["رحلة الختمة"].firstMatch
         let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in setup.exists || journey.exists }, object: nil)

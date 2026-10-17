@@ -93,8 +93,10 @@ final class NoorReaderComfortUITests: XCTestCase {
         let frame = verse.frame
         requireTools(true, app: app)
         XCTAssertTrue(app.buttons["reader.study"].isHittable)
-        XCTAssertTrue(app.buttons["reader.khatmah"].isHittable)
-        app.buttons["reader.khatmah"].tap()
+        XCTAssertTrue(app.buttons["reader.more"].isHittable)
+        app.buttons["reader.more"].tap()
+        let khatmahEntry = app.buttons["الختمة وموضع التوقف"]
+        XCTAssertTrue(khatmahEntry.waitForExistence(timeout: 5)); khatmahEntry.tap()
         let setup = app.navigationBars["إعداد الختمة"]
         let journey = app.staticTexts["رحلة الختمة"].firstMatch
         let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in setup.exists || journey.exists }, object: nil)

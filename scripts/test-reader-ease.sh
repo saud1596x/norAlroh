@@ -25,7 +25,7 @@ state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
 test_exit=0
-xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
  -destination "platform=iOS Simulator,id=$device" \
  -derivedDataPath release/reader-ease-derived-data CODE_SIGNING_ALLOWED=NO \
  ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO \

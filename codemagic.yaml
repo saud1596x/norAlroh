@@ -2,9 +2,14 @@ workflows:
   reader-ease-check:
     name: Noor spacious reader, playback page lock and evidence regressions
     instance_type: mac_mini_m2
-    max_build_duration: 7
+    max_build_duration: 12
     environment:
       xcode: "26.3"
+    cache:
+      cache_paths:
+        - release/reader-ease-derived-data/ModuleCache.noindex
+        - release/reader-ease-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/reader-ease-derived-data/SourcePackages
     scripts:
       - name: Install project generator
         script: command -v xcodegen >/dev/null || brew install xcodegen
