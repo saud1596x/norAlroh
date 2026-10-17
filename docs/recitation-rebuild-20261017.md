@@ -45,8 +45,25 @@ that does not replace Xcode type checking.
 The new native workflow includes real Core Text rendering on all604 pages,
 voice catalog identity tests, recording-ownership tests, all ten public VAD
 reference clips, same-session Quran-wide recognition from actual public PCM,
-and a real UI search/selection/persistence journey. These are **pending**, not
-passed. Injected PCM transport is not an iPhone microphone test.
+and a real UI search/selection/persistence journey. The actual 30c37a6 run
+6ad3bf017550aed8108fa51b compiled Release, passed rendering all604 pages in
+20.996 seconds, catalog/ownership/VAD,12 viewport,3 worker lifecycle,4 mailbox
+and1 capability tests. Its real reciter search/selection UI passed in35.292s.
+Overall it **failed**:24/25 unit tests passed; the real PCM case remained at
+112:1 instead of114:1 after the second public clip. Injected PCM transport is
+not an iPhone microphone test. Evidence is retained in
+outputs/continuous-30c37-visible-log.txt outside the repository.
+
+Inspection identified a separate deterministic alignment defect: a rolling
+window's independent passages competed for one global longest match. Equal
+length passages at different audio positions were treated as ambiguous, and a
+long older passage suppressed a shorter later one. Alignment now resolves
+alternatives at each heard offset, retaining exact unique anchors and existing
+confidence/timing thresholds, and consumes non-overlapping matches in audio
+order. A direct regression covers two surahs and an unresolved common phrase.
+The original shared alignment suite is also included in the native test target.
+Whether this resolves the real PCM failure is **pending**. Failure attachments
+now retain actual public-fixture observed words and timing for diagnosis.
 
 ## Acoustic limitation and measured research
 

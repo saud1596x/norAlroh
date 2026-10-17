@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# First-use notification, separated daily adhkar and audio cache regressions; not full release acceptance.
+# Continuous recognition, canonical alignment and native reader regressions; not full release acceptance.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p release/continuous-reader
@@ -34,6 +34,7 @@ xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Releas
   -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
   -maximum-test-execution-time-allowance 180 \
   -only-testing:AtharTests/NoorContinuousMushafTests \
+  -only-testing:AtharTests/QuranWordAlignmentTests \
   -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
   -only-testing:AtharTests/QuranRecognitionCapabilityTests \
   -only-testing:AtharTests/MushafViewportTests \

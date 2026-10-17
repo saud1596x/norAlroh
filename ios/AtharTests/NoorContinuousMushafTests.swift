@@ -4,6 +4,27 @@ import WhisperKit
 @testable import Athar
 
 @MainActor final class NoorContinuousMushafTests: XCTestCase {
+    func testRollingWindowTracksIndependentPassagesInAudioOrderWithoutFillingTheGap() throws {
+        let first = ["قل", "هو", "الله", "أحد"], second = ["قل", "أعوذ", "برب", "الناس"]
+        let words = first.enumerated().map { QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[QuranAlignedWord.normalize($0.element)]]) }
+            + (5...30).map { QuranAlignedWord(id: $0, verse: "113:1", page: 604, aliases: [["فاصل"]]) }
+            + second.enumerated().map { QuranAlignedWord(id: $0.offset + 31, verse: "114:1", page: 604, aliases: [[QuranAlignedWord.normalize($0.element)]]) }
+        var tracker = QuranRecitationTracker(expected: words)
+        let heard = (first + second).enumerated().map { QuranHeardWord(text: $0.element,
+            start: Double($0.offset), end: Double($0.offset) + 0.8, probability: 0.99) }
+        let evidence = try tracker.consume(heard, takeID: UUID())
+        XCTAssertEqual(evidence.map(\.nativeID), [1, 2, 3, 4, 31, 32, 33, 34])
+        XCTAssertEqual(evidence.last?.verse, "114:1")
+        XCTAssertFalse(tracker.revealedIDs.contains(20))
+        var ambiguous = QuranRecitationTracker(expected: [
+            .init(id: 1, verse: "112:1", page: 604, aliases: [["الله"]]),
+            .init(id: 2, verse: "112:1", page: 604, aliases: [["الصمد"]]),
+            .init(id: 3, verse: "112:2", page: 604, aliases: [["الله"]]),
+            .init(id: 4, verse: "112:2", page: 604, aliases: [["الصمد"]])])
+        XCTAssertTrue(try ambiguous.consume([
+            .init(text: "الله", start: 0, end: 0.8, probability: 0.99),
+            .init(text: "الصمد", start: 1, end: 1.8, probability: 0.99)], takeID: UUID()).isEmpty)
+    }
     func testTextVisibilityChangesDuringCaptureWithoutLosingAssistanceOrSession() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -163,6 +184,11 @@ import WhisperKit
             let started = Date()
             for _ in 0..<400 where controller.currentVerse != expected { try await Task.sleep(nanoseconds: 50_000_000) }
             XCTAssertEqual(controller.currentVerse, expected, "Real decoded PCM must find \(expected) before stopping")
+            if controller.currentVerse != expected, let record = controller.record {
+                let diagnostic = try JSONEncoder().encode(record)
+                let attachment = XCTAttachment(data: diagnostic, uniformTypeIdentifier: "public.json")
+                attachment.name = "public-fixture-recognition-evidence-\(file)"; attachment.lifetime = .keepAlways; add(attachment)
+            }
             XCTAssertEqual(controller.state, .listening)
             XCTAssertEqual(controller.record?.id, id)
             XCTAssertTrue(controller.hiddenIDs.isEmpty)

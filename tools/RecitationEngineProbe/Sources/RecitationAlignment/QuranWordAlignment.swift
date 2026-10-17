@@ -226,25 +226,33 @@ public struct QuranRecitationTracker {
                 if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
             }
         }
-        guard let length = candidates.map({ $0.bounds.count }).max() else { return [] }
-        let best = candidates.filter { $0.bounds.count == length }
-        guard Set(best.map(\.first)).count == 1, let match = best.first else { return [] }
+        // One rolling window can contain two independent passages. Comparing
+        // every passage globally let an older, longer anchor suppress a newer
+        // surah, or treated equal-length passages at different audio times as
+        // ambiguity. Resolve alternatives at the SAME heard position, then
+        // consume non-overlapping unique anchors in actual audio order.
+        let grouped = Dictionary(grouping: candidates, by: { $0.bounds[0].1 })
         var added: [QuranWordEvidence] = []
-        for candidate in best {
-        for (index, first, end) in candidate.bounds {
-            let record = QuranWordEvidence(nativeID: expected[index].id, verse: expected[index].verse,
-                takeID: takeID, start: offset + heard[first].start, end: offset + heard[end - 1].end,
-                minimumConfidence: heard[first..<end].map(\.probability).min()!)
-            // Deduplicate only the same audio interval of the same take/word.
-            // A later spoken repetition remains a separate recording event.
-            let duplicate = evidence.contains { previous in
-                previous.nativeID == record.nativeID && previous.takeID == takeID
-                    && min(previous.end, record.end) > max(previous.start, record.start)
+        var nextHeard = 0
+        for heardStart in grouped.keys.sorted() where heardStart >= nextHeard {
+            guard let alternatives = grouped[heardStart], let length = alternatives.map({ $0.bounds.count }).max() else { continue }
+            let best = alternatives.filter { $0.bounds.count == length }
+            guard Set(best.map(\.first)).count == 1, let match = best.first else { continue }
+            for (index, first, end) in match.bounds {
+                let record = QuranWordEvidence(nativeID: expected[index].id, verse: expected[index].verse,
+                    takeID: takeID, start: offset + heard[first].start, end: offset + heard[end - 1].end,
+                    minimumConfidence: heard[first..<end].map(\.probability).min()!)
+                // Deduplicate only the same audio interval of the same take/word.
+                // A later spoken repetition remains a separate recording event.
+                let duplicate = evidence.contains { previous in
+                    previous.nativeID == record.nativeID && previous.takeID == takeID
+                        && min(previous.end, record.end) > max(previous.start, record.start)
+                }
+                if !duplicate { evidence.append(record); added.append(record) }
             }
-            if !duplicate { evidence.append(record); added.append(record) }
+            nextHeard = match.bounds.last!.2
+            cursor = match.bounds.last!.0 + 1
         }
-        }
-        cursor = match.bounds.last!.0 + 1
         return added
     }
 }

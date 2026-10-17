@@ -84,6 +84,7 @@ targets:
     platform: iOS
     sources:
       - path: AtharTests
+      - path: ../tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/QuranWordAlignmentTests.swift
     dependencies:
       - target: Athar
   AtharUITests:
