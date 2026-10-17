@@ -8,6 +8,8 @@ import base64, hashlib, json, subprocess, sys
 from pathlib import Path
 
 bundle = Path(sys.argv[1]); out = bundle.parent / 'screenshots'
+video_status = bundle.parent / 'video-status.json'
+if video_status.exists(): print('NOOR_ACTUAL_VIDEO_STATUS ' + video_status.read_text().strip(), flush=True)
 try:
     subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(bundle),
                     '--output-path', str(out)], check=True, timeout=45)

@@ -69,6 +69,28 @@ retaining their shaped advances. Never change the Quran words or shrink an
 individual word to hide this failure. The next run also paints all604 colored
 pages in both themes and records actual swipe/selection/picker UI when possible.
 
+`8fb82e3` / run `6ad3d9767550aed8108faaef` completed **42 native unit cases with
+zero failures**, including actual paint of all604 colored pages in both themes
+(38.401s) and the real public-PCM cross-surah case (10.509s for the whole test,
+not a per-word latency figure). The app's runtime remains unchanged after this
+source. Its UI case completed selection, hiding and reader persistence but
+failed two exact Arabic page-label comparisons. This run is still a failed run;
+do not call it a complete pass or assume a gesture defect without the actual page.
+
+The follow-up UI test retains the exact603/604 and604/604 assertions while parsing
+actual numeric values across localized/invisible text formatting. It logs the
+unmodified accessibility labels, does not change page state to force a pass, and
+must still demonstrate a real swipe and Next action. The separate reader-ease
+run checks this journey and24 existing regressions, not a new full42-case run.
+Original screenshot attachments are exported through bounded, SHA256-verified
+CI log chunks as well as private artifacts; the desktop artifact download
+returned HTTP401 without authentication, and no API token was read to bypass it.
+
+The private TestFlight workflow now targets the previously existing **Internal
+Testers** group, confirmed in the app's saved Apple sidebar. Codemagic performs
+post-processing through the existing integration; no new group, invitation,
+credential, Apple browser login or public App Store submission is requested.
+
 ## Remaining recording-specific coverage
 
 All25 current recording identities are selectable in one searchable picker.
