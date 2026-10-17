@@ -3,6 +3,50 @@ import UIKit
 @testable import Athar
 
 @MainActor final class MushafViewportTests: XCTestCase {
+    func testPlaybackLockCancelsManualDragButAllowsAutomaticPageReplacement() async throws {
+        try OriginalMushafCompanion.register()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let rows = try OriginalMushafRows.load(), fonts = MushafFonts()
+        await fonts.load("QCF2003")
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+        viewport.canvas.configure(page: .page(3, snapshot: snapshot, rows: rows, keys: keys), corpus: corpus)
+        viewport.onTurn = { _ in XCTFail("Playback must reject manual page commits") }
+        viewport.layoutIfNeeded()
+        XCTAssertTrue(viewport.canTurnPages)
+        viewport.canvas.layer.sublayerTransform = CATransform3DMakeTranslation(100, 0, 0)
+        viewport.allowsManualPageTurns = false
+        XCTAssertFalse(viewport.canTurnPages)
+        XCTAssertTrue(CATransform3DIsIdentity(viewport.canvas.layer.sublayerTransform))
+        // This is the same replacement path used by accepted playback timing.
+        viewport.replacePage(number: 4, animated: false) { viewport.resetToFittedPage() }
+        XCTAssertEqual(viewport.pageNumber, 4)
+        XCTAssertFalse(viewport.canTurnPages)
+        viewport.allowsManualPageTurns = true
+        XCTAssertTrue(viewport.canTurnPages, "Stopping playback restores manual navigation")
+    }
+    func testPreparingNeighborFontsPreservesVisiblePageErrorAndPreparesBothDirections() async {
+        let fonts = MushafFonts()
+        await fonts.load("invalid-current-font")
+        let originalError = fonts.error
+        await fonts.prepareNeighbors(of: 2)
+        XCTAssertEqual(fonts.error, originalError)
+        XCTAssertEqual(fonts.names["QCF2001"], "QCF2001")
+        XCTAssertEqual(fonts.names["QCF2003"], "QCF2003")
+        await fonts.load("QCF2003")
+        XCTAssertNil(fonts.error)
+    }
+    func testNonAnimatedReplacementClearsDraggedTransformAndKeepsPageCentered() {
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+        viewport.layoutIfNeeded()
+        viewport.canvas.layer.sublayerTransform = CATransform3DMakeTranslation(120, 0, 0)
+        viewport.replacePage(number: 3, animated: false) { viewport.resetToFittedPage() }
+        XCTAssertEqual(viewport.pageNumber, 3)
+        XCTAssertFalse(viewport.turningPage)
+        XCTAssertTrue(CATransform3DIsIdentity(viewport.canvas.layer.sublayerTransform))
+        assertFitted(viewport)
+    }
     func testMeasuredReaderInsetsKeepReferenceDefaultsAndFitLargeControls() {
         XCTAssertEqual(MushafReaderInsets.reserved(nil, minimum: 44), 44)
         XCTAssertEqual(MushafReaderInsets.reserved(44, minimum: 44), 44)
@@ -73,9 +117,7 @@ import UIKit
     func testAuthoredInkAndHeadingAlignmentAtReferencePages() async throws {
         try OriginalMushafCompanion.register()
         let metadata = try OriginalMushafRows.load()
-        let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
-        let (data, response) = try await URLSession.shared.data(from: url)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
         try metadata.validate(snapshot)
         let corpus = try XCTUnwrap(QuranResources.corpus)
@@ -90,6 +132,14 @@ import UIKit
             viewport.layoutIfNeeded()
             let canvas = viewport.canvas
             XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Page \(number)")
+            let firstWord = try XCTUnwrap(canvas.regions.first)
+            canvas.activeWordID = firstWord.word
+            XCTAssertNotNil(canvas.activeWordPath())
+            canvas.hiddenWordIDs = [firstWord.word]
+            XCTAssertNil(canvas.activeWordPath(), "Word tracking must never reveal hidden Quran text")
+            canvas.hiddenWordIDs = []; canvas.activeWordID = Int.max
+            XCTAssertNil(canvas.activeWordPath(), "A word from another page cannot be highlighted here")
+            canvas.activeWordID = nil
             let authoredInk = canvas.rowGeometry.map(\.ink)
             let ornaments = canvas.ornamentBounds
             // A selected verse may span several authored lines. Its halo must
@@ -119,11 +169,12 @@ import UIKit
             XCTAssertEqual(ornaments.count, source.rows.filter { $0.type == "surah_name" }.count)
             for row in canvas.rowGeometry {
                 let authored = try XCTUnwrap(source.rows.first { $0.line == row.line })
+                let opticalShift: CGFloat = row.kind == "ayah" ? -4.5 : 0
                 if authored.centered {
-                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2,
+                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2 + opticalShift,
                                    accuracy: 0.01, "Actual ink center: page \(number), row \(row.line)")
                 } else {
-                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15,
+                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15 + opticalShift,
                                    accuracy: 0.01, "Authored right edge: page \(number), row \(row.line)")
                 }
                 if row.kind == "surah_name" {

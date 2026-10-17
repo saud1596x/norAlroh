@@ -2,17 +2,254 @@ import XCTest
 import AVFoundation
 import UIKit
 import WhisperKit
+import CryptoKit
 @testable import Athar
 
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    @MainActor func testOpeningAndResumingCaptureDoesNotWaitForModelPreparation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let provider = UnavailableStartupProvider()
+        // Empty injected capture verifies lifecycle ordering only, never
+        // microphone hardware, recognition accuracy, or recitation progress.
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionProvider: provider,
+            makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: []) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertNotNil(controller.record?.takes.first)
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        await controller.pause()
+        XCTAssertEqual(controller.state, .paused)
+        await controller.resume()
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.record?.takes.count, 2)
+        await controller.finish()
+        let attempts = await provider.prepareAttempts
+        XCTAssertEqual(attempts, 0, "No audio window exists; model loading must not gate opening capture")
+    }
+    @MainActor func testPauseClosesActualAudioWhileAnalysisSaveIsDelayedWithoutReopeningTake() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
+        var saveReached = false
+        var shouldDelay = true
+        var releaseSave: CheckedContinuation<Void, Never>?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root, drainTimeout: 120,
+            analysisPersistence: { value in
+                if shouldDelay {
+                    await withCheckedContinuation { continuation in releaseSave = continuation; saveReached = true }
+                }
+                try QuranRecitationJournal(root: root).save(value)
+            }, makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        for _ in 0..<1000 where !saveReached { try await Task.sleep(nanoseconds: 20_000_000) }
+        guard saveReached else {
+            shouldDelay = false; await controller.pause()
+            XCTFail("Actual analysis did not reach persistence"); return
+        }
+        XCTAssertTrue(controller.revealed.isEmpty, "Uncommitted analysis must not reveal Quran words")
+        let pause = Task { @MainActor in await controller.pause() }
+        for _ in 0..<100 where controller.record?.takes.last?.closed != true { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertEqual(controller.record?.takes.last?.closed, true)
+        shouldDelay = false; releaseSave?.resume(); releaseSave = nil
+        await pause.value
+        XCTAssertEqual(controller.state, .paused)
+        let record = try XCTUnwrap(controller.record)
+        XCTAssertTrue(record.takes.allSatisfy(\.closed))
+        XCTAssertGreaterThanOrEqual(record.evidence.count, 2)
+        XCTAssertEqual(try QuranRecitationJournal(root: root).load(record.id).phase, .paused)
+        await controller.finish()
+    }
+    @MainActor func testActualReferenceFindsItsVerseAcrossEntireQuranWithoutStartingPageHint() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        XCTAssertEqual(keys.count, 6236)
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root, drainTimeout: 120,
+            makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
+        await controller.start(keys: keys, page: 1, snapshot: snapshot, corpus: corpus, automaticScope: true)
+        await controller.pause()
+        let saved = try XCTUnwrap(controller.record)
+        XCTAssertEqual(saved.textExposureOccurred, true, "An ordinary visible-text session is assisted practice")
+        XCTAssertGreaterThanOrEqual(saved.evidence.count, 3)
+        XCTAssertTrue(saved.evidence.allSatisfy { $0.verse == "112:1" })
+        XCTAssertEqual(controller.currentVerse, "112:1", "Origin page must not bias recognition toward Al-Fatiha")
+        XCTAssertEqual(Set(saved.evidence.map(\.verse)), Set(["112:1"]))
+        XCTAssertTrue(controller.hiddenIDs.isEmpty, "Visible-text tracking must never hide the rest of the Quran")
+        var silent = saved; silent.evidence = []; silent.wordingEvents = []
+        XCTAssertTrue(silent.evidence.isEmpty, "Silence supplies no evidence or correctness grade")
+        let reopened = QuranRecitationController(archiveRoot: root)
+        await reopened.restore(id: saved.id, snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(reopened.currentVerse, "112:1")
+        await controller.finish()
+    }
+    @MainActor func testClosedTextStartsHiddenAndHintsNeverBecomeRecognitionEvidence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        // Silent injected capture checks state/assistance, not acoustic accuracy.
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: []) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus, closedText: true)
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.hiddenIDs.count, 4)
+        XCTAssertTrue(controller.revealed.isEmpty)
+        await controller.revealNextWord(in: "112:1")
+        XCTAssertEqual(controller.hiddenIDs.count, 3)
+        XCTAssertTrue(controller.revealed.isEmpty)
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        let saved = try XCTUnwrap(controller.record)
+        XCTAssertEqual(saved.textExposureOccurred, false)
+        let journal = QuranRecitationJournal(root: root)
+        XCTAssertEqual(try journal.load(saved.id).closedTextRequested, true)
+        await controller.resume()
+        XCTAssertEqual(controller.record?.takes.last?.textHintIDs, saved.textHintIDs)
+        await controller.pause()
+        let restored = QuranRecitationController(archiveRoot: root)
+        await restored.restore(id: saved.id, snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(restored.hiddenIDs.count, 3)
+        XCTAssertTrue(restored.revealed.isEmpty)
+        await controller.finish()
+    }
+    @MainActor func testClosedTextCaptureFailureRestoresReadingAndRecordsExposedAssistance() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { _, _ in throw CocoaError(.fileWriteUnknown) }, setSessionActive: { _ in })
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot,
+                               corpus: try XCTUnwrap(QuranResources.corpus), closedText: true)
+        XCTAssertEqual(controller.state, .paused)
+        XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertEqual(controller.record?.textExposureOccurred, true)
+        XCTAssertTrue((controller.record?.textHintIDs ?? []).isEmpty, "Exposing a page is assistance, not four invented hint requests")
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        XCTAssertTrue(controller.record?.recognitionUnavailable == true)
+        await controller.finish()
+    }
+    /// Diagnostic edited-reference regression, not a human-reviewed learner
+    /// benchmark. It exposes model normalization/abstention rather than claiming
+    /// production error accuracy from a splice based on estimated word timing.
+    func testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional() async throws {
+        let bundle = Bundle(for: Self.self)
+        let one = try XCTUnwrap(bundle.url(forResource: "112001", withExtension: "mp3"))
+        let two = try XCTUnwrap(bundle.url(forResource: "112002", withExtension: "mp3"))
+        let correct = try AudioProcessor.loadAudioAsFloatArray(fromPath: one.path)
+            + AudioProcessor.loadAudioAsFloatArray(fromPath: two.path)
+        let worker = QuranRecognitionWorker()
+        let base = try await worker.recognize(.init(samples: correct, startFrame: 0, endFrame: Int64(correct.count)))
+        let observed = try XCTUnwrap(base.observations)
+        let removed = try XCTUnwrap(observed.first { QuranAlignedWord.normalize($0.observedText) == "الله" && $0.recognitionState == "accepted" })
+        let from = Int(try XCTUnwrap(removed.startInTakeSeconds) * 16_000)
+        let to = Int(try XCTUnwrap(removed.endInTakeSeconds) * 16_000)
+        XCTAssertGreaterThan(to, from); XCTAssertLessThanOrEqual(to, correct.count)
+        let edited = Array(correct[..<from]) + Array(correct[to...])
+        let started = Date()
+        let result = try await worker.recognize(.init(samples: edited, startFrame: 0, endFrame: Int64(edited.count)))
+        let tokens = ["قل", "هو", "الله", "أحد", "الله", "الصمد"]
+        let expected = tokens.enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: $0.offset < 4 ? "112:1" : "112:2", page: 604,
+                aliases: [[QuranAlignedWord.normalize($0.element)]])
+        }
+        var span = QuranObservedSpeech(takeID: UUID(), start: 0, end: Double(edited.count) / 16_000,
+            words: result.runs.flatMap { $0.map(\.text) }, unresolved: result.hasUnresolvedSpeech, backendID: worker.capabilities.backendID)
+        span.evidenceVersion = 1; span.recognitionWindowID = result.windowID; span.recognitionRevision = 0
+        span.wordObservations = result.observations
+        let events = QuranWordingAssessment.evaluate([span], expected: expected)
+        XCTAssertTrue(events.allSatisfy { $0.state == "provisional" })
+        XCTAssertEqual(span.wordObservations, result.observations, "Assessment must not repair observed speech into the reference")
+        print("EDITED_PUBLIC_REFERENCE_OMISSION elapsedMs=\(Int(Date().timeIntervalSince(started) * 1000)) observations=\(result.observations?.count ?? 0) unresolved=\(result.hasUnresolvedSpeech) omissionCandidates=\(events.filter { $0.category == "omission" }.count) confirmed=0")
+        // Only this explicitly public fixture may log decoded text. Production
+        // microphone diagnostics remain numeric and never print a transcript.
+        let diagnostic = try JSONEncoder().encode(result.observations ?? [])
+        print("PUBLIC_FIXTURE_OBSERVED_WORDS " + (String(data: diagnostic, encoding: .utf8) ?? "unreadable"))
+    }
+    func testShortStreamingReferenceWindowsAnchorOnlyTheActuallySpokenVerse() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let scriptURL = try XCTUnwrap(Bundle.main.url(forResource: "recitation-word-script", withExtension: "json"))
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: scriptURL))
+        let groups = try XCTUnwrap(script.groups["112:1"])
+        let expected = groups.enumerated().map { index, group in
+            QuranAlignedWord(id: index + 1, verse: "112:1", page: group.page,
+                aliases: Set([QuranAlignedWord.tokens(group.imlaei), QuranAlignedWord.tokens(group.canonical),
+                              QuranAlignedWord.tokens(group.canonical, expandDaggerAlif: true)]))
+        }
+        let worker = QuranRecognitionWorker()
+        var tracker = QuranRecitationTracker(expected: expected)
+        let take = UUID()
+        var firstAnchorSeconds: Double?
+        for end in Set([min(samples.count, 32_000), min(samples.count, 48_000), samples.count]).sorted() {
+            let prefix = Array(samples.prefix(end))
+            let started = Date()
+            let result = try await worker.recognize(.init(samples: prefix, startFrame: 0, endFrame: Int64(end)))
+            for run in result.runs { try tracker.consume(run, takeID: take) }
+            if !tracker.revealedIDs.isEmpty && firstAnchorSeconds == nil { firstAnchorSeconds = Double(end) / 16_000 }
+            print("PUBLIC_REFERENCE_STREAM seconds=\(Double(end) / 16_000) inferenceMs=\(Int(Date().timeIntervalSince(started) * 1000)) anchored=\(tracker.revealedIDs.count)")
+            XCTAssertTrue(tracker.evidence.allSatisfy { $0.verse == "112:1" && $0.end <= Double(end) / 16_000 + 0.1 })
+        }
+        XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, min(2, expected.count))
+        XCTAssertNotNil(firstAnchorSeconds)
+        let silence = Array(repeating: Float(0), count: 32_000)
+        let silentResult = try await worker.recognize(.init(samples: silence, startFrame: 0, endFrame: 32_000))
+        var silentTracker = QuranRecitationTracker(expected: expected)
+        for run in silentResult.runs { try silentTracker.consume(run, takeID: UUID()) }
+        XCTAssertTrue(silentTracker.revealedIDs.isEmpty)
+    }
+    func testVerifiedReferenceMatrixProducesUsefulAnchorsAtOrdinaryAndQuietLevels() async throws {
+        struct Fixture: Decodable { let verse: String; let file: String; let sha256: String }
+        let bundle = Bundle(for: Self.self)
+        let manifest = try XCTUnwrap(bundle.url(forResource: "recitation-reference-sources", withExtension: "json"))
+        let fixtures = try JSONDecoder().decode([Fixture].self, from: Data(contentsOf: manifest))
+        XCTAssertEqual(fixtures.count, 10)
+        let scriptURL = try XCTUnwrap(Bundle.main.url(forResource: "recitation-word-script", withExtension: "json"))
+        let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: scriptURL))
+        let worker = QuranRecognitionWorker()
+        for fixture in fixtures {
+            let name = (fixture.file as NSString).deletingPathExtension
+            let url = try XCTUnwrap(bundle.url(forResource: name, withExtension: "mp3"))
+            let digest = SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(digest, fixture.sha256, "Reference audio must match the independently pinned fixture")
+            let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+            let groups = try XCTUnwrap(script.groups[fixture.verse])
+            let expected = groups.enumerated().map { index, group in
+                QuranAlignedWord(id: index + 1, verse: fixture.verse, page: group.page,
+                    aliases: Set([QuranAlignedWord.tokens(group.imlaei), QuranAlignedWord.tokens(group.canonical),
+                                  QuranAlignedWord.tokens(group.canonical, expandDaggerAlif: true)]))
+            }
+            for level in [Float(1), Float(0.03)] {
+                let samples = original.map { $0 * level }
+                let output = try await worker.recognize(.init(samples: samples, startFrame: 0, endFrame: Int64(samples.count)))
+                var tracker = QuranRecitationTracker(expected: expected)
+                let take = UUID()
+                for run in output.runs { try tracker.consume(run, takeID: take) }
+                XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, min(2, expected.count),
+                    "Identified public fixture \(fixture.verse), level \(level) must establish a useful exact anchor")
+                XCTAssertTrue(tracker.evidence.allSatisfy { $0.end <= Double(samples.count) / 16_000 + 0.1 })
+            }
+        }
+    }
+
     @MainActor func testInterruptedActualReferenceProgressStaysVisibleThroughEmptyResumeUntilFreshRecognition() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -67,13 +304,23 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertFalse(try journal.load(interrupted.id).recognitionUnavailable)
         XCTAssertTrue(reopened.record?.evidence.allSatisfy { $0.verse == "112:1" } == true)
         XCTAssertEqual(try Data(contentsOf: journal.audio(session: interrupted.id, take: first.id)), originalBytes)
+        let beforeHint = reopened.record?.evidence
+        await reopened.revealNextWord(in: "112:2")
+        let hintIDs = try XCTUnwrap(reopened.record?.textHintIDs)
+        XCTAssertEqual(hintIDs.count, 1, "Graduated help reveals one authored word at a time")
+        XCTAssertEqual(reopened.record?.evidence, beforeHint, "Revealing Quran text cannot manufacture heard speech")
+        XCTAssertTrue(Set(hintIDs).isDisjoint(with: reopened.hiddenIDs))
+        XCTAssertEqual(try journal.load(interrupted.id).textHintIDs, hintIDs)
+        let withHints = QuranRecitationController(archiveRoot: root)
+        await withHints.restore(id: interrupted.id, snapshot: snapshot, corpus: corpus)
+        XCTAssertEqual(withHints.record?.textHintIDs, hintIDs)
+        XCTAssertTrue(Set(hintIDs).isDisjoint(with: withHints.hiddenIDs), "Saved assistance survives reopening")
     }
 
     @MainActor func testDrainTimeoutWithActualPriorEvidenceExposesTextAndRejectsLateDecode() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, _) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -111,9 +358,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -172,9 +417,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testCaptureStartupFailureClosesAudioAndRetainsResumableSession() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
-        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         var activations: [Bool] = []
@@ -196,9 +439,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
     @MainActor func testActualRecognitionSessionPausesRestoresResumesAndFinishesWithoutReplacingAudio() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
-        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
@@ -218,6 +459,21 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertEqual(first.takes.count, 1); XCTAssertTrue(first.takes[0].closed)
         XCTAssertEqual(first.takes[0].frames, Int64(samples.count))
         XCTAssertGreaterThanOrEqual(first.evidence.count, 2, "Actual reference speech must produce authentic native word evidence")
+        let observed = try XCTUnwrap(first.observedSpeech)
+        XCTAssertFalse(observed.isEmpty)
+        XCTAssertEqual(first.wordingEvents, [], "Correct real reference speech must not produce unsupported error alerts")
+        let timed = observed.flatMap { $0.wordObservations ?? [] }
+        XCTAssertFalse(timed.isEmpty, "Actual backend word evidence must reach the saved session")
+        XCTAssertTrue(timed.contains { $0.startInTakeSeconds != nil && $0.endInTakeSeconds != nil })
+        XCTAssertTrue(observed.allSatisfy { $0.evidenceVersion == 1 && $0.recognitionWindowID != nil && $0.processingConfiguration != nil })
+        XCTAssertTrue(observed.contains { !$0.words.isEmpty }, "The real backend must persist its observed words, not only reference matches")
+        XCTAssertTrue(observed.allSatisfy { $0.takeID == first.takes[0].id && $0.end <= first.duration + 0.1 })
+        let independentlyLoaded = try QuranRecitationJournal(root: root).load(first.id)
+        XCTAssertEqual(independentlyLoaded.observedSpeech, observed, "Decoded speech must survive a separate journal read")
+        XCTAssertTrue(observed.allSatisfy {
+            $0.modelRevision == QuranRecognitionWorker.shared.capabilities.modelRevision
+                && $0.modelID == QuranRecognitionWorker.shared.capabilities.modelID
+        })
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
         let verseID = try XCTUnwrap(verseKeys.firstIndex(of: "112:1")) + 1
         XCTAssertEqual(original.hiddenIDs, Set(snapshot.records.filter {
@@ -232,6 +488,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         await reopened.restore(id: first.id, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(reopened.state, .paused); XCTAssertNil(reopened.message)
         XCTAssertEqual(reopened.revealed, Set(first.evidence.map(\.nativeID)))
+        XCTAssertEqual(reopened.record?.observedSpeech, observed)
         XCTAssertEqual(reopened.hiddenIDs, original.hiddenIDs,
             "Restoring a session must preserve the same hidden-word scope and durable progress")
         let recoverable = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: first.id, base: root).first)
@@ -258,9 +515,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertEqual(finishedReopened.record?.evidence.count, finished.evidence.count)
     }
     @MainActor func testRecognizedRevealKeepsActualPageAndAccessibleTextStable() async throws {
-        let endpoint = try XCTUnwrap(URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot"))
-        let (bytes, response) = try await URLSession.shared.data(from: endpoint)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let rows = try OriginalMushafRows.load(); try rows.validate(snapshot)
         try OriginalMushafCompanion.register()
@@ -339,6 +594,58 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertTrue(silent.runs.isEmpty, "No acoustic evidence means no progressive reveal.")
     }
 
+    func testQuietActualReferenceStillAnchorsWhileNoiseCannotRevealWords() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let quiet = original.map { $0 * 0.03 }
+        let expected = ["قل", "هو", "الله", "احد"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        }
+        let worker = QuranRecognitionWorker()
+        let result = try await worker.recognize(.init(samples: quiet, startFrame: 0, endFrame: Int64(quiet.count)))
+        var tracker = QuranRecitationTracker(expected: expected)
+        for run in result.runs { try tracker.consume(run, takeID: UUID()) }
+        XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, 2,
+            "Actual quiet speech must produce real timed Quran anchors; a working level meter is insufficient")
+        // Deterministic broadband acoustic control, not spoken fixture text.
+        var seed: UInt32 = 14
+        let noise: [Float] = (0..<128000).map { _ in
+            seed = 1664525 &* seed &+ 1013904223
+            return (Float(seed) / Float(UInt32.max) * 2 - 1) * 0.08
+        }
+        let control = try await worker.recognize(.init(samples: noise, startFrame: 0, endFrame: Int64(noise.count)))
+        var controlTracker = QuranRecitationTracker(expected: expected)
+        for run in control.runs { try controlTracker.consume(run, takeID: UUID()) }
+        XCTAssertTrue(controlTracker.revealedIDs.isEmpty, "Noise must not create Quran progress after conditioning")
+    }
+
+    func testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let expected = ["قل", "هو", "الله", "احد"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604, aliases: [[$0.element]])
+        }
+        let worker = QuranRecognitionWorker()
+        let weakSpeech = original.map { $0 * 0.003 }
+        let result = try await worker.recognize(.init(samples: weakSpeech, startFrame: 0, endFrame: Int64(weakSpeech.count)))
+        var speechTracker = QuranRecitationTracker(expected: expected)
+        for run in result.runs { try speechTracker.consume(run, takeID: UUID()) }
+        XCTAssertGreaterThanOrEqual(speechTracker.revealedIDs.count, 2,
+            "Increased gain must improve actual very weak speech recognition")
+        var seed: UInt32 = 14
+        let weakNoise: [Float] = (0..<128000).map { _ in
+            seed = 1664525 &* seed &+ 1013904223
+            return (Float(seed) / Float(UInt32.max) * 2 - 1) * 0.0005
+        }
+        let amplified = try QuranRecognitionAudio.conditioned(weakNoise)
+        XCTAssertGreaterThan(amplified.map { abs($0) }.max() ?? 0, 0.05,
+            "The negative control must exercise amplification, not bypass inference as silence")
+        let control = try await worker.recognize(.init(samples: weakNoise, startFrame: 0, endFrame: Int64(weakNoise.count)))
+        var noiseTracker = QuranRecitationTracker(expected: expected)
+        for run in control.runs { try noiseTracker.consume(run, takeID: UUID()) }
+        XCTAssertTrue(noiseTracker.revealedIDs.isEmpty, "Amplified background noise must not advance Quran words")
+    }
+
     func testActualAudioAndSessionEvidenceSurviveIndependentReopening() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -391,5 +698,14 @@ private final class ReferenceCapture: QuranAudioCapture {
     }
     func stop() async -> Result<Int64, Error> {
         await withCheckedContinuation { continuation in writer.finish { continuation.resume(returning: $0) } }
+    }
+}
+
+private actor UnavailableStartupProvider: QuranSpeechRecognitionProvider {
+    private(set) var prepareAttempts = 0
+    nonisolated var capabilities: QuranRecognitionCapabilities { QuranRecognitionWorker.shared.capabilities }
+    func prepare() async throws { prepareAttempts += 1; throw CocoaError(.fileNoSuchFile) }
+    func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+        throw CocoaError(.fileNoSuchFile)
     }
 }

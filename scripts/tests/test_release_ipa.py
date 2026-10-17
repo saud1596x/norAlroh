@@ -23,13 +23,38 @@ class ReleasePayloadTests(unittest.TestCase):
         self.resources = tempfile.TemporaryDirectory()
         self.addCleanup(self.resources.cleanup)
         root = Path(self.resources.name)
+        (root / 'ios/Athar').mkdir(parents=True)
+        self.quran_files = {'quran.json': b'synthetic-pinned-quran',
+                            'reciter-word-timings.json': b'synthetic-pinned-timings',
+                            'Reciter-Timings-LICENSE.txt': b'synthetic-timing-license',
+                            'mushaf-snapshot.json': b'synthetic-pinned-mushaf-edition',
+                            'quran-basmalas.json': b'synthetic-pinned-basmalas',
+                            'haramain-reciters.json': json.dumps({'schema': 1, 'reciters': [
+                                {'id': 54, 'surahs': list(range(1, 115))}]}).encode()}
+        for name, data in self.quran_files.items():
+            (root / 'ios/Athar' / name).write_bytes(data)
+        (root / 'ios/Athar/mic-start.wav').write_bytes(b'synthetic-UI-feedback-not-recitation')
         for directory in ['scripts', 'content-sources', 'docs']:
             (root / directory).mkdir()
+        (root / 'release').mkdir()
+        self.tajweed_files = {}
+        tajweed = []
+        for page in range(1, 605):
+            font = f't4-p{page}.ttf'; data = f'synthetic-font-{page}'.encode(); layers = b'synthetic-layer'
+            self.tajweed_files[font] = data
+            self.tajweed_files[f't4-p{page}.json'] = layers
+            tajweed.append({'page': page, 'file': font, 'bytes': len(data),
+                            'sha256': hashlib.sha256(data).hexdigest(), 'layersSha256': hashlib.sha256(layers).hexdigest()})
+        self.tajweed_files['qcf-v4-manifest.json'] = json.dumps({'fonts': tajweed}).encode()
+        (root / 'release/qcf-v4-manifest.json').write_bytes(self.tajweed_files['qcf-v4-manifest.json'])
+        snapshot = self.quran_files['mushaf-snapshot.json']
+        (root / 'content-sources/mushaf-snapshot-manifest.json').write_text(json.dumps({
+            'bytes': len(snapshot), 'sha256': hashlib.sha256(snapshot).hexdigest()}))
         shutil.copyfile(gate.ROOT / 'scripts/configure-firebase.py', root / 'scripts/configure-firebase.py')
         self.model_files = {'model/AudioEncoder.mlmodelc/weights/weight.bin': b'synthetic-model',
                             'tokenizer/tokenizer.json': b'synthetic-tokenizer'}
         (root / 'content-sources/recitation-model-manifest.json').write_text(json.dumps({
-            'schema': 1, 'files': [{'path': name, 'bytes': len(data),
+            'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision', 'files': [{'path': name, 'bytes': len(data),
                                    'sha256': hashlib.sha256(data).hexdigest()}
                                   for name, data in self.model_files.items()]}))
         (root / 'content-sources/recitation-word-script.json').write_bytes(b'synthetic-word-script')
@@ -48,6 +73,13 @@ class ReleasePayloadTests(unittest.TestCase):
         root = 'Payload/Athar.app/'
         with zipfile.ZipFile(path, 'w') as archive:
             resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
+            resources.update(self.quran_files)
+            resources.update(self.tajweed_files)
+            resources['mic-start.wav'] = b'synthetic-UI-feedback-not-recitation'
+            resources['RecitationModel/verified-model.json'] = json.dumps({
+                'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision',
+                'configuration': 'ar;wordTimestamps=true;temperatureFallbackCount=0;concurrentWorkerCount=1'
+            }).encode()
             resources.update({'RecitationModel/Whisper-LICENSE.txt': b'WHISPER-MODEL-LICENSE.txt',
                               'RecitationModel/Tarteel-LICENSE.txt': b'TARTEEL-MODEL-LICENSE.txt',
                               'RecitationModel/NOTICE.txt': b'RECITATION-MODEL-NOTICE.txt',
@@ -91,6 +123,14 @@ class ReleasePayloadTests(unittest.TestCase):
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit='RecitationModel/' + name))
 
+    def test_missing_or_corrupted_original_tajweed_font_or_layers_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in ['t4-p1.ttf', 't4-p604.json', 'qcf-v4-manifest.json']:
+                with self.subTest(name=name), self.assertRaises(KeyError):
+                    gate.verify(self.payload(folder, omit=name))
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    gate.verify(self.payload(folder, corrupt=name))
+
     def test_same_size_corrupted_model_or_tokenizer_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             for name in self.model_files:
@@ -100,7 +140,7 @@ class ReleasePayloadTests(unittest.TestCase):
     def test_model_notices_and_word_script_must_match(self):
         with tempfile.TemporaryDirectory() as folder:
             for name in ['RecitationModel/Whisper-LICENSE.txt', 'RecitationModel/Tarteel-LICENSE.txt',
-                         'RecitationModel/NOTICE.txt', 'recitation-word-script.json']:
+                         'RecitationModel/NOTICE.txt', 'RecitationModel/verified-model.json', 'recitation-word-script.json']:
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit=name))
                 with self.subTest(name=name), self.assertRaises(ValueError):
@@ -134,6 +174,31 @@ class ReleasePayloadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaisesRegex(ValueError, 'privacy policy still describes local-only'):
                 gate.verify(self.payload(folder, local_policy=True))
+
+    def test_missing_or_corrupted_quran_resources_are_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in self.quran_files:
+                with self.subTest(resource=name):
+                    with self.assertRaises(KeyError):
+                        gate.verify(self.payload(folder, omit=name))
+                    with self.assertRaisesRegex(ValueError, 'Incorrect bundled Quran or reciter resource'):
+                        gate.verify(self.payload(folder, corrupt=name))
+
+    def test_missing_or_corrupted_microphone_feedback_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(KeyError):
+                gate.verify(self.payload(folder, omit='mic-start.wav'))
+            with self.assertRaisesRegex(ValueError, 'Incorrect bundled microphone UI feedback'):
+                gate.verify(self.payload(folder, corrupt='mic-start.wav'))
+
+    def test_identical_but_incomplete_reciter_catalog_is_rejected(self):
+        name = 'haramain-reciters.json'
+        data = json.dumps({'schema': 1, 'reciters': [{'id': 54, 'surahs': list(range(1, 114))}]}).encode()
+        self.quran_files[name] = data
+        (gate.ROOT / 'ios/Athar' / name).write_bytes(data)
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(ValueError, 'incomplete Quran'):
+                gate.verify(self.payload(folder))
 
     def test_missing_or_local_only_privacy_manifest_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

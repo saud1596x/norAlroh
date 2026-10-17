@@ -31,8 +31,12 @@ def main():
         raise SystemExit('Archive or remove the previous native-screens directory before a fresh capture.')
     OUTPUT.mkdir()
     exported = OUTPUT / 'attachments'
-    subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(RESULT),
-                    '--output-path', str(exported)], check=True)
+    exported.mkdir()
+    for label, result in [('navigation', RESULT), ('microphone', ROOT / 'release/native-microphone-ui.xcresult')]:
+        if not result.is_dir():
+            raise SystemExit('Missing mandatory actual UI result bundle: ' + result.name)
+        subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(result),
+                        '--output-path', str(exported / label)], check=True)
     inventory = json.loads((ROOT / 'release/screen-inventory.json').read_text())['screens']
     expected = {row['id']: row['title'] for row in inventory}
     records = []
@@ -56,7 +60,7 @@ def main():
     missing = [key for key in expected if key not in recorded]
     report = {'status': 'ALL_INVENTORY_CAPTURES_EXPORTED' if not missing else 'INCOMPLETE_CAPTURE',
               'createdAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-              'source': 'Actual XCUITest attachments from native-ui.xcresult',
+              'source': 'Actual XCUITest attachments from native-ui.xcresult and native-microphone-ui.xcresult',
               'screenshots': records, 'missingScreenIDs': missing,
               'note': 'Screenshots do not certify correctness or device testing. Simulator MP4 has no microphone audio.'}
     (OUTPUT / 'capture-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))

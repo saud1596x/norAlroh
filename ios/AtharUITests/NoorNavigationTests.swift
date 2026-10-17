@@ -22,8 +22,6 @@ final class NoorNavigationTests: XCTestCase {
         XCTAssertTrue(adhkarSearch.waitForExistence(timeout: 5)); adhkarSearch.tap(); adhkarSearch.typeText("النوم")
         let sleep = app.staticTexts["أذكار النوم"].firstMatch
         XCTAssertTrue(sleep.waitForExistence(timeout: 5)); sleep.tap()
-        let start = app.buttons["ابدأ جلسة الذكر"]
-        XCTAssertTrue(start.waitForExistence(timeout: 5)); start.tap()
         XCTAssertTrue(app.buttons["زيادة عداد الذكر"].waitForExistence(timeout: 5))
         attach(app, name: "جلسة أذكار النوم")
     }
@@ -49,17 +47,42 @@ final class NoorNavigationTests: XCTestCase {
 
 
 extension XCTestCase {
+    func openNoorHomeTools(_ app: XCUIApplication) {
+        let tools = app.buttons["home.tools"]
+        for _ in 0..<8 {
+            if tools.exists && tools.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(tools.exists && tools.isHittable, app.debugDescription)
+        if tools.value as? String != "مفتوح" { tools.tap() }
+    }
+
+    func openNoorSettingsSection(_ title: String, in app: XCUIApplication) {
+        let section = app.buttons[title].firstMatch
+        for _ in 0..<8 {
+            if section.exists && section.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(section.exists && section.isHittable, app.debugDescription)
+        section.tap()
+    }
+
     func launchNoorApp(_ app: XCUIApplication) {
         app.launch()
         let guest = app.buttons["welcome.continue"]
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guest.exists || app.buttons["home.resume"].exists
+            guest.exists || app.buttons["home.resume"].exists || app.buttons["home.continueKhatmah"].exists || app.staticTexts["أتممت ورد اليوم"].exists
         }, object: nil)
         guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
             XCTFail("Neither first-use continuation nor home is available: \(app.debugDescription)")
             return
         }
         if guest.exists { guest.tap() }
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        if system.alerts.firstMatch.waitForExistence(timeout: 3) {
+            let allow = system.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "السماح", "سماح"])).firstMatch
+            if allow.exists { allow.tap() }
+        }
     }
 
     func selectNoorTab(_ title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {

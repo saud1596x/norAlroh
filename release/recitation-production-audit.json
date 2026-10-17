@@ -1,0 +1,1992 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "6e0e4e220e7720a3c7d7dafe379caf2644ae2b6a",
+  "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38613115456",
+  "overallRun": "failure",
+  "evidenceEnvironment": "macOS CI iOS simulator with prerecorded public reciter audio; not a physical microphone",
+  "logSha256": "0047f3a4a4355abb27f8203fbda218cde78205fecf3d3212044a573a83743f54",
+  "nativeUnitTests": {
+    "executed": 240,
+    "skipped": 2,
+    "failed": 0
+  },
+  "singleReferenceWindowObservations": [
+    {
+      "capturedSeconds": 2,
+      "inferenceMilliseconds": 2579,
+      "anchoredWords": 3
+    },
+    {
+      "capturedSeconds": 3,
+      "inferenceMilliseconds": 1788,
+      "anchoredWords": 4
+    },
+    {
+      "capturedSeconds": 3.1346875,
+      "inferenceMilliseconds": 1744,
+      "anchoredWords": 4
+    }
+  ],
+  "metricsNotEstablished": [
+    "wording error precision",
+    "wording error recall",
+    "assessable coverage",
+    "false correction rate",
+    "p95 following latency",
+    "p95 stable assessment latency",
+    "physical device memory/thermal performance",
+    "pronunciation categories",
+    "reciter word synchronization"
+  ],
+  "releaseState": "Not accepted for release: UI failures; correction pending independent CI.",
+  "datasetGaps": [
+    "No reviewed independent learner-error benchmark established.",
+    "Public playback availability does not establish permission to train.",
+    "No private recordings uploaded.",
+    "No model training or Core ML conversion claimed."
+  ],
+  "requirements": [
+    {
+      "id": 1,
+      "name": "One-tap start",
+      "requirement": "Begin real microphone capture from the Mushaf with truthful readiness and listening states.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 2,
+      "name": "Permission recovery",
+      "requirement": "Handle denied or revoked microphone permissions without losing the user’s position.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 3,
+      "name": "Audio-quality guidance",
+      "requirement": "Detect low volume, clipping, and disruptive noise before scoring.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 4,
+      "name": "Speech activity detection",
+      "requirement": "Preserve quiet beginnings, word endings, and elongated sounds.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 5,
+      "name": "Correct format conversion",
+      "requirement": "Maintain timing continuity across sample-rate and channel conversion.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 6,
+      "name": "Validated denoising",
+      "requirement": "Enable noise processing only when testing shows it preserves recognition and pronunciation evidence.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 7,
+      "name": "Route-change resilience",
+      "requirement": "Recover from headset changes, interruptions, and microphone-route changes.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 8,
+      "name": "True pause and resume",
+      "requirement": "Stop capture when paused and resume without duplicate progress.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 9,
+      "name": "Long-session support",
+      "requirement": "Sustain processing without arbitrary duration or ayah limits.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 10,
+      "name": "Reference-audio exclusion",
+      "requirement": "Never score the application’s reciter playback as the learner’s recitation.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "remainingDependencies": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 11,
+      "name": "Automatic starting-position detection",
+      "requirement": "Identify a passage after sufficient distinctive speech.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 12,
+      "name": "Selected-range practice",
+      "requirement": "Constrain retrieval to an intended range without forcing a correct transcript.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 13,
+      "name": "Word-level tracking",
+      "requirement": "Associate recognized words with canonical identifiers and audio intervals.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 14,
+      "name": "Reference-safe normalization",
+      "requirement": "Keep display text immutable while supporting separate matching representations.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 15,
+      "name": "Long-ayah continuity",
+      "requirement": "Track incrementally without waiting for an entire long ayah.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 16,
+      "name": "Ambiguity management",
+      "requirement": "Retain competing passage hypotheses until context resolves them.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 17,
+      "name": "Repeat awareness",
+      "requirement": "Follow repeated words and phrases without falsely advancing progress.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 18,
+      "name": "Self-correction awareness",
+      "requirement": "Recognize an independent correction and retain its learning significance.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Distinct later microphone occurrences can link provisional correction; assisted listening stays assisted. Native verification pending for current additions.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 19,
+      "name": "Position recovery",
+      "requirement": "Reacquire the correct location after uncertainty or a genuine jump.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 20,
+      "name": "Revision-safe results",
+      "requirement": "Replace provisional hypotheses instead of duplicating them.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Superseded provisional findings and every decoder interpretation are retained; source/correction observation links are validated. Portable tests passed a76df6f; later hint additions pending.",
+      "remainingDependencies": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 21,
+      "name": "Missing-word detection",
+      "requirement": "Confirm omissions only after adequate acoustic and contextual evidence.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 22,
+      "name": "Substitution detection",
+      "requirement": "Distinguish an actual changed word from recognition uncertainty.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 23,
+      "name": "Extra-word detection",
+      "requirement": "Separate learner additions from unrelated speech and reference audio.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 24,
+      "name": "Word-order detection",
+      "requirement": "Diagnose transpositions without multiplying one mistake into many.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 25,
+      "name": "Skipped-passage detection",
+      "requirement": "Identify omitted ranges while respecting deliberate navigation in free mode.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 26,
+      "name": "Hesitation classification",
+      "requirement": "Track pauses separately from wording correctness.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 27,
+      "name": "Elongation tolerance",
+      "requirement": "Avoid interpreting sustained sounds or partial-word restarts as extra words.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 28,
+      "name": "Opening-phrase handling",
+      "requirement": "Respect reviewed rules for introductory phrases and basmalah treatment.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "not_implemented",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 29,
+      "name": "Abstention",
+      "requirement": "Request another attempt when the recording does not justify a reliable decision.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 30,
+      "name": "Anti-hallucination protection",
+      "requirement": "Fail tests that reward words never supported by the user’s audio.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "remainingDependencies": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 31,
+      "name": "Elegant microphone control",
+      "requirement": "Show minimal, readable states without covering Quran text.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 32,
+      "name": "Geometry-accurate highlighting",
+      "requirement": "Reuse the renderer’s actual word boundaries.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 33,
+      "name": "Layout-preserving hiding",
+      "requirement": "Hide text without reflowing lines or changing page proportions.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 34,
+      "name": "Evidence-based reveal",
+      "requirement": "Reveal words only under the selected practice mode’s rules.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 35,
+      "name": "Verified page following",
+      "requirement": "Turn pages after confirmed progress, not guessed reading speed.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 36,
+      "name": "Manual browsing freedom",
+      "requirement": "Allow exploration without repeatedly dragging the user back.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Manual page turns pause following without stopping capture; return-to-recitation action restores canonical position. Current native run pending.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 37,
+      "name": "Inline error feedback",
+      "requirement": "Reveal concise explanations without obstructive popups.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Neutral review underlines use actual word geometry and suppress hidden-word markers; no uncalibrated confirmed error colors. Native run pending.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 38,
+      "name": "Gentle optional haptics",
+      "requirement": "Avoid repeated alerts for the same event.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 39,
+      "name": "Feedback timing modes",
+      "requirement": "Support immediate, end-of-ayah, and end-of-session correction.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 40,
+      "name": "Accessible practice",
+      "requirement": "Support VoiceOver and Reduce Motion without unintentionally revealing hidden answers.",
+      "implementationFiles": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "remainingDependencies": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 41,
+      "name": "Optional initial assessment",
+      "requirement": "Recommend a starting difficulty without lengthy onboarding.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 42,
+      "name": "Reviewed learning chunks",
+      "requirement": "Segment practice using appropriate boundaries rather than arbitrary word counts.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 43,
+      "name": "Transition training",
+      "requirement": "Practice connections between adjacent memorized sections.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 44,
+      "name": "Closed-text testing",
+      "requirement": "Keep answers hidden throughout independent recall.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 45,
+      "name": "Weak-word masking",
+      "requirement": "Hide difficult words first, then expand the challenge.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 46,
+      "name": "Random valid starting points",
+      "requirement": "Test retrieval beyond the beginning of a page or surah.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 47,
+      "name": "Continue-from-here exercises",
+      "requirement": "Distinguish supplied prompts from independently recalled content.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 48,
+      "name": "Extended-range tests",
+      "requirement": "Support connected passages with recoverable progress.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing recall scopes and assistance-aware practice are available.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 49,
+      "name": "Graduated assistance",
+      "requirement": "Offer increasingly helpful hints while recording their effect on independence.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "One-word/full-verse hints connect to durable assistance and preserve heard evidence separately; local addition pending native execution.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 50,
+      "name": "Contextual repair loops",
+      "requirement": "Re-test corrected material within its surrounding passage.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Contextual authentic listen-and-retry action connected from session results; local addition pending native execution.",
+      "remainingDependencies": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 51,
+      "name": "Granular mastery",
+      "requirement": "Track word, ayah, and passage performance separately.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 52,
+      "name": "Weak-point history",
+      "requirement": "Identify recurring difficulty without overreacting to isolated uncertain events.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 53,
+      "name": "Spaced revision",
+      "requirement": "Schedule review using previous independent performance and assistance history.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 54,
+      "name": "Balanced workload",
+      "requirement": "Mix new memorization, recent review, and older material.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 55,
+      "name": "Time-aware planning",
+      "requirement": "Adapt daily scope to actual user pace and available time.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 56,
+      "name": "Missed-day recovery",
+      "requirement": "Rebalance the plan without creating unrealistic catch-up loads.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 57,
+      "name": "Delayed retention checks",
+      "requirement": "Re-test repaired passages after a meaningful interval.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 58,
+      "name": "Similar-passage training",
+      "requirement": "Practice frequently confused passages without adding a separate comparison screen.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 59,
+      "name": "Context variation",
+      "requirement": "Confirm recall from different valid starting positions.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 60,
+      "name": "One clear next action",
+      "requirement": "Recommend the most useful follow-up exercise after each session.",
+      "implementationFiles": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing planning and review history must be retained.",
+      "remainingDependencies": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 61,
+      "name": "Phoneme-level assessment",
+      "requirement": "Evaluate supported sounds independently from word-location accuracy.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 62,
+      "name": "Vowel assessment",
+      "requirement": "Use acoustic evidence rather than automatically restored text diacritics.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 63,
+      "name": "Gemination assessment",
+      "requirement": "Detect supported shaddah errors under validated recording conditions.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 64,
+      "name": "Confusable-letter assessment",
+      "requirement": "Diagnose specific validated sound contrasts without speculative anatomical claims.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 65,
+      "name": "Madd assessment",
+      "requirement": "Evaluate supported elongations in context, not with a universal seconds threshold.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 66,
+      "name": "Ghunnah assessment",
+      "requirement": "Analyze validated acoustic cues separately from simple duration.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 67,
+      "name": "Category-specific rules",
+      "requirement": "Develop and validate supported assimilation and related rule categories independently.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 68,
+      "name": "Tafkhim and tarqiq",
+      "requirement": "Enable only distinctions supported by representative test data.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 69,
+      "name": "Stopping and connecting",
+      "requirement": "Accept reviewed valid pronunciation changes associated with waqf and wasl.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 70,
+      "name": "Verified corrective teaching",
+      "requirement": "Provide concise reviewed guidance and authentic reference audio.",
+      "implementationFiles": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "remainingDependencies": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 71,
+      "name": "Multidimensional reports",
+      "requirement": "Separate wording, assistance, fluency indicators, assessability, and validated pronunciation.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 72,
+      "name": "Audio-linked review",
+      "requirement": "Replay the relevant user recording when recording retention is enabled.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 73,
+      "name": "Personal progress trends",
+      "requirement": "Compare the learner with their own previous performance.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 74,
+      "name": "Disputed-result handling",
+      "requirement": "Let users flag incorrect feedback without automatically certifying their recitation.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 75,
+      "name": "Crash-safe recovery",
+      "requirement": "Restore stable progress and prevent duplicate events after relaunch.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 76,
+      "name": "Verified offline operation",
+      "requirement": "Distinguish unavailable assets from network failures and supported local processing.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Exact full V2 edition bundled from compressed pinned source; all 77429 lexical glyphs and 6236 verses matched existing script locally. Native first-use offline test pending.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 77,
+      "name": "Separate consent choices",
+      "requirement": "Separate microphone access, recording retention, uploads, and training use.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 78,
+      "name": "Deletion and retention controls",
+      "requirement": "Remove recordings and associated data according to explicit user choices.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 79,
+      "name": "Safe model updates",
+      "requirement": "Validate packages, preserve compatibility, and support recovery from failed updates.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 80,
+      "name": "Sustained device performance",
+      "requirement": "Monitor resource pressure and suspend unreliable assessment rather than fabricate results.",
+      "implementationFiles": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "remainingDependencies": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 81,
+      "name": "Searchable reciter library",
+      "requirement": "Support clear Arabic names, favorites, and recently used reciters.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 82,
+      "name": "Recording-specific metadata",
+      "requirement": "Show verified reading, recording variant, available quality, and synchronization coverage.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 83,
+      "name": "Intentional previews",
+      "requirement": "Provide short previews only after an explicit user action.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 84,
+      "name": "Remembered preferences",
+      "requirement": "Preserve the chosen reciter and appropriate playback preferences.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 85,
+      "name": "Flexible playback ranges",
+      "requirement": "Play selected ayat, pages, surahs, or juz using validated mappings.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 86,
+      "name": "Tap-to-hear navigation",
+      "requirement": "Seek from selected words or ayat with safe audio boundaries.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 87,
+      "name": "Live word following",
+      "requirement": "Highlight the actual spoken word where verified timing data exists.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 88,
+      "name": "Audio-driven page following",
+      "requirement": "Follow recitation while respecting manual browsing.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 89,
+      "name": "Ayah-aware scrubbing",
+      "requirement": "Display the corresponding ayah while seeking through a recording.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 90,
+      "name": "Passage looping",
+      "requirement": "Repeat a selected range without truncating pronunciation at its boundaries.",
+      "implementationFiles": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "remainingDependencies": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 91,
+      "name": "Custom repetition counts",
+      "requirement": "Repeat a word-context segment, ayah, or range a chosen number of times.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 92,
+      "name": "Configurable response pauses",
+      "requirement": "Insert fixed or practice-adapted pauses between reference segments.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 93,
+      "name": "Pitch-preserving speed adjustment",
+      "requirement": "Offer a tested, conservative speed range with normal speed as default.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 94,
+      "name": "Reliable continuous playback",
+      "requirement": "Prebuffer upcoming material without overlapping recitations.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 95,
+      "name": "Accurate repeat progress",
+      "requirement": "Show completed and remaining repetitions based on actual playback completion.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 96,
+      "name": "Position-preserving reciter switching",
+      "requirement": "Continue from the same canonical passage using the new recording’s timings.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 97,
+      "name": "Offline content packages",
+      "requirement": "Download selected available ranges with accurate size and coverage information.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "All catalog recordings use reciter+recording+server+surah cache identity and checksum/media validation, with explicit download confirmation and Wi-Fi preference. Native playback/reopen tests pending.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 98,
+      "name": "Resumable download management",
+      "requirement": "Support Wi-Fi preferences, storage controls, verification, and recovery.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Existing resumable single download coordinator extended to whole-surah recordings; strict URL/length/cap and stale-callback protection retained. Native tests pending.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 99,
+      "name": "Real airplane-mode listening",
+      "requirement": "Play verified downloaded assets without hidden network dependencies.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 100,
+      "name": "System playback controls",
+      "requirement": "Support background listening, lock-screen controls, and appropriate headset actions.",
+      "implementationFiles": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "relatedTestFiles": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "remainingDependencies": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 101,
+      "name": "Boundary-aware sleep timer",
+      "requirement": "Stop at the chosen time or an appropriate selected passage boundary.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 102,
+      "name": "Audio bookmarks",
+      "requirement": "Save and restore passage position with recording identity.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 103,
+      "name": "Unobtrusive mini-player",
+      "requirement": "Keep essential controls available without obscuring the Mushaf.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 104,
+      "name": "Follow-along listening",
+      "requirement": "Let users read with the reciter without pretending to assess their voice.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "partial_not_product_accepted",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 105,
+      "name": "Listen, pause, recite",
+      "requirement": "Alternate verified reference playback with a separate learner attempt.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 106,
+      "name": "Progressive echo practice",
+      "requirement": "Move from short prompted segments toward longer independent recall.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 107,
+      "name": "Fading reference assistance",
+      "requirement": "Reduce reference playback as independently demonstrated recall improves.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 108,
+      "name": "Reciter-voice hints",
+      "requirement": "Play the smallest useful verified segment when the learner requests help.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 109,
+      "name": "Reference-and-attempt review",
+      "requirement": "Alternate the authentic reference and retained user attempt without scoring vocal imitation.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    },
+    {
+      "id": 110,
+      "name": "Personalized repair playlists",
+      "requirement": "Generate practice sequences from confirmed weaknesses and transition directly into reassessment.",
+      "implementationFiles": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "relatedTestFiles": [],
+      "status": "not_implemented",
+      "auditFinding": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "remainingDependencies": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists.",
+      "evidence": "Related files and tests are component-level evidence; they do not certify this complete requirement."
+    }
+  ],
+  "implementationMap": [
+    {
+      "component": "Audio foundation",
+      "files": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/QuranMicrophoneCapture.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationCapture/QuranPCMWriter.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/QuranCaptureWindowLatencyTests.swift",
+        "ios/AtharTests/AudioFileProtectionTests.swift"
+      ],
+      "exists": "Route ownership and durable original PCM exist. Low-latency windows preserve sample timing.",
+      "mustChangeAndVerify": "Validated VAD/denoising, clipping/noise guidance, residual-speaker exclusion and 30/60-minute physical hardware evidence."
+    },
+    {
+      "component": "Quran tracking",
+      "files": [
+        "tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift",
+        "ios/Athar/QuranRecognitionWorker.swift",
+        "ios/Athar/QuranRecitationController.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "exists": "Canonical word binding, constrained scopes and conservative contiguous acoustic anchors exist.",
+      "mustChangeAndVerify": "Independent passage retrieval, competing hypotheses, revision replacement and representative learner validation."
+    },
+    {
+      "component": "Wording assessment",
+      "files": [
+        "ios/Athar/QuranSessionResult.swift",
+        "tools/RecitationEngineProbe/Sources/RecitationEngineProbe/AudioEvidenceGate.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/QuranRecognitionIntegrationTests.swift"
+      ],
+      "exists": "Coverage is explicitly separate from correctness; unsupported speech is not filled with reference text.",
+      "mustChangeAndVerify": "Calibrated omissions/substitutions/order/error events, learner-error dataset, independent precision/recall/coverage evaluation."
+    },
+    {
+      "component": "Mushaf interaction",
+      "files": [
+        "ios/Athar/InteractiveMushafCanvas.swift",
+        "ios/Athar/InteractiveMushafReader.swift"
+      ],
+      "tests": [
+        "ios/AtharUITests/NoorReaderComfortUITests.swift",
+        "ios/AtharUITests/NoorInteractiveMushafUITests.swift"
+      ],
+      "exists": "Page-specific glyph rendering and real word geometry are shared with hiding/selection.",
+      "mustChangeAndVerify": "Passing source-matched UI regression, non-obstructive stable assessment overlays and timing modes."
+    },
+    {
+      "component": "Memorization",
+      "files": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/MushafStudyViews.swift",
+        "ios/Athar/QuranRecitationScope.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "exists": "Existing recall scopes and assistance-aware practice are available.",
+      "mustChangeAndVerify": "Validated reviewed chunking, random retrieval, independent attempts and contextual repair sequences."
+    },
+    {
+      "component": "Adaptive revision",
+      "files": [
+        "ios/Athar/MemorizationViews.swift",
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/MushafMemorizationTests.swift"
+      ],
+      "exists": "Existing planning and review history must be retained.",
+      "mustChangeAndVerify": "Granular independently demonstrated mastery, calibrated spaced review and delayed retention dataset."
+    },
+    {
+      "component": "Pronunciation and Tajweed",
+      "files": [
+        "ios/Athar/QuranSessionResult.swift"
+      ],
+      "tests": [],
+      "exists": "Product explicitly disclaims pronunciation and Tajweed scoring.",
+      "mustChangeAndVerify": "Reviewed phonetic reference, licensed learner/error corpus, trained phoneme evidence and separate category acceptance gates."
+    },
+    {
+      "component": "Privacy and operations",
+      "files": [
+        "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
+        "ios/Athar/NoorOperationDeadline.swift",
+        "ios/Athar/FeatureViews.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/RecitationArchiveTests.swift",
+        "ios/AtharTests/NoorOperationDeadlineTests.swift"
+      ],
+      "exists": "Recoverable session journals, retained audio, deletion/export and operation deadlines exist.",
+      "mustChangeAndVerify": "Separate retention/upload/training choices, disputed results, model compatibility recovery and sustained hardware evidence."
+    },
+    {
+      "component": "Reciter discovery and synchronization",
+      "files": [
+        "ios/Athar/NoorReciterCatalog.swift",
+        "ios/Athar/NoorRecitersView.swift",
+        "ios/Athar/MushafVerseAudio.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/NoorReciterTests.swift"
+      ],
+      "exists": "20 complete-surah catalog entries with 114 surahs each; whole-surah audio does not invent word timings.",
+      "mustChangeAndVerify": "Provider/recording identity, exact-asset timing provenance and independently verified timing coverage."
+    },
+    {
+      "component": "Advanced playback",
+      "files": [
+        "ios/Athar/MushafVerseAudio.swift",
+        "ios/Athar/NoorAudioDownloads.swift"
+      ],
+      "tests": [
+        "ios/AtharTests/AudioDownloadTests.swift"
+      ],
+      "exists": "Streaming, downloaded audio and repeat controls exist in separate services.",
+      "mustChangeAndVerify": "Recording-bound seeking/switching, resumable verified packages, conservative speed and system-control acceptance."
+    },
+    {
+      "component": "Guided practice",
+      "files": [
+        "ios/Athar/NoorAudioFocus.swift",
+        "ios/Athar/MushafStudyViews.swift"
+      ],
+      "tests": [],
+      "exists": "Recording/playback exclusion exists; a full listen-attempt-assess state machine is not implemented.",
+      "mustChangeAndVerify": "Explicit guided state coordinator, residual audio clearance, independent attempt/assistance contracts and repair playlists."
+    }
+  ],
+  "verificationCommands": [
+    "PYTHONUTF8=1 python scripts/verify-quran-text.py",
+    "GitHub workflow recitation-app-integration.yml at an exact source SHA",
+    "Codemagic ios-testflight after actual passing source-matched release gates"
+  ],
+  "nextStage": "Repair current UI regressions and freeze representative baseline before enabling correctness or Tajweed scoring.",
+  "implementationProgress": {
+    "latestPushedApplicationCommit": "a76df6fb4082f5fb5823362b8b16b9e39948ac07",
+    "nativeRunURL": "https://github.com/saud1596x/norAlroh/actions/runs/38643172369",
+    "nativeRunAtRecord": "in_progress",
+    "localAdditionalWork": "Graduated hints, contextual retry, full reciter download action and accelerated hour-equivalent PCM test; not yet native verified",
+    "acousticEvidence": "release/recitation-acoustic-investigations.json",
+    "fullScopeAccepted": false,
+    "distributionAfterBuild20": "not_started"
+  }
+}

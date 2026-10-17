@@ -1,11 +1,16 @@
 import SwiftUI
 
-/// Secondary setup. The main microphone still starts the visible page directly.
+/// Secondary setup. The main microphone starts automatic Quran-position lookup.
 struct QuranRecitationScope: View {
     let page: Int
     let pageKeys: [String]
     let initialKey: String
     let onStart: ([String]) -> Void
+    let onListen: (([String], String, Int, Int) -> Void)?
+    @AppStorage("noor.guided.reciter") private var guidedReciter = "Abdul_Basit_Murattal_64kbps"
+    @AppStorage("noor.guided.repetitions") private var guidedRepetitions = 1
+    @AppStorage("noor.guided.pause") private var guidedPause = 3
+    @AppStorage("noor.recitation.closedText") private var closedPracticeText = false
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @State private var scope = MushafStudySession.Scope.page
@@ -13,8 +18,10 @@ struct QuranRecitationScope: View {
     @State private var from: Int
     @State private var to: Int
 
-    init(page: Int, pageKeys: [String], initialKey: String, onStart: @escaping ([String]) -> Void) {
+    init(page: Int, pageKeys: [String], initialKey: String, onStart: @escaping ([String]) -> Void,
+         onListen: (([String], String, Int, Int) -> Void)? = nil) {
         self.page = page; self.pageKeys = pageKeys; self.initialKey = initialKey; self.onStart = onStart
+        self.onListen = onListen
         let parts = initialKey.split(separator: ":").compactMap { Int($0) }
         _chapter = State(initialValue: parts.first ?? 1)
         _from = State(initialValue: parts.count == 2 ? parts[1] : 1)
@@ -65,6 +72,36 @@ struct QuranRecitationScope: View {
                         Label("ابدأ التسميع", systemImage: "mic.fill").frame(maxWidth: .infinity, minHeight: 48)
                     }.buttonStyle(.borderedProminent).tint(Theme.gold).disabled(selectedKeys.isEmpty)
                         .accessibilityIdentifier("recitation.scope.start")
+                    DisclosureGroup("تدريب إضافي") {
+                        Toggle("إخفاء النص من بداية الاختبار", isOn: $closedPracticeText)
+                            .accessibilityIdentifier("recitation.scope.closedText")
+                        Button("اختبار من موضع عشوائي") {
+                            guard !selectedKeys.isEmpty else { return }
+                            let start = Int.random(in: selectedKeys.indices)
+                            onStart(Array(selectedKeys.dropFirst(start).prefix(3))); dismiss()
+                        }.frame(minHeight: 44).disabled(selectedKeys.isEmpty)
+                        Button("تدريب وصل الآيتين") { onStart(Array(selectedKeys.prefix(2))); dismiss() }
+                            .frame(minHeight: 44).disabled(selectedKeys.count < 2)
+                        Text("اضغط الآية لكشف كلمة أو طلب تلميح صوتي.").font(.footnote)
+                    }
+                    if let onListen {
+                        DisclosureGroup("استمع ثم سمّع") {
+                            Picker("القارئ", selection: $guidedReciter) {
+                                Text("عبد الباسط عبد الصمد").tag("Abdul_Basit_Murattal_64kbps")
+                                Text("عبد الرحمن السديس").tag("Abdurrahmaan_As-Sudais_64kbps")
+                                Text("علي الحذيفي").tag("Hudhaify_64kbps")
+                                Text("ماهر المعيقلي").tag("Maher_AlMuaiqly_64kbps")
+                                Text("سعود الشريم").tag("Saood_ash-Shuraym_64kbps")
+                            }
+                            Stepper("التكرار: \(guidedRepetitions)", value: $guidedRepetitions, in: 1...20)
+                            Stepper("مهلة الاستعداد: \(guidedPause) ثوانٍ", value: $guidedPause, in: 1...30)
+                            Button("استمع للمقطع") {
+                                onListen(selectedKeys, guidedReciter, guidedRepetitions, guidedPause); dismiss()
+                            }.frame(minHeight: 48).disabled(selectedKeys.isEmpty)
+                                .accessibilityIdentifier("recitation.scope.listen")
+                            Text("بعد الاستماع، اضغط الميكروفون عندما تكون مستعدًا. الاستماع لا يزيد تقدم الحفظ.").font(.footnote)
+                        }
+                    }
                 }.padding(24)
             }.background(Theme.panel)
                 .navigationTitle("مقطع التسميع").navigationBarTitleDisplayMode(.inline)

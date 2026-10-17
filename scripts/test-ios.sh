@@ -36,7 +36,10 @@ UNIT_EXIT=0
 # builds. The unsigned device build above and signed publishing retain their
 # production flags and never receive these launch-argument hooks.
 ACCEPTANCE_FLAGS='OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING'
-xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharTests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-unit.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES "$ACCEPTANCE_FLAGS" || UNIT_EXIT=$?
+# The chosen simulator runs one native CPU architecture. Building an unused
+# second simulator architecture in Release adds work without executing another
+# device. Keep the separate generic iOS device build and every test bundle.
+xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharTests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-unit.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES "$ACCEPTANCE_FLAGS" || UNIT_EXIT=$?
 # Collect actual UI evidence even when an independent unit/integration test
 # fails. The combined check still fails; a network outage is never a pass.
 CAPTURE_PID=''
@@ -50,9 +53,16 @@ if [[ "${NOOR_RECORD_VIDEO:-0}" == 1 ]]; then
   CAPTURE_PID=$!
 fi
 UI_EXIT=0
-xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharUITests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-ui.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES "$ACCEPTANCE_FLAGS" || UI_EXIT=$?
+xcrun simctl privacy "$SIMULATOR_ID" reset microphone com.saud1596x.nooralruh
+xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharUITests -skip-testing:AtharUITests/NoorMushafStudyUITests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-ui.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES "$ACCEPTANCE_FLAGS" || UI_EXIT=$?
+# Permission-denial journeys above leave the real simulator OS denied. Grant
+# its permission explicitly for the independently recorded microphone journeys;
+# both complete result bundles remain mandatory and neither failure is masked.
+MIC_UI_EXIT=0
+xcrun simctl privacy "$SIMULATOR_ID" grant microphone com.saud1596x.nooralruh
+xcodebuild test -project "$PROJECT_ROOT/ios/Athar.xcodeproj" -scheme Athar -configuration "$TEST_CONFIGURATION" -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -only-testing:AtharUITests/NoorMushafStudyUITests -parallel-testing-enabled NO -resultBundlePath "$PROJECT_ROOT/release/native-microphone-ui.xcresult" CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES "$ACCEPTANCE_FLAGS" || MIC_UI_EXIT=$?
 finish_capture
 GALLERY_EXIT=0
 python3 "$PROJECT_ROOT/scripts/export-native-gallery.py" || GALLERY_EXIT=$?
-[[ "$UNIT_EXIT" == 0 && "$UI_EXIT" == 0 && "$GALLERY_EXIT" == 0 ]] || { echo "Native checks failed: unit=$UNIT_EXIT UI=$UI_EXIT gallery=$GALLERY_EXIT; inspect actual artifacts." >&2; exit 1; }
+[[ "$UNIT_EXIT" == 0 && "$UI_EXIT" == 0 && "$MIC_UI_EXIT" == 0 && "$GALLERY_EXIT" == 0 ]] || { echo "Native checks failed: unit=$UNIT_EXIT UI=$UI_EXIT microphoneUI=$MIC_UI_EXIT gallery=$GALLERY_EXIT; inspect actual artifacts." >&2; exit 1; }
 python3 "$PROJECT_ROOT/scripts/native-build-report.py"

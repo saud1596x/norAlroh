@@ -1,0 +1,74 @@
+name: Convert and execute Quran CTC on Apple
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/RecitationEngineProbe/experiments/ctc_coreml.py
+      - tools/RecitationEngineProbe/experiments/ctc_frames.py
+      - tools/RecitationEngineProbe/experiments/test_ctc_frames.py
+      - tools/RecitationEngineProbe/experiments/CTCWordingBridge.swift
+      - .github/workflows/ctc-coreml-candidate.yml
+permissions:
+  contents: read
+concurrency:
+  group: ctc-apple-candidate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  convert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install numpy==2.2.6 transformers==4.57.1 av==16.1.0 safetensors==0.6.2 coremltools==9.0
+      - name: Convert verified public weights without changing the app
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+          NOOR_CTC_PRECISION: linear-half
+        run: python tools/RecitationEngineProbe/experiments/ctc_coreml.py convert
+      - uses: actions/upload-artifact@v4
+        with:
+          name: converted-ctc-candidate
+          path: release/ctc-coreml-candidate
+          retention-days: 7
+  apple-runtime:
+    needs: convert
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        compute: [CPU_ONLY, ALL]
+    env:
+      NOOR_CTC_COMPUTE: ${{ matrix.compute }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: converted-ctc-candidate
+          path: release/ctc-coreml-candidate
+      - run: python -m pip install numpy==2.2.6 coremltools==9.0
+      - name: Compile separately from measured inference process
+        run: python tools/RecitationEngineProbe/experiments/ctc_coreml.py compile
+      - name: Require actual Apple inference and lexical parity on every case
+        run: python tools/RecitationEngineProbe/experiments/ctc_coreml.py verify
+      - name: Feed actual CTC observations into unchanged production wording policy
+        run: |
+          python -m unittest discover -s tools/RecitationEngineProbe/experiments -p test_ctc_frames.py -v
+          swiftc -parse-as-library tools/RecitationEngineProbe/Sources/RecitationAlignment/QuranWordAlignment.swift tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift tools/RecitationEngineProbe/Sources/RecitationSessions/QuranWordingAssessment.swift tools/RecitationEngineProbe/experiments/CTCWordingBridge.swift -o /tmp/noor-ctc-wording
+          /tmp/noor-ctc-wording ctc-word-observations.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ctc-apple-runtime-measurements-${{ matrix.compute }}
+          path: |
+            ctc-apple-parity.json
+            ctc-word-observations.json
+            ctc-production-wording.json
+          if-no-files-found: warn

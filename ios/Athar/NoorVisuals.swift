@@ -10,10 +10,10 @@ struct NoorMotionSurface: View {
     var ink = Theme.gold
     private var still: Bool { reduced || store.data.lowMotion || lowPower }
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 24, paused: still || !visible || phase != .active)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 15, paused: still || !visible || phase != .active)) { timeline in
             Canvas { context, size in
                 let t = still ? 0 : timeline.date.timeIntervalSinceReferenceDate
-                let drift = CGFloat(sin(t / 8)) * 5
+                let drift = CGFloat(sin(t / 12)) * 4
                 for index in 0..<4 {
                     let inset = CGFloat(index) * 20
                     var arch = Path()
@@ -23,7 +23,7 @@ struct NoorMotionSurface: View {
                     arch.addQuadCurve(to: CGPoint(x: x, y: 12 - inset), control: CGPoint(x: x - 65 - inset, y: 25 - inset))
                     arch.addQuadCurve(to: CGPoint(x: x + 65 + inset, y: size.height * 0.54), control: CGPoint(x: x + 65 + inset, y: 25 - inset))
                     arch.addLine(to: CGPoint(x: x + 65 + inset, y: size.height + 30))
-                    context.stroke(arch, with: .color(ink.opacity(0.10 - Double(index) * 0.015)), lineWidth: 1)
+                    context.stroke(arch, with: .color(ink.opacity(0.06 - Double(index) * 0.01)), lineWidth: 1)
                 }
             }
         }.onAppear { visible = true }.onDisappear { visible = false }

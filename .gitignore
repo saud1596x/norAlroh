@@ -30,3 +30,4 @@ backend/node_modules/
 backend/*debug.log
 
 ios/RecitationModel/
+ios/Athar/mushaf-snapshot.json

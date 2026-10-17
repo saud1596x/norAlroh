@@ -14,33 +14,95 @@ import os
     @Published private(set) var uncertain = false
     @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
+    @Published private(set) var microphonePeak: Float?
+    @Published private(set) var inputGuidance: String?
+    private var weakInputWindows = 0
+    private var clippedInputWindows = 0
     @Published var message: String?
-    private let worker = QuranRecognitionWorker.shared
+    enum GuidedPhase: Equatable { case inactive, reference, clearance, ready, attempt, feedback }
+    @Published private(set) var guidedPhase: GuidedPhase = .inactive
+    private var guidedRevision = UUID()
+    private var guidedDelay: Task<Void, Never>?
+    private var guidedFailure: AnyCancellable?
+    private weak var referenceAudio: MushafVerseAudio?
+    private var referenceExposure: String?
+    func listenFirst(_ keys: [String], audio: MushafVerseAudio, repetitions: Int, responsePause: Int) {
+        guard state == .idle || state == .stopped || state == .paused else { return }
+        cancelGuided(); message = nil
+        let token = UUID(); guidedRevision = token
+        referenceAudio = audio; guidedPhase = .reference
+        // Conservatively retain listening assistance for this entire session,
+        // including interrupted reference playback and later microphone takes.
+        referenceExposure = audio.currentRecordingIdentity
+        if var current = record, current.phase != .finished {
+            current.referenceExposure = referenceExposure
+            do { try save(current); record = current }
+            catch { cancelGuided(); message = "تعذّر حفظ حالة المساعدة. أعد المحاولة."; return }
+        }
+        // Loading/decoding can fail after play() returns. Release the guided
+        // gate on that actual error so a failed reference cannot permanently
+        // block an otherwise usable microphone. Replaced players are ignored.
+        guidedFailure = audio.$error.dropFirst().compactMap { $0 }.sink { [weak self] failure in
+            guard let self, self.guidedRevision == token,
+                  self.guidedPhase == .reference || self.guidedPhase == .clearance || self.guidedPhase == .ready else { return }
+            self.cancelGuided(); self.message = failure
+        }
+        let onFinished: () -> Void = { [weak self, weak audio] in
+            guard let self, let audio, self.guidedRevision == token else { return }
+            self.referenceExposure = audio.currentRecordingIdentity
+            self.guidedPhase = .clearance
+            self.guidedDelay = Task { [weak self] in
+                do { try await Task.sleep(nanoseconds: UInt64(max(1, min(30, responsePause))) * 1_000_000_000) }
+                catch { return }
+                guard let self, self.guidedRevision == token, !Task.isCancelled else { return }
+                self.guidedPhase = .ready
+            }
+        }
+        audio.play(keys, repetitions: repetitions, onFinished: onFinished, onInterrupted: { [weak self] in
+            guard let self, self.guidedRevision == token else { return }
+            self.cancelGuided()
+        })
+        if audio.error != nil { cancelGuided() }
+    }
+    func cancelGuided() {
+        guidedRevision = UUID(); guidedDelay?.cancel(); guidedDelay = nil
+        guidedFailure?.cancel(); guidedFailure = nil
+        let previous = referenceAudio; referenceAudio = nil
+        previous?.stop()
+        referenceExposure = record?.referenceExposure ?? referenceExposure; guidedPhase = .inactive
+    }
+    private let worker: any QuranSpeechRecognitionProvider
+    private let referenceBinder = QuranRecognitionWorker.shared
     private let drainTimeout: Double
     private let recognitionTimeout: Double
+    private let analysisPersistence: ((QuranRecitationRecord) async throws -> Void)?
     private let recognizeWindow: (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result
     private let requestPermission: () async -> Bool
     private let archiveRoot: URL?
-    private let makeCapture: (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture
+    private let makeCapture: (QuranPCMWriter, @escaping @Sendable (Error) -> Void) throws -> any QuranAudioCapture
     private let setSessionActive: (Bool) throws -> Void
     init(requestPermission: @escaping () async -> Bool = { await AVAudioApplication.requestRecordPermission() },
          archiveRoot: URL? = nil, drainTimeout: Double = 8, recognitionTimeout: Double = 20,
-         recognizeWindow: @escaping (QuranAudioWindow) async throws -> QuranRecognitionWorker.Result = {
-             try await QuranRecognitionWorker.shared.recognize($0)
-         },
-         makeCapture: @escaping (QuranPCMWriter, @escaping (Error) -> Void) throws -> any QuranAudioCapture = {
+         recognizeWindow: ((QuranAudioWindow) async throws -> QuranRecognitionWorker.Result)? = nil,
+         analysisPersistence: ((QuranRecitationRecord) async throws -> Void)? = nil,
+         recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared,
+         makeCapture: @escaping (QuranPCMWriter, @escaping @Sendable (Error) -> Void) throws -> any QuranAudioCapture = {
              try QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
              try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
          }) {
         self.requestPermission = requestPermission; self.drainTimeout = drainTimeout
-        self.recognitionTimeout = recognitionTimeout; self.recognizeWindow = recognizeWindow
+        self.worker = recognitionProvider
+        self.analysisPersistence = analysisPersistence
+        self.recognitionTimeout = recognitionTimeout
+        self.recognizeWindow = recognizeWindow ?? { window in try await recognitionProvider.recognize(window) }
         self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
     private var capture: (any QuranAudioCapture)?
     private var mailbox: QuranWindowMailbox?
     private var pump: Task<Void, Never>?
     private var capturing = false
+    private var audioFocusLease: UUID?
     private var tracker: QuranRecitationTracker?
     private var expectedIDs = Set<Int>()
     private var words: [QuranAlignedWord] = []
@@ -58,21 +120,89 @@ import os
         guard let journal else { throw QuranJournalFailure.invalidRecord }
         try journal.save(value)
     }
+    private func saveAnalysis(_ value: QuranRecitationRecord) async throws {
+        if let analysisPersistence { try await analysisPersistence(value); return }
+        guard let journal else { throw QuranJournalFailure.invalidRecord }
+        // Large source histories must not freeze page turns while JSON is
+        // validated/encoded. The journal serializes this with pause/recovery.
+        try await Task.detached(priority: .utility) { try journal.saveAnalysis(value) }.value
+    }
+    private func mergeAnalysis(_ value: QuranRecitationRecord) {
+        guard var latest = record, latest.id == value.id else { return }
+        // pause() may already have closed the audio take while the save ran.
+        // Preserve its current frames, closed flag, and phase.
+        latest.observedSpeech = value.observedSpeech; latest.wordingEvents = value.wordingEvents
+        latest.evidence = value.evidence; latest.recognitionUnavailable = value.recognitionUnavailable
+        if value.textExposureOccurred == true { latest.textExposureOccurred = true }
+        let exposedTakes = Set(value.takes.filter { $0.textExposureOccurred == true }.map(\.id))
+        for index in latest.takes.indices where exposedTakes.contains(latest.takes[index].id) {
+            latest.takes[index].textExposureOccurred = true
+        }
+        record = latest
+    }
     var hasSession: Bool { record != nil && state != .stopped && state != .idle }
+    var microphoneMeter: Double {
+        guard state == .listening, let peak = microphonePeak, peak > 0 else { return 0 }
+        let decibels = 20 * log10(Double(peak))
+        return min(1, max(0, (decibels + 60) / 60))
+    }
+    var practiceTextHidden: Bool { record?.practiceTextHidden ?? record?.closedTextRequested ?? false }
     var hiddenIDs: Set<Int> {
-        // Starting a microphone session is not proof that recognition works.
-        // Keep the reader usable until actual saved word evidence establishes
-        // a position, and expose the text again if the engine becomes unavailable.
-        guard hasSession, !revealed.isEmpty, recognitionAvailable else { return [] }
-        return expectedIDs.subtracting(revealed)
+        // Expose the text again if recognition becomes unavailable. Only saved
+        // word evidence or an explicit hint can reveal individual hidden words.
+        guard hasSession, recognitionAvailable,
+              practiceTextHidden else { return [] }
+        return expectedIDs.subtracting(revealed).subtracting(Set(record?.textHintIDs ?? []))
+    }
+    @discardableResult func setPracticeTextHidden(_ hidden: Bool) -> Bool {
+        guard hasSession, state == .listening || state == .paused, var current = record else { return false }
+        if !hidden { noteExposedPracticeText(&current) }
+        current.practiceTextHidden = hidden
+        do {
+            guard let journal else { throw QuranJournalFailure.invalidRecord }
+            record = try journal.savePracticeTextVisibility(current)
+            return true
+        }
+        catch { message = "تعذّر حفظ وضع عرض الآيات. أعد المحاولة."; return false }
+    }
+    private func noteExposedPracticeText(_ value: inout QuranRecitationRecord) {
+        if value.closedTextRequested == true || value.practiceTextHidden == true {
+            value.textExposureOccurred = true
+            if value.phase == .recording, let index = value.takes.indices.last, !value.takes[index].closed {
+                value.takes[index].textExposureOccurred = true
+            }
+        }
+    }
+    func revealNextWord(in verse: String, entireVerse: Bool = false) async {
+        guard state == .listening || state == .paused else { return }
+        await pause()
+        guard state == .paused, var current = record else { return }
+        guard current.keys.contains(verse) else { message = "هذه الآية خارج مقطع التسميع الحالي."; return }
+        let shown = revealed.union(Set(current.textHintIDs ?? []))
+        let candidates = words.filter { $0.verse == verse && expectedIDs.contains($0.id) && !shown.contains($0.id) }
+        let added = entireVerse ? candidates.map(\.id) : Array(candidates.prefix(1).map(\.id))
+        guard !added.isEmpty else { return }
+        current.textHintIDs = (current.textHintIDs ?? []) + added
+        do { try save(current); record = current }
+        catch { message = "تعذّر حفظ التلميح. لم تُحسب الكلمات كتلاوة." }
     }
     var status: String {
+        if guidedPhase == .reference { return "استمع · الميكروفون مغلق" }
+        if guidedPhase == .clearance { return "استعد · الميكروفون مغلق" }
+        if guidedPhase == .ready { return "جاهز · ابدأ عندما تكون مستعدًا" }
         switch state {
         case .idle: return "ابدأ التسميع"
         case .permission: return "إذن الميكروفون"
         case .preparing: return "تجهيز الميكروفون…"
         case .listening:
             if !recognitionAvailable { return "التسجيل مستمر · التتبع متعذر" }
+            if microphonePeak == 0 { return "الميكروفون مفتوح · لا يصل صوت" }
+            // The model receives an amplified copy; raw microphone amplitude
+            // alone cannot classify an actively recognized voice as unusable.
+            if revealed.isEmpty, let microphonePeak,
+               microphonePeak * Float(QuranRecognitionAudio.maximumInferenceGain) < Float(AudioEvidenceGate.minimumRMS) {
+                return "الصوت ضعيف جدًا · قرّب الميكروفون"
+            }
             if revealed.isEmpty { return uncertain ? "أستمع · لم أتعرف على الموضع بعد" : "أستمع · أنتظر بداية التلاوة" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
         case .paused: return "متوقف مؤقتًا"
@@ -80,9 +210,16 @@ import os
         case .stopped: return "انتهت الجلسة"
         }
     }
-    func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
+    func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah], closedText: Bool = false,
+               automaticScope: Bool = false) async {
+        guard guidedPhase != .reference && guidedPhase != .clearance else {
+            message = "انتظر انتهاء التلاوة والاستعداد، ثم ابدأ التسميع."; return
+        }
         guard state == .idle || state == .stopped else { return }
-        let token = UUID(); revision = token; message = nil; permissionDenied = false
+        if state == .stopped, guidedPhase == .inactive, record?.phase == .finished {
+            referenceExposure = nil
+        }
+        let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
         record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
         state = .permission
         guard await requestPermission() else {
@@ -98,24 +235,37 @@ import os
             }
             try await bind(snapshot: snapshot, corpus: corpus)
             guard revision == token, state == .preparing else { return }
-            try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
-            guard revision == token, state == .preparing else { return }
+            // Capture first: model loading belongs to recognize(), not the
+            // microphone permission/start path. PCM is durably recorded while
+            // the bundled model warms up, even if recognition later fails.
             let scope = Set(keys)
             tracker = QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) })
             expectedIDs = Set(tracker?.expected.map(\.id) ?? [])
-            revealed = []; currentVerse = keys.first; uncertain = false; finishRequest = false
+            revealed = []; currentVerse = automaticScope ? nil : keys.first; uncertain = false; finishRequest = false
             let next = QuranRecitationRecord(keys: keys, originPage: page)
-            try journal.create(next); record = next
+            var prepared = next
+            prepared.closedTextRequested = closedText
+            prepared.practiceTextHidden = closedText
+            prepared.textExposureOccurred = !closedText
+            prepared.automaticScope = automaticScope
+            prepared.referenceExposure = referenceExposure
+            try journal.create(prepared); record = prepared
+            if referenceExposure != nil { guidedPhase = .attempt }
             try await beginTake(token: token)
         } catch {
             guard revision == token else { return }
+            if var failed = record, failed.closedTextRequested == true {
+                failed.recognitionUnavailable = true; noteExposedPracticeText(&failed)
+                record = failed; recognitionAvailable = false
+                try? save(failed)
+            }
             state = record == nil ? .idle : .paused
             message = "تعذّر تجهيز التسميع الآن. النموذج مضمّن ولا يحتاج تنزيلًا جديدًا. أعد المحاولة أو تابع القراءة."
         }
     }
     private func bind(snapshot: QCFV2Snapshot, corpus: [Surah]) async throws {
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
-        words = try await worker.bind(snapshot: snapshot, verseKeys: verseKeys)
+        words = try await referenceBinder.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
     func restore(id: UUID, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
@@ -151,12 +301,14 @@ import os
             }
             if restored.phase == .recording { restored.phase = .interrupted; restored.recognitionUnavailable = true }
             let scope = Set(restored.keys)
+            expectedIDs = Set(words.filter { scope.contains($0.verse) }.map(\.id))
+            if restored.recognitionUnavailable { noteExposedPracticeText(&restored) }
             let restoredTracker = try QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) }, restoring: restored.evidence)
             try journal.save(restored)
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
-            currentVerse = restored.evidence.last?.verse ?? restored.keys.first
+            currentVerse = restored.evidence.last?.verse ?? (restored.automaticScope == true ? nil : restored.keys.first)
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
             guard revision == token else { return }
@@ -164,6 +316,7 @@ import os
         }
     }
     func resume() async {
+        guard guidedPhase != .reference && guidedPhase != .clearance else { return }
         guard state == .paused, !closing, record != nil else { return }
         permissionDenied = false; state = .permission
         let token = revision
@@ -174,8 +327,6 @@ import os
         guard revision == token, state == .permission else { return }
         do {
             state = .preparing
-            try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
-            guard revision == token, state == .preparing else { return }
             try await beginTake(token: token)
         }
         catch {
@@ -186,15 +337,33 @@ import os
     private func beginTake(token: UUID) async throws {
         guard var next = record, let journal else { throw QuranJournalFailure.invalidRecord }
         finishRequest = false; next.finishedAt = nil
+        let lease = UUID()
+        guard NoorAudioFocus.shared.acquireRecording(lease) else {
+            throw NSError(domain: "NoorAudioFocus", code: 1)
+        }
+        audioFocusLease = lease
+        var started = false
+        defer {
+            if !started {
+                try? setSessionActive(false)
+                NoorAudioFocus.shared.releaseRecording(lease)
+                audioFocusLease = nil
+            }
+        }
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
         try setSessionActive(true)
-        var started = false
-        defer { if !started { try? setSessionActive(false) } }
-        let take = QuranRecitationTake()
+        // Use the highest hardware input gain only when this route supports it.
+        // A route rejecting gain adjustment must not prevent microphone capture.
+        if audio.isInputGainSettable { try? audio.setInputGain(1.0) }
+        var take = QuranRecitationTake()
+        take.referenceExposure = referenceExposure ?? next.referenceExposure
+        take.textHintIDs = next.textHintIDs
+        take.textExposureOccurred = next.textExposureOccurred
+        if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
-        let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id),
-            onWindow: { mailbox.put($0) }, onFailure: { [weak self] _ in
+        let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,
+            onWindow: { mailbox.put($0) }, onFailure: { @Sendable [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }
                     self.message = "تعذّر حفظ بقية الصوت. احتُفظ بالجزء المسجل؛ توقفت الجلسة لحماية تسجيلك."
@@ -211,6 +380,24 @@ import os
                     await self.pause()
                 }
             })
+            microphonePeak = nil
+            inputGuidance = nil; weakInputWindows = 0; clippedInputWindows = 0
+            microphone.observeQuality { [weak self] reading in
+                Task { @MainActor in
+                    guard let self, self.revision == token, self.capturing else { return }
+                    self.weakInputWindows = reading == .weak || reading == .noSignal ? self.weakInputWindows + 1 : 0
+                    self.clippedInputWindows = reading == .clipping ? self.clippedInputWindows + 1 : 0
+                    if self.clippedInputWindows >= 2 { self.inputGuidance = "الصوت مرتفع ومشوّش؛ أبعد الميكروفون قليلًا." }
+                    else if self.weakInputWindows >= 6 { self.inputGuidance = "الصوت منخفض أو أنك متوقف؛ قرّب الميكروفون عند القراءة." }
+                    else if reading == .present { self.inputGuidance = nil }
+                }
+            }
+            microphone.observeLevel { [weak self] peak in
+                Task { @MainActor in
+                    guard let self, self.revision == token, self.capturing, peak.isFinite else { return }
+                    self.microphonePeak = peak
+                }
+            }
             capture = microphone; self.mailbox = mailbox; capturing = true
             try microphone.start(); started = true
             // A new audio take does not prove that previously failed inference
@@ -233,8 +420,20 @@ import os
         }
     }
     private func processWindows(_ mailbox: QuranWindowMailbox, take: UUID, token: UUID) async {
+        var prepared = false
         while revision == token, !Task.isCancelled {
-            guard let window = mailbox.take() else {
+            let pendingWindow: QuranAudioWindow?
+            do { pendingWindow = try mailbox.take() }
+            catch {
+                guard var current = record else { return }
+                current.recognitionUnavailable = true; noteExposedPracticeText(&current)
+                record = current; uncertain = true; recognitionAvailable = false
+                do { try save(current) }
+                catch { stopForJournalFailure(); return }
+                message = "تأخر التتبع عن التسجيل؛ احتُفظ بالصوت. أوقف التسميع ثم استأنفه لإعادة المحاولة."
+                return
+            }
+            guard let window = pendingWindow else {
                 if !capturing { return }
                 do { try await Task.sleep(nanoseconds: 100_000_000) } catch { return }
                 continue
@@ -247,14 +446,31 @@ import os
             record = next
             let recognized: QuranRecognitionWorker.Result
             do {
+                let activity = await Task.detached(priority: .userInitiated) {
+                    try? QuranVoiceActivity.scan(QuranRecognitionAudio.conditioned(window.samples))
+                }.value
+                guard revision == token, !Task.isCancelled else { return }
+                if activity?.hasSpeech == false {
+                    recognized = .init(runs: [], hasUnresolvedSpeech: false, observations: [])
+                } else {
+                if !prepared {
+                    // Cold model loading has its own bounded deadline, after
+                    // capture is already writing PCM. Do not charge model
+                    // startup against the shorter per-window decode deadline.
+                    try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
+                    guard revision == token, !Task.isCancelled else { return }
+                    prepared = true
+                }
                 recognized = try await NoorOperationDeadline.run(seconds: recognitionTimeout) {
                     try await self.recognizeWindow(window)
+                }
                 }
             }
             catch is CancellationError { return }
             catch {
                 guard revision == token, var current = record else { return }
-                current.recognitionUnavailable = true; record = current; uncertain = true; recognitionAvailable = false
+                current.recognitionUnavailable = true; noteExposedPracticeText(&current)
+                record = current; uncertain = true; recognitionAvailable = false
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
                 if (error as? URLError)?.code == .timedOut {
@@ -267,21 +483,65 @@ import os
             }
             guard revision == token, !Task.isCancelled, var current = record, var updatedTracker = tracker else { return }
             do {
+                try updatedTracker.reconsiderAudio(takeID: take, start: window.offset,
+                    end: Double(window.endFrame) / 16_000)
                 var additions: [QuranWordEvidence] = []
                 for run in recognized.runs {
                     additions += try updatedTracker.consume(run, takeID: take, offset: window.offset)
                 }
                 let available = recognitionAvailable || !additions.isEmpty
-                current.evidence += additions; current.recognitionUnavailable = !available
+                // Persist only actually decoded, quality-accepted words. Missing
+                // speech remains unresolved; the Quran reference never fills it.
+                var observed = QuranObservedSpeech(takeID: take, start: window.offset,
+                    end: Double(window.endFrame) / 16_000,
+                    words: recognized.runs.flatMap { $0.map(\.text) },
+                    unresolved: recognized.hasUnresolvedSpeech,
+                    backendID: worker.capabilities.backendID,
+                    modelID: worker.capabilities.modelID, modelRevision: worker.capabilities.modelRevision)
+                if let observations = recognized.observations {
+                    observed.evidenceVersion = 1
+                    observed.recognitionWindowID = recognized.windowID
+                    observed.recognitionRevision = 0
+                    observed.wordObservations = observations
+                    observed.processingConfiguration = QuranRecognitionModelDescriptor.bundled?.configuration
+                }
+                var spans = current.observedSpeech ?? []
+                // Keep recognizer revisions as source evidence. Assessment can
+                // supersede an interpretation without erasing what it decoded.
+                if spans.last != observed { spans.append(observed) }
+                let assessmentInput = Array(spans.suffix(16))
+                let referenceWords = updatedTracker.expected
+                let priorEvents = current.wordingEvents ?? []
+                let sessionTakes = current.takes
+                let events = await Task.detached(priority: .userInitiated) {
+                    let fresh = QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
+                    let older = priorEvents.filter { prior in
+                        prior.state == "provisional" && !assessmentInput.contains(where: { $0.takeID == prior.takeID })
+                    }
+                    return QuranWordingAssessment.linkLaterAttempts(fresh + older, spans: assessmentInput,
+                        takes: sessionTakes, expected: referenceWords)
+                }.value
+                guard revision == token, !Task.isCancelled, let latest = record else { return }
+                current = latest
+                current.observedSpeech = spans
+                current.wordingEvents = QuranWordingAssessment.reconcile(previous: current.wordingEvents ?? [],
+                    incoming: events, reconsidered: assessmentInput)
+                current.evidence = updatedTracker.evidence; current.recognitionUnavailable = !available
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
-                record = current; tracker = updatedTracker
-                try save(current)
+                do { try await saveAnalysis(current) }
+                catch {
+                    guard revision == token else { return }
+                    mergeAnalysis(current); tracker = updatedTracker
+                    throw error
+                }
+                guard revision == token, !Task.isCancelled else { return }
+                mergeAnalysis(current); tracker = updatedTracker
                 recognitionAvailable = available
                 revealed = Set(current.evidence.map(\.nativeID))
-                if let last = additions.last { currentVerse = last.verse }
+                currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
-            } catch { stopForJournalFailure(); return }
+            } catch { guard revision == token else { return }; stopForJournalFailure(); return }
 
         }
     }
@@ -321,7 +581,7 @@ import os
             // A Core ML decode may ignore cancellation. Invalidate its token
             // before saving so it cannot change a paused or resumed session.
             revision = UUID(); pending?.cancel()
-            if var current = record { current.recognitionUnavailable = true; record = current }
+            if var current = record { current.recognitionUnavailable = true; noteExposedPracticeText(&current); record = current }
             recognitionAvailable = false; uncertain = true
         }
         pump = nil; mailbox = nil
@@ -333,8 +593,11 @@ import os
         }
         closing = false
         try? setSessionActive(false)
+        if let lease = audioFocusLease { NoorAudioFocus.shared.releaseRecording(lease) }
+        audioFocusLease = nil
     }
     func finish() async {
+        cancelGuided()
         finishRequest = true
         if state == .listening { await pause(); return }
         guard state == .paused, !closing, var current = record else { return }
@@ -342,5 +605,18 @@ import os
         do { try save(current); record = current; state = .stopped }
         catch { message = "تعذّر حفظ الملخص. التسجيلات محفوظة؛ أعد المحاولة." }
     }
-    deinit { pump?.cancel() }
+    @discardableResult func reviewFinding(_ id: UUID, disputed: Bool) -> Bool {
+        guard !closing, state == .paused || state == .stopped, var current = record,
+              let index = current.wordingEvents?.firstIndex(where: { $0.eventID == id && $0.state == "provisional" }) else { return false }
+        current.wordingEvents?[index].userReview = disputed ? "disputed" : nil
+        do { try save(current); record = current; return true }
+        catch { message = "تعذّر حفظ مراجعتك. بقي التسجيل والملاحظة محفوظين."; return false }
+    }
+    deinit {
+        pump?.cancel()
+        if let lease = audioFocusLease {
+            Task { @MainActor in NoorAudioFocus.shared.releaseRecording(lease) }
+        }
+    }
 }
+

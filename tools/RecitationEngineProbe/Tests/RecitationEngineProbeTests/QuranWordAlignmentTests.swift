@@ -1,21 +1,34 @@
 import XCTest
+import CryptoKit
+#if canImport(Athar)
+@testable import Athar
+#else
 @testable import RecitationAlignment
+#endif
 
 final class QuranWordAlignmentTests: XCTestCase {
     func testFull6236VerseScriptBindsActualEditionAndRejectsChangedGlyph() async throws {
+        #if canImport(Athar)
+        let scriptURL = try XCTUnwrap(Bundle.main.url(forResource: "recitation-word-script", withExtension: "json"))
+        let corpusURL = try XCTUnwrap(Bundle.main.url(forResource: "quran", withExtension: "json"))
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        #else
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }
+        let scriptURL = root.appendingPathComponent("content-sources/recitation-word-script.json")
+        let corpusURL = root.appendingPathComponent("ios/Athar/quran.json")
+        let data = try Data(contentsOf: root.appendingPathComponent("ios/Athar/mushaf-snapshot.json"))
+        #endif
         let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf:
-            root.appendingPathComponent("content-sources/recitation-word-script.json")))
+            scriptURL))
         let corpus = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf:
-            root.appendingPathComponent("ios/Athar/quran.json"))) as? [[String: Any]])
+            corpusURL)) as? [[String: Any]])
         let keys = corpus.flatMap { surah -> [String] in
             let chapter = surah["number"] as! Int
             return (surah["ayahs"] as! [[String: Any]]).map { "\(chapter):\($0["number"] as! Int)" }
         }
-        let (data, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertEqual(SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
+                       "125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d")
         let snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(snapshot["resource_id"] as? Int, 1)
         XCTAssertEqual(snapshot["resource_content_id"] as? Int, 382)

@@ -1,7 +1,7 @@
 import Foundation
 
 enum NoorReminderKind: String, CaseIterable, Codable, Identifiable {
-    case dua, morning, evening, salawat, hifz
+    case dua, morning, evening, salawat, hifz, witr, duha
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -10,11 +10,16 @@ enum NoorReminderKind: String, CaseIterable, Codable, Identifiable {
         case .evening: "أذكار المساء"
         case .salawat: "الصلاة على النبي ﷺ"
         case .hifz: "الحفظ والمراجعة"
+        case .witr: "صلاة الوتر"
+        case .duha: "صلاة الضحى"
         }
     }
-    var destination: String { self == .hifz ? "review" : rawValue }
+    var destination: String {
+        switch self { case .hifz: "review"; case .witr, .duha: "prayers"; default: rawValue }
+    }
+    var hasPrayerSound: Bool { self == .witr || self == .duha }
     var defaultMinute: Int {
-        switch self { case .morning: 420; case .evening: 1080; case .hifz: 1200; default: 540 }
+        switch self { case .morning: 420; case .evening: 1080; case .hifz: 1200; case .witr: 1320; case .duha: 540; default: 540 }
     }
 }
 
@@ -31,9 +36,13 @@ struct NoorReminderPreference: Codable, Equatable {
     init(kind: NoorReminderKind) { startMinute = kind.defaultMinute; endMinute = kind.defaultMinute }
     var valid: Bool {
         (0..<1440).contains(startMinute) && (startMinute..<1440).contains(endMinute)
-        && [0, 120, 240, 360, 720].contains(intervalMinutes)
+        && [0, 5, 120, 240, 360, 720].contains(intervalMinutes)
         && !weekdays.isEmpty && weekdays.isSubset(of: Set(1...7))
         && (0..<1440).contains(quietStart) && (0..<1440).contains(quietEnd)
+    }
+    var continuousFiveMinuteReminder: Bool {
+        enabled && valid && intervalMinutes == 5 && startMinute == 0 && endMinute == 1439
+            && weekdays == Set(1...7) && !quietEnabled
     }
     func quiet(at minute: Int) -> Bool {
         guard quietEnabled else { return false }
@@ -52,7 +61,10 @@ struct NoorReminderArchive: Codable {
     var version = 1
     var values: [String: NoorReminderPreference] = [:]
     var valid: Bool {
-        version == 1 && values.allSatisfy { NoorReminderKind(rawValue: $0.key) != nil && $0.value.valid }
+        version == 1 && values.allSatisfy {
+            NoorReminderKind(rawValue: $0.key) != nil && $0.value.valid &&
+                ($0.value.intervalMinutes != 5 || $0.key == NoorReminderKind.salawat.rawValue)
+        }
     }
 }
 
@@ -72,6 +84,7 @@ enum NoorPersonalReminderPlan {
             for kind in NoorReminderKind.allCases {
                 guard let preference = archive.values[kind.rawValue], preference.enabled,
                       preference.weekdays.contains(weekday) else { continue }
+                if kind == .salawat && preference.continuousFiveMinuteReminder { continue }
                 for minute in preference.minutes {
                     // Foundation resolves a missing DST time forward and chooses the first
                     // repeated time; each authored daily slot appears at most once.

@@ -8,12 +8,15 @@ actor QuranRecognitionWorker {
     struct Result: Sendable {
         let runs: [[QuranHeardWord]]
         let hasUnresolvedSpeech: Bool
+        var observations: [QuranObservedWord]? = nil
+        var windowID: UUID? = nil
     }
     private var engine: WhisperKit?
-    private var loading: Task<WhisperKit, Error>?
+    private var loading: Task<Void, Error>?
     private var inference: Task<Result, Error>?
     private var inferenceID: UUID?
     private var boundNative: [QuranNativeWord] = []
+    private var boundSnapshot: QCFV2Snapshot?
     private var boundKeys: [String] = []
     private var boundWords: [QuranAlignedWord] = []
     private let decodeOverride: ((QuranAudioWindow) async throws -> Result)?
@@ -24,6 +27,10 @@ actor QuranRecognitionWorker {
     // Reuse only after comparing every native ID, glyph, position and page.
     func bind(snapshot: QCFV2Snapshot, verseKeys: [String]) throws -> [QuranAlignedWord] {
         guard verseKeys.count == 6236 else { throw QuranAlignmentFailure.invalidEdition }
+        // Reuse only an exactly equal, previously validated immutable copy.
+        // Array value equality also permits the shared COW storage fast path.
+        // IDs, revision numbers, or counts alone are insufficient evidence.
+        if snapshot == boundSnapshot, verseKeys == boundKeys, !boundWords.isEmpty { return boundWords }
         let native = try snapshot.validated().records
             .filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }
             .map { QuranNativeWord(id: $0.id, verse: verseKeys[$0.verse_id! - 1],
@@ -34,22 +41,23 @@ actor QuranRecognitionWorker {
         }
         let script = try JSONDecoder().decode(QuranWordScript.self, from: Data(contentsOf: url))
         let words = try script.bind(native: native, verseKeys: verseKeys)
-        boundNative = native; boundKeys = verseKeys; boundWords = words
+        boundNative = native; boundKeys = verseKeys; boundWords = words; boundSnapshot = snapshot
         return words
     }
     func prepare() async throws {
         if engine != nil { return }
-        if let loading { engine = try await loading.value; return }
+        if let loading { try await loading.value; return }
         guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
         }
-        let task = Task { try await WhisperKit(WhisperKitConfig(
+        guard QuranRecognitionModelDescriptor.bundled != nil else { throw CocoaError(.fileReadCorruptFile) }
+        let task = Task { self.engine = try await WhisperKit(WhisperKitConfig(
             modelFolder: root.appendingPathComponent("model").path,
             tokenizerFolder: root.appendingPathComponent("tokenizer", isDirectory: true),
             verbose: false, logLevel: .error, prewarm: false, load: true, download: false)) }
         loading = task
         defer { loading = nil }
-        engine = try await task.value
+        try await task.value
     }
     func recognize(_ window: QuranAudioWindow) async throws -> Result {
         let previous = inference
@@ -73,21 +81,45 @@ actor QuranRecognitionWorker {
         return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
     }
     private func decode(_ window: QuranAudioWindow) async throws -> Result {
+        let inferenceSamples = try QuranRecognitionAudio.conditioned(window.samples)
+        if let activity = try? QuranVoiceActivity.scan(inferenceSamples), !activity.hasSpeech {
+            return Result(runs: [], hasUnresolvedSpeech: false, observations: [])
+        }
         try await prepare()
         try Task.checkCancellation()
         guard let engine else { throw CocoaError(.fileReadCorruptFile) }
         let options = DecodingOptions(language: "ar", temperatureFallbackCount: 0,
             skipSpecialTokens: true, withoutTimestamps: false, wordTimestamps: true,
             suppressBlank: true, concurrentWorkerCount: 1)
-        let output = try await engine.transcribe(audioArray: window.samples, decodeOptions: options)
+        let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
         var runs: [[QuranHeardWord]] = [[]]
         var unresolved = false
+        var observations: [QuranObservedWord] = []
         var rejectedAudio = 0, rejectedTiming = 0, rejectedConfidence = 0
         var rejectedQuiet = 0, rejectedTokenBoundary = 0, accepted = 0
-        for word in output.flatMap(\.allWords) {
+        for segment in output.flatMap(\.segments) {
+        // Amplification must not turn a decoder's no-speech segment into
+        // Quran progress. Missing/non-finite confidence stays unresolved.
+        guard segment.noSpeechProb.isFinite, (0...1).contains(segment.noSpeechProb),
+              segment.noSpeechProb < 0.6 else {
+            runs.append([]); unresolved = true; continue
+        }
+        for word in segment.words ?? [] {
             let evidence = AudioEvidenceGate.Evidence(start: word.start, end: word.end, probability: word.probability)
-            let rejection = AudioEvidenceGate.rejection(evidence, samples: window.samples)
+            let rejection = AudioEvidenceGate.rejection(evidence, samples: inferenceSamples)
             let invalidBoundary = QuranAlignedWord.tokens([word.word]).count != 1
+            let start = Double(word.start), end = Double(word.end)
+            let validTiming = start.isFinite && end.isFinite && start >= 0 && end > start
+                && end <= Double(window.samples.count) / 16_000
+            if !word.word.isEmpty {
+                observations.append(.init(occurrenceIndex: observations.count, runIndex: runs.count - 1,
+                    observedText: word.word,
+                    startInTakeSeconds: validTiming ? window.offset + start : nil,
+                    endInTakeSeconds: validTiming ? window.offset + end : nil,
+                    backendConfidence: word.probability.isFinite && (0...1).contains(word.probability) ? Double(word.probability) : nil,
+                    recognitionState: rejection == nil && !invalidBoundary ? "accepted" : "unassessable",
+                    timingSource: validTiming ? "backend-word" : "unavailable"))
+            }
             switch rejection {
             case .invalidAudio: rejectedAudio += 1
             case .invalidTiming: rejectedTiming += 1
@@ -104,13 +136,15 @@ actor QuranRecognitionWorker {
                     end: Double(word.end), probability: Double(word.probability)))
             }
         }
+        }
         // Numeric counters only: no recognized text, samples, account or session
         // identifier. A listening UI cannot distinguish an acoustic rejection
         // from an alignment miss without measuring these separate boundaries.
         os_signpost(.event, log: Self.diagnostics, name: "Recognition gate counts",
             "accepted=%{public}d invalidAudio=%{public}d timing=%{public}d confidence=%{public}d quiet=%{public}d tokenBoundary=%{public}d",
             accepted, rejectedAudio, rejectedTiming, rejectedConfidence, rejectedQuiet, rejectedTokenBoundary)
-        return Result(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved)
+        return Result(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved,
+                      observations: observations, windowID: UUID())
     }
 }
 

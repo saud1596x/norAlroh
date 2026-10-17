@@ -2,6 +2,22 @@ import XCTest
 @testable import Athar
 
 final class QCFV2ContentTests: XCTestCase {
+    func testFirstOpenUsesVerifiedPackagedEditionWhileConnectionFails() async throws {
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let started = expectation(description: "Background refresh may fail independently")
+        let cache = QCFV2ContentCache(file: folder.appendingPathComponent("not-created/cache.json"),
+            endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!,
+            fetch: { _ in started.fulfill(); throw URLError(.notConnectedToInternet) }, packaged: { bytes })
+        let entry = try await cache.readingEntry(onDownload: { XCTFail("Packaged reading must not wait for a foreground download") })
+        XCTAssertEqual(entry.snapshot, bytes)
+        XCTAssertEqual(try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated().records.filter {
+            $0.record_type == "mushaf_page"
+        }.count, 604)
+        await fulfillment(of: [started], timeout: 5)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path), "The packaged reader works before any successful cache write")
+    }
     func testLiveSnapshotAndAtomicOfflineRecovery() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -47,6 +63,15 @@ final class QCFV2ContentTests: XCTestCase {
         } catch { }
         let restoredPreparation = try await preparation.prepare(entry.snapshot, keys: keys)
         XCTAssertEqual(restoredPreparation.versePages, prepared.versePages)
+        var altered = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.snapshot) as? [String: Any])
+        var alteredRecords = try XCTUnwrap(altered["records"] as? [[String: Any]])
+        let wordIndex = try XCTUnwrap(alteredRecords.firstIndex { $0["char_type_name"] as? String == "word" })
+        alteredRecords[wordIndex]["text"] = alteredRecords[wordIndex]["text"] as? String == "ﱂ" ? "ﱁ" : "ﱂ"
+        altered["records"] = alteredRecords
+        do {
+            _ = try await preparation.prepare(JSONSerialization.data(withJSONObject: altered), keys: keys)
+            XCTFail("A structurally valid snapshot cannot alter a canonical word glyph")
+        } catch { }
 
         // Hold the real snapshot fetch open: stale offline reading must return
         // before network completion, while still starting the required refresh.

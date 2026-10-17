@@ -4,10 +4,57 @@ import XCTest
 final class NoorAllScreensTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    func testMemorizationWorkspaceAndManualReviewAreReachableFromMushaf() {
+        let app = XCUIApplication(); launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120))
+        app.buttons["reader.study"].press(forDuration: 0.6)
+        app.buttons["الحفظ والمراجعة"].tap()
+        XCTAssertTrue(app.buttons["hifz.practice"].waitForExistence(timeout: 15))
+        capture(app, "12-hifz")
+        tap(app.buttons["hifz.plan"], in: app)
+        XCTAssertTrue(app.buttons["hifz.savePlan"].waitForExistence(timeout: 10))
+        capture(app, "13-hifz-plan")
+        tap(app.buttons["hifz.savePlan"], in: app)
+        tap(app.buttons["hifz.practice"], in: app)
+        XCTAssertTrue(app.staticTexts["hifz.mushafPage"].waitForExistence(timeout: 90))
+        let hintReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: app.buttons["hifz.revealPart"])
+        wait(for: [hintReady], timeout: 60)
+        capture(app, "37-practice-mushaf-hidden")
+        app.buttons["hifz.revealPart"].tap(); capture(app, "38-practice-mushaf-hint")
+        app.buttons["hifz.revealAll"].tap(); capture(app, "39-practice-mushaf-revealed")
+        back(app, titled: "الحفظ")
+        tap(app.buttons["hifz.test"], in: app)
+        XCTAssertTrue(app.buttons["hifz.pause"].waitForExistence(timeout: 90))
+        capture(app, "14-hifz-test")
+        app.buttons["hifz.pause"].tap()
+        XCTAssertFalse(app.buttons["hifz.remembered"].isEnabled)
+        capture(app, "15-hifz-paused")
+        app.buttons["hifz.pause"].tap(); app.buttons["hifz.reveal"].tap()
+        capture(app, "16-hifz-revealed")
+        // This is explicitly subjective review, never an invented ASR grade.
+        // Mark the demonstrated exposed passages as needing review.
+        for _ in 0..<50 {
+            if app.staticTexts["hifz.complete"].exists { break }
+            let review = app.buttons["تحتاج مراجعة"]
+            XCTAssertTrue(review.waitForExistence(timeout: 10))
+            let ready = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: review)
+            wait(for: [ready], timeout: 60); review.tap()
+        }
+        XCTAssertTrue(app.staticTexts["hifz.complete"].waitForExistence(timeout: 10))
+        capture(app, "18-hifz-result")
+        app.buttons["hifz.resultHistory"].tap(); capture(app, "19-hifz-history")
+        back(app, titled: "اختبار الاسترجاع"); back(app, titled: "الحفظ")
+        tap(app.buttons["hifz.insights"], in: app); capture(app, "36-mastery-map")
+        back(app, titled: "الحفظ")
+        app.buttons["reader.memorization.close"].tap(); app.buttons["إغلاق المصحف"].tap()
+    }
+
     func testAllScreensWalkthrough() {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         capture(app, "01-home")
+        openNoorHomeTools(app)
         tap(app.buttons["home.myJourney"], in: app)
         // This screen uses its own visible heading, rather than a navigation-bar title.
         XCTAssertTrue(app.staticTexts["journey.month"].waitForExistence(timeout: 20))
@@ -48,13 +95,22 @@ final class NoorAllScreensTests: XCTestCase {
         selectNoorTab("الأذكار", in: app)
         capture(app, "09-adhkar")
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("النوم")
+        XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("النوم\n")
         let sleepChapter = app.buttons["adhkar.group.hisn-28"]
         XCTAssertTrue(sleepChapter.waitForExistence(timeout: 10), "Sleep adhkar search result must appear before scrolling.")
-        XCTAssertTrue((search.value as? String)?.contains("النوم") == true, "The typed search query must remain intact before chapter navigation.")
+        // Submit through the keyboard to finish real Arabic composition, then
+        // verify the value. Never retry typing, seed or normalize the query.
+        let committedQuery = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                (search.value as? String)?.contains("النوم") == true
+            }, object: search)
+        let queryResult = XCTWaiter.wait(for: [committedQuery], timeout: 5)
+        capture(app, "09-adhkar-search-query")
+        XCTAssertEqual(queryResult, .completed,
+            "The typed search query must remain intact before chapter navigation. Actual value: \(String(describing: search.value))")
+        XCTAssertEqual(search.value as? String, "النوم", "Search must preserve the exact submitted text")
         tap(sleepChapter, in: app)
         capture(app, "10-dhikr-chapter")
-        tap(app.buttons["ابدأ جلسة الذكر"], in: app)
         capture(app, "11-dhikr-session")
         tap(app.buttons["زيادة عداد الذكر"], in: app)
 
@@ -63,7 +119,10 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["حسابي"].waitForExistence(timeout: 10))
         capture(app, "12-optional-account")
         back(app)
-        tap(app.buttons["home.review"], in: app)
+        tap(app.buttons["home.resume"], in: app)
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120))
+        app.buttons["reader.study"].press(forDuration: 0.6)
+        tap(app.buttons["اختيار مقطع التسميع"], in: app)
         XCTAssertTrue(app.buttons["recitation.scope.start"].waitForExistence(timeout: 120))
         XCTAssertFalse(app.buttons["study.finish"].exists, "Choosing a scope never starts recording")
         capture(app, "13-recitation-scope")
@@ -74,18 +133,25 @@ final class NoorAllScreensTests: XCTestCase {
         tap(app.buttons["app.settings"], in: app)
         capture(app, "21-settings")
         XCTAssertFalse(app.buttons["settings.recordings"].exists)
+        openNoorSettingsSection("الميكروفون والتسجيلات", in: app)
         XCTAssertTrue(app.staticTexts["settings.microphone.status"].exists)
         capture(app, "20-recitation-privacy-and-microphone")
         tap(app.buttons["settings.downloads"], in: app)
-        XCTAssertTrue(app.buttons["downloads.range"].waitForExistence(timeout: 5))
-        capture(app, "40-downloads")
+        XCTAssertTrue(app.navigationBars["مساحة التلاوات"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.switches["حفظ التلاوات عبر Wi-Fi فقط"].exists)
+        XCTAssertFalse(app.buttons["downloads.range"].exists)
+        capture(app, "40-automatic-audio-storage")
         back(app)
+        openNoorSettingsSection("المساعدة والأدوات", in: app)
         tap(app.buttons["settings.library"], in: app)
         capture(app, "22-library")
         back(app)
         tap(app.buttons["settings.privacy"], in: app)
+        capture(app, "23-privacy-summary")
+        tap(app.buttons["قراءة سياسة الخصوصية كاملة"], in: app)
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "legal.privacy").firstMatch.waitForExistence(timeout: 5))
         capture(app, "23-privacy")
+        back(app)
         back(app)
         tap(app.buttons["settings.terms"], in: app)
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "legal.terms").firstMatch.waitForExistence(timeout: 5))
@@ -107,7 +173,7 @@ final class NoorAllScreensTests: XCTestCase {
         tap(app.buttons["اختر الصلوات ووقت التنبيه"], in: app)
         XCTAssertTrue(app.navigationBars["تنبيهات الصلاة"].waitForExistence(timeout: 5))
         capture(app, "42-prayer-alert-settings")
-        tap(app.buttons["الدعاء والأذكار والحفظ والصلاة على النبي"], in: app)
+        tap(app.buttons["الأذكار والتذكيرات"], in: app)
         XCTAssertTrue(app.navigationBars["تذكيراتي"].waitForExistence(timeout: 5))
         tap(app.buttons["reminders.salawat"], in: app)
         XCTAssertTrue(app.navigationBars["الصلاة على النبي ﷺ"].waitForExistence(timeout: 5))
@@ -207,15 +273,27 @@ final class NoorAllScreensTests: XCTestCase {
             let hierarchy = XCTAttachment(string: description)
             hierarchy.name = "failed-navigation-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
             let selected = scrollingSurface()
-            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(element.frame) scrollSurface=\(selected.frame) viewport=\(visibleViewport(selected)) keyboards=\(app.keyboards.allElementsBoundByIndex.map { $0.frame })\n\(description)")
+            let targetFrame = element.exists ? String(describing: element.frame) : "absent"
+            print("NAVIGATION_TARGET_FAILURE \(element.identifier) row=\(targetFrame) scrollSurface=\(selected.frame) viewport=\(visibleViewport(selected)) keyboards=\(app.keyboards.allElementsBoundByIndex.map { $0.frame })\n\(description)")
         }
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         XCTAssertTrue(ready(), "The entire row must be visible before tapping or capturing it.")
         if performTap { element.tap() }
     }
-    private func back(_ app: XCUIApplication) {
-        let button = app.navigationBars.buttons.firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 5)); button.tap()
+    private func back(_ app: XCUIApplication, titled: String? = nil) {
+        if let titled {
+            let button = app.navigationBars.buttons[titled]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing actual Back destination: \(titled)")
+            XCTAssertTrue(button.isHittable); button.tap(); return
+        }
+        let candidates = app.navigationBars.buttons.allElementsBoundByIndex.filter {
+            $0.identifier != "reader.memorization.close" && $0.identifier != "hifz.recording"
+                && $0.label != "إغلاق" && $0.isHittable
+        }
+        guard let button = candidates.first else {
+            XCTFail("The current navigation destination has no reachable Back control: \(app.debugDescription)"); return
+        }
+        button.tap()
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
         RunLoop.current.run(until: Date().addingTimeInterval(0.4))

@@ -3,9 +3,7 @@ import XCTest
 
 final class MushafStudySessionTests: XCTestCase {
     func testTrustedWordMaskKeepsVerseEndMarkersAcrossRangePages() async throws {
-        let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
-        let (data, response) = try await URLSession.shared.data(from: url)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
         let Quran = try corpus()
         let keys = Quran.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }

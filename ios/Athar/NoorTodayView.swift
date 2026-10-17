@@ -7,6 +7,10 @@ struct NoorTodayView: View {
     @EnvironmentObject private var account: NoorAccountStore
     @Environment(\.accessibilityReduceMotion) private var systemReduce
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
+    @State private var toolsExpanded = false
+    @State private var readingWard: KhatmahReadingScope?
+    @State private var today = Date()
+    private var ward: KhatmahReadingScope? { khatmah.active?.readingScope(on: today) }
     private var page: Int { max(1, min(lastPage, 604)) }
     private var reduced: Bool { systemReduce || store.data.lowMotion }
     private var city: PrayerLocation { PrayerCalculator.location(store.data.city) }
@@ -29,7 +33,6 @@ struct NoorTodayView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("نور الروح").font(.largeTitle.bold()).foregroundStyle(Theme.gold)
                                 Text(greeting(context.date)).font(.headline)
-                                Text(PrayerDisplay.gregorian(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
                                 Text(PrayerDisplay.hijri(context.date, city: city)).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -56,7 +59,6 @@ struct NoorTodayView: View {
                         }
                     }
                 }
-                NoorKhatmahProtectionCard()
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Label("موعدك مع القرآن", systemImage: "book.closed").font(.subheadline)
@@ -64,17 +66,29 @@ struct NoorTodayView: View {
                         Text("حفص").font(.caption).padding(.horizontal, 10).padding(.vertical, 5)
                             .background(Theme.buttonInk.opacity(0.12), in: Capsule())
                     }
-                    Text(resumeTitle).font(.largeTitle.bold())
+                    Text(khatmah.active?.finished == nil && khatmah.active != nil ? "وردك اليوم" : resumeTitle).font(.largeTitle.bold())
                     HStack {
-                        Text("آخر قراءة · الصفحة \(ArabicSearch.digits(page))").font(.subheadline)
+                        if let ward {
+                            Text("\(ArabicSearch.digits(ward.last - ward.first + 1)) صفحة · \(ArabicSearch.digits(ward.first))–\(ArabicSearch.digits(ward.last))").font(.subheadline)
+                        } else { Text("آخر قراءة · الصفحة \(ArabicSearch.digits(page))").font(.subheadline) }
                         Spacer()
                         Image(systemName: "bookmark.fill").font(.caption)
                     }
+                    if let ward {
+                        Button { readingWard = ward } label: {
+                            HStack { Text("أكمل ختمتك"); Spacer(); Image(systemName: "arrow.left") }
+                                .font(.headline).padding(16).foregroundStyle(Theme.gold)
+                                .background(Theme.buttonInk, in: RoundedRectangle(cornerRadius: 16))
+                        }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.continueKhatmah")
+                    } else if let plan = khatmah.active, !plan.paused, plan.finished == nil {
+                        Label("أتممت ورد اليوم", systemImage: "checkmark.circle.fill").font(.headline)
+                    } else {
                     NavigationLink { MushafReader(chapter: 1, page: page) } label: {
                         HStack { Text("متابعة القراءة"); Spacer(); Image(systemName: "arrow.left") }
                             .font(.headline).padding(16).foregroundStyle(Theme.gold)
                             .background(Theme.buttonInk, in: RoundedRectangle(cornerRadius: 16))
                     }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.resume")
+                    }
                 }.padding(24).foregroundStyle(Theme.buttonInk)
                     .background {
                         ZStack {
@@ -84,6 +98,26 @@ struct NoorTodayView: View {
                     }
                     .overlay { RoundedRectangle(cornerRadius: 28).stroke(Theme.buttonInk.opacity(0.15), lineWidth: 1).allowsHitTesting(false) }
                     .noorEntrance(delay: 0.08)
+                NavigationLink { AdhkarView() } label: {
+                    Label("الأذكار", systemImage: "sparkles")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.adhkar")
+                NavigationLink { KhatmahJourneyView(currentPage: page) } label: {
+                    Label(khatmah.active == nil ? "ابدأ ختمة" : "إعدادات الختمة", systemImage: "book.closed")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 56)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.startKhatmah")
+                NoorKhatmahProtectionCard()
+                VStack(alignment: .leading, spacing: 16) {
+                    Button { toolsExpanded.toggle() } label: {
+                        HStack {
+                            Text("خطتي وأدواتي")
+                            Spacer()
+                            Image(systemName: toolsExpanded ? "chevron.up" : "chevron.down")
+                        }.frame(minHeight: 44)
+                    }.accessibilityIdentifier("home.tools").accessibilityValue(toolsExpanded ? "مفتوح" : "مغلق")
+                    if toolsExpanded {
                 NavigationLink { KhatmahJourneyView() } label: {
                     Card {
                         Label("رحلة الختمة", systemImage: "book.closed")
@@ -110,11 +144,7 @@ struct NoorTodayView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             Text("\(reviewed) من \(memorization.dailyTarget) آيات").font(.headline)
                             Text("مراجعتك الفعلية، خطوة بعد خطوة").font(.caption).foregroundStyle(.secondary)
-                            NavigationLink {
-                                MushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, opensStudyScope: true)
-                            } label: { Text("ابدأ المراجعة").font(.subheadline).frame(minHeight: 44) }
-                                .buttonStyle(NoorPressStyle())
-                                .accessibilityIdentifier("home.review")
+
                         }
                         Spacer(minLength: 0)
                     }
@@ -144,13 +174,23 @@ struct NoorTodayView: View {
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
                         .overlay { RoundedRectangle(cornerRadius: 22).stroke(Theme.gold.opacity(0.12), lineWidth: 1).allowsHitTesting(false) }
                 }.buttonStyle(NoorPressStyle()).accessibilityIdentifier("home.myJourney").noorEntrance(delay: 0.20)
+                    }
+                }
                 HStack(spacing: 8) {
                     Image(systemName: "lock.shield")
-                    Text("مساحة لك. المزامنة السحابية اختيارية من صفحة حسابك.")
+                    Text("بياناتك على جهازك · المزامنة اختيارية")
                 }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8).accessibilityIdentifier("home.footer")
             }.padding(20)
-        }.background(Theme.background).navigationTitle("اليوم").navigationBarTitleDisplayMode(.inline)
+        }.background { NoorComfortBackdrop() }.navigationTitle("اليوم").navigationBarTitleDisplayMode(.inline)
             .animation(reduced ? nil : .spring(duration: 0.4, bounce: 0.1), value: reviewed)
+            .onAppear { today = Date() }
+            .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { today = $0 }
+            .fullScreenCover(item: $readingWard) { scope in
+                let stop = khatmah.active?.stoppedAt
+                let resume = scope.resumePage(stop)
+                InteractiveMushafReader(chapter: stop?.page == resume ? stop?.chapter ?? 1 : 1,
+                    ayah: stop?.page == resume ? stop?.ayah ?? 1 : 1, initialPage: resume, readingScope: scope)
+            }
     }
     private var accountCard: some View {
         NavigationLink { NoorAccountView() } label: {
@@ -158,7 +198,7 @@ struct NoorTodayView: View {
                 Image(systemName: account.signedIn ? "person.crop.circle.fill" : "person.crop.circle")
                     .font(.title2).foregroundStyle(Theme.gold).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابي · الدخول بحساب Apple")
+                    Text(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابي")
                         .font(.headline)
                     Text(account.signedIn ? account.syncStatus : account.available
                          ? "اختياري؛ القراءة والأذكار متاحة دون حساب."

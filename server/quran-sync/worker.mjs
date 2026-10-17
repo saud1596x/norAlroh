@@ -79,9 +79,11 @@ export async function handle(request, env, fetcher = fetch) {
     return json({error: 'service_not_configured'}, 503);
   const ip = request.headers.get('cf-connecting-ip');
   if (!ip) return json({error: 'request_not_supported'}, 403);
-  const {success} = await env.SYNC_RATE_LIMITER.limit({key: ip});
-  if (!success) return json({error: 'retry_later'}, 429);
   try {
+    // A failed abuse-control binding must fail closed with the same safe
+    // response as an unavailable upstream, including the direct Worker path.
+    const {success} = await env.SYNC_RATE_LIMITER.limit({key: ip});
+    if (!success) return json({error: 'retry_later'}, 429);
     const accessToken = await token(env, fetcher);
     const response = await fetcher(API + path, {redirect: 'error',
       signal: AbortSignal.timeout(45000), headers: {

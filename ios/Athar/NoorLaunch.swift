@@ -3,6 +3,7 @@ import SwiftUI
 struct NoorLaunchGate: View {
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var account: NoorAccountStore
+    @EnvironmentObject private var notifications: PrayerNotifications
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(\.scenePhase) private var phase
     @State private var finished = false
@@ -14,7 +15,10 @@ struct NoorLaunchGate: View {
     var body: some View {
         ZStack {
             if finished {
-                if welcomeCompleted || account.signedIn { RootView().transition(.opacity) }
+                if welcomeCompleted || account.signedIn {
+                    RootView().transition(.opacity)
+                        .task { await notifications.configureFirstUse(store: store) }
+                }
                 else { NoorWelcomeView { welcomeCompleted = true }.transition(.opacity) }
             }
             else { NoorLaunchView { finish() }.transition(.opacity) }

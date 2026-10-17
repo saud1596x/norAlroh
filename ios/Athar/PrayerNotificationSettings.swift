@@ -48,12 +48,19 @@ struct PrayerNotificationSettings: View {
                 Text("مقطع الأذان 24 ثانية. إذا تعذر تشغيله نستخدم صوت النظام. الصوت يخضع لإعدادات الصامت والتركيز في iPhone.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("تذكيرات أخرى") {
-                NavigationLink("الدعاء والأذكار والحفظ والصلاة على النبي") { NoorReminderSettings() }
+            Section("أذكار بعد الصلاة") {
+                Toggle("تذكير بعد الأذان بـ٢٠ دقيقة", isOn: Binding(get: { notifications.preferences.afterPrayerMinutes != nil }, set: { value in
+                    Task { await notifications.setAfterPrayer(value ? 20 : nil, store: store) }
+                })).accessibilityIdentifier("prayers.afterPrayer")
+                Text("رسالة صامتة بعد موعد الأذان للصلوات الخمس المفعّلة.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("الموقع المحفوظ") {
                 Label(store.data.city.name, systemImage: "mappin.and.ellipse")
                 if notifications.enabled { Text("\(notifications.scheduledCount) تنبيه مجدول").foregroundStyle(.secondary) }
+            }
+            Section {
+                NavigationLink("الأذكار والتذكيرات") { NoorReminderSettings() }
             }
         }
         .noorScreenChrome().navigationTitle("تنبيهات الصلاة")

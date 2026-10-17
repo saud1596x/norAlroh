@@ -1,5 +1,49 @@
 import SwiftUI
+import UIKit
 import Foundation
+
+/// Keep Arabic marked-text composition in the native input control. SwiftUI
+/// filtering can redraw the list, but must never replace an in-flight edit.
+struct NoorArabicSearchField: UIViewRepresentable {
+    @Binding var text: String
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIView(context: Context) -> UISearchBar {
+        let bar = UISearchBar()
+        bar.searchBarStyle = .minimal
+        bar.delegate = context.coordinator
+        let field = bar.searchTextField
+        field.placeholder = "ابحث في الأبواب والنصوص"
+        field.accessibilityLabel = "ابحث في الأبواب والنصوص"
+        field.accessibilityIdentifier = "adhkar.search"
+        bar.text = text
+        field.autocorrectionType = .no; field.spellCheckingType = .no
+        field.autocapitalizationType = .none; field.returnKeyType = .search
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.textAlignment = .right; field.semanticContentAttribute = .forceRightToLeft
+        return bar
+    }
+    func updateUIView(_ bar: UISearchBar, context: Context) {
+        context.coordinator.parent = self
+        let field = bar.searchTextField
+        if !field.isFirstResponder, field.markedTextRange == nil, field.text != text { bar.text = text }
+    }
+    final class Coordinator: NSObject, UISearchBarDelegate {
+        var parent: NoorArabicSearchField
+        init(_ parent: NoorArabicSearchField) { self.parent = parent }
+        private func changed(_ field: UITextField) {
+            guard field.markedTextRange == nil else { return }
+            parent.text = field.text ?? ""
+        }
+        func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+            changed(searchBar.searchTextField)
+        }
+        func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+            changed(searchBar.searchTextField); searchBar.resignFirstResponder()
+        }
+        func searchBarTextDidEndEditing(_ searchBar: UISearchBar) { changed(searchBar.searchTextField) }
+    }
+}
 
 struct DhikrEntry: Codable, Identifiable {
     let id: String; let title: String; let text: String; let target: Int; let reference: String; let sourceURL: URL
@@ -106,19 +150,25 @@ struct AdhkarView: View {
         guard let content else { return [] }
         return content.searchGroups(search, favorites: favoritesOnly ? counters.favorites : nil)
     }
+    private var dailyPeriods: [DhikrDayPeriod] {
+        guard let content else { return [] }
+        let query = ArabicSearch.normalize(search)
+        return DhikrDayPeriod.allCases.filter { period in
+            let id = period.group(in: content).id
+            return (!favoritesOnly || counters.favorites.contains(id)) &&
+                (query.isEmpty || ArabicSearch.normalize(period.title).contains(query) ||
+                 period.entries(in: content).contains { ArabicSearch.normalize($0.text).contains(query) })
+        }
+    }
     var body: some View {
         Group {
             if let content {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
+                        NoorArabicSearchField(text: $search).frame(height: 48)
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("ذكرٌ، وسكينة").font(.largeTitle.bold())
-                            Text("١٣٢ بابًا و٢٦٧ ذكرًا").font(.subheadline)
-                            HStack {
-                                Label("محفوظ على جهازك", systemImage: "checkmark.circle")
-                                Spacer()
-                                Text("دون اتصال")
-                            }.font(.caption)
+                            Text("أذكارك").font(.largeTitle.bold())
+                            Label("متاحة دون اتصال", systemImage: "checkmark.circle").font(.caption)
                         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
                             .foregroundStyle(Theme.buttonInk).background(Theme.gold, in: RoundedRectangle(cornerRadius: 26))
                             .overlay(alignment: .topLeading) { NoorAmbientOrnament(ink: Theme.buttonInk).frame(width: 95, height: 95).padding(12) }
@@ -126,10 +176,25 @@ struct AdhkarView: View {
                         Picker("عرض الأذكار", selection: $favoritesOnly) {
                             Text("جميع الأبواب").tag(false); Text("المفضلة").tag(true)
                         }.pickerStyle(.segmented)
+                        ForEach(dailyPeriods) { period in
+                            let group = period.group(in: content)
+                                HStack {
+                                    NavigationLink {
+                                        DhikrListView(group: group, entries: period.entries(in: content))
+                                    } label: {
+                                        Label(period.title, systemImage: period.symbol)
+                                            .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                                    }.accessibilityIdentifier("adhkar.\(period.rawValue)")
+                                    Button { counters.toggleFavorite(group.id) } label: {
+                                        Image(systemName: counters.favorites.contains(group.id) ? "star.fill" : "star")
+                                            .frame(width: 44, height: 44)
+                                    }.accessibilityLabel("مفضلة: \(period.title)")
+                                }.padding(.horizontal, 18).background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+                        }
                         NavigationLink { NoorSalawatView() } label: {
                             Label("عداد الصلاة على النبي ﷺ", systemImage: "plus.circle").frame(minHeight: 48)
                         }.accessibilityIdentifier("adhkar.salawat")
-                        ForEach(groups) { group in
+                        ForEach(groups.filter { $0.id != "hisn-27" }) { group in
                             HStack(spacing: 8) {
                                 NavigationLink { DhikrListView(group: group, entries: content.entries(in: group)) } label: {
                                     HStack(spacing: 14) {
@@ -137,7 +202,6 @@ struct AdhkarView: View {
                                             .frame(width: 46, height: 46).background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                                         VStack(alignment: .leading, spacing: 6) {
                                             Text(group.name).font(.headline).foregroundStyle(.primary)
-                                            Text(group.note).font(.caption).foregroundStyle(.secondary)
                                         }
                                         Spacer(); Image(systemName: "chevron.left").font(.caption).foregroundStyle(.secondary)
                                     }.frame(minHeight: 58)
@@ -149,12 +213,11 @@ struct AdhkarView: View {
                                 }.buttonStyle(NoorPressStyle()).accessibilityLabel("مفضلة: \(group.name)")
                             }.padding(14).background(Theme.panel, in: RoundedRectangle(cornerRadius: 20)).noorEntrance()
                         }
-                        if groups.isEmpty { ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass", description: Text("ابحث باسم الباب أو كلمة من الذكر، أو أضف بابًا إلى المفضلة.")) }
+                        if groups.filter({ $0.id != "hisn-27" }).isEmpty && dailyPeriods.isEmpty { ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass", description: Text("ابحث باسم الباب أو كلمة من الذكر، أو أضف بابًا إلى المفضلة.")) }
                     }.padding(20)
                 }
             } else { ContentUnavailableView("تعذر تحميل الأذكار", systemImage: "book.closed") }
         }.background(Theme.background).noorScreenChrome().navigationTitle("الأذكار")
-            .searchable(text: $search, prompt: "ابحث في الأبواب والنصوص")
             .tint(Theme.gold)
     }
 }
@@ -164,33 +227,7 @@ struct DhikrListView: View {
     @EnvironmentObject private var counters: DhikrCounterStore
     let group: DhikrGroup; let entries: [DhikrEntry]
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                NavigationLink { DhikrReadingSession(group: group, entries: entries, start: 0) } label: {
-                    Label("ابدأ جلسة الذكر", systemImage: "play.fill").font(.headline).frame(maxWidth: .infinity, minHeight: 54)
-                        .foregroundStyle(Theme.buttonInk).background(Theme.gold, in: RoundedRectangle(cornerRadius: 18))
-                }.buttonStyle(NoorPressStyle()).noorEntrance()
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    let reading = DhikrReadingContent(entry: entry)
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(reading.title).font(.headline)
-                                    Text("الذكر \(index + 1) من \(entries.count)").font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text("\(counters.count(entry: reading.counterEntry, group: group, city: store.data.city)) / \(reading.counterEntry.target)").font(.caption.monospacedDigit()).foregroundStyle(Theme.gold)
-                            }
-                            DhikrReadingText(content: reading)
-                            NavigationLink { DhikrReadingSession(group: group, entries: entries, start: index) } label: {
-                                Label("اقرأ هذا الذكر مع العداد", systemImage: "hand.tap").font(.subheadline.bold()).frame(minHeight: 44)
-                            }.accessibilityIdentifier("dhikr.open.\(entry.id)")
-                        }.foregroundStyle(.primary).padding(20).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 22))
-                            .accessibilityIdentifier("dhikr.card.\(entry.id)").noorEntrance()
-                }
-            }.padding(20)
-        }.background(Theme.background).noorScreenChrome().navigationTitle(group.name).navigationBarTitleDisplayMode(.inline)
+        DhikrReadingSession(group: group, entries: entries, start: 0)
     }
 }
 
@@ -242,36 +279,31 @@ struct DhikrSessionView: View {
                     DhikrReadingText(content: reading)
                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
-                Button { change(count + 1) } label: {
-                    ZStack {
-                        Circle().fill(Theme.gold)
-                        Circle().stroke(Theme.buttonInk.opacity(0.18), lineWidth: 5).padding(14)
-                        Circle().trim(from: 0, to: Double(count) / Double(counterEntry.target))
-                            .stroke(Theme.buttonInk, style: StrokeStyle(lineWidth: 5, lineCap: .round)).rotationEffect(.degrees(-90)).padding(14)
-                        VStack(spacing: 8) {
-                            Text(count, format: .number).font(.system(size: 54, weight: .medium)).monospacedDigit().contentTransition(.numericText())
-                            Text(count == counterEntry.target ? "اكتمل الذكر" : "المس للعدّ").font(.headline)
-                            Text("من \(counterEntry.target)").font(.caption)
-                        }.foregroundStyle(Theme.buttonInk)
-                    }.frame(width: 224, height: 224)
-                }.buttonStyle(NoorPressStyle()).disabled(count >= counterEntry.target)
-                    .accessibilityLabel("زيادة عداد الذكر").accessibilityValue("\(count) من \(counterEntry.target)")
-                    .sensoryFeedback(.selection, trigger: count)
-                if count >= counterEntry.target {
-                    HStack { Image(systemName: "checkmark.circle.fill"); Text("أتممت هذا الذكر") }
-                        .font(.headline).foregroundStyle(Theme.gold)
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                }
-                HStack(spacing: 24) {
-                    Button("تراجع", systemImage: "arrow.uturn.backward") { change(count - 1) }.disabled(count == 0)
-                    Button("إعادة العدّ", systemImage: "arrow.counterclockwise") { change(0) }.disabled(count == 0)
-                }.buttonStyle(NoorPressStyle()).frame(minHeight: 44).font(.subheadline)
                 Text("عداد اليوم محفوظ على جهازك.").font(.caption).foregroundStyle(.secondary)
                 if reading.blocks.filter({ $0.quran != nil }).count > 1 {
                     Text("العداد لهذه المجموعة كاملة؛ اقرأ السور المعروضة ثم سجّل جولة واحدة.").font(.caption).foregroundStyle(.secondary)
                 }
             }.padding(20)
-        }.background(Theme.background).noorEntrance()
+        }.background(Theme.panel)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 4) {
+                    Button { change(count + 1) } label: {
+                        HStack {
+                            Text(count >= counterEntry.target ? "اكتمل الذكر" : "اضغط للعدّ")
+                            Spacer()
+                            Text("\(count) / \(counterEntry.target)").monospacedDigit()
+                        }.font(.headline).padding(.horizontal, 20).frame(minHeight: 56)
+                    }.buttonStyle(.borderedProminent).tint(Theme.gold).foregroundStyle(Theme.buttonInk)
+                        .disabled(count >= counterEntry.target)
+                        .accessibilityLabel("زيادة عداد الذكر").accessibilityValue("\(count) من \(counterEntry.target)")
+                        .sensoryFeedback(.selection, trigger: count)
+                    HStack {
+                        Button("تراجع") { change(count - 1) }.disabled(count == 0)
+                        Spacer()
+                        Button("إعادة العدّ") { change(0) }.disabled(count == 0)
+                    }.buttonStyle(NoorPressStyle()).font(.subheadline)
+                }.padding(.horizontal, 20).padding(.top, 8).background(Theme.panel)
+            }
             .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { counters.refreshDay(date: $0) }
     }
     private func change(_ value: Int) {

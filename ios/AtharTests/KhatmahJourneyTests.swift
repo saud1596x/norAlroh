@@ -2,6 +2,60 @@ import XCTest
 @testable import Athar
 
 final class KhatmahJourneyTests: XCTestCase {
+    func testDailyScopeIsCappedDoesNotAccumulateMissedDaysAndResumesOnlyRemainingQuota() throws {
+        let plan = try KhatmahCalculator.make(first: 1, date: start, weekdays: Set(1...7), daily: 20,
+            deadline: nil, reminder: nil, calendar: calendar)
+        let later = try XCTUnwrap(calendar.date(byAdding: .day, value: 8, to: start))
+        XCTAssertEqual(plan.readingScope(on: later)?.pages, 1...20)
+        let partial = try KhatmahCalculator.confirm(plan, first: 1, last: 7, date: later)
+        let scope = try XCTUnwrap(partial.readingScope(on: later))
+        XCTAssertEqual(scope.pages, 8...20)
+        XCTAssertEqual(scope.resumePage(.init(page: 12, chapter: 2, ayah: 77)), 12)
+        XCTAssertEqual(scope.resumePage(.init(page: 45, chapter: 2, ayah: 270)), 8)
+        let done = try KhatmahCalculator.confirm(partial, first: 8, last: 20, date: later)
+        XCTAssertNil(done.readingScope(on: later))
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: later))
+        XCTAssertEqual(done.readingScope(on: tomorrow)?.pages, 21...40)
+        let revised = try KhatmahCalculator.revised(partial, date: later, weekdays: Set(1...7), daily: 10, deadline: nil, reminder: nil)
+        XCTAssertEqual(revised.readingScope(on: later)?.pages, 8...10)
+    }
+    @MainActor func testDailyConfirmationRejectsBeyondRangeRepeatedAndStaleDay() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("journey.json")
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        let store = KhatmahStore(file: file)
+        let plan = try KhatmahCalculator.make(first: 590, date: start, weekdays: Set(1...7), daily: 20,
+            deadline: nil, reminder: nil, calendar: calendar)
+        XCTAssertTrue(store.adopt(plan))
+        let scope = try XCTUnwrap(plan.readingScope(on: start))
+        XCTAssertEqual(scope.pages, 590...604)
+        XCTAssertFalse(store.confirmReading(scope, through: 605, date: start))
+        XCTAssertFalse(store.confirmReading(scope, through: 589, date: start))
+        XCTAssertTrue(store.confirmReading(scope, through: 599, date: start))
+        XCTAssertFalse(store.confirmReading(scope, through: 599, date: start))
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: start))
+        XCTAssertFalse(store.confirmReading(scope, through: 604, date: tomorrow))
+        XCTAssertEqual(store.active?.completed.count, 10)
+        XCTAssertTrue(store.confirmReading(scope, through: 604, date: start))
+        XCTAssertNotNil(store.active?.finished)
+        XCTAssertNil(store.active?.readingScope(on: tomorrow))
+    }
+    @MainActor func testExactVerseStopPersistsWithoutCompletingUnreadPages() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("khatmah.json")
+        let store = KhatmahStore(file: file)
+        let plan = try KhatmahCalculator.make(first: 1, date: start, weekdays: Set(1...7), daily: 20,
+            deadline: nil, reminder: nil, calendar: calendar)
+        XCTAssertTrue(store.adopt(plan))
+        XCTAssertTrue(store.stop(page: 1, chapter: 1, ayah: 4))
+        XCTAssertEqual(store.active?.stoppedAt, .init(page: 1, chapter: 1, ayah: 4))
+        XCTAssertEqual(store.active?.nextPage, 1)
+        XCTAssertEqual(store.active?.completed.count, 0)
+        XCTAssertEqual(store.active?.sessions.count, 0)
+        XCTAssertEqual(KhatmahStore(file: file).active?.stoppedAt, store.active?.stoppedAt)
+        XCTAssertFalse(store.stop(page: 1, chapter: 1, ayah: 8))
+        XCTAssertEqual(store.active?.stoppedAt?.ayah, 4)
+    }
     var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Riyadh")!; return c }
     var start: Date { calendar.date(from: DateComponents(year: 2026, month: 10, day: 7, hour: 10))! }
     func testEveryStartingPageAndDailyAmountCoversExactlyRemainingPages() throws {

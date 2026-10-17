@@ -221,10 +221,13 @@ enum MushafRecordingArchive {
     private var player: AVAudioPlayer?
     private var revision = 0
     private var ownsAudioSession = false
+    private var audioSessionEpoch: UUID?
     private let setSessionActive: (Bool) throws -> Void
     private let permission: () async -> Bool
     private let isActive: () -> Bool
     private let base: URL?
+    private let focusID = UUID()
+    private var recordingFocus = false
     init(base: URL? = nil, permission: @escaping () async -> Bool = {
         await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
@@ -235,6 +238,7 @@ enum MushafRecordingArchive {
         }) {
         self.base = base; self.permission = permission; self.isActive = isActive; self.setSessionActive = setSessionActive
         super.init()
+        NoorAudioFocus.shared.register(focusID) { [weak self] in self?.stop() }
     }
     func start(session: MushafStudySession) async {
         guard !recording, !requestingPermission else { return }
@@ -252,6 +256,10 @@ enum MushafRecordingArchive {
         }
         do {
             guard session.phase == .active, session.currentKey != nil else { return }
+            guard NoorAudioFocus.shared.acquireRecording(focusID) else {
+                message = "أوقف التسجيل الآخر أولًا."; return
+            }
+            recordingFocus = true
             let directory = try MushafRecordingArchive.register(session, base: base)
             let file = directory.appendingPathComponent(UUID().uuidString + ".m4a")
             let sound = AVAudioSession.sharedInstance()
@@ -272,6 +280,7 @@ enum MushafRecordingArchive {
         // Track activation before creating the encoder/player: their initializers
         // can throw while the app already owns an active system audio session.
         ownsAudioSession = true
+        audioSessionEpoch = NoorAudioFocus.shared.audioSessionEpoch
     }
     func meters() {
         guard recording, let recorder else { return }
@@ -280,10 +289,12 @@ enum MushafRecordingArchive {
     }
     func stop() {
         revision += 1
+        if audioSessionEpoch != NoorAudioFocus.shared.audioSessionEpoch { ownsAudioSession = false }
         let ownsSound = ownsAudioSession
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = nil; level = 0
         playbackPaused = false; playbackPosition = 0; playbackDuration = 0
+        if recordingFocus { NoorAudioFocus.shared.releaseRecording(focusID); recordingFocus = false }
         if ownsSound {
             do { try setSessionActive(false); ownsAudioSession = false }
             catch { /* Retain ownership so the next explicit stop can retry. */ }
@@ -293,6 +304,9 @@ enum MushafRecordingArchive {
     }
     func play(_ take: MushafRecordingTake, at position: TimeInterval = 0) {
         stop()
+        guard NoorAudioFocus.shared.preparePlayback(focusID) else {
+            message = "أوقف التسميع أولًا للاستماع إلى تسجيلك."; return
+        }
         do {
             let sound = AVAudioSession.sharedInstance()
             try sound.setCategory(.playback); try activateSound()
@@ -318,6 +332,9 @@ enum MushafRecordingArchive {
     }
     func resumePlayback() {
         guard let player, playing != nil, playbackPaused else { return }
+        guard NoorAudioFocus.shared.preparePlayback(focusID) else {
+            message = "أوقف التسميع أولًا للاستماع إلى تسجيلك."; return
+        }
         do {
             try activateSound()
             guard player.play() else { throw CocoaError(.fileReadUnknown) }
@@ -354,6 +371,13 @@ enum MushafRecordingArchive {
         Task { @MainActor [weak self] in
             guard let self, self.player === player else { return }; self.stop()
             if !flag { self.message = "انقطع تشغيل التسجيل. يمكنك إعادة المحاولة." }
+        }
+    }
+    deinit {
+        let id = focusID
+        Task { @MainActor in
+            NoorAudioFocus.shared.releaseRecording(id)
+            NoorAudioFocus.shared.unregister(id)
         }
     }
 }

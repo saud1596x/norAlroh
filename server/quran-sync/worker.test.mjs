@@ -34,3 +34,76 @@ test('credentials stay server-side and redirects cannot leak them', async () => 
   await handle(request('/v1/mushaf/snapshot'), env, fetcher);
   assert.equal(calls.filter(x=>x.url.includes('/oauth2/token')).length,1);
 });
+
+const configured = () => ({QF_CLIENT_ID:'id', QF_CLIENT_SECRET:'private-secret',
+  SYNC_RATE_LIMITER:{limit:async () => ({success:true})}});
+const authResponse = () => Response.json({access_token:'private-token', expires_in:3600});
+async function assertSafeFailure(response) {
+  assert.equal(response.status,503);
+  assert.equal(await response.text(),'{"error":"upstream_unavailable"}');
+  assert.equal(response.headers.get('cache-control'),'no-store');
+}
+
+test('a failed rate limiter fails closed without making upstream calls', async () => {
+  const env=configured(); let calls=0;
+  env.SYNC_RATE_LIMITER.limit=async () => {throw Error('private-secret diagnostic');};
+  await assertSafeFailure(await handle(request('/v1/mushaf/snapshot'),env,
+    async () => {calls++; throw Error('must not fetch');}));
+  assert.equal(calls,0);
+});
+
+test('oversized streamed upstream JSON is cancelled and never returned', async () => {
+  const env=configured(); let emitted=0, cancelled=false;
+  const stream=new ReadableStream({
+    pull(controller) {emitted++; controller.enqueue(new Uint8Array(1024*1024));},
+    cancel() {cancelled=true;},
+  });
+  await assertSafeFailure(await handle(request('/v1/mushaf/snapshot'),env,
+    async url => url.includes('/oauth2/token') ? authResponse()
+      : new Response(stream,{headers:{'content-type':'application/json'}})));
+  assert.equal(cancelled,true);
+  assert.ok(emitted>=49 && emitted<=50,'48MiB bound must stop consumption, allowing one queued chunk');
+});
+
+test('malformed JSON and unexpected content types fail safely', async () => {
+  for (const [body,type] of [['{"private-token":','application/json'],
+    ['private-secret upstream page','text/html']]) {
+    await assertSafeFailure(await handle(request('/v1/mushaf/snapshot'),configured(),
+      async url => url.includes('/oauth2/token') ? authResponse()
+        : new Response(body,{headers:{'content-type':type}})));
+  }
+});
+
+test('upstream fetch timeout uses an abort signal and returns a safe failure', async t => {
+  // Accelerate the real AbortSignal timer; the production duration remains
+  // asserted and unchanged. No production endpoint or wall-clock45s wait.
+  const timeout=AbortSignal.timeout.bind(AbortSignal); const durations=[];
+  t.mock.method(AbortSignal,'timeout',milliseconds => {
+    durations.push(milliseconds); return timeout(10);
+  });
+  const keepingEventLoopAlive=setTimeout(() => {},1000);
+  try {
+    await assertSafeFailure(await handle(request('/v1/mushaf/snapshot'),configured(),
+      async (url,options) => {
+        if (url.includes('/oauth2/token')) return authResponse();
+        assert.equal(options.redirect,'error');
+        return new Promise((resolve,reject) => {
+          options.signal.addEventListener('abort',() => reject(options.signal.reason),{once:true});
+        });
+      }));
+    assert.deepEqual(durations,[15000,45000]);
+  } finally {clearTimeout(keepingEventLoopAlive);}
+});
+
+test('authentication failure and invalid token payload never reach content API', async () => {
+  for (const response of [new Response('private-secret',{status:401}),
+    Response.json({access_token:'private-token',expires_in:1})]) {
+    let contentCalls=0;
+    await assertSafeFailure(await handle(request('/v1/mushaf/snapshot'),configured(),
+      async url => {
+        if (url.includes('/oauth2/token')) return response;
+        contentCalls++; throw Error('must not fetch');
+      }));
+    assert.equal(contentCalls,0);
+  }
+});

@@ -6,6 +6,23 @@ import WhisperKit
 /// Injected lifecycle notifications and identified reference PCM. These tests
 /// do not connect Bluetooth hardware or claim to exercise an iPhone microphone.
 final class QuranMicrophoneInputLifecycleTests: XCTestCase {
+    @MainActor func testBackgroundInputNotificationCanHandOffToMainActor() async {
+        let center = NotificationCenter(), engine = NSObject()
+        let received = expectation(description: "Background input failure reaches the UI actor")
+        let events = QuranAudioInputEvents(engine: engine, center: center) { error in
+            Task { @MainActor in
+                XCTAssertTrue(error is QuranAudioInputFailure)
+                received.fulfill()
+            }
+        }
+        events.arm()
+        DispatchQueue.global().async {
+            center.post(name: .AVAudioEngineConfigurationChange, object: engine)
+        }
+        await fulfillment(of: [received], timeout: 3)
+        withExtendedLifetime(events) {}
+    }
+
     func testEngineConfigurationChangeReportsOwnedInputLossOnlyOnceWhileArmed() {
         let center = NotificationCenter(), engine = NSObject(), otherEngine = NSObject()
         var failures = 0
@@ -50,9 +67,7 @@ final class QuranMicrophoneInputLifecycleTests: XCTestCase {
     @MainActor func testConfigurationEventDuringStartPausesActualReferenceAudioAndRouteChangeOnResumePreservesBothTakes() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let (bytes, response) = try await URLSession.shared.data(from:
-            URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))

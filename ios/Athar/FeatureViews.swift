@@ -21,6 +21,10 @@ struct QuranView: View {
             Section {
                 Text("١١٤ سورة. تابع القراءة من آخر صفحة واحفظ علاماتك.")
                     .font(.subheadline).foregroundStyle(.secondary)
+                NavigationLink { NoorRecitersView() } label: {
+                    Label("تلاوات أئمة الحرمين", systemImage: "headphones")
+                        .frame(minHeight: 44)
+                }.accessibilityIdentifier("quran.haramainReciters")
             }
             ForEach(filtered) { surah in
                 NavigationLink { MushafReader(chapter: surah.number) } label: {
@@ -165,6 +169,7 @@ struct SettingsView: View {
                 NavigationLink("حماية وقت الورد") { NoorFocusView() }
             }
             Section("الميكروفون والتسميع") {
+                DisclosureGroup("الميكروفون والتسجيلات") {
                 Text(microphonePermission == .granted ? "الميكروفون مسموح" : microphonePermission == .denied ? "إذن الميكروفون مرفوض" : "لم يُطلب إذن الميكروفون بعد")
                     .accessibilityIdentifier("settings.microphone.status")
                 if microphonePermission == .undetermined {
@@ -189,17 +194,18 @@ struct SettingsView: View {
                     .disabled(erasingRecitation || erasing || preparingExport).accessibilityIdentifier("settings.recitation.erase")
                 if erasingRecitation { ProgressView("حذف تسجيلات التسميع…") }
                 if let recitationRemovalMessage { Text(recitationRemovalMessage).font(.footnote).accessibilityIdentifier(recitationRemovalMessage == "حُذفت تسجيلات وسجلات التسميع." ? "settings.recitation.erased" : "settings.recitation.eraseError") }
+                }
             }
             Section("مساحة تحترم خصوصيتك") {
-                Text(account.available
-                     ? "الحساب اختياري، ولا إعلانات أو تتبع. بياناتك محفوظة على جهازك؛ لا تُرفع بيانات تقدمك إلا باختيارك من صفحة الحساب. المزامنة لا تتضمن التسجيلات والتأملات والموقع."
-                     : "لا حساب مطلوب، ولا إعلانات أو تتبع. رحلاتك وتأملاتك وعلاماتك وسجلات حفظك محفوظة محليًا.")
                 Toggle("تقليل الحركة", isOn: Binding(
                     get: { store.data.lowMotion }, set: { value in store.update { $0.lowMotion = value } }
                 ))
                 Toggle("خط قرآن أكبر", isOn: Binding(
                     get: { store.data.largeQuran }, set: { value in store.update { $0.largeQuran = value } }
                 ))
+                NavigationLink("مساحة التلاوات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
+                NavigationLink("الخصوصية") { PrivacyView() }.accessibilityIdentifier("settings.privacy")
+                DisclosureGroup("إدارة بياناتي") {
                 Button("تصدير بياناتي") {
                     Task { @MainActor in
                     guard !preparingExport, !erasing, !erasingRecitation else { return }
@@ -231,19 +237,22 @@ struct SettingsView: View {
                 Text("ملف التصدير غير مشفر. احفظه في مكان خاص. يمكن حذف ملفات التسميع من قسم الميكروفون والتسميع.").font(.subheadline).foregroundStyle(.secondary)
                 Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing || erasingRecitation || preparingExport)
                 if erasing { ProgressView("حذف البيانات والنموذج المحلي…") }
-                NavigationLink("سياسة الخصوصية") { PrivacyView() }.accessibilityIdentifier("settings.privacy")
+                }
+                DisclosureGroup("المساعدة والأدوات") {
                 NavigationLink("شروط الاستخدام") { NoorLegalDocumentView(documentID: "terms") }.accessibilityIdentifier("settings.terms")
                 NavigationLink("الدعم والمساعدة") { NoorLegalDocumentView(documentID: "support") }.accessibilityIdentifier("settings.support")
                 NavigationLink("علاماتي") { LibraryView() }.accessibilityIdentifier("settings.library")
-                NavigationLink("التنزيلات") { NoorAudioDownloadsView() }.accessibilityIdentifier("settings.downloads")
                 NavigationLink("أدوات الشاشة") { NoorWidgetGuide() }.accessibilityIdentifier("settings.widgets")
+                }
             }
             Section("عن نور الروح") {
+                DisclosureGroup("عن التطبيق") {
                 Text("مصحف كامل، وأذكار ومواقيت الصلاة. التسميع يحاول تحديد موضع التلاوة داخل المصحف، وقد يتعذّر التتبع. لا يقيس صحة النطق أو التجويد. يمكن حذف الصوت وبيانات التسميع المحلية من الإعدادات.")
                     .accessibilityIdentifier("settings.studyCapability")
                 Text("النص القرآني مضمّن في التطبيق. مواقيت الصلاة محسوبة محليًا. لا يقدم نور الروح فتاوى أو تفسيرًا مولدًا.")
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · البناء \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
                     .font(.subheadline).foregroundStyle(.secondary)
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -314,6 +323,18 @@ struct SettingsView: View {
 
 struct PrivacyView: View {
     var body: some View {
-        NoorLegalDocumentView(documentID: "privacy")
+        List {
+            Section {
+                Label("الحساب اختياري", systemImage: "person.crop.circle")
+                Label("لا إعلانات أو تتبع", systemImage: "hand.raised")
+                Label("المزامنة باختيارك", systemImage: "icloud")
+            }
+            Section("الصوت والبيانات") {
+                Text("التسجيلات والتأملات والموقع لا تدخل في المزامنة السحابية. يمكنك تصدير بياناتك أو حذفها من إدارة بياناتي.")
+            }
+            Section {
+                NavigationLink("قراءة سياسة الخصوصية كاملة") { NoorLegalDocumentView(documentID: "privacy") }
+            }
+        }.noorScreenChrome().navigationTitle("الخصوصية")
     }
 }

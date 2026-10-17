@@ -1,0 +1,65 @@
+name: Pinned phonetic backend deployment probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/benchmark-phoneme-backend.py
+      - scripts/inspect-reviewed-recitation-dataset.py
+      - scripts/evaluate-qalqala-acoustics.py
+      - .github/workflows/phoneme-evaluation.yml
+permissions:
+  contents: read
+jobs:
+  acoustic-category-investigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6 scikit-learn==1.7.2 av==16.1.0
+      - run: python scripts/evaluate-qalqala-acoustics.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-acoustic-category-measurements
+          path: qalqala-acoustic-evaluation.json
+          if-no-files-found: warn
+  reviewed-data-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install openpyxl==3.1.5
+      - run: python scripts/inspect-reviewed-recitation-dataset.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reviewed-dataset-schema
+          path: reviewed-dataset-schema.json
+          if-no-files-found: warn
+  public-audio-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU inference runtime
+        run: python -m pip install --only-binary=":all:" numpy==2.2.6 onnxruntime==1.22.1 transformers==4.57.1 av==16.1.0
+      - name: Execute real phonetic inference on pinned public recordings
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+          TOKENIZERS_PARALLELISM: 'false'
+        run: python scripts/benchmark-phoneme-backend.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phonetic-deployment-measurements
+          path: phoneme-probe-result.json
+          if-no-files-found: warn

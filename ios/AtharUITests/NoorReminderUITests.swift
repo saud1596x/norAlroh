@@ -10,7 +10,7 @@ final class NoorReminderUITests: XCTestCase {
     func testIndependentEditorsSaveDaysAndQuietSettingsAcrossRelaunch() {
         let app = XCUIApplication(); launchNoorApp(app)
         openReminders(app)
-        for kind in ["dua", "morning", "evening", "salawat", "hifz"] {
+        for kind in ["morning", "evening", "witr", "duha"] {
             tapVisible(app.buttons["reminders.\(kind)"], app: app)
             let enabled = app.switches["reminder.enabled"]
             XCTAssertTrue(enabled.waitForExistence(timeout: 10))
@@ -24,7 +24,7 @@ final class NoorReminderUITests: XCTestCase {
             saveAndReturnToHub(app)
         }
         app.terminate(); launchNoorApp(app); openReminders(app)
-        for kind in ["dua", "morning", "evening", "salawat", "hifz"] {
+        for kind in ["morning", "evening", "witr", "duha"] {
             tapVisible(app.buttons["reminders.\(kind)"], app: app)
             XCTAssertEqual(app.switches["reminder.enabled"].value as? String, "0")
             let friday = app.switches["reminder.weekday.6"]
@@ -36,10 +36,25 @@ final class NoorReminderUITests: XCTestCase {
             saveAndReturnToHub(app)
         }
     }
+    func testSalawatEditorHasFixedFiveMinuteSilentMessageWithoutTimeFields() {
+        let app = XCUIApplication(); launchNoorApp(app); openReminders(app)
+        tapVisible(app.buttons["reminders.salawat"], app: app)
+        XCTAssertTrue(app.switches["reminder.enabled"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["❀ اللهم صلِّ على نبينا محمد ﷺ ❀"].exists)
+        XCTAssertFalse(app.datePickers["reminder.start"].exists)
+        XCTAssertFalse(app.pickers["reminder.frequency"].exists)
+        XCTAssertFalse(app.switches["reminder.quiet"].exists)
+        setSwitch(app.switches["reminder.enabled"], to: "0", app: app)
+        saveAndReturnToHub(app)
+        app.terminate(); launchNoorApp(app); openReminders(app)
+        tapVisible(app.buttons["reminders.salawat"], app: app)
+        XCTAssertEqual(app.switches["reminder.enabled"].value as? String, "0")
+        XCTAssertTrue(app.staticTexts["❀ اللهم صلِّ على نبينا محمد ﷺ ❀"].exists)
+    }
     private func openReminders(_ app: XCUIApplication) {
         tapVisible(app.buttons["app.settings"], app: app)
         tapVisible(app.buttons["settings.reminders"], app: app)
-        XCTAssertTrue(app.buttons["reminders.dua"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["reminders.morning"].waitForExistence(timeout: 10))
     }
     private func requireVisible(_ element: XCUIElement, app: XCUIApplication) {
         // List may not create an off-screen row until the user scrolls.

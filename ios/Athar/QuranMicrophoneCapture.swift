@@ -6,49 +6,66 @@ import Foundation
 protocol QuranAudioCapture: AnyObject {
     func start() throws
     func stop() async -> Result<Int64, Error>
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void)
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void)
+}
+extension QuranAudioCapture {
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) {}
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) {}
 }
 
 final class QuranMicrophoneCapture: QuranAudioCapture {
     private let engine: AVAudioEngine
+    private let inputNode: AVAudioInputNode
+    private let inputFormat: AVAudioFormat
     private let pipe: Pipe
     private let inputEvents: QuranAudioInputEvents
     private var installed = false
-    init(writer: QuranPCMWriter, onFailure: @escaping (Error) -> Void) throws {
+    init(writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
         let engine = AVAudioEngine()
-        let input = engine.inputNode.outputFormat(forBus: 0)
+        let inputNode = engine.inputNode
+        let input = inputNode.outputFormat(forBus: 0)
         guard input.sampleRate > 0, input.channelCount > 0 else { throw QuranCaptureFailure.invalidSamples }
         self.engine = engine
+        self.inputNode = inputNode; inputFormat = input
         pipe = try Pipe(format: input, writer: writer, onFailure: onFailure)
         inputEvents = QuranAudioInputEvents(engine: engine, onFailure: onFailure)
     }
     func start() throws {
+        guard !installed else { return }
         let pipe = self.pipe
-        let input = engine.inputNode
-        input.installTap(onBus: 0, bufferSize: 4096, format: input.outputFormat(forBus: 0)) { buffer, _ in
+        // Retain the node/format for this take. Shutdown must not ask the
+        // engine to initialize or rediscover its input after route loss.
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
             pipe.append(buffer)
         }
         installed = true; engine.prepare()
         inputEvents.arm()
         do { try engine.start() }
-        catch { inputEvents.disarm(); engine.inputNode.removeTap(onBus: 0); installed = false; throw error }
+        catch { inputEvents.disarm(); inputNode.removeTap(onBus: 0); installed = false; throw error }
     }
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) { pipe.observeLevel(observer) }
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) { pipe.observeQuality(observer) }
     func stop() async -> Result<Int64, Error> {
         inputEvents.disarm()
         engine.stop()
-        if installed { engine.inputNode.removeTap(onBus: 0); installed = false }
+        if installed { inputNode.removeTap(onBus: 0); installed = false }
         return await withCheckedContinuation { continuation in
             pipe.finish { continuation.resume(returning: $0) }
         }
     }
-    deinit { inputEvents.disarm(); engine.stop(); if installed { engine.inputNode.removeTap(onBus: 0) } }
+    deinit { inputEvents.disarm(); engine.stop(); if installed { inputNode.removeTap(onBus: 0) } }
     private final class Pipe {
         private let lock = NSLock()
         private let resampler: QuranPCMResampler
         private let writer: QuranPCMWriter
-        private let onFailure: (Error) -> Void
+        private let onFailure: @Sendable (Error) -> Void
         private var stopped = false
         private var failure: Error?
-        init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping (Error) -> Void) throws {
+        private var levelObserver: (@Sendable (Float) -> Void)?
+        private var qualityObserver: (@Sendable (QuranInputQuality.Reading) -> Void)?
+        private var quality = QuranInputQuality()
+        init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
             resampler = try QuranPCMResampler(input: format); self.writer = writer; self.onFailure = onFailure
         }
         func append(_ buffer: AVAudioPCMBuffer) {
@@ -56,8 +73,20 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
             guard !stopped else { return }
             do {
                 let samples = try resampler.convert(buffer)
-                if !samples.isEmpty { writer.append(samples) }
+                if !samples.isEmpty {
+                    // Read the converted microphone samples, independently of
+                    // model throughput. A decorative pulse is not input proof.
+                    levelObserver?(samples.reduce(Float(0)) { max($0, abs($1)) })
+                    for reading in quality.consume(samples) { qualityObserver?(reading) }
+                    writer.append(samples)
+                }
             } catch { stopped = true; failure = error; onFailure(error) }
+        }
+        func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) {
+            lock.lock(); levelObserver = observer; lock.unlock()
+        }
+        func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) {
+            lock.lock(); qualityObserver = observer; lock.unlock()
         }
         func finish(_ completion: @escaping (Result<Int64, Error>) -> Void) {
             lock.lock()
@@ -82,11 +111,11 @@ enum QuranAudioInputFailure: Error {
 /// and offers explicit resume; never claim an automatic restart succeeded.
 final class QuranAudioInputEvents {
     private let center: NotificationCenter
-    private let onFailure: (Error) -> Void
+    private let onFailure: @Sendable (Error) -> Void
     private let lock = NSLock()
     private var armed = false
     private var observations: [NSObjectProtocol] = []
-    init(engine: AnyObject, center: NotificationCenter = .default, onFailure: @escaping (Error) -> Void) {
+    init(engine: AnyObject, center: NotificationCenter = .default, onFailure: @escaping @Sendable (Error) -> Void) {
         self.center = center; self.onFailure = onFailure
         observations.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
             self?.fail(QuranAudioInputFailure.configurationChanged)
@@ -123,11 +152,49 @@ final class QuranAudioInputEvents {
     deinit { observations.forEach { center.removeObserver($0) } }
 }
 
-/// The latest completed audio window replaces older pending inference only.
-/// All audio remains in the writer. Constant space even on a slow device.
+/// Coalesce overlapping windows only when their predecessor still covers the
+/// removed audio. A cold model must not silently skip the beginning of a take.
+/// Eight eight-second windows bound memory to ~4 MB; overload is explicit and
+/// affects tracking only. The independent writer retains the original audio.
 final class QuranWindowMailbox {
+    enum Failure: Error { case overloaded, discontinuousAudio }
     private let lock = NSLock()
-    private var latest: QuranAudioWindow?
-    func put(_ value: QuranAudioWindow) { lock.lock(); defer { lock.unlock() }; latest = value }
-    func take() -> QuranAudioWindow? { lock.lock(); defer { lock.unlock() }; defer { latest = nil }; return latest }
+    private let capacity: Int
+    private var pending: [QuranAudioWindow] = []
+    private var deliveredEnd: Int64 = 0
+    private var receivedEnd: Int64 = 0
+    private var failure: Failure?
+    init(capacity: Int = 8) { self.capacity = max(1, capacity) }
+    func put(_ value: QuranAudioWindow) {
+        lock.lock(); defer { lock.unlock() }
+        guard failure == nil else { return }
+        guard value.startFrame >= 0, value.endFrame > receivedEnd,
+              value.endFrame - value.startFrame == Int64(value.samples.count),
+              !value.samples.isEmpty, value.samples.count <= 128_000,
+              value.startFrame <= receivedEnd else {
+            failure = .discontinuousAudio; pending.removeAll(); return
+        }
+        receivedEnd = value.endFrame
+        if !pending.isEmpty {
+            let predecessorEnd = pending.count > 1 ? pending[pending.count - 2].endFrame : deliveredEnd
+            // Retain a second of overlap for words crossing a decode boundary.
+            let replacementStart = max(0, predecessorEnd - 16_000)
+            if value.startFrame <= replacementStart {
+                pending[pending.count - 1] = value
+                return
+            }
+        }
+        guard pending.count < capacity else {
+            failure = .overloaded; pending.removeAll(); return
+        }
+        pending.append(value)
+    }
+    func take() throws -> QuranAudioWindow? {
+        lock.lock(); defer { lock.unlock() }
+        if let failure { throw failure }
+        guard !pending.isEmpty else { return nil }
+        let next = pending.removeFirst()
+        deliveredEnd = next.endFrame
+        return next
+    }
 }

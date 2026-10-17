@@ -18,6 +18,14 @@ enum RecitationArchive {
         guard check.duration.isFinite, check.duration > 0 else { throw CocoaError(.fileReadCorruptFile) }
         try Data(contentsOf: capture).write(to: destination, options: [.atomic, .completeFileProtection])
     }
+    /// Remove the working take only after the replacement is durably written.
+    /// Any validation/write failure leaves both files available for recovery.
+    static func finalize(capture: URL, destination: URL, saveCapture: Bool) throws {
+        if saveCapture { try save(capture: capture, destination: destination) }
+        if FileManager.default.fileExists(atPath: capture.path) {
+            try FileManager.default.removeItem(at: capture)
+        }
+    }
 }
 
 @MainActor final class LocalRecitationRecorder: NSObject, ObservableObject, AVAudioRecorderDelegate, AVAudioPlayerDelegate {
@@ -30,13 +38,30 @@ enum RecitationArchive {
     @Published private(set) var duration = 0.0
     @Published private(set) var playbackTime = 0.0
     private var capture: URL?
+    @Published private(set) var pendingCaptureSave = false
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
     private var file: URL?
     @Published private(set) var requestingPermission = false
     private var startRevision = 0
-    override init() {
+    private var ownsAudioSession = false
+    private var audioSessionEpoch: UUID?
+    private var recordingFocus = false
+    private let focusID = UUID()
+    private let permission: () async -> Bool
+    private let isActive: @MainActor () -> Bool
+    private let setSessionActive: (Bool) throws -> Void
+    init(permission: @escaping () async -> Bool = {
+        await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
+        }
+    }, isActive: @escaping @MainActor () -> Bool = { UIApplication.shared.applicationState == .active },
+         setSessionActive: @escaping (Bool) throws -> Void = { active in
+             try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
+         }) {
+        self.permission = permission; self.isActive = isActive; self.setSessionActive = setSessionActive
         super.init()
+        NoorAudioFocus.shared.register(focusID) { [weak self] in self?.stop() }
         do {
             let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
                 .appendingPathComponent("NoorRecitation", isDirectory: true)
@@ -52,17 +77,23 @@ enum RecitationArchive {
         requestingPermission = true
         let requestedRevision = startRevision
         defer { requestingPermission = false }
-        let granted = await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
-        }
+        let granted = await permission()
         guard requestedRevision == startRevision else { return }
         guard granted else { message = "اسمح باستخدام الميكروفون من إعدادات iPhone لتسجيل مراجعتك. يمكنك متابعة الحفظ دون تسجيل."; return }
-        guard requestedRevision == startRevision, let file, UIApplication.shared.applicationState == .active else { return }
+        guard requestedRevision == startRevision, let file, isActive() else { return }
         do {
             stop()
+            guard capture == nil else {
+                message = "تعذّر حفظ التسجيل السابق. احتُفظ بالصوت؛ أعد محاولة الحفظ قبل بدء تسجيل جديد."; return
+            }
+            guard NoorAudioFocus.shared.acquireRecording(focusID) else {
+                message = "أوقف جلسة التسميع الأخرى أولًا."; return
+            }
+            recordingFocus = true
             let session = AVAudioSession.sharedInstance()
             try MushafCaptureAudio.configure(session)
-            try session.setActive(true)
+            try setSessionActive(true); ownsAudioSession = true
+            audioSessionEpoch = NoorAudioFocus.shared.audioSessionEpoch
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             let temporary = file.deletingLastPathComponent().appendingPathComponent(".capture-" + UUID().uuidString + ".m4a")
             capture = temporary
@@ -83,27 +114,37 @@ enum RecitationArchive {
     }
     func stop(saveCapture: Bool = true) {
         startRevision += 1
-        let shouldSave = recording && saveCapture
+        if recording && saveCapture { pendingCaptureSave = true }
         recorder?.stop(); recorder = nil; player?.stop(); player = nil
         recording = false; playing = false; level = 0
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        if let capture, let file {
-            if shouldSave {
-                do {
-                    try RecitationArchive.save(capture: capture, destination: file)
-                } catch { message = "تعذّر حفظ التسجيل الجديد. التسجيل السابق لم يُستبدل. حاول مجددًا." }
-            }
-            do { if FileManager.default.fileExists(atPath: capture.path) { try FileManager.default.removeItem(at: capture) } }
-            catch { message = "تعذّر حذف ملف التسجيل المؤقت. احذف التسجيلات من الإعدادات للمحاولة مجددًا." }
+        // An idle legacy control can disappear while the Mushaf is listening.
+        // It must never deactivate the app-wide session owned by that player.
+        if audioSessionEpoch != NoorAudioFocus.shared.audioSessionEpoch { ownsAudioSession = false }
+        if ownsAudioSession {
+            do { try setSessionActive(false); ownsAudioSession = false }
+            catch { /* Keep ownership so explicit stop can retry. */ }
         }
-        capture = nil
+        if recordingFocus { NoorAudioFocus.shared.releaseRecording(focusID); recordingFocus = false }
+        if let capture, let file {
+            do {
+                try RecitationArchive.finalize(capture: capture, destination: file, saveCapture: pendingCaptureSave)
+                self.capture = nil; pendingCaptureSave = false
+            } catch {
+                message = "تعذّر إكمال حفظ التسجيل. احتُفظ بملف الصوت لإعادة المحاولة."
+            }
+        }
         hasRecording = file.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
     }
     func play() {
         guard !recording, let file, hasRecording else { return }
+        stop()
+        guard NoorAudioFocus.shared.preparePlayback(focusID) else {
+            message = "أوقف التسميع أولًا للاستماع إلى التسجيل."; return
+        }
         do {
             let session = AVAudioSession.sharedInstance(); try session.setCategory(.playback, mode: .spokenAudio)
-            try session.setActive(true)
+            try setSessionActive(true); ownsAudioSession = true
+            audioSessionEpoch = NoorAudioFocus.shared.audioSessionEpoch
             let audio = try AVAudioPlayer(contentsOf: file); audio.delegate = self; player = audio
             guard audio.play() else { throw CocoaError(.fileReadUnknown) }
             duration = audio.duration; playbackTime = 0; playing = true; message = nil
@@ -114,7 +155,9 @@ enum RecitationArchive {
         player.currentTime = min(player.duration, max(0, time)); playbackTime = player.currentTime
     }
     @discardableResult func erase() -> Bool {
-        stop()
+        // Erasure is an explicit user action, unlike incidental view cleanup.
+        pendingCaptureSave = false
+        stop(saveCapture: false)
         guard let file else { return true }
         do {
             let directory = file.deletingLastPathComponent()
@@ -147,6 +190,13 @@ enum RecitationArchive {
             guard let self, self.player === player else { return }; self.stop()
         }
     }
+    deinit {
+        let id = focusID
+        Task { @MainActor in
+            NoorAudioFocus.shared.releaseRecording(id)
+            NoorAudioFocus.shared.unregister(id)
+        }
+    }
 }
 
 struct RecitationRecordingControls: View {
@@ -160,6 +210,11 @@ struct RecitationRecordingControls: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("سجّل تسميعك", systemImage: "mic.fill").font(.headline)
             Text("سمّع من حفظك، ثم استمع وقارن بالنص.").font(.subheadline).foregroundStyle(.secondary)
+            if audio.pendingCaptureSave && !audio.recording {
+                Button("إعادة حفظ التسجيل", systemImage: "arrow.clockwise") { audio.stop() }
+                    .buttonStyle(.borderedProminent).frame(minHeight: 44)
+                    .accessibilityIdentifier("recitation.retrySave")
+            }
             HStack {
                 Button {
                     if audio.recording { audio.stop() }
@@ -175,13 +230,15 @@ struct RecitationRecordingControls: View {
                     }.frame(minHeight: 44).accessibilityIdentifier("recitation.play")
                 }
             }.font(.subheadline).buttonStyle(.bordered)
-            if audio.hasRecording && !audio.recording {
+            if (audio.hasRecording || audio.pendingCaptureSave) && !audio.recording {
                 HStack {
-                    Button("تصدير الصوت", systemImage: "square.and.arrow.up") {
-                        do {
-                            if let bytes = try audio.exportRecording() { document = ExportDocument(bytes: bytes); exporting = true }
-                        } catch { audio.message = "تعذّر تجهيز ملف الصوت للتصدير." }
-                    }.accessibilityIdentifier("recitation.export")
+                    if audio.hasRecording {
+                        Button("تصدير الصوت", systemImage: "square.and.arrow.up") {
+                            do {
+                                if let bytes = try audio.exportRecording() { document = ExportDocument(bytes: bytes); exporting = true }
+                            } catch { audio.message = "تعذّر تجهيز ملف الصوت للتصدير." }
+                        }.accessibilityIdentifier("recitation.export")
+                    }
                     Spacer()
                     Button("حذف", role: .destructive) { deleteConfirmation = true }.accessibilityIdentifier("recitation.delete")
                 }.font(.caption).frame(minHeight: 44)
@@ -209,7 +266,7 @@ struct RecitationRecordingControls: View {
             Button("بدء تسجيل جديد") { Task { await audio.start() } }
             Button("إلغاء", role: .cancel) {}
         }
-        .confirmationDialog("حذف تسميعك المحفوظ نهائيًا؟", isPresented: $deleteConfirmation, titleVisibility: .visible) {
+        .confirmationDialog("حذف التسجيل المحفوظ وأي تسجيل ينتظر الحفظ نهائيًا؟", isPresented: $deleteConfirmation, titleVisibility: .visible) {
             Button("حذف التسجيل", role: .destructive) { _ = audio.erase() }
             Button("إلغاء", role: .cancel) {}
         }

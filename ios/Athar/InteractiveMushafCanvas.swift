@@ -6,7 +6,7 @@ import CryptoKit
 /// Research candidate: QCF V2 page fonts and authored V2 row alignment.
 /// Word IDs always come from Content Sync; QUL's token IDs are never imported.
 struct OriginalMushafRows: Decodable, Sendable {
-    struct Row: Decodable, Sendable { let page: Int; let line: Int; let type: String; let centered: Bool; let chapter: Int? }
+    struct Row: Decodable, Sendable, Equatable { let page: Int; let line: Int; let type: String; let centered: Bool; let chapter: Int? }
     let rows: [Row]
     static func load() throws -> Self {
         guard let url = Bundle.main.url(forResource: "qpc-v2-line-layout", withExtension: "json") else { throw QCFV2Snapshot.Invalid.page }
@@ -45,10 +45,10 @@ struct OriginalMushafRows: Decodable, Sendable {
     static let basmala = "\u{FB5A} \u{FB5B} \u{FB5C} \u{FB5D}"
 }
 
-struct OriginalPageWord {
+struct OriginalPageWord: Equatable {
     let id: Int; let verse: String; let code: String; let line: Int; let order: Int
 }
-struct OriginalPageData {
+struct OriginalPageData: Equatable {
     let number: Int; let words: [OriginalPageWord]; let rows: [OriginalMushafRows.Row]
     static func index(snapshot: QCFV2Snapshot, rows: OriginalMushafRows, keys: [String]) -> [Int: Self] {
         let records = Dictionary(grouping: snapshot.records.filter { $0.record_type == "mushaf_word" }, by: { $0.page_number! })
@@ -94,11 +94,35 @@ struct OriginalPageData {
     private var lines: [(CTLine, CGPoint)] = []
     private var shapedTexts: [NSAttributedString] = []
     private var lineWordRanges: [[(NSRange, Int)]] = []
+    private var wordLines: [Int: Int] = [:]
+    var tajweedEnabled = false
+    private var coloredInk: [(Int, CGPath, UIColor)] = []
+    private struct ShapedPage {
+        let page: OriginalPageData
+        let style: UIUserInterfaceStyle
+        let tajweed: Bool
+        let coloredInk: [(Int, CGPath, UIColor)]
+        let lines: [(CTLine, CGPoint)]
+        let texts: [NSAttributedString]
+        let ranges: [[(NSRange, Int)]]
+        let regions: [Hit]
+        let wordLines: [Int: Int]
+        let decorations: [CGPath]
+        let geometry: [RowGeometry]
+        let clearances: [CGFloat]
+    }
+    // Bound the cache to nearby pages, and validate the complete authored page
+    // rather than only its number. Never retain reader/session highlights here.
+    private var shapedPages: [ShapedPage] = []
+    private(set) var shapingPasses = 0
     var hiddenWordIDs: Set<Int> = [] {
         didSet {
             guard oldValue != hiddenWordIDs else { return }
             refreshAccessibilityLabels(); updateHighlight(); ink.setNeedsDisplay()
         }
+    }
+    var reviewWordIDs: Set<Int> = [] {
+        didSet { if oldValue != reviewWordIDs { refreshAccessibilityLabels(); updateHighlight() } }
     }
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة." {
         didSet { if oldValue != hiddenTextAccessibilityHint { refreshAccessibilityLabels() } }
@@ -114,14 +138,25 @@ struct OriginalPageData {
     var onVerse: ((String?) -> Void)?
     var onFailure: (() -> Void)?
     var reduceMotion = false
-    var selected: String? { didSet { if oldValue != selected { updateHighlight() } } }
+    var selected: String? { didSet { if oldValue != selected { updateHighlight(animateSelection: true) } } }
+    var activeWordID: Int? { didSet { if oldValue != activeWordID { updateActiveWord() } } }
     private let highlight = CAShapeLayer()
+    private let activeWord = CAShapeLayer()
+    private let reviewUnderline = CAShapeLayer()
     private var ink: OriginalMushafInk!
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear; isOpaque = false
         highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
         layer.addSublayer(highlight)
+        activeWord.fillColor = nil
+        activeWord.lineWidth = 2.5
+        activeWord.lineCap = .round
+        layer.addSublayer(activeWord)
+        reviewUnderline.fillColor = nil
+        reviewUnderline.strokeColor = UIColor.secondaryLabel.cgColor
+        reviewUnderline.lineWidth = 1.5; reviewUnderline.lineDashPattern = [3, 3]
+        layer.addSublayer(reviewUnderline)
         ink = OriginalMushafInk(frame: CGRect(origin: .zero, size: Self.pageSize))
         ink.owner = self; ink.isUserInteractionEnabled = false; ink.backgroundColor = .clear
         ink.isOpaque = false; addSubview(ink)
@@ -130,8 +165,25 @@ struct OriginalPageData {
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
     func configure(page: OriginalPageData, corpus: [Surah]) {
+        if let saved = shapedPages.first(where: { $0.page == page && $0.style == traitCollection.userInterfaceStyle && $0.tajweed == tajweedEnabled }) {
+            lines = saved.lines; shapedTexts = saved.texts; lineWordRanges = saved.ranges
+            regions = saved.regions; wordLines = saved.wordLines; decorationPaths = saved.decorations
+            rowGeometry = saved.geometry; headerClearances = saved.clearances
+            coloredInk = saved.coloredInk
+            renderedSuccessfully = true; failureReason = nil
+            configureAccessibility(page: page, corpus: corpus)
+            return
+        }
+        shapingPasses += 1
+        coloredInk = []
         lines = []; shapedTexts = []; lineWordRanges = []; regions = []; decorationPaths = []; rowGeometry = []; headerClearances = []; renderedSuccessfully = false; failureReason = nil
-        guard let body = UIFont(name: String(format: "QCF2%03d", page.number), size: Metrics.bodyPointSize),
+        wordLines = Dictionary(uniqueKeysWithValues: page.words.map { ($0.id, $0.line) })
+        let tajweedPage: MushafTajweedFonts.Page?
+        do { tajweedPage = tajweedEnabled ? try MushafTajweedFonts.load(page.number) : nil }
+        catch { fail("Original Tajweed font integrity failed"); return }
+        // V4 has its own em/advances. One fixed edition size fits all authored
+        // rows; never horizontally squeeze glyphs or change size per line.
+        guard let body = UIFont(name: tajweedPage?.family ?? String(format: "QCF2%03d", page.number), size: tajweedEnabled ? 23 : Metrics.bodyPointSize),
               let companion = UIFont(name: OriginalMushafCompanion.name, size: Metrics.bodyPointSize) else { fail("Missing page or companion font"); return }
         // Content Sync contains ASCII separators both between logical words and
         // inside multi-glyph words. Some page fonts omit FB50 entirely. Keep
@@ -177,7 +229,10 @@ struct OriginalPageData {
             let baseline = row.type == "surah_name"
                 ? rowTop + 30.5 + ink.midY
                 : rowTop + Metrics.baselineOffset
-            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX, y: baseline)
+            // Optical balance requested by the reader: move ayah ink and its hit
+            // geometry together, without changing glyphs or authored line widths.
+            let opticalShift: CGFloat = row.type == "ayah" ? -4.5 : 0
+            let origin = CGPoint(x: (row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX) + opticalShift, y: baseline)
             let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
             guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
                   pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
@@ -199,6 +254,11 @@ struct OriginalPageData {
                 guard family == font.fontName || (!header && family == companion.fontName && substring.allSatisfy({ $0 == " " })) else {
                     fail("Unexpected font \(family), row \(row.line)"); return
                 }
+                // A compound canonical word may contain ASCII separators.
+                // Their companion-font glyph IDs are not page-font glyph IDs;
+                // never look them up in the page's COLR table. Advances remain
+                // in the whole shaped line, but blank separators have no ink.
+                if !header && family == companion.fontName && substring.allSatisfy({ $0 == " " }) { continue }
                 let count = CTRunGetGlyphCount(run)
                 var glyphs = [CGGlyph](repeating: 0, count: count)
                 var positions = [CGPoint](repeating: .zero, count: count)
@@ -208,16 +268,20 @@ struct OriginalPageData {
                 CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
                 guard !glyphs.contains(0) else { fail("Missing shaped glyph, row \(row.line)"); return }
                 for i in 0..<count {
-                    guard let path = CTFontCreatePathForGlyph(runFont, glyphs[i], nil) else { continue }
-                    let box = path.boundingBoxOfPath
-                    guard !box.isEmpty, let entry = ranges.first(where: { NSLocationInRange(indices[i], $0.0) }) else { continue }
-                    let rect = CGRect(x: origin.x + positions[i].x + box.minX,
-                                      y: baseline - positions[i].y - box.maxY,
-                                      width: box.width, height: box.height)
-                    wordRects[entry.1.id] = wordRects[entry.1.id].map { $0.union(rect) } ?? rect
+                    guard let entry = ranges.first(where: { NSLocationInRange(indices[i], $0.0) }) else { continue }
+                    let parts: [(CGPath, UIColor)]
+                    if let tajweedPage {
+                        parts = tajweedPage.paths(glyph: glyphs[i], font: runFont, dark: traitCollection.userInterfaceStyle == .dark)
+                    } else { parts = CTFontCreatePathForGlyph(runFont, glyphs[i], nil).map { [($0, UIColor.label)] } ?? [] }
                     var transform = CGAffineTransform(a: 1, b: 0, c: 0, d: -1,
                         tx: origin.x + positions[i].x, ty: baseline - positions[i].y)
-                    if let placed = path.copy(using: &transform) { wordPaths[entry.1.id, default: []].append(placed) }
+                    for (path, color) in parts where !path.boundingBoxOfPath.isEmpty {
+                        guard let placed = path.copy(using: &transform) else { continue }
+                        let rect = placed.boundingBoxOfPath
+                        wordRects[entry.1.id] = wordRects[entry.1.id].map { $0.union(rect) } ?? rect
+                        wordPaths[entry.1.id, default: []].append(placed)
+                        if tajweedEnabled { coloredInk.append((entry.1.id, placed, color)) }
+                    }
                 }
             }
             for (_, word) in ranges {
@@ -229,6 +293,15 @@ struct OriginalPageData {
         // Authored FC20 ornament paths remain independent of title text.
         // Matching the target edition and distribution rights are review gates.
         renderedSuccessfully = true
+        shapedPages.removeAll { $0.page.number == page.number && $0.tajweed == tajweedEnabled }
+        shapedPages.append(ShapedPage(page: page, style: traitCollection.userInterfaceStyle,
+            tajweed: tajweedEnabled, coloredInk: coloredInk,
+            lines: lines, texts: shapedTexts, ranges: lineWordRanges, regions: regions,
+            wordLines: wordLines, decorations: decorationPaths, geometry: rowGeometry, clearances: headerClearances))
+        if shapedPages.count > 3 { shapedPages.removeFirst(shapedPages.count - 3) }
+        configureAccessibility(page: page, corpus: corpus)
+    }
+    private func configureAccessibility(page: OriginalPageData, corpus: [Surah]) {
         accessibilityElements = orderedKeys(page).compactMap { key -> UIAccessibilityElement? in
             let parts = key.split(separator: ":").compactMap { Int($0) }
             guard parts.count == 2, corpus.indices.contains(parts[0] - 1), corpus[parts[0] - 1].ayahs.indices.contains(parts[1] - 1) else { return nil }
@@ -253,6 +326,9 @@ struct OriginalPageData {
             element.action = allowsVerseSelection ? { [weak self] in self?.onVerse?(key) } : nil
             element.accessibilityLabel = element.heading + ". " + (hiddenVerses.contains(element.verseKey)
                 ? hiddenTextAccessibilityHint : element.fullText)
+            if regions.contains(where: { $0.verse == key && reviewWordIDs.contains($0.word) && !hiddenWordIDs.contains($0.word) }) {
+                element.accessibilityLabel = (element.accessibilityLabel ?? "") + ". توجد ملاحظة صوتية غير محسومة للمراجعة، وليست خطأ مؤكدًا."
+            }
         }
     }
     /// A title and its separate basmala share the space between actual body ink.
@@ -349,25 +425,40 @@ struct OriginalPageData {
     private var selectionColor: UIColor {
         UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.86, green: 0.71, blue: 0.49, alpha: 0.28)
-                : UIColor(red: 0.45, green: 0.30, blue: 0.13, alpha: 0.16)
+                ? UIColor(red: 1, green: 0.83, blue: 0.12, alpha: 0.45)
+                : UIColor(red: 1, green: 0.85, blue: 0.10, alpha: 0.58)
         }
     }
-    /// Use the same shaped outlines as the ink, including vowels and every line.
-    /// Never paint word rectangles or the space between separate verse lines.
+    /// A continuous yellow band follows each visible run on its authored row.
+    /// Hidden words and neighboring ayat split bands; glyphs never move.
     func selectionPath(for key: String?) -> CGPath? {
         guard let key else { return nil }
         let chosen = regions.filter { $0.verse == key && !hiddenWordIDs.contains($0.word) }
         guard !chosen.isEmpty else { return nil }
-        let glyphs = CGMutablePath()
-        for region in chosen { for path in region.paths { glyphs.addPath(path) } }
-        let halo = glyphs.union(glyphs.copy(strokingWithWidth: 4, lineCap: .round, lineJoin: .round, miterLimit: 1))
-        let neighbors = CGMutablePath()
+        let bands = CGMutablePath()
+        for row in Dictionary(grouping: regions, by: { wordLines[$0.word] ?? $0.word }).values {
+            var band = CGRect.null
+            func flush() {
+                guard !band.isNull else { return }
+                bands.addRoundedRect(in: band.insetBy(dx: -2, dy: -2), cornerWidth: 3, cornerHeight: 3)
+                band = .null
+            }
+            for region in row.sorted(by: { $0.rect.minX < $1.rect.minX }) {
+                if region.verse == key && !hiddenWordIDs.contains(region.word) { band = band.union(region.rect) }
+                else { flush() }
+            }
+            flush()
+        }
+        let halo: CGPath = bands
+        var neighbors: CGPath = CGMutablePath()
         for region in regions where region.verse != key && !hiddenWordIDs.contains(region.word)
             && region.rect.insetBy(dx: -2, dy: -2).intersects(halo.boundingBoxOfPath) {
             for path in region.paths {
-                neighbors.addPath(path)
-                neighbors.addPath(path.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1))
+                // Appending glyph contours and stroked contours can cancel
+                // opposite windings and leave holes in the exclusion mask.
+                // Boolean union preserves both filled areas before subtraction.
+                let margin = path.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1)
+                neighbors = neighbors.union(path.union(margin))
             }
         }
         return neighbors.isEmpty ? halo : halo.subtracting(neighbors)
@@ -376,25 +467,59 @@ struct OriginalPageData {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
             highlight.fillColor = selectionColor.resolvedColor(with: traitCollection).cgColor
+            ink.setNeedsDisplay()
         }
     }
-    private func updateHighlight() {
+    func reviewPath() -> CGPath? {
+        let path = CGMutablePath()
+        for region in regions where reviewWordIDs.contains(region.word) && !hiddenWordIDs.contains(region.word) {
+            let y = min(Self.pageSize.height - 1, region.rect.maxY + 2)
+            path.move(to: CGPoint(x: region.rect.minX, y: y))
+            path.addLine(to: CGPoint(x: region.rect.maxX, y: y))
+        }
+        return path.isEmpty ? nil : path
+    }
+    private func updateHighlight(animateSelection: Bool = false) {
         CATransaction.begin(); CATransaction.setDisableActions(true)
         highlight.path = selectionPath(for: selected)
+        activeWord.strokeColor = UIColor.systemOrange.resolvedColor(with: traitCollection).cgColor
+        activeWord.path = activeWordPath()
+        reviewUnderline.strokeColor = UIColor.secondaryLabel.resolvedColor(with: traitCollection).cgColor
+        reviewUnderline.path = reviewPath()
         CATransaction.commit()
-        if !reduceMotion && !UIAccessibility.isReduceMotionEnabled { let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1; fade.duration = 0.16; highlight.add(fade, forKey: "select") }
+        if animateSelection && selected != nil && !reduceMotion && !UIAccessibility.isReduceMotionEnabled { let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1; fade.duration = 0.16; highlight.add(fade, forKey: "select") }
+    }
+    private func updateActiveWord() {
+        // Moving between words must not rebuild or flash the ayah's yellow band.
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        activeWord.strokeColor = UIColor.systemOrange.resolvedColor(with: traitCollection).cgColor
+        activeWord.path = activeWordPath()
+        CATransaction.commit()
+    }
+    func activeWordPath() -> CGPath? {
+        guard let activeWordID, !hiddenWordIDs.contains(activeWordID),
+              let region = regions.first(where: { $0.word == activeWordID }) else { return nil }
+        let path = CGMutablePath()
+        let y = min(Self.pageSize.height - 2, region.rect.maxY + 3)
+        path.move(to: CGPoint(x: region.rect.minX, y: y))
+        path.addLine(to: CGPoint(x: region.rect.maxX, y: y))
+        return path
     }
     func drawInk() {
         guard renderedSuccessfully, let context = UIGraphicsGetCurrentContext() else { return }
         context.saveGState()
         context.setFillColor(UIColor.secondaryLabel.withAlphaComponent(0.55).cgColor)
         for path in decorationPaths { context.addPath(path); context.fillPath() }
+        for (word, path, color) in coloredInk where !hiddenWordIDs.contains(word) {
+            context.setFillColor(color.resolvedColor(with: traitCollection).cgColor); context.addPath(path); context.fillPath()
+        }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height); context.scaleBy(x: 1, y: -1)
         for (index, entry) in lines.enumerated() {
             let (line, origin) = entry
             context.textPosition = CGPoint(x: origin.x, y: bounds.height - origin.y)
             let ranges = lineWordRanges[index]
+            if tajweedEnabled && !ranges.isEmpty { continue }
             if !ranges.contains(where: { hiddenWordIDs.contains($0.1) }) {
                 CTLineDraw(line, context)
             } else {
@@ -437,6 +562,22 @@ struct OriginalPageData {
 @MainActor final class OriginalMushafViewport: UIScrollView, UIScrollViewDelegate {
     let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
     private var fitted: CGFloat = 0
+    var pageNumber = 1
+    var pageRange: ClosedRange<Int> = 1...604
+    var allowsManualPageTurns = true {
+        didSet {
+            guard oldValue != allowsManualPageTurns, !allowsManualPageTurns else { return }
+            // Playback can begin while a finger is dragging. Cancel that visual
+            // offset as well as rejecting the gesture's eventual page commit.
+            canvas.layer.removeAnimation(forKey: "pageDragReturn")
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            canvas.layer.sublayerTransform = CATransform3DIdentity
+            CATransaction.commit()
+        }
+    }
+    private(set) var turningPage = false
+    private var turnSnapshot: UIView?
+    private var turnGeneration = UUID()
     var readingMagnification: CGFloat = 1 {
         didSet {
             guard readingMagnification != oldValue, minimumZoomScale > 0 else { return }
@@ -451,7 +592,7 @@ struct OriginalPageData {
     }
     private lazy var pagingDelegate = MushafPagingGestureDelegate(viewport: self)
     var canTurnPages: Bool {
-        onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
+        allowsManualPageTurns && !turningPage && onTurn != nil && canvas.renderedSuccessfully && minimumZoomScale > 0
             && zoomScale <= minimumZoomScale * max(1, readingMagnification) * 1.01
             && pinchGestureRecognizer?.state != .began && pinchGestureRecognizer?.state != .changed
     }
@@ -471,31 +612,74 @@ struct OriginalPageData {
         selection.allowableMovement = 10
         tap.require(toFail: selection)
         addGestureRecognizer(selection)
-        for direction in [UISwipeGestureRecognizer.Direction.right, .left] {
-            let swipe = UISwipeGestureRecognizer(target: self, action: #selector(turnPage(_:)))
-            swipe.direction = direction; swipe.numberOfTouchesRequired = 1
-            swipe.delegate = pagingDelegate
-            addGestureRecognizer(swipe)
-            tap.require(toFail: swipe)
-            panGestureRecognizer.require(toFail: swipe)
-        }
+        let paging = UIPanGestureRecognizer(target: self, action: #selector(dragPage(_:)))
+        paging.maximumNumberOfTouches = 1
+        paging.delegate = pagingDelegate
+        addGestureRecognizer(paging)
+        tap.require(toFail: paging)
+        paging.require(toFail: selection)
+        panGestureRecognizer.require(toFail: paging)
         tap.require(toFail: panGestureRecognizer)
         addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
-    @objc private func turnPage(_ gesture: UISwipeGestureRecognizer) {
-        guard gesture.state == .ended, canTurnPages else { return }
-        // RTL: swipe right advances; zoomed swipes only pan the current page.
-        onTurn?(gesture.direction == .right ? 1 : -1)
+    @objc private func dragPage(_ gesture: UIPanGestureRecognizer) {
+        let distance = gesture.translation(in: self).x
+        let motionAllowed = !canvas.reduceMotion && !UIAccessibility.isReduceMotionEnabled
+            && !ProcessInfo.processInfo.isLowPowerModeEnabled
+        switch gesture.state {
+        case .began, .changed:
+            guard canTurnPages, motionAllowed else { return }
+            canvas.layer.removeAnimation(forKey: "pageDragReturn")
+            let edge = (distance > 0 && pageNumber == pageRange.upperBound) || (distance < 0 && pageNumber == pageRange.lowerBound)
+            let travel = max(-bounds.width * 0.85, min(bounds.width * 0.85, distance)) * (edge ? 0.15 : 1)
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            canvas.layer.sublayerTransform = CATransform3DMakeTranslation(travel / max(zoomScale, 0.001), 0, 0)
+            CATransaction.commit()
+        case .ended, .cancelled, .failed:
+            let velocity = gesture.velocity(in: self).x
+            let target = pageNumber + (distance > 0 ? 1 : -1)
+            let committed = gesture.state == .ended && canTurnPages && pageRange.contains(target)
+                && (abs(distance) >= bounds.width * 0.18 || (abs(distance) >= max(12, bounds.width * 0.08) && abs(velocity) >= 550 && distance * velocity > 0))
+            let previous = canvas.layer.sublayerTransform
+            if committed {
+                // Keep the finger's final offset until the next authored page
+                // is ready. Resetting here causes a visible backwards jump.
+                turningPage = true
+                onTurn?(distance > 0 ? 1 : -1)
+                let generation = turnGeneration
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                    guard let self, self.turnGeneration == generation, self.turnSnapshot == nil else { return }
+                    self.turningPage = false; self.resetToFittedPage()
+                }
+            } else {
+                CATransaction.begin(); CATransaction.setDisableActions(true)
+                canvas.layer.sublayerTransform = CATransform3DIdentity
+                CATransaction.commit()
+                guard motionAllowed else { return }
+                let settle = CABasicAnimation(keyPath: "sublayerTransform")
+                settle.fromValue = NSValue(caTransform3D: previous)
+                settle.toValue = NSValue(caTransform3D: CATransform3DIdentity)
+                settle.duration = 0.2
+                settle.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                canvas.layer.add(settle, forKey: "pageDragReturn")
+            }
+        default: break
+        }
     }
     @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
+        guard !turningPage else { return }
+        if allowsVerseSelection, let key = canvas.verse(at: tap.location(in: canvas)) {
+            canvas.onVerse?(key)
+            return
+        }
         if let onToggleTools { onToggleTools(); return }
         // UIKit applies zoom and offset when converting into the fixed canvas.
         // A margin tap stays blank; it never chooses a nearby verse.
         canvas.onVerse?(canvas.verse(at: tap.location(in: canvas)))
     }
     @objc private func selectedOnViewport(_ gesture: UILongPressGestureRecognizer) {
-        guard gesture.state == .began,
+        guard !turningPage, gesture.state == .began,
               let key = canvas.verse(at: gesture.location(in: canvas)) else { return }
         canvas.onVerse?(key)
     }
@@ -520,21 +704,69 @@ struct OriginalPageData {
         }
     }
     func resetToFittedPage() {
+        canvas.layer.removeAnimation(forKey: "pageDragReturn")
+        canvas.layer.sublayerTransform = CATransform3DIdentity
         setZoomScale(minimumZoomScale * max(1, min(2, readingMagnification)), animated: false)
         setNeedsLayout(); layoutIfNeeded()
         setContentOffset(CGPoint(x: -contentInset.left, y: -contentInset.top), animated: false)
+    }
+    func replacePage(number: Int, animated: Bool, change: () -> Void) {
+        let previousPage = pageNumber
+        let drag = CGFloat(canvas.layer.sublayerTransform.m41) * zoomScale
+        turnGeneration = UUID()
+        let generation = turnGeneration
+        let outgoing = animated ? snapshotView(afterScreenUpdates: false) : nil
+        turnSnapshot?.removeFromSuperview(); turnSnapshot = nil
+        canvas.layer.removeAnimation(forKey: "pageArrival")
+        pageNumber = number
+        UIView.performWithoutAnimation(change)
+        guard let outgoing, animated, bounds.width > 0 else { turningPage = false; return }
+        turningPage = true
+        // Snapshot the already-dragged page. Place the new complete page one
+        // screen behind it, so release continues from the finger's position.
+        outgoing.frame = bounds
+        outgoing.isUserInteractionEnabled = false
+        outgoing.accessibilityElementsHidden = true
+        addSubview(outgoing); turnSnapshot = outgoing
+        let adjacent = abs(number - previousPage) == 1
+        let direction: CGFloat = number > previousPage ? 1 : -1
+        let remaining = direction * bounds.width - drag
+        if adjacent {
+            let arrival = CABasicAnimation(keyPath: "sublayerTransform")
+            arrival.fromValue = NSValue(caTransform3D: CATransform3DMakeTranslation(-remaining / max(zoomScale, 0.001), 0, 0))
+            arrival.toValue = NSValue(caTransform3D: CATransform3DIdentity)
+            arrival.duration = 0.24
+            arrival.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            canvas.layer.add(arrival, forKey: "pageArrival")
+        }
+        UIView.animate(withDuration: 0.24, delay: 0, options: [.curveEaseOut, .beginFromCurrentState]) {
+            if adjacent { outgoing.transform = CGAffineTransform(translationX: remaining, y: 0) }
+            else { outgoing.alpha = 0 }
+        } completion: { [weak self, weak outgoing] _ in
+            outgoing?.removeFromSuperview()
+            guard let self, self.turnGeneration == generation else { return }
+            self.turnSnapshot = nil; self.turningPage = false
+        }
     }
 }
 @MainActor private final class MushafPagingGestureDelegate: NSObject, UIGestureRecognizerDelegate {
     weak var viewport: OriginalMushafViewport?
     init(viewport: OriginalMushafViewport) { self.viewport = viewport }
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        viewport?.canTurnPages == true
+        guard let viewport, viewport.canTurnPages,
+              let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+        let velocity = pan.velocity(in: viewport)
+        return abs(velocity.x) > abs(velocity.y) * 1.2
     }
 }
 struct OriginalMushafDrawing: UIViewRepresentable {
     let page: OriginalPageData; let corpus: [Surah]; let selected: String?; let reduceMotion: Bool
     var hiddenWordIDs: Set<Int> = []
+    var reviewWordIDs: Set<Int> = []
+    var activeWordID: Int? = nil
+    var tajweedEnabled = false
+    var pageRange: ClosedRange<Int> = 1...604
+    var allowsManualPageTurns = true
     var allowsVerseSelection = true
     var readingMagnification: CGFloat = 1
     var hiddenTextAccessibilityHint = "نص الآية مخفي للتدريب. استخدم كشف الآية لقراءتها بقارئ الشاشة؛ تُسجّل المساعدة."
@@ -544,32 +776,39 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
         view.readingMagnification = readingMagnification
+        view.pageRange = pageRange
+        view.allowsManualPageTurns = allowsManualPageTurns
         view.allowsVerseSelection = allowsVerseSelection
         view.canvas.hiddenTextAccessibilityHint = hiddenTextAccessibilityHint
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
         view.onToggleTools = onToggleTools
-        if context.coordinator.page != page.number || !view.canvas.renderedSuccessfully {
+        if context.coordinator.page != page.number || context.coordinator.tajweed != tajweedEnabled || context.coordinator.style != view.traitCollection.userInterfaceStyle || !view.canvas.renderedSuccessfully {
             let animate = context.coordinator.page != nil && context.coordinator.page != page.number
                 && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
             context.coordinator.page = page.number
+            context.coordinator.tajweed = tajweedEnabled
+            context.coordinator.style = view.traitCollection.userInterfaceStyle
             let change = {
+                view.canvas.tajweedEnabled = self.tajweedEnabled
                 view.canvas.configure(page: self.page, corpus: self.corpus)
                 view.canvas.selected = self.selected
                 view.canvas.hiddenWordIDs = self.hiddenWordIDs
+                view.canvas.reviewWordIDs = self.reviewWordIDs
+                view.canvas.activeWordID = self.activeWordID
                 view.resetToFittedPage()
                 view.canvas.setNeedsDisplay(); view.canvas.layoutIfNeeded()
             }
-            if animate {
-                // Fade the whole authored page, never reshape, stretch or move words.
-                UIView.transition(with: view, duration: 0.2,
-                    options: [.transitionCrossDissolve, .allowUserInteraction, .beginFromCurrentState], animations: change, completion: nil)
-            } else { UIView.performWithoutAnimation(change) }
+            view.replacePage(number: page.number, animated: animate, change: change)
         }
         view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
+        view.accessibilityValue = view.canvas.renderedSuccessfully
+            ? (view.canvas.tajweedEnabled ? "ألوان التجويد مفعّلة" : "القراءة العادية") : nil
         view.canvas.selected = selected
         view.canvas.hiddenWordIDs = hiddenWordIDs
+        view.canvas.reviewWordIDs = reviewWordIDs
+        view.canvas.activeWordID = activeWordID
     }
-    final class Coordinator { var page: Int? }
+    final class Coordinator { var page: Int?; var tajweed: Bool?; var style: UIUserInterfaceStyle? }
     func makeCoordinator() -> Coordinator { Coordinator() }
 }

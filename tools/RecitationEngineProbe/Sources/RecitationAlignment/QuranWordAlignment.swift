@@ -126,6 +126,8 @@ public struct QuranRecitationTracker {
     public let expected: [QuranAlignedWord]
     public private(set) var cursor = 0
     public private(set) var evidence: [QuranWordEvidence] = []
+    /// Work count, not a confidence or an accuracy measurement.
+    public private(set) var candidateComparisons = 0
     private let starts: [String: Set<Int>]
     public var revealedIDs: Set<Int> { Set(evidence.map(\.nativeID)) }
     public init(expected: [QuranAlignedWord]) {
@@ -160,6 +162,17 @@ public struct QuranRecitationTracker {
     }
 
     /// Exact, local, multi-group anchoring. Ambiguous phrases wait for context.
+    /// Replace the covered interpretation of one audio window before consuming
+    /// its new accepted runs. Older source transcripts stay in the journal, but
+    /// a retracted interpretation must not permanently reveal Quran words.
+    public mutating func reconsiderAudio(takeID: UUID, start: Double, end: Double) throws {
+        guard start.isFinite, end.isFinite, start >= 0, end > start else {
+            throw QuranAlignmentFailure.invalidEvidence
+        }
+        evidence.removeAll { $0.takeID == takeID && $0.start >= start && $0.end <= end }
+    }
+
+    /// Exact, local, multi-group anchoring. Ambiguous phrases wait for context.
     /// A skipped/uncertain word is never inferred from a later match or elapsed
     /// time. A compound is revealed only when its complete spoken form matches.
     @discardableResult public mutating func consume(_ heard: [QuranHeardWord], takeID: UUID,
@@ -180,9 +193,14 @@ public struct QuranRecitationTracker {
         // A slow device or an intentional return can move outside the local
         // window. Reacquire only with a longer unique exact anchor; never reveal
         // the skipped interval or convert it into a confirmed reader mistake.
-        let possible = Set(tokens).reduce(into: Set<Int>()) { $0.formUnion(starts[$1] ?? []) }
-        for first in possible.sorted() {
-            for heardStart in tokens.indices {
+        candidateComparisons = 0
+        // Index each actual starting token. The previous union then Cartesian
+        // product compared every corpus occurrence against every heard offset,
+        // even when their first tokens differed. Keep exactly the same matching
+        // and ambiguity policy while avoiding that quadratic cross-product.
+        for heardStart in tokens.indices {
+            for first in (starts[tokens[heardStart]] ?? []).sorted() {
+                candidateComparisons += 1
                 var word = first, token = heardStart, bounds: [(Int, Int, Int)] = []
                 while word < expected.count && token < tokens.count {
                     if token > heardStart && heard[token].start - heard[token - 1].end > 2 { break }
@@ -208,25 +226,75 @@ public struct QuranRecitationTracker {
                 if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
             }
         }
-        guard let length = candidates.map({ $0.bounds.count }).max() else { return [] }
-        let best = candidates.filter { $0.bounds.count == length }
-        guard Set(best.map(\.first)).count == 1, let match = best.first else { return [] }
-        var added: [QuranWordEvidence] = []
-        for candidate in best {
-        for (index, first, end) in candidate.bounds {
-            let record = QuranWordEvidence(nativeID: expected[index].id, verse: expected[index].verse,
-                takeID: takeID, start: offset + heard[first].start, end: offset + heard[end - 1].end,
-                minimumConfidence: heard[first..<end].map(\.probability).min()!)
-            // Deduplicate only the same audio interval of the same take/word.
-            // A later spoken repetition remains a separate recording event.
-            let duplicate = evidence.contains { previous in
-                previous.nativeID == record.nativeID && previous.takeID == takeID
-                    && min(previous.end, record.end) > max(previous.start, record.start)
+        // Select non-overlapping exact anchors. Squared HEARD-token length
+        // favors a stronger continuous phrase over several weaker fragments.
+        // A shorter bridge (e.g. "أحد قل أعوذ برب" across112/113) must not
+        // join two independent passages into one giant ambiguity component.
+        // Retain only bindings shared by EVERY optimal interpretation. Never
+        // break an equal-coverage ambiguity by corpus position or iteration order.
+        let byStart = Dictionary(grouping: candidates) { $0.bounds[0].1 }
+        func weight(_ match: Match) -> Int {
+            let length = match.bounds.last!.2 - match.bounds[0].1
+            return length * length
+        }
+        var prefix = Array(repeating: 0, count: heard.count + 1)
+        var suffix = prefix
+        for position in heard.indices {
+            prefix[position + 1] = max(prefix[position + 1], prefix[position])
+            for candidate in byStart[position] ?? [] {
+                let end = candidate.bounds.last!.2
+                prefix[end] = max(prefix[end], prefix[position] + weight(candidate))
             }
-            if !duplicate { evidence.append(record); added.append(record) }
         }
+        for position in heard.indices.reversed() {
+            suffix[position] = suffix[position + 1]
+            for candidate in byStart[position] ?? [] {
+                let end = candidate.bounds.last!.2
+                suffix[position] = max(suffix[position], weight(candidate) + suffix[end])
+            }
         }
-        cursor = match.bounds.last!.0 + 1
+        struct Binding: Hashable { let index: Int; let first: Int; let end: Int }
+        let score = suffix[0]
+        var alternatives = Array(repeating: Set<Binding>(), count: heard.count)
+        var canBeUnmatched = Array(repeating: false, count: heard.count)
+        for position in heard.indices {
+            canBeUnmatched[position] = prefix[position] + suffix[position + 1] == score
+        }
+        let optimal = candidates.filter {
+            let first = $0.bounds[0].1, end = $0.bounds.last!.2
+            return prefix[first] + weight($0) + suffix[end] == score
+        }
+        for candidate in optimal {
+            for (index, first, end) in candidate.bounds {
+                let binding = Binding(index: index, first: first, end: end)
+                for position in first..<end { alternatives[position].insert(binding) }
+            }
+        }
+        var certain = Set<Binding>()
+        for candidate in optimal {
+            let bindings = candidate.bounds.map { Binding(index: $0.0, first: $0.1, end: $0.2) }
+            guard bindings.allSatisfy({ binding in
+                (binding.first..<binding.end).allSatisfy {
+                    !canBeUnmatched[$0] && alternatives[$0] == Set([binding])
+                }
+            }) else { continue }
+            certain.formUnion(bindings)
+        }
+        var added: [QuranWordEvidence] = []
+        for binding in certain.sorted(by: { $0.first < $1.first }) {
+                let index = binding.index, first = binding.first, end = binding.end
+                let record = QuranWordEvidence(nativeID: expected[index].id, verse: expected[index].verse,
+                    takeID: takeID, start: offset + heard[first].start, end: offset + heard[end - 1].end,
+                    minimumConfidence: heard[first..<end].map(\.probability).min()!)
+                // Deduplicate only the same audio interval of the same take/word.
+                // A later spoken repetition remains a separate recording event.
+                let duplicate = evidence.contains { previous in
+                    previous.nativeID == record.nativeID && previous.takeID == takeID
+                        && min(previous.end, record.end) > max(previous.start, record.start)
+                }
+                if !duplicate { evidence.append(record); added.append(record) }
+                cursor = index + 1
+        }
         return added
     }
 }

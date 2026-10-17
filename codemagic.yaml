@@ -1,4 +1,164 @@
 workflows:
+  reader-ease-check:
+    name: Noor spacious reader, playback page lock and evidence regressions
+    instance_type: mac_mini_m2
+    max_build_duration: 12
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - release/reader-ease-derived-data/ModuleCache.noindex
+        - release/reader-ease-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/reader-ease-derived-data/SourcePackages
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify reader layout and shared core repairs
+        script: bash scripts/test-reader-ease.sh
+    artifacts:
+      - release/reader-ease/**
+  continuous-reader-check:
+    name: Noor continuous recognition, all604 pages and complete reciter selection
+    instance_type: mac_mini_m2
+    max_build_duration: 14
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - release/continuous-reader-derived-data/ModuleCache.noindex
+        - release/continuous-reader-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/continuous-reader-derived-data/SourcePackages
+        - ios/Athar/Fonts
+        - ios/RecitationModel
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify continuous Mushaf and recognition
+        script: bash scripts/test-continuous-reader.sh
+    artifacts:
+      - release/continuous-reader/**
+  daily-ease-check:
+    name: Noor daily ward, automatic setup and clear adhkar
+    instance_type: mac_mini_m2
+    max_build_duration: 15
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify automatic setup and separated daily adhkar
+        script: bash scripts/test-daily-ease.sh
+    artifacts:
+      - release/daily-ease/**
+  selection-regression-check:
+    name: Noor adjacent ayah selection regression
+    instance_type: mac_mini_m2
+    max_build_duration: 8
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify adjacent ayah exclusion with original fonts
+        script: bash scripts/test-selection-regression.sh
+    artifacts:
+      - release/selection-regression/**
+  recitation-engine-check:
+    name: Noor recitation backlog, real reference recognition and cancellation
+    instance_type: mac_mini_m2
+    max_build_duration: 10
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify recitation engine with recorded reference PCM
+        script: bash scripts/test-recitation-engine-current.sh
+    artifacts:
+      - release/recitation-engine-current/**
+  mushaf-usability-check:
+    name: Noor Mushaf highlighting, timing bindings and startup regression
+    instance_type: mac_mini_m2
+    max_build_duration: 12
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Check current Mushaf changes on iPhone
+        script: bash scripts/test-mushaf-usability.sh
+    artifacts:
+      - release/mushaf-usability/**
+  archive-preservation-check:
+    name: Noor recording preservation regression (not release acceptance)
+    instance_type: mac_mini_m2
+    max_build_duration: 8
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify recording preservation and session ownership
+        script: bash scripts/test-recording-preservation.sh
+    artifacts:
+      - release/recording-preservation/**
+  isolated-audio-check:
+    name: Independent Apple audio host diagnosis (not Noor acceptance)
+    instance_type: mac_mini_m2
+    max_build_duration: 6
+    environment:
+      xcode: "26.3"
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Test actual reference in a standalone UIKit host
+        script: bash scripts/test-isolated-audio.sh
+    artifacts:
+      - release/isolated-audio/**
+  rapid-repair-check:
+    name: Noor Alruh targeted iPhone repair check (not a release gate)
+    instance_type: mac_mini_m2
+    max_build_duration: 15
+    environment:
+      # The 26.5 and 26.6 images both reproduced the stall on iOS 26.5.
+      # Compare a different simulator runtime without weakening real-audio assertions.
+      xcode: "26.3"
+      vars:
+        # Navigation already passed in the first actual Codemagic run.
+        # This diagnostic retries audio only; complete release gates stay intact.
+        NOOR_RAPID_NAVIGATION: '0'
+        NOOR_RAPID_RUNTIME: 'com.apple.CoreSimulator.SimRuntime.iOS-26-2'
+    cache:
+      cache_paths:
+        - ios/RecitationModel
+        - ios/Athar/Fonts
+    scripts:
+      - name: Install native project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Reproduce exact navigation and microphone failures first
+        script: bash scripts/test-rapid-repair.sh
+    artifacts:
+      - release/rapid-repair/**
   recitation-app-integration:
     name: Noor Alruh offline recognition and durable audio on iOS
     instance_type: mac_mini_m2
@@ -99,6 +259,7 @@ workflows:
           set -euo pipefail
           case "$NOOR_RELEASE_CHANNEL" in
             TESTFLIGHT_PREVIEW) python3 scripts/check-mushaf-publication.py --testflight-preview ;;
+            TESTFLIGHT_USER_REVIEW) python3 scripts/check-user-testflight.py ;;
             APP_STORE) python3 scripts/check-mushaf-publication.py ;;
             *) echo "Unknown publication channel; refusing upload"; exit 1 ;;
           esac
@@ -171,6 +332,53 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
+        submit_to_app_store: false
+  ios-testflight-saud: &signed_saud_ios
+    <<: *signed_ios
+    name: Noor Alruh signed TestFlight / saud
+    # Manual dispatch only, after matching release evidence and protected
+    # noor_release configuration are present. Keep all inherited release gates.
+    # The bound reserves USD1.52 at USD0.095/min including one rounding minute.
+    max_build_duration: 15
+    integrations:
+      app_store_connect: masar-apple
+    environment:
+      <<: *signed_ios_environment
+      ios_signing:
+        provisioning_profiles:
+          - noor-saud-appstore-20261015
+          - noor-saud-widgets-20261015
+          - noor-saud-focus-monitor-20261015
+          - noor-saud-focus-shield-20261015
+          - noor-saud-focus-action-20261015
+        certificates:
+          - masar_distribution
+  ios-testflight-user-review:
+    <<: *signed_saud_ios
+    name: Noor Alruh user device review / TestFlight (checks unresolved)
+    # User explicitly requested this unfinished build for their own iPhone
+    # testing after disclosure. Do not relabel old native results as successful.
+    environment:
+      <<: *signed_ios_environment
+      vars:
+        NOOR_RELEASE_CHANNEL: TESTFLIGHT_USER_REVIEW
+      ios_signing:
+        provisioning_profiles:
+          - noor-saud-appstore-20261015
+          - noor-saud-widgets-20261015
+          - noor-saud-focus-monitor-20261015
+          - noor-saud-focus-shield-20261015
+          - noor-saud-focus-action-20261015
+        certificates:
+          - masar_distribution
+    publishing:
+      app_store_connect:
+        auth: integration
+        # This flag submits to Apple's beta review, not basic internal access.
+        # Existing automatic internal groups receive eligible uploaded builds;
+        # Apple rejects an explicit build association to an automatic group.
+        # Leave membership/distribution settings in App Store Connect unchanged.
+        submit_to_testflight: false
         submit_to_app_store: false
   ios-testflight-verified-update:
     <<: *signed_ios

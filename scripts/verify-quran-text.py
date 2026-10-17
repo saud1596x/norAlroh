@@ -8,9 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 folder = ROOT / 'content-sources/tanzil'
 raw = (folder / 'uthmani-app.xml').read_bytes()
-receipt = json.loads((folder / 'app-receipt.json').read_text())
-quran = json.loads((ROOT / 'ios/Athar/quran.json').read_text())
-basmalas = json.loads((ROOT / 'ios/Athar/quran-basmalas.json').read_text())
+receipt = json.loads((folder / 'app-receipt.json').read_text(encoding='utf-8'))
+quran = json.loads((ROOT / 'ios/Athar/quran.json').read_text(encoding='utf-8'))
+basmalas = json.loads((ROOT / 'ios/Athar/quran-basmalas.json').read_text(encoding='utf-8'))
 xml = ET.fromstring(raw)
 expected = {f"{s.attrib['index']}:{a.attrib['index']}": a.attrib['text']
             for s in xml.findall('sura') for a in s.findall('aya')}
@@ -35,6 +35,6 @@ report = {'status': 'EXACT_SOURCE_COPY_VERIFIED' if all(checks.values()) else 'F
           'comparisonNormalization': 'NONE; exact Unicode codepoint equality',
           'nativeRendering': 'NOT_TESTED', 'religiousAndPrintedPageReview': 'PENDING',
           'scope': 'Verbatim source-copy integrity. This does not certify font shaping, QCF glyph semantics or specialist approval.'}
-(ROOT / 'release/quran-text-integrity.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
+(ROOT / 'release/quran-text-integrity.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
 print(json.dumps(report, ensure_ascii=False, indent=2))
 sys.exit(not all(checks.values()))

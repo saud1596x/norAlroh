@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "productionPromoted": false,
+  "validatedTajweedAssessment": false,
+  "phoneticBackend": {
+    "model": "Abddar/muaalem-v3-2-int8-android-onnx",
+    "revision": "5d5a3510728b3d02e4a84897c311a5d404505ee9",
+    "sha256": "3ef7f9760b54161d876b5866fccd19cbcc7b793386753f515395f2d5012e9f96",
+    "sourceCommit": "75d519ec43a1459a266debf094e65369f072962b",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38641824852/job/116118957029",
+    "inferenceJob": "success",
+    "overallWorkflow": "failure_original_expert_archive_HTTP403",
+    "cases": 63,
+    "peakHostRSSKiB": 1628348,
+    "qalqalaTailBaseline": {
+      "samples": 48,
+      "assessed": 38,
+      "precision": 0.8461538461538461,
+      "recallIncludingAbstentions": 0.4583333333333333,
+      "coverage": 0.7916666666666666,
+      "truePositives": 11,
+      "falsePositives": 2,
+      "scope": "Unfitted baseline versus published labels; not a production acceptance result"
+    },
+    "receiptSHA256": "9e48baebf0b69f74ff743dedb8a25ebe5c5152b0fa2220a93b308b179e5ad036"
+  },
+  "independentAcousticClassifier": {
+    "sourceCommit": "a76df6fb4082f5fb5823362b8b16b9e39948ac07",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38643172451/job/116123487600",
+    "execution": "success",
+    "qualityAcceptance": "failed",
+    "samples": {
+      "train": 338,
+      "development": 136,
+      "test": 247
+    },
+    "measurements": {
+      "testSamples": 247,
+      "assessed": 247,
+      "truePositives": 48,
+      "falsePositives": 102,
+      "precision": 0.32,
+      "recallIncludingAbstentions": 0.6233766233766234,
+      "coverage": 1.0
+    },
+    "runtime": {
+      "numpy": "2.2.6",
+      "sklearn": "1.7.2",
+      "av": "16.1.0",
+      "device": "CI CPU; not iPhone"
+    },
+    "dataset": "MuazAhmad7/Surah_Ikhlas-Labeled_Dataset",
+    "revision": "973b5ef1d1532bcbe7e9a5a5b0dce125cc4d0dac",
+    "license": "CC-BY-4.0",
+    "attribution": "MuazAhmad7, Surah Ikhlas Labeled Dataset",
+    "metadataSHA256": "ce3a98b32c4495860a5122b83a2b57d505035dca5aae2193bb0673c90a5931f2",
+    "split": "train participant<180; development 180..249; previously unprobed test>=250",
+    "receiptSHA256": "166715625a381ca1ba4fcaaa2c94e7785da4276037aac85a0767e2df38e8f5c1"
+  },
+  "independentPhoneticFeatureClassifier": {
+    "sourceCommit": "32c86587dd1585bcf15c3039d0f411da40559656",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38649543431/job/116144646847",
+    "execution": "success",
+    "qualityAcceptance": "failed",
+    "category": "Published single dal-qalqala errors versus correct labels; Ikhlas verses 1 and 2 only",
+    "samples": {
+      "train": 338,
+      "development": 136,
+      "test": 247
+    },
+    "measurements": {
+      "testSamples": 247,
+      "assessed": 197,
+      "truePositives": 18,
+      "falsePositives": 7,
+      "precision": 0.72,
+      "recallIncludingAbstentions": 0.23376623376623376,
+      "coverage": 0.7975708502024291
+    },
+    "thresholdSelectedOnlyOnDevelopment": 0.6,
+    "scoresAreCalibratedProbabilities": false,
+    "peakHostRSSKiB": 2676600,
+    "runtime": "Pinned ONNX CPU; not iPhone or a microphone journey",
+    "datasetRevision": "973b5ef1d1532bcbe7e9a5a5b0dce125cc4d0dac",
+    "datasetLicense": "CC-BY-4.0",
+    "attribution": "MuazAhmad7, Surah Ikhlas Labeled Dataset",
+    "expertArchiveEquivalenceVerified": false,
+    "expectedTranscriptUsed": false,
+    "productionPromoted": false,
+    "receiptSHA256": "af3a0b36f29cb2e39831a841710f0d8756db42f7a00e772c3af6079949e3eb7c"
+  },
+  "acceptanceTargets": {
+    "precision": 0.97,
+    "recallIncludingAbstentions": 0.9,
+    "assessableCoverage": 0.9
+  },
+  "limitations": [
+    "Published mirror labels were used; equivalence to the original expert-reviewed Mendeley archive is not established.",
+    "Only one narrow pronunciation category and two verses were evaluated.",
+    "There is no independently reviewed word-omission/substitution benchmark or verified phonetic mobile runtime yet.",
+    "CI CPU timings do not establish physical iPhone microphone, route, thermal, 30/60-minute or p95 performance.",
+    "No private recordings uploaded. CPU calibration ran on public licensed data; no paid training service was purchased or provisioned."
+  ],
+  "nonAutoregressiveWordingCandidate": {
+    "model": "rabah2026/wav2vec2-large-xlsr-53-arabic-quran",
+    "revision": "b539d5fa66deb820c8e4762171ecb284ace4b52d",
+    "sourceWeightsSHA256": "202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf",
+    "declaredModelLicense": "Apache-2.0",
+    "trainingDataRightsIndependentlyVerified": false,
+    "sourceCommit": "1b29526fa57307c6aee0f5b3b898a5398d0d896a",
+    "runURL": "https://github.com/saud1596x/norAlroh/actions/runs/38657095657",
+    "execution": "success",
+    "runtime": "Actual precompiled Core ML on macOS CPU; linear-only float16 arithmetic; other operations float32; int8 stored weights",
+    "appleCases": 18,
+    "allLexicalParityPassed": true,
+    "peakHostRSSBytes": 1012908032,
+    "maximumMeasuredCaseSeconds": 4.234575500000005,
+    "appleReceiptSHA256": "6a4865e19ebef4bc3935d450087c15740c4c5efa44b4e6eb4d66b8b4d67c38e5",
+    "productionWordingReceiptSHA256": "ba5044deaa210cf1051ede25dd1de8af76c40a495635286d6181775e0f1c1317",
+    "actualAssessmentCases": [
+      {
+        "name": "public-composite",
+        "categories": [],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "public-cut",
+        "categories": [
+          "omission"
+        ],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "public-repeat",
+        "categories": [
+          "insertion"
+        ],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "public-hesitation",
+        "categories": [],
+        "confirmedErrors": 0
+      },
+      {
+        "name": "digital-silence",
+        "categories": [],
+        "confirmedErrors": 0
+      }
+    ],
+    "assessmentSource": "Unchanged production QuranWordingAssessment.swift and QuranWordAlignment.swift",
+    "boundaryPolicy": "Final words require an actual closed input and at least 300ms after the last acoustic CTC character. Streaming window endings alone do not finalize a word. No expected letters supplied.",
+    "scope": "Ten public reference verses, fixed signal splices, three partial prefixes and digital silence; not a reviewed learner-error benchmark. Word timing remains CTC receptive-field timing, not reviewed boundaries.",
+    "iPhoneVerified": false,
+    "integratedIntoShippingApp": false,
+    "productionPromoted": false,
+    "learnerErrorAccuracyEstablished": false,
+    "validatedTajweedAssessment": false
+  }
+}

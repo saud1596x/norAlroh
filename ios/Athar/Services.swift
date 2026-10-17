@@ -106,6 +106,43 @@ final class PrayerNotifications: ObservableObject {
         if let data = try? JSONEncoder().encode(preferences) { defaults.set(data, forKey: preferencesKey) }
     }
 
+    /// First-use only. A saved opt-out, denied prompt or migrated preferences
+    /// must never be silently replaced on another launch.
+    func configureFirstUse(store: AtharStore) async {
+        let key = "noor.notifications.firstUse.v1"
+        guard !defaults.bool(forKey: key), !requestingPermission else { return }
+        defaults.set(true, forKey: key)
+        guard !personalUnreadable,
+              [enabledKey, preferencesKey, personalKey, "noor.salawat.preferences.v1"]
+                .allSatisfy({ defaults.object(forKey: $0) == nil }) else { return }
+        requestingPermission = true
+        let attempt = authorizationRevision
+        defer { requestingPermission = false }
+        do {
+            let allowed = try await client.requestAuthorization()
+            guard allowed, attempt == authorizationRevision, !Task.isCancelled else { return }
+            guard [enabledKey, preferencesKey, personalKey, "noor.salawat.preferences.v1"]
+                .allSatisfy({ defaults.object(forKey: $0) == nil }) else { return }
+            var archive = NoorReminderArchive()
+            for kind in [NoorReminderKind.morning, .evening, .witr, .duha, .salawat] {
+                var value = NoorReminderPreference(kind: kind)
+                value.enabled = true
+                if kind == .salawat {
+                    value.intervalMinutes = 5; value.startMinute = 0; value.endMinute = 1439
+                }
+                archive.values[kind.rawValue] = value
+            }
+            let bytes = try JSONEncoder().encode(archive)
+            defaults.set(bytes, forKey: personalKey)
+            guard defaults.data(forKey: personalKey) == bytes else { return }
+            personal = archive
+            preferences.afterPrayerMinutes = 20
+            persist()
+            defaults.set(true, forKey: enabledKey)
+            await refresh(store: store)
+        } catch { message = "يمكنك تفعيل التنبيهات لاحقًا من الإعدادات." }
+    }
+
     func reminder(_ kind: NoorReminderKind) -> NoorReminderPreference {
         if let value = personal.values[kind.rawValue] { return value }
         var value = NoorReminderPreference(kind: kind)
@@ -116,7 +153,7 @@ final class PrayerNotifications: ObservableObject {
         return value
     }
     func setReminder(_ kind: NoorReminderKind, preference: NoorReminderPreference, store: AtharStore) async {
-        guard preference.valid, !personalUnreadable else {
+        guard preference.valid, preference.intervalMinutes != 5 || kind == .salawat, !personalUnreadable else {
             message = "تعذر حفظ التذكير. صدّر الإعدادات المحفوظة قبل إصلاحها."; return
         }
         // Every edit invalidates an in-flight permission request, including disabling.
@@ -155,6 +192,11 @@ final class PrayerNotifications: ObservableObject {
         preferences.advanceMinutes = value
         persist()
         await refresh(store: store)
+    }
+    func setAfterPrayer(_ minutes: Int?, store: AtharStore) async {
+        guard minutes == nil || minutes == 20 else { return }
+        preferences.afterPrayerMinutes = minutes
+        persist(); await refresh(store: store)
     }
     func setSound(_ value: Bool, store: AtharStore) async {
         preferences.soundEnabled = value
@@ -268,7 +310,7 @@ final class PrayerNotifications: ObservableObject {
             let owns: (String) -> Bool = { self.isOwned($0) || $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) }
             let previousRequests = oldRequests.filter {
                 owns($0.identifier) && self.isUpcoming($0)
-                    && (($0.trigger as? UNCalendarNotificationTrigger)?.repeats == true || !delivered.contains($0.identifier))
+                    && (self.isRepeating($0) || !delivered.contains($0.identifier))
             }
             client.removePending(pending.filter(owns))
             let personalEnabled = personal.values.values.contains { $0.enabled }
@@ -288,14 +330,21 @@ final class PrayerNotifications: ObservableObject {
                 return
             }
             let slots = personal.values[NoorReminderKind.salawat.rawValue] == nil ? SalawatNotificationPlan.slots(salawat) : []
+            let continuousSalawat = personal.values[NoorReminderKind.salawat.rawValue]?.continuousFiveMinuteReminder == true
             let personalEvents = NoorPersonalReminderPlan.make(personal, now: now())
                 .filter { !delivered.contains($0.id) }
             let foreignCount = pending.filter { !owns($0) }.count
-            let prayerCapacity = max(0, min(PrayerNotificationPlan.maximumRequests, 64 - foreignCount))
+            let prayerCapacity = max(0, min(PrayerNotificationPlan.maximumRequests, 64 - foreignCount - (continuousSalawat ? 1 : 0)))
             // Travel or a clock change can move an already delivered prayer
             // back into the future. Do not alert again for that prayer/day ID.
-            let plan = enabled ? Array(PrayerNotificationPlan.make(data: data, preferences: preferences, now: now())
-                .filter { !delivered.contains($0.id) }.prefix(prayerCapacity)) : []
+            let afterMinutes: Int? = preferences.afterPrayerMinutes == nil ? nil : 20
+            let plan = enabled ? Array(PrayerNotificationPlan.make(data: data, preferences: preferences,
+                now: afterMinutes == nil ? now() : now().addingTimeInterval(-3600))
+                .filter { event in
+                    (!delivered.contains(event.id) && event.fireDate > now()) ||
+                    (afterMinutes != nil && !delivered.contains(event.id + ".adhkar") &&
+                     event.prayer.date.addingTimeInterval(Double((afterMinutes ?? 0) * 60)) > now())
+                }.prefix(afterMinutes == nil ? prayerCapacity : prayerCapacity / 2)) : []
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = TimeZone(identifier: data.city.timeZone) ?? .current
             message = nil
@@ -304,7 +353,24 @@ final class PrayerNotifications: ObservableObject {
                     try Task.checkCancellation()
                     guard generation == revision else { break }
                     // A slow scheduler must not submit an already elapsed prayer.
-                    guard event.fireDate > now() else { continue }
+                    if let afterMinutes {
+                        let date = event.prayer.date.addingTimeInterval(Double(afterMinutes * 60))
+                        if date > now() && !delivered.contains(event.id + ".adhkar") {
+                            let content = UNMutableNotificationContent()
+                            content.title = "أذكار بعد صلاة \(event.prayer.name)"
+                            content.body = "حان تذكير أذكار ما بعد الصلاة"
+                            content.sound = nil
+                            content.threadIdentifier = "noor.after-prayer"
+                            content.userInfo = ["destination": "dhikr"]
+                            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+                            components.timeZone = calendar.timeZone
+                            try await client.add(.init(identifier: event.id + ".adhkar", content: content,
+                                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
+                            guard generation == revision else { break }
+                            scheduledCount += 1
+                        }
+                    }
+                    guard event.fireDate > now() && !delivered.contains(event.id) else { continue }
                     let content = UNMutableNotificationContent()
                     content.title = event.title
                     content.body = "حيّ على الصلاة · " + event.cityName
@@ -318,7 +384,20 @@ final class PrayerNotifications: ObservableObject {
                     guard generation == revision else { break }
                     scheduledCount += 1
                 }
-                let remaining = max(0, 64 - foreignCount - scheduledCount)
+                if continuousSalawat && foreignCount + scheduledCount < 64 {
+                    try Task.checkCancellation()
+                    guard generation == revision else { continue }
+                    let content = UNMutableNotificationContent()
+                    content.title = "الصلاة على النبي ﷺ"
+                    content.body = "❀ اللهم صلِّ على نبينا محمد ﷺ ❀"
+                    content.sound = nil
+                    content.threadIdentifier = "noor.personal.salawat"
+                    content.userInfo = ["destination": "dhikr"]
+                    try await client.add(.init(identifier: NoorPersonalReminderPlan.prefix + "salawat.every-five-minutes",
+                        content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 300, repeats: true)))
+                    personalCounts[NoorReminderKind.salawat.rawValue] = 1
+                }
+                let remaining = max(0, 64 - foreignCount - scheduledCount - (continuousSalawat ? 1 : 0))
                 for slot in slots.prefix(remaining) {
                     try Task.checkCancellation()
                     guard generation == revision else { break }
@@ -334,16 +413,17 @@ final class PrayerNotifications: ObservableObject {
                     guard generation == revision else { break }
                     salawatCount += 1
                 }
-                let personalCapacity = max(0, 64 - foreignCount - scheduledCount - salawatCount)
+                let personalCapacity = max(0, 64 - foreignCount - scheduledCount - salawatCount - (continuousSalawat ? 1 : 0))
                 for event in personalEvents.prefix(personalCapacity) {
                     try Task.checkCancellation()
                     guard generation == revision else { break }
                     guard event.date > now() else { continue }
                     let content = UNMutableNotificationContent()
                     content.title = event.kind.title
-                    content.body = "موعدك مع " + event.kind.title
+                    content.body = event.kind == .salawat ? "❀ اللهم صلِّ على نبينا محمد ﷺ ❀" : "موعدك مع " + event.kind.title
                     content.threadIdentifier = "noor.personal." + event.kind.rawValue
-                    content.userInfo = ["destination": event.kind.destination]; content.sound = nil
+                    content.userInfo = ["destination": event.kind.destination]
+                    content.sound = event.kind.hasPrayerSound ? PrayerAlertSound.sound(preferences: preferences) : nil
                     var local = Calendar(identifier: .gregorian); local.timeZone = .current
                     var components = local.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.date)
                     components.calendar = local; components.timeZone = local.timeZone
@@ -354,7 +434,7 @@ final class PrayerNotifications: ObservableObject {
                 }
                 try Task.checkCancellation()
                 if generation == revision {
-                    if personalEnabled && personalEvents.isEmpty {
+                    if personalEnabled && personalEvents.isEmpty && !continuousSalawat {
                         message = "لا يوجد موعد قادم خلال 7 أيام؛ راجع أيام القراءة وأوقات الهدوء."
                     } else if personalCounts.values.reduce(0, +) < personalEvents.count {
                         message = "جُدولت أقرب التذكيرات حسب المساحة المتاحة. افتح التطبيق لتجديدها؛ الأولوية لتنبيهات الصلاة."
@@ -382,7 +462,7 @@ final class PrayerNotifications: ObservableObject {
                                 try Task.checkCancellation()
                                 guard generation == self.revision else { throw CancellationError() }
                                 guard self.isUpcoming(request),
-                                      (request.trigger as? UNCalendarNotificationTrigger)?.repeats == true || !latestDelivered.contains(request.identifier) else { continue }
+                                      self.isRepeating(request) || !latestDelivered.contains(request.identifier) else { continue }
                                 try await self.client.add(request)
                                 if generation != self.revision {
                                     Task { await self.refresh(store: store) }
@@ -405,11 +485,16 @@ final class PrayerNotifications: ObservableObject {
         }
     }
     private func isUpcoming(_ request: UNNotificationRequest) -> Bool {
+        if let trigger = request.trigger as? UNTimeIntervalNotificationTrigger { return trigger.repeats || trigger.nextTriggerDate().map { $0 > now() } == true }
         guard let trigger = request.trigger as? UNCalendarNotificationTrigger else { return false }
         if trigger.repeats { return true }
         var calendar = trigger.dateComponents.calendar ?? Calendar(identifier: .gregorian)
         calendar.timeZone = trigger.dateComponents.timeZone ?? .current
         guard let date = calendar.date(from: trigger.dateComponents) else { return false }
         return date > now()
+    }
+    private func isRepeating(_ request: UNNotificationRequest) -> Bool {
+        (request.trigger as? UNCalendarNotificationTrigger)?.repeats == true ||
+            (request.trigger as? UNTimeIntervalNotificationTrigger)?.repeats == true
     }
 }

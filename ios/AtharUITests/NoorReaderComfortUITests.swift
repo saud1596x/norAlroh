@@ -44,6 +44,13 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertFalse(app.navigationBars.firstMatch.exists)
         XCTAssertFalse(app.buttons["reader.fullscreen"].exists)
+        let viewport = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        let originalFrame = first.frame
+        let dragStart = viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+        let dragEnd = viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.56, dy: 0.6))
+        dragStart.press(forDuration: 0.05, thenDragTo: dragEnd)
+        requirePage(14, app: app)
+        XCTAssertEqual(first.frame, originalFrame, "A cancelled short drag must restore exact verse geometry")
         capture(app, "user-reference-balanced-page-14")
     }
     func testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone() {
@@ -86,15 +93,27 @@ final class NoorReaderComfortUITests: XCTestCase {
         let frame = verse.frame
         requireTools(true, app: app)
         XCTAssertTrue(app.buttons["reader.study"].isHittable)
-        XCTAssertTrue(app.buttons["reader.khatmah"].isHittable)
-        app.buttons["reader.khatmah"].tap()
-        XCTAssertTrue(app.staticTexts["رحلة الختمة"].waitForExistence(timeout: 10))
-        app.buttons["إغلاق"].tap()
+        XCTAssertTrue(app.buttons["reader.more"].isHittable)
+        app.buttons["reader.more"].tap()
+        let khatmahEntry = app.buttons["الختمة وموضع التوقف"]
+        XCTAssertTrue(khatmahEntry.waitForExistence(timeout: 5)); khatmahEntry.tap()
+        let setup = app.navigationBars["إعداد الختمة"]
+        let journey = app.staticTexts["رحلة الختمة"].firstMatch
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in setup.exists || journey.exists }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 10), .completed)
+        if setup.exists { app.buttons["إلغاء"].tap() } else { app.buttons["إغلاق"].tap() }
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
         XCTAssertEqual(verse.frame, frame, "Closing journey must preserve reader geometry")
         capture(app, "stage1-604-tools-visible")
-        // A tap on Quran ink, not just a margin, toggles tools without selection.
+        // An ordinary verse tap opens clearly labelled actions.
         verse.tap()
+        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["verse.play"].isHittable)
+        XCTAssertEqual(verse.frame, frame, "Opening verse actions must preserve Quran ink position")
+        capture(app, "stage1-604-single-tap-actions")
+        app.buttons["verse.tools.close"].tap()
+        let margin = page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5))
+        margin.tap()
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             // A missing control must be queried by existence. Resolving
             // isHittable on an unmounted element blocks with XCTest retries.
@@ -104,7 +123,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertFalse(app.buttons["verse.tafsir"].exists)
         XCTAssertEqual(verse.frame, frame, "Hiding controls must not move Quran ink")
         capture(app, "stage1-604-tools-hidden")
-        verse.tap()
+        margin.tap()
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 5))
         XCTAssertEqual(verse.frame, frame)
         page.swipeLeft()
@@ -141,8 +160,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         app.buttons["verse.sheet.close"].tap()
         XCTAssertTrue(app.buttons["reader.jump"].waitForExistence(timeout: 5))
         verse.press(forDuration: 0.6)
-        verse.tap()
-        XCTAssertFalse(app.buttons["verse.tafsir"].exists, "A normal tap cancels selection")
+        app.buttons["verse.tools.close"].tap()
+        XCTAssertFalse(app.buttons["verse.tafsir"].exists, "Explicit close cancels selection")
         XCTAssertTrue(app.buttons["reader.jump"].exists)
         XCTAssertEqual(verse.frame, frame)
         page.pinch(withScale: 1.6, velocity: 1)
@@ -175,16 +194,32 @@ final class NoorReaderComfortUITests: XCTestCase {
         }
         capture(app, "stage2-151-landscape-verse-actions")
         app.buttons["verse.tools.close"].tap()
-        app.buttons["reader.verse.7:1"].tap()
+        toggleChromeInBlankPaper(app)
         requireTools(false, app: app)
         XCTAssertEqual(page.frame, landscapeFrame)
         capture(app, "stage1-151-landscape-tools-hidden")
-        app.buttons["reader.verse.7:1"].tap()
+        toggleChromeInBlankPaper(app)
         requireTools(true, app: app)
         XCUIDevice.shared.orientation = .portrait
         requireStableReadingLayout(app, page: page, landscape: false)
         requirePage(151, app: app)
         capture(app, "stage1-151-portrait-restored")
+    }
+    private func toggleChromeInBlankPaper(_ app: XCUIApplication) {
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        let bounds = page.frame
+        let ink = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reader.verse."))
+            .allElementsBoundByIndex.filter { $0.exists }.map(\.frame)
+        let corners = [CGPoint(x: bounds.minX + 4, y: bounds.minY + 4),
+                       CGPoint(x: bounds.maxX - 4, y: bounds.minY + 4),
+                       CGPoint(x: bounds.minX + 4, y: bounds.maxY - 4),
+                       CGPoint(x: bounds.maxX - 4, y: bounds.maxY - 4)]
+        guard let point = corners.first(where: { candidate in
+            app.frame.contains(candidate) && !ink.contains(where: { $0.contains(candidate) })
+        }) else { XCTFail("No visible blank-paper target outside the actual ayah hit regions"); return }
+        // The approved single ayah tap opens its actions. Chrome visibility is
+        // toggled only by paper outside ayah ink, using the real hit geometry.
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: point.x, dy: point.y)).tap()
     }
     private func requireTools(_ visible: Bool, app: XCUIApplication) {
         let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in

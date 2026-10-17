@@ -7,6 +7,7 @@ if [[ "$(uname -s)" != Darwin ]]; then
 fi
 NOOR_PROBE_OUT="$(pwd)/release/recitation-engine-probe"
 mkdir -p "$NOOR_PROBE_OUT"
+python3 scripts/prepare-bundled-mushaf.py
 python3 -m venv "$NOOR_PROBE_OUT/venv"
 "$NOOR_PROBE_OUT/venv/bin/python" -m pip install 'huggingface-hub==1.33.0'
 "$NOOR_PROBE_OUT/venv/bin/python" scripts/prepare-recitation-probe.py --output "$NOOR_PROBE_OUT/data"

@@ -2,6 +2,41 @@ import XCTest
 
 final class NoorInteractiveMushafUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
+    func testYellowAyahActionsReciterPickerAndPageTurnKeepFullPage() {
+        let app = XCUIApplication(); launchNoorApp(app)
+        selectNoorTab("المصحف", in: app)
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10)); search.tap(); search.typeText("١")
+        let surah = app.buttons["surah.1"]
+        XCTAssertTrue(surah.waitForExistence(timeout: 10)); surah.tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 120), app.debugDescription)
+        let frame = page.frame
+        let verse = app.buttons["reader.verse.1:2"]
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        for identifier in ["verse.play", "verse.tafsir", "verse.tools.close"] {
+            let action = app.buttons[identifier]
+            XCTAssertTrue(action.waitForExistence(timeout: 5), identifier)
+            XCTAssertTrue(action.isHittable, identifier)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44, identifier)
+        }
+        XCTAssertEqual(page.frame, frame)
+        capture(app, "mushaf-yellow-ayah-actions")
+        app.buttons["verse.tools.close"].tap()
+        app.buttons["reader.reciters"].tap()
+        XCTAssertTrue(app.buttons["reader.reciter.Abdul_Basit_Murattal_64kbps"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reader.reciter.Abdurrahmaan_As-Sudais_192kbps"].exists)
+        capture(app, "mushaf-ready-reciter-picker")
+        app.buttons["إغلاق"].tap()
+        XCTAssertEqual(page.frame, frame)
+        page.swipeRight()
+        XCTAssertTrue(app.buttons["reader.verse.2:1"].waitForExistence(timeout: 20))
+        XCTAssertEqual(page.frame, frame)
+        capture(app, "mushaf-page-two-after-swipe")
+        page.swipeLeft()
+        XCTAssertTrue(app.buttons["reader.verse.1:2"].waitForExistence(timeout: 20))
+        XCTAssertEqual(page.frame, frame)
+    }
     func testRenderingFailureWithHiddenToolsHasAccessibleRecovery() {
         let app = XCUIApplication()
         // A negative UI fault after real resource loading verifies the recovery
@@ -27,6 +62,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         func openSettings() {
             XCTAssertTrue(app.buttons["app.settings"].waitForExistence(timeout: 20))
             app.buttons["app.settings"].tap()
+            openNoorSettingsSection("الميكروفون والتسجيلات", in: app)
         }
         openSettings()
         let remove = app.buttons["settings.recitation.erase"]
@@ -62,11 +98,11 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertTrue(page.waitForExistence(timeout: 120))
         capture(app, "text-reader-604-open")
         let originalFrame = page.frame
-        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
         XCTAssertTrue(app.buttons["reader.next"].waitForNonExistence(timeout: 5))
         XCTAssertEqual(page.frame, originalFrame, "Hiding tools must not resize or move the page")
         capture(app, "text-reader-604-tools-hidden")
-        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
         XCTAssertTrue(app.buttons["reader.next"].waitForExistence(timeout: 5))
         XCTAssertEqual(page.frame, originalFrame, "Restoring tools keeps the same viewport")
         capture(app, "text-reader-604-tools-restored")

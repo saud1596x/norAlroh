@@ -28,9 +28,7 @@ import UIKit
     func testAll604ShapedPagesAndActualWordHitRegions() async throws {
         try OriginalMushafCompanion.register()
         let metadata = try OriginalMushafRows.load()
-        let url = URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!
-        let (data, response) = try await URLSession.shared.data(from: url)
-        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
         try metadata.validate(snapshot)
         let corpus = try XCTUnwrap(QuranResources.corpus)
@@ -77,7 +75,12 @@ import UIKit
             }
             let originalRows = canvas.rowGeometry.map(\.ink)
             let originalOrnaments = canvas.ornamentBounds
+            canvas.reviewWordIDs = Set(page.words.prefix(1).map(\.id))
+            XCTAssertNotNil(canvas.reviewPath(), "A review marker must use the real word hit geometry")
+            XCTAssertEqual(canvas.rowGeometry.map(\.ink), originalRows, "Review never reshapes Quran text")
             canvas.hiddenWordIDs = Set(page.words.map(\.id))
+            XCTAssertNil(canvas.reviewPath(), "A provisional marker must never expose hidden practice words")
+            canvas.reviewWordIDs = []
             XCTAssertEqual(canvas.rowGeometry.map(\.ink), originalRows, "All hidden words retain original locations")
             XCTAssertEqual(canvas.ornamentBounds, originalOrnaments, "Training cannot move headings")
             canvas.hiddenWordIDs = []

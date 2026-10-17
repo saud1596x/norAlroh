@@ -1,0 +1,36 @@
+name: Independent phonetic category validation
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/evaluate-phonetic-qalqala.py
+      - .github/workflows/phonetic-category-evaluation.yml
+permissions:
+  contents: read
+concurrency:
+  group: phonetic-category-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  held-out-phonetic-qalqala:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned public CPU inference dependencies
+        run: python -m pip install --only-binary=":all:" numpy==2.2.6 onnxruntime==1.22.1 transformers==4.57.1 av==16.1.0 scikit-learn==1.7.2
+      - name: Measure fixed phonetic features on participant-disjoint public recordings
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+          TOKENIZERS_PARALLELISM: 'false'
+        run: python scripts/evaluate-phonetic-qalqala.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-phonetic-category-measurements
+          path: |
+            phonetic-qalqala-evaluation.json
+            phonetic-qalqala-progress.json
+          if-no-files-found: warn
