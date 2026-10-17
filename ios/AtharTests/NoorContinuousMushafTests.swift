@@ -220,7 +220,7 @@ import WhisperKit
                 XCTAssertTrue(canvas.renderedSuccessfully, "Tajweed \(number)/\(style.rawValue): \(canvas.failureReason ?? "")")
                 XCTAssertEqual(Set(canvas.regions.map(\.word)), Set(page.words.map(\.id)))
                 XCTAssertTrue(canvas.regions.allSatisfy { canvas.bounds.contains($0.rect) })
-                if [1, 2, 151, 305, 560, 604].contains(number) {
+                try autoreleasepool {
                     let format = UIGraphicsImageRendererFormat(); format.preferredRange = .standard; format.scale = 1
                     let image = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
                         (style == .dark ? UIColor.black : .white).setFill(); context.fill(canvas.bounds)
@@ -230,7 +230,9 @@ import WhisperKit
                     XCTAssertTrue(stride(from: 0, to: CFDataGetLength(pixels) - 4, by: 4).contains { i in
                         max(max(bytes[i], bytes[i + 1]), bytes[i + 2]) - min(min(bytes[i], bytes[i + 1]), bytes[i + 2]) > 35
                     }, "Original colored layers must actually draw, not a monochrome fallback")
-                    let proof = XCTAttachment(image: image); proof.name = "tajweed-\(number)-\(style.rawValue)"; proof.lifetime = .keepAlways; add(proof)
+                    if [1, 2, 17, 29, 151, 305, 560, 579, 604].contains(number) {
+                        let proof = XCTAttachment(image: image); proof.name = "tajweed-\(number)-\(style.rawValue)"; proof.lifetime = .keepAlways; add(proof)
+                    }
                 }
             }
             let passes = canvas.shapingPasses, geometry = canvas.regions.map(\.rect)

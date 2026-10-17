@@ -35,6 +35,22 @@ final class NoorContinuousReaderUITests: XCTestCase {
         more.tap()
         XCTAssertTrue(tajweed.waitForExistence(timeout: 5)); tajweed.tap()
         closeOptions.tap()
+        let viewport = app.descendants(matching: .any)["reader.page.ready"]
+        XCTAssertTrue(viewport.waitForExistence(timeout: 10))
+        viewport.swipeLeft()
+        let previousPage = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@", "reader.jump", "الصفحة ٦٠٣ من ٦٠٤")).firstMatch
+        XCTAssertTrue(previousPage.waitForExistence(timeout: 10), "A real RTL swipe turns exactly one page")
+        app.buttons["reader.next"].tap()
+        let lastPage = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@", "reader.jump", "الصفحة ٦٠٤ من ٦٠٤")).firstMatch
+        XCTAssertTrue(lastPage.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["reader.next"].isEnabled, "Last page cannot overshoot")
+        let verse = app.buttons["reader.verse.112:1"]
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        let closeVerse = app.buttons["verse.tools.close"]
+        XCTAssertTrue(closeVerse.waitForExistence(timeout: 5))
+        let selectionProof = XCTAttachment(screenshot: app.screenshot())
+        selectionProof.name = "actual-ayah-yellow-selection-and-clear-actions"; selectionProof.lifetime = .keepAlways; add(selectionProof)
+        closeVerse.tap()
         if visibility.value as? String == "الآيات مخفية" { visibility.tap() }
         XCTAssertEqual(visibility.value as? String, "الآيات ظاهرة")
         visibility.tap()

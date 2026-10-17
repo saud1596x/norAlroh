@@ -322,6 +322,9 @@ struct InteractiveMushafReader: View {
             guard allowedPages.contains(value) else { number = min(allowedPages.upperBound, max(allowedPages.lowerBound, value)); return }
             renderGeneration = UUID(); lastPage = value; rememberWardPosition()
         }
+        .onChange(of: tajweedColors) { _, _ in
+            renderGeneration = UUID(); renderingFailed = false
+        }
         .alert("أتممت ورد اليوم", isPresented: $wardComplete) {
             Button("العودة للرئيسية") { dismiss() }
         } message: { Text(readingJourney.active?.finished != nil ? "حُفظت قراءتك وأتممت الختمة." : "حُفظ تقدمك. ستكمل غدًا من الصفحة التالية حسب مقدار وردك.") }

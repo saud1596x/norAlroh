@@ -254,6 +254,11 @@ struct OriginalPageData: Equatable {
                 guard family == font.fontName || (!header && family == companion.fontName && substring.allSatisfy({ $0 == " " })) else {
                     fail("Unexpected font \(family), row \(row.line)"); return
                 }
+                // A compound canonical word may contain ASCII separators.
+                // Their companion-font glyph IDs are not page-font glyph IDs;
+                // never look them up in the page's COLR table. Advances remain
+                // in the whole shaped line, but blank separators have no ink.
+                if !header && family == companion.fontName && substring.allSatisfy({ $0 == " " }) { continue }
                 let count = CTRunGetGlyphCount(run)
                 var glyphs = [CGGlyph](repeating: 0, count: count)
                 var positions = [CGPoint](repeating: .zero, count: count)

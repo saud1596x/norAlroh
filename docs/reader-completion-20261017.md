@@ -53,6 +53,22 @@ at staging: the QUL font archive and official CDN differ on page4. No compilatio
 or tests ran. Review the actual CDN originals before updating any pins; do not
 disable this integrity check. The new test is not yet a passing result.
 
+The current CDN originals were fetched and pinned subsequently. A semantic
+comparison with the older QUL zip found28 outline/advance changes and430 color
+paint changes after resolving glyph renumbering; do not describe the two font
+versions as identical. The app uses the current publisher files, without editing
+font bytes. Specialist review of the colored edition remains unestablished.
+
+Run `6ad3d6af7550aed8108faa5a` on `5fb132a` compiled the actual app and completed
+42 unit cases plus one UI journey.41 unit cases and the UI journey passed;
+the new colored-mode test failed80 assertions on20 pages. All20 failing native
+word IDs contained an ASCII separator inside a compound. The renderer incorrectly
+looked up the companion blank's glyph ID in the page font's COLR table, painting
+an unrelated companion shape. Skip ink for these validated all-space runs while
+retaining their shaped advances. Never change the Quran words or shrink an
+individual word to hide this failure. The next run also paints all604 colored
+pages in both themes and records actual swipe/selection/picker UI when possible.
+
 ## Remaining recording-specific coverage
 
 All25 current recording identities are selectable in one searchable picker.
