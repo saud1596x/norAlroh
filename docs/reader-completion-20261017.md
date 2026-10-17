@@ -95,6 +95,22 @@ an existing saved preference. A new controller-level regression must verify
 restoration, zero automatic playback and the exact112001 media URL. This small
 catalog migration is not part of the earlier8fb native result until checked.
 
+Reader-ease source `aecde4a` / run `6ad3dd8f7550aed8108fabca` passed24 unit
+regressions and1 UI case (54.276s). Actual unmodified labels were
+`الصفحة ⁨٦٠٣⁩ من ٦٠٤` and `الصفحة ⁨٦٠٤⁩ من ٦٠٤`: U+2068/U+2069 isolation around
+the localized number caused the earlier literal comparison failures. No page
+state was forced. The real swipe and Next returned the expected pages.
+
+Four original PNG attachments were reconstructed with matching SHA256, and an
+actual UI recording completed (exit0,33,538,873bytes). Visual review found that
+the earliest screenshot had captured initial loading. Tighten readiness to the
+visible, hittable completed viewport; also require the actual native canvas's
+accessible rendered color mode and the Switch value before the colored-screen
+capture. Do not label an early loader or an unconfirmed appearance as a verified
+Tajweed UI screenshot. The next run includes this bridge and the new exact-reader
+preference/bookmark namespace regression. Acoustic/color rendering itself is
+unchanged from the successful42-case8fb run.
+
 The private TestFlight workflow now targets the previously existing **Internal
 Testers** group, confirmed in the app's saved Apple sidebar. Codemagic performs
 post-processing through the existing integration; no new group, invitation,

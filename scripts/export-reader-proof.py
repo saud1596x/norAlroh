@@ -13,6 +13,8 @@ if video_status.exists(): print('NOOR_ACTUAL_VIDEO_STATUS ' + video_status.read_
 try:
     subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(bundle),
                     '--output-path', str(out)], check=True, timeout=45)
+    for manifest in sorted(out.rglob('*.json'))[:2]:
+        print('NOOR_SCREENSHOT_MANIFEST ' + manifest.read_text()[:16000].replace('\n', ' '), flush=True)
     candidates = sorted((p for p in out.rglob('*.png') if 20_000 < p.stat().st_size <= 1_500_000), key=lambda p:p.name)[:4]
     for p in candidates:
         b = p.read_bytes()

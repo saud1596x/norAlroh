@@ -802,6 +802,8 @@ struct OriginalMushafDrawing: UIViewRepresentable {
             view.replacePage(number: page.number, animated: animate, change: change)
         }
         view.accessibilityIdentifier = view.canvas.renderedSuccessfully ? "reader.page.ready" : "reader.page.failed"
+        view.accessibilityValue = view.canvas.renderedSuccessfully
+            ? (view.canvas.tajweedEnabled ? "ألوان التجويد مفعّلة" : "القراءة العادية") : nil
         view.canvas.selected = selected
         view.canvas.hiddenWordIDs = hiddenWordIDs
         view.canvas.reviewWordIDs = reviewWordIDs

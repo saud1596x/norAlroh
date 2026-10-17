@@ -11,6 +11,8 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertTrue(surah.waitForExistence(timeout: 10)); surah.tap()
         let picker = app.buttons["reader.reciters"]
         XCTAssertTrue(picker.waitForExistence(timeout: 120))
+        let viewport = app.descendants(matching: .any)["reader.page.ready"]
+        waitForVisibleReader(viewport)
         let visibility = app.buttons["reader.textVisibility"]
         XCTAssertTrue(visibility.exists)
         let mic = app.buttons["reader.study"], jump = app.buttons["reader.jump"]
@@ -26,18 +28,18 @@ final class NoorContinuousReaderUITests: XCTestCase {
         let tajweed = app.switches["reader.tajweed"]
         XCTAssertTrue(tajweed.exists)
         if tajweed.value as? String == "0" { tajweed.tap() }
+        XCTAssertEqual(tajweed.value as? String, "1", "The actual colors switch must be on")
         let closeOptions = app.buttons["reader.options.close"]
         XCTAssertTrue(closeOptions.isHittable, "Options always have an explicit close button")
         closeOptions.tap()
         XCTAssertTrue(more.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["reader.page.ready"].waitForExistence(timeout: 10))
+        waitForVisibleReader(viewport, mode: "ألوان التجويد مفعّلة")
         let colorScreenshot = XCTAttachment(screenshot: app.screenshot())
         colorScreenshot.name = "tajweed-reader-full-screen"; colorScreenshot.lifetime = .keepAlways; add(colorScreenshot)
         more.tap()
         XCTAssertTrue(tajweed.waitForExistence(timeout: 5)); tajweed.tap()
         closeOptions.tap()
-        let viewport = app.descendants(matching: .any)["reader.page.ready"]
-        XCTAssertTrue(viewport.waitForExistence(timeout: 10))
+        waitForVisibleReader(viewport, mode: "القراءة العادية")
         viewport.swipeLeft()
         print("NOOR_PAGE_AFTER_SWIPE \(jump.label.debugDescription)")
         let previousPage = XCTNSPredicateExpectation(predicate: NSPredicate { object, _ in
@@ -94,5 +96,13 @@ final class NoorContinuousReaderUITests: XCTestCase {
         label.split { $0.wholeNumberValue == nil }.map { digits in
             digits.reduce(0) { value, digit in value * 10 + (digit.wholeNumberValue ?? 0) }
         }
+    }
+    @MainActor private func waitForVisibleReader(_ viewport: XCUIElement, mode: String? = nil) {
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { object, _ in
+            guard let element = object as? XCUIElement else { return false }
+            return element.exists && element.isHittable && (mode == nil || element.value as? String == mode)
+        }, object: viewport)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 15), .completed,
+                       "Capture the visible completed reader, not a loading or covered canvas. Actual mode: \(String(describing: viewport.value))")
     }
 }
