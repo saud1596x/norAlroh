@@ -1,5 +1,6 @@
 """Bounded sequential decoding; no seek approximation, skipped frames or padding."""
 import gc
+from contextlib import closing
 import av
 import numpy as np
 from faster_whisper.audio import _group_frames, _resample_frames
@@ -28,6 +29,22 @@ def bounded_pcm(path,maximum=1_920_000):
         if count>maximum:raise AudioIntervalResourceLimit('Whole recording requires separately evidenced bounded ayah windows')
         blocks.append(block)
     if not blocks:raise ValueError('No actual decoded audio')
+    return np.concatenate(blocks)
+
+
+def control_prefix(path,maximum=480000):
+    """Recover only a bounded real prefix for a resumed negative-control run.
+
+    This excerpt is never accepted as a complete source recording. Closing the
+    decoder early releases its file/container without decoding the whole surah.
+    """
+    if maximum<1:raise ValueError('Invalid control prefix limit')
+    blocks=[];count=0
+    with closing(pcm_blocks(path)) as decoded:
+        for block in decoded:
+            kept=block[:maximum-count].copy();blocks.append(kept);count+=len(kept)
+            if count==maximum:break
+    if not count:raise ValueError('No actual control audio')
     return np.concatenate(blocks)
 
 

@@ -16,7 +16,7 @@ from faster_whisper.audio import decode_audio
 from ctc import Aligner, validate_recording_spans
 from audit import SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record, fingerprint, write_json
 from quran_onnx import InferenceIntervalLimit, InferenceWorkDeadline
-from stream_audio import pcm_blocks, bounded_pcm, windowed_pcm, AudioIntervalResourceLimit
+from stream_audio import pcm_blocks, bounded_pcm, control_prefix, windowed_pcm, AudioIntervalResourceLimit
 
 
 class LocalDeadline(Exception):
@@ -270,7 +270,15 @@ def main(existing_aligner=None, stop_at=None):
         streamed=bool(proposal and proposal[-1][2]>30000 and args.onnx)
         try:
             _,path,url=fetch(reciter)
+            audio_hash=file_sha256(path)
+            if old is not None and old.get('audioSHA256')!=audio_hash:
+                # A source URL can change; its previous measurement cannot
+                # authorize a newly fetched recording or its control excerpt.
+                old=None
             pcm=None if streamed else bounded_pcm(path)
+            if (streamed and control_pcm is None and old is not None
+                    and old.get('status') in ('MEASURED_CANDIDATE_REQUIRES_REVIEW','REJECTED')):
+                control_pcm=control_prefix(path)
         except LocalDeadline:break
         except LocalDiskReserve:raise
         except AudioIntervalResourceLimit as error:
@@ -292,7 +300,7 @@ def main(existing_aligner=None, stop_at=None):
             if args.stream_cache:path.unlink()
             continue
         record={'reciterID':reciter['id'],'recordingID':reciter['recordingID'],
-                'audioURL':url,'audioSHA256':file_sha256(path),
+                'audioURL':url,'audioSHA256':audio_hash,
                 'expectedNativeWords':len(words)}
         if pcm is not None:record['durationSeconds']=len(pcm)/16000
         if old is not None and old.get('audioSHA256')==record['audioSHA256']:

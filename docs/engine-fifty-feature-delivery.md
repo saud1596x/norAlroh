@@ -17,7 +17,7 @@ professional forced alignment must never adjudicate a learner.
 
 | ID | Additional behavior | Required acceptance | State |
 |---|---|---|---|
-| 01 | Independent Quran CTC recognition opinion | Bundled float16 integration,26-case conversion parity; current native acceptance pending | I |
+| 01 | Independent Quran CTC recognition opinion | Native path written; later float16 prefix parity failed, full-precision conversion and native acceptance pending | I |
 | 02 | Agreement from two independent recognizers | Same original PCM hash/clock; unique contemporaneous occurrences; native acceptance pending | I |
 | 03 | Suppress correction when recognizers disagree | Independent-only words/gaps cannot bridge primary evidence; raw hypotheses retained; native acceptance pending | I |
 | 04 | Retry a low-confidence word with its genuine audio context | Bounded retry, original clock and original rejected hypothesis retained | P |
@@ -217,6 +217,34 @@ remain unverified. No new TestFlight upload.
 
 Professional timing: a bounded5GB localGPU allocator completed40records for
 surahs94/97withoutbackenderrors:29candidates,9rejected,2resource-limited.
-These remain unreviewed and unshipped. A separate60minute all114/all20pass
-is running with exact policy fingerprints; historical/partial receipts never
-constitute whole-library approval.
+These remain unreviewed and unshipped. The separate all114/all20pass stopped
+at a local disk reserve; most catalog rows were not actually fetched. Its
+historical/partial receipts never constitute whole-library approval.
+
+## Subsequent source and precision gates
+
+The first native integration attempt on2e96410failed before compilation: the
+regenerated CoreML graph differed from its pinned source. No native test ran.
+Deterministic protobuf encoding and a fixed process hash seed were then added;
+the next actual float16 trial on14ac32apassed25/26raw-word cases and failed the
+first2seconds of public Fatiha1:2 (`لن` became `لل`). This failure is retained.
+The previous36afe9a26/26result does not override a later failed precision gate.
+No compressed candidate was released. Fullfloat32source5b63f27is undergoing
+26-case actual parity and separate-process source-byte reproducibility checks;
+neither result is assumed successful before the actual logs.
+
+Streaming exact publisher windows and shrinking unused GPU arena allocations
+after each inference completed both full Baqara source decodes without an
+allocator exception. Exact source5b63f27receipts have286ayah results each:
+Sudais54:258candidates/16acoustic rejections/12over45second resource limits;
+Shuraym31:270candidates/5rejections/11resource limits. None is a whole-recording
+pass. Negative controls rejected, and these candidates remain unreviewed and
+unshipped. The actual MP3 hashes and per-ayah source frame intervals are kept
+in outputs/reciter-streamed-long-real-20261018/report.json.
+
+A resumed missing-negative-control run now recovers only a bounded actual
+prefix, verifies newly fetched source bytes against the old recording receipt,
+and remeasures if the bytes changed. The prefix is never a complete-recording
+acceptance sample. The local tooling/package suite passed34cases plus9subtests,
+including exact public-PCM decoder/prefix parity. These tests do not establish
+learner or professional timing accuracy.

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from unittest.mock import patch
 from faster_whisper.audio import decode_audio
-from stream_audio import pcm_blocks,windowed_pcm,bounded_pcm,AudioIntervalResourceLimit
+from stream_audio import pcm_blocks,windowed_pcm,bounded_pcm,control_prefix,AudioIntervalResourceLimit
 
 
 def test_actual_public_pcm_matches_existing_decoder_without_dropped_or_generated_samples():
@@ -31,6 +31,14 @@ def test_long_unassessed_interval_does_not_prevent_later_exact_window_or_retain_
 def test_whole_decode_limit_fails_explicitly_instead_of_truncating_public_audio():
     root=Path(__file__).resolve().parents[2]
     with pytest.raises(AudioIntervalResourceLimit):bounded_pcm(root/'ios/AtharTests/RecitationFixtures/002001.mp3',32000)
+
+
+def test_resumed_control_prefix_is_exact_public_pcm_and_not_whole_recording():
+    root=Path(__file__).resolve().parents[2]
+    source=root/'ios/AtharTests/RecitationFixtures/002001.mp3'
+    actual=decode_audio(str(source))
+    prefix=control_prefix(source,32000)
+    assert len(prefix)==32000<len(actual) and np.array_equal(prefix,actual[:32000])
 
 
 def test_final_context_can_end_at_real_eof_but_no_missing_ayah_is_fabricated():
