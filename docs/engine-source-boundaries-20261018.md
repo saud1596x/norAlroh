@@ -69,6 +69,33 @@ times as progress. It changes neither recorded PCM nor Quran display text.
 Three new policy cases plus genuine public PCM recognition are required in the
 subsequent native run before attributing any pass to this bundled-backend change.
 
+Actual [first native run](https://codemagic.io/app/6ac3b8b756235b59ec04e90a/build/6ad423d57550aed8108fb91a)
+on293dd5c passed23selected tests,0failures/testExit0 in9m20s. The real two-clip
+continuous recognition case passed in11.975s; this is injected public PCM, not a
+physical microphone. Actual [bundled follow-up](https://codemagic.io/app/6ac3b8b756235b59ec04e90a/build/6ad426947550aed8108fb984)
+on89e90e4 (app runtime8cdd7f1) passed26selected tests,0failures/testExit0 in9m17s.
+Both used account-enabled Release/Xcode26.3/iOS26.2/iPhone17Pro Simulator. Their
+scope still excludes speaker preparation, device microphone and full release.
+
+## Routing/clock follow-up before enabling remote inference
+
+Source review found the router advertised the configured preference rather
+than the provider actually leased by the current take. A preference change
+could label a local result as remote. The follow-up publishes a lock-protected
+actual-provider snapshot, applies remote opt-in on the next take, immediately
+stops remote decoding on revocation, and discards results of ended generations.
+
+An exact clock counterexample also exists: baseFrame2/startFrame29 makes
+`streamTime + baseTime - windowTime` negative for an actual zero-offset word.
+Subtracting the stream origin first avoids this reassociation error; absolute
+stream bounds still reject timestamps outside captured PCM. Source timestamps
+are not interpolated and no reference word replaces an acoustic observation.
+
+Three additional native regressions cover the source switch, revocation and
+fractional-frame clock. Their native result is PENDING; the26-test result above
+must not be attributed to this follow-up. The remote origin remains unconfigured
+in the app; cloud TLS/identity/E2E and GPU quota are still prerequisites.
+
 The known AVAudioPlayer.prepareToPlay/HAL timeout remains unresolved playback
 acceptance. The focused engine workflow does not claim to resolve that timeout,
 physical microphone behavior, remote iPhone/server E2E, all-reciter word timing,

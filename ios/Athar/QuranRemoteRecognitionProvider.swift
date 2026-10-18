@@ -71,13 +71,19 @@ enum QuranRemoteWordEvidence {
     }
     static func resolve(words: [Word], observations: [Observation], window: QuranAudioWindow,
                         baseFrame: Int64, unresolved: Bool) throws -> QuranRecognitionWorker.Result {
-        guard words.count <= 160, observations.count <= 320 else { throw QuranRemoteRecognitionFailure.invalidResponse }
+        guard words.count <= 160, observations.count <= 320, baseFrame >= 0, window.startFrame >= baseFrame,
+              window.endFrame > window.startFrame, window.samples.count == Int(window.endFrame-window.startFrame)
+            else { throw QuranRemoteRecognitionFailure.invalidResponse }
         let accepted = observations.filter { $0.recognition_state == "accepted" }
         guard accepted.count == words.count, zip(accepted, words).allSatisfy({ source, word in
             source.text == word.text && source.start == word.start && source.end == word.end
                 && source.confidence == word.confidence && source.run_index == word.run_index
         }) else { throw QuranRemoteRecognitionFailure.invalidResponse }
         let samples = try QuranRecognitionAudio.conditioned(window.samples)
+        // Subtract in the server stream clock first. Adding the take origin
+        // before subtracting the window origin can make an exact zero negative.
+        let streamStart = Double(window.startFrame-baseFrame) / 16000
+        let streamEnd = streamStart + Double(samples.count) / 16000
         var runs: [[QuranHeardWord]] = [[]]
         var saved: [QuranObservedWord] = []
         var uncertain = unresolved
@@ -91,13 +97,12 @@ enum QuranRemoteWordEvidence {
                   (source.start == nil) == (source.end == nil) else { throw QuranRemoteRecognitionFailure.invalidResponse }
             if source.run_index != previousRun { runs.append([]) }
             previousRun = source.run_index
-            let takeStart = source.start.map { $0 + Double(baseFrame) / 16000 }
-            let takeEnd = source.end.map { $0 + Double(baseFrame) / 16000 }
-            let start = takeStart.map { $0 - window.offset }, end = takeEnd.map { $0 - window.offset }
-            if let start, let end {
-                guard start.isFinite, end.isFinite, start >= 0, end > start,
-                      end <= Double(samples.count) / 16000 else { throw QuranRemoteRecognitionFailure.invalidResponse }
+            if let start = source.start, let end = source.end {
+                guard start.isFinite, end.isFinite, start >= streamStart, end > start,
+                      end <= streamEnd else { throw QuranRemoteRecognitionFailure.invalidResponse }
             }
+            let start = source.start.map { $0-streamStart }, end = source.end.map { $0-streamStart }
+            let takeStart = start.map { window.offset+$0 }, takeEnd = end.map { window.offset+$0 }
             var usable = false
             if source.recognition_state == "accepted", let start, let end, let confidence = source.confidence {
                 usable = start >= previousEnd && QuranAlignedWord.tokens([source.text]).count == 1
@@ -351,21 +356,33 @@ enum QuranRemoteAccountDeletion {
     }
 }
 
+/// The protocol exposes a synchronous capability snapshot. Its immutable value
+/// is protected for reads outside the routing actor; no provider escapes here.
+private final class QuranRecognitionCapabilitySnapshot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: QuranRecognitionCapabilities
+    init(_ value: QuranRecognitionCapabilities) { self.value = value }
+    func read() -> QuranRecognitionCapabilities { lock.lock(); defer { lock.unlock() }; return value }
+    func write(_ value: QuranRecognitionCapabilities) { lock.lock(); defer { lock.unlock() }; self.value = value }
+}
+
 actor QuranRecognitionRouter: QuranSpeechRecognitionProvider {
-    private var current: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared
-    nonisolated var capabilities: QuranRecognitionCapabilities {
-        if QuranRemoteConsent.enabled, QuranRemoteRecognitionConfiguration.bundled != nil {
-            return .init(backendID: "noor-self-hosted-1", modelID: "OdyAsh/faster-whisper-base-ar-quran",
-                modelRevision: "8578bafd427d122f671b187706650e76edf6f86f", configuredLanguage: "ar",
-                delivery: .overlappingAudioWindows, processesLocally: false, wordTimestamps: true, wordConfidence: true,
-                phonemeEvidence: false, calibratedWordingAssessment: false, validatedTajweedAssessment: false)
-        }
-        return QuranRecognitionWorker.shared.capabilities
-    }
-    func prepare() async throws {
-        if !capabilities.processesLocally, let configuration = QuranRemoteRecognitionConfiguration.bundled,
-           current.capabilities.processesLocally {
-            current = QuranRemoteRecognitionProvider(configuration: configuration, identity: {
+    private let local: any QuranSpeechRecognitionProvider
+    private let remoteAllowed: @Sendable () -> Bool
+    private let makeRemote: @Sendable () -> (any QuranSpeechRecognitionProvider)?
+    private var current: any QuranSpeechRecognitionProvider
+    private var preparedForTake = false
+    private var generation = UUID()
+    private nonisolated let source: QuranRecognitionCapabilitySnapshot
+    nonisolated var capabilities: QuranRecognitionCapabilities { source.read() }
+    init(local: any QuranSpeechRecognitionProvider = QuranRecognitionWorker.shared,
+         remoteAllowed: @escaping @Sendable () -> Bool = { QuranRemoteConsent.enabled && QuranRemoteRecognitionConfiguration.bundled != nil },
+         makeRemote: (@Sendable () -> (any QuranSpeechRecognitionProvider)?)? = nil) {
+        self.local = local; self.current = local; self.source = QuranRecognitionCapabilitySnapshot(local.capabilities)
+        self.remoteAllowed = remoteAllowed
+        self.makeRemote = makeRemote ?? {
+            guard let configuration = QuranRemoteRecognitionConfiguration.bundled else { return nil }
+            return QuranRemoteRecognitionProvider(configuration: configuration, identity: {
                 #if NOOR_ACCOUNT_ENABLED
                 guard let user = Auth.auth().currentUser else { throw QuranRemoteRecognitionFailure.identityRequired }
                 return try await user.getIDToken()
@@ -380,16 +397,31 @@ actor QuranRecognitionRouter: QuranSpeechRecognitionProvider {
                 #endif
             })
         }
+    }
+    func prepare() async throws {
+        if !current.capabilities.processesLocally && !remoteAllowed() {
+            await endTake(); throw QuranRemoteRecognitionFailure.consentRequired
+        }
+        if !preparedForTake {
+            current = remoteAllowed() ? (makeRemote() ?? local) : local
+            source.write(current.capabilities); preparedForTake = true
+        }
+        let token = generation
         try await current.prepare()
+        guard token == generation else { throw CancellationError() }
     }
     func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
-        if !current.capabilities.processesLocally && capabilities.processesLocally {
-            await current.endTake(); current = QuranRecognitionWorker.shared
+        if !current.capabilities.processesLocally && !remoteAllowed() {
+            await endTake(); throw QuranRemoteRecognitionFailure.consentRequired
         }
-        return try await current.recognize(window)
+        let token = generation
+        let value = try await current.recognize(window)
+        guard token == generation else { throw CancellationError() }
+        return value
     }
     func endTake() async {
-        let previous = current; current = QuranRecognitionWorker.shared
+        let previous = current; generation = UUID(); current = local; preparedForTake = false
+        source.write(local.capabilities)
         await previous.endTake()
     }
 }

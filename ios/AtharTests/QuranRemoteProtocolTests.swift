@@ -2,6 +2,71 @@ import XCTest
 @testable import Athar
 
 final class QuranRemoteProtocolTests: XCTestCase {
+    private final class Preference: @unchecked Sendable {
+        private let lock = NSLock()
+        private var enabled = false
+        func read() -> Bool { lock.lock(); defer { lock.unlock() }; return enabled }
+        func write(_ value: Bool) { lock.lock(); defer { lock.unlock() }; enabled = value }
+    }
+    private actor PolicyProvider: QuranSpeechRecognitionProvider {
+        nonisolated let capabilities: QuranRecognitionCapabilities
+        private(set) var decodes = 0
+        private(set) var endings = 0
+        init(id: String, local: Bool) {
+            capabilities = .init(backendID: id, modelID: id, modelRevision: "policy-fixture",
+                configuredLanguage: "ar", delivery: .overlappingAudioWindows, processesLocally: local,
+                wordTimestamps: true, wordConfidence: true, phonemeEvidence: false,
+                calibratedWordingAssessment: false, validatedTajweedAssessment: false)
+        }
+        func prepare() async throws {}
+        func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+            decodes += 1; return .init(runs: [], hasUnresolvedSpeech: false)
+        }
+        func endTake() async { endings += 1 }
+    }
+    func testChangingPreferenceCannotRelabelAnAlreadyLocalTakeAsRemote() async throws {
+        let preference = Preference()
+        let local = PolicyProvider(id: "local-policy-fixture", local: true)
+        let remote = PolicyProvider(id: "remote-policy-fixture", local: false)
+        let router = QuranRecognitionRouter(local: local, remoteAllowed: { preference.read() }, makeRemote: { remote })
+        try await router.prepare()
+        preference.write(true)
+        let window = QuranAudioWindow(samples: [0.06], startFrame: 0, endFrame: 1)
+        _ = try await router.recognize(window)
+        XCTAssertEqual(router.capabilities.backendID, "local-policy-fixture")
+        let localCalls = await local.decodes, remoteCalls = await remote.decodes
+        XCTAssertEqual(localCalls, 1); XCTAssertEqual(remoteCalls, 0)
+        await router.endTake(); try await router.prepare()
+        _ = try await router.recognize(window)
+        XCTAssertEqual(router.capabilities.backendID, "remote-policy-fixture")
+        let nextRemoteCalls = await remote.decodes
+        XCTAssertEqual(nextRemoteCalls, 1)
+        await router.endTake()
+    }
+    func testRevokingRemoteConsentStopsBeforeAnotherWindowIsSent() async throws {
+        let preference = Preference(); preference.write(true)
+        let local = PolicyProvider(id: "local-policy-fixture", local: true)
+        let remote = PolicyProvider(id: "remote-policy-fixture", local: false)
+        let router = QuranRecognitionRouter(local: local, remoteAllowed: { preference.read() }, makeRemote: { remote })
+        try await router.prepare(); preference.write(false)
+        do {
+            _ = try await router.recognize(.init(samples: [0.06], startFrame: 0, endFrame: 1))
+            XCTFail("Revoked consent must not upload or silently reclassify a window")
+        } catch QuranRemoteRecognitionFailure.consentRequired {}
+        XCTAssertEqual(router.capabilities.backendID, "local-policy-fixture")
+        let remoteCalls = await remote.decodes, endings = await remote.endings
+        XCTAssertEqual(remoteCalls, 0); XCTAssertEqual(endings, 1)
+    }
+    func testStreamClockConversionDoesNotRejectAZeroOffsetThroughRounding() throws {
+        let start = Double(29-2) / 16000
+        let source = QuranRemoteWordEvidence.Observation(occurrence_index: 0, run_index: 0, text: "قل",
+            start: start, end: start+0.2, confidence: 0.99, recognition_state: "accepted")
+        let window = QuranAudioWindow(samples: Array(repeating: 0.06, count: 16_000), startFrame: 29, endFrame: 16_029)
+        let result = try QuranRemoteWordEvidence.resolve(words: accepted([source]), observations: [source],
+            window: window, baseFrame: 2, unresolved: false)
+        XCTAssertEqual(result.runs.first?.first?.start, 0)
+        XCTAssertEqual(result.observations?.first?.startInTakeSeconds, window.offset)
+    }
     private func source(_ texts: [String], rejected: Set<Int> = []) -> [QuranRemoteWordEvidence.Observation] {
         var run = 0
         return texts.enumerated().map { index, text in
