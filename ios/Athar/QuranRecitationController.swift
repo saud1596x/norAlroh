@@ -107,6 +107,7 @@ import os
     private var audioFocusLease: UUID?
     private var tracker: QuranRecitationTracker?
     private var expectedIDs = Set<Int>()
+    private var practiceVisibility = QuranPracticeVisibility(expected: [])
     private var words: [QuranAlignedWord] = []
     private var revision = UUID()
     private var finishRequest = false
@@ -135,12 +136,29 @@ import os
         // Preserve its current frames, closed flag, and phase.
         latest.observedSpeech = value.observedSpeech; latest.wordingEvents = value.wordingEvents
         latest.evidence = value.evidence; latest.recognitionUnavailable = value.recognitionUnavailable
+        let visible = Set(latest.retainedVisibleVerses ?? []).union(value.retainedVisibleVerses ?? [])
+        if !visible.isEmpty { latest.retainedVisibleVerses = latest.keys.filter { visible.contains($0) } }
         if value.textExposureOccurred == true { latest.textExposureOccurred = true }
         let exposedTakes = Set(value.takes.filter { $0.textExposureOccurred == true }.map(\.id))
+        let analyzedTakes = Dictionary(uniqueKeysWithValues: value.takes.map { ($0.id,$0) })
+        for index in latest.takes.indices {
+            let hints = Set(latest.takes[index].textHintIDs ?? []).union(analyzedTakes[latest.takes[index].id]?.textHintIDs ?? [])
+            if !hints.isEmpty { latest.takes[index].textHintIDs = hints.sorted() }
+        }
         for index in latest.takes.indices where exposedTakes.contains(latest.takes[index].id) {
             latest.takes[index].textExposureOccurred = true
         }
         record = latest
+    }
+    private func retainShownText(_ value: inout QuranRecitationRecord, evidence: [QuranWordEvidence]) {
+        let visible = Set(value.retainedVisibleVerses ?? []).union(practiceVisibility.newlyShownVerses(evidence: evidence))
+        if !visible.isEmpty { value.retainedVisibleVerses = value.keys.filter { visible.contains($0) } }
+        let retained = practiceVisibility.visibleIDs(verses: value.retainedVisibleVerses ?? [])
+        let assistance = retained.subtracting(Set(evidence.map(\.nativeID)))
+        if !assistance.isEmpty, let index = value.takes.indices.last {
+            value.textExposureOccurred = true; value.takes[index].textExposureOccurred = true
+            value.takes[index].textHintIDs = Set(value.takes[index].textHintIDs ?? []).union(assistance).sorted()
+        }
     }
     var hasSession: Bool { record != nil && state != .stopped && state != .idle }
     var microphoneMeter: Double {
@@ -151,10 +169,13 @@ import os
     var practiceTextHidden: Bool { record?.practiceTextHidden ?? record?.closedTextRequested ?? false }
     var hiddenIDs: Set<Int> {
         // Expose the text again if recognition becomes unavailable. Only saved
-        // word evidence or an explicit hint can reveal individual hidden words.
+        // word evidence, previously shown complete ayahs, or an explicit hint
+        // can reveal text. Display history is never assessment evidence.
         guard hasSession, recognitionAvailable,
               practiceTextHidden else { return [] }
-        return expectedIDs.subtracting(revealed).subtracting(Set(record?.textHintIDs ?? []))
+        return expectedIDs.subtracting(revealed)
+            .subtracting(practiceVisibility.visibleIDs(verses: record?.retainedVisibleVerses ?? []))
+            .subtracting(Set(record?.textHintIDs ?? []))
     }
     @discardableResult func setPracticeTextHidden(_ hidden: Bool) -> Bool {
         guard hasSession, state == .listening || state == .paused, var current = record else { return false }
@@ -181,6 +202,7 @@ import os
         guard state == .paused, var current = record else { return }
         guard current.keys.contains(verse) else { message = "هذه الآية خارج مقطع التسميع الحالي."; return }
         let shown = revealed.union(Set(current.textHintIDs ?? []))
+            .union(practiceVisibility.visibleIDs(verses: current.retainedVisibleVerses ?? []))
         let candidates = words.filter { $0.verse == verse && expectedIDs.contains($0.id) && !shown.contains($0.id) }
         let added = entireVerse ? candidates.map(\.id) : Array(candidates.prefix(1).map(\.id))
         guard !added.isEmpty else { return }
@@ -225,6 +247,7 @@ import os
         }
         let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
         record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
+        practiceVisibility = QuranPracticeVisibility(expected: [])
         state = .permission
         guard await requestPermission() else {
             guard revision == token else { return }
@@ -245,6 +268,7 @@ import os
             let scope = Set(keys)
             tracker = QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) })
             expectedIDs = Set(tracker?.expected.map(\.id) ?? [])
+            practiceVisibility = QuranPracticeVisibility(expected: tracker?.expected ?? [])
             revealed = []; currentVerse = automaticScope ? nil : keys.first; uncertain = false; finishRequest = false
             let next = QuranRecitationRecord(keys: keys, originPage: page)
             var prepared = next
@@ -308,6 +332,7 @@ import os
             expectedIDs = Set(words.filter { scope.contains($0.verse) }.map(\.id))
             if restored.recognitionUnavailable { noteExposedPracticeText(&restored) }
             let restoredTracker = try QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) }, restoring: restored.evidence)
+            practiceVisibility = QuranPracticeVisibility(expected: restoredTracker.expected)
             try journal.save(restored)
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
             recognitionAvailable = !restored.recognitionUnavailable
@@ -362,7 +387,9 @@ import os
         if audio.isInputGainSettable { try? audio.setInputGain(1.0) }
         var take = QuranRecitationTake()
         take.referenceExposure = referenceExposure ?? next.referenceExposure
-        take.textHintIDs = next.textHintIDs
+        let retainedText = practiceVisibility.visibleIDs(verses: next.retainedVisibleVerses ?? [])
+        let shownHints = Set(next.textHintIDs ?? []).union(retainedText)
+        take.textHintIDs = shownHints.isEmpty ? nil : shownHints.sorted()
         take.textExposureOccurred = next.textExposureOccurred
         if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
@@ -535,6 +562,9 @@ import os
                 let assessmentInput = Array(spans.suffix(16))
                 let referenceWords = updatedTracker.expected
                 let priorEvents = current.wordingEvents ?? []
+                // Assessment must know when previously shown/retracted text
+                // assisted a later attempt; visibility is never mastery.
+                retainShownText(&current,evidence:updatedTracker.evidence)
                 let sessionTakes = current.takes
                 let events = await Task.detached(priority: .userInitiated) {
                     let fresh = QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
@@ -550,6 +580,9 @@ import os
                 current.wordingEvents = QuranWordingAssessment.reconcile(previous: current.wordingEvents ?? [],
                     incoming: events, reconsidered: assessmentInput)
                 current.evidence = updatedTracker.evidence; current.recognitionUnavailable = !available
+                // If an interpretation is later retracted, its text can stay
+                // visible without becoming permanent correctness evidence.
+                retainShownText(&current,evidence:updatedTracker.evidence)
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
                 do { try await saveAnalysis(current) }

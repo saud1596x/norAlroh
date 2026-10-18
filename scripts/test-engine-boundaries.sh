@@ -34,10 +34,13 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test \
  -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
  -only-testing:AtharTests/QuranRecognitionAudioTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
+ -only-testing:AtharTests/QuranPracticeVisibilityTests \
+ -only-testing:AtharTests/NoorReaderCoreRegressionTests/testVisibilityAndAnalysisPreserveEvidenceInBothDiskWriteOrders \
  -only-testing:AtharTests/QuranObservedSpeechTests/testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes \
  -only-testing:AtharTests/QuranObservedSpeechTests/testSignalFaultsCountActualCaptureFramesAndGuidanceRecoversAfterSustainedHealthyAudio \
  -only-testing:AtharTests/NoorContinuousMushafTests/testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualInitialPrefixCannotCompleteAnIsolatedScopeFromDecoderConfidenceAlone \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testQuietActualReferenceStillAnchorsWhileNoiseCannotRevealWords \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualQuietReferenceWithDCFaultStillAnchorsAndFlatlineCannotRevealWords \

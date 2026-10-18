@@ -8,6 +8,27 @@ import CryptoKit
 /// Real Core ML inference on identified reference audio; this is not a live
 /// microphone journey and must not be presented as one in release evidence.
 final class QuranRecognitionIntegrationTests: XCTestCase {
+    func testActualInitialPrefixCannotCompleteAnIsolatedScopeFromDecoderConfidenceAlone() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "002001", withExtension: "mp3"))
+        XCTAssertEqual(SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined(),
+            "48077d6641b2403e04c15585b0ede3b8eb3a3c354ae4d8d6f6a4882dc8106ebb")
+        let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        XCTAssertGreaterThan(original.count, 32_000)
+        let prefix = Array(original.prefix(32_000))
+        let worker = QuranRecognitionWorker()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let expected = try await worker.bind(snapshot: snapshot, verseKeys: keys).filter { $0.verse == "2:1" }
+        XCTAssertEqual(expected.count,1)
+        XCTAssertTrue(expected[0].requiresFollowingContext)
+        let actual = try await worker.recognize(.init(samples: prefix,startFrame:0,endFrame:32_000))
+        var tracker = QuranRecitationTracker(expected: expected)
+        for run in actual.runs { XCTAssertTrue(try tracker.consume(run,takeID:UUID()).isEmpty) }
+        XCTAssertTrue(tracker.revealedIDs.isEmpty)
+        XCTAssertEqual(prefix,Array(original.prefix(32_000)))
+    }
     @MainActor func testOpeningAndResumingCaptureDoesNotWaitForModelPreparation() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

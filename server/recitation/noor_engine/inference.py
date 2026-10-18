@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 import numpy as np
 from .audio import condition
+from .initials import REVISION as INITIALS_REVISION
 
 
 class Busy(Exception): pass
@@ -78,7 +79,7 @@ class Recognizer:
         peak = float(np.max(np.abs(samples)))
         rms = float(np.sqrt(np.mean(samples.astype(np.float64)**2)))
         hardware = f'cpu-threads{self.cpu_threads}' if self.device == 'cpu' else 'cuda'
-        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2/untimed-segment1/dc-copy1'
+        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2/untimed-segment1/dc-copy1/{INITIALS_REVISION}'
         if peak == 0 or rms < 0.00001:
             return {'words': [], 'observations': [], 'unresolved': False, 'inference_ms': 0, 'processing_configuration':configuration}
         segments, _ = self.model.transcribe(samples, language='ar', beam_size=1, temperature=0,

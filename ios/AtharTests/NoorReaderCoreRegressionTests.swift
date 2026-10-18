@@ -129,6 +129,8 @@ final class NoorReaderCoreRegressionTests: XCTestCase {
                 start: 0.1, end: 0.8, minimumConfidence: 0.99)]
             analysis.observedSpeech = [.init(takeID: initial.takes[0].id, start: 0, end: 2,
                 words: ["قل"], unresolved: false, backendID: "journal-regression")]
+            analysis.retainedVisibleVerses = ["112:1"]
+            analysis.takes[0].textHintIDs = [1]
             visibility.practiceTextHidden = false; visibility.textExposureOccurred = true
             visibility.takes[0].textExposureOccurred = true
             if visibilityFirst {
@@ -149,6 +151,18 @@ final class NoorReaderCoreRegressionTests: XCTestCase {
             let hidden = try journal.load(initial.id)
             XCTAssertEqual(hidden.evidence, analysis.evidence)
             XCTAssertEqual(hidden.textExposureOccurred, true, "Hiding again cannot erase recorded assistance")
+            var revised = analysis
+            revised.evidence = []; revised.retainedVisibleVerses = nil; revised.takes[0].textHintIDs = nil
+            try journal.saveAnalysis(revised)
+            let retracted = try journal.load(initial.id)
+            XCTAssertTrue(retracted.evidence.isEmpty)
+            XCTAssertEqual(retracted.retainedVisibleVerses,["112:1"])
+            XCTAssertEqual(retracted.takes[0].textHintIDs,[1])
+            var invalid = retracted
+            invalid.retainedVisibleVerses = ["112:1","112:1"]
+            XCTAssertThrowsError(try invalid.validate())
+            invalid.retainedVisibleVerses = ["1:2"]
+            XCTAssertThrowsError(try invalid.validate())
         }
     }
 }

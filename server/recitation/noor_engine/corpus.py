@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 import unicodedata
+from .initials import forms as spoken_initials
 
 
 def normalize(text, expand=False):
@@ -55,6 +56,7 @@ class Corpus:
                 def tokens(parts, expand=False):
                     return tuple(v for t in parts for w in t.split() if (v := normalize(w, expand)))
                 aliases = {tokens(lexical), tokens(canonical), tokens(canonical, True)}
+                aliases.update(spoken_initials(key, position, tokens(canonical)))
                 if not aliases or any(not a or not all(a) for a in aliases): raise ValueError('empty form')
                 word = Word(r['id'], key, page, position, tuple(sorted(aliases)))
                 self.by_id[word.native_id] = len(self.words)

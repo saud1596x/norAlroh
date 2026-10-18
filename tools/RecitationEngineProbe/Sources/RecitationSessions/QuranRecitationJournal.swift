@@ -76,6 +76,9 @@ public struct QuranRecitationRecord: Codable, Identifiable {
     // Current visibility is independent of the initial practice mode. Showing
     // the text must never erase the record that a take received assistance.
     public var practiceTextHidden: Bool? = nil
+    // Display history only, separate from revisable acoustic evidence. A shown
+    // ayah stays on screen while the learner continues to the next ayah.
+    public var retainedVisibleVerses: [String]? = nil
     public var automaticScope: Bool? = nil
     public var textExposureOccurred: Bool? = nil
     public var referenceExposure: String? = nil
@@ -132,6 +135,10 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       } ?? true)
               }) else { throw QuranJournalFailure.invalidRecord }
         let scope = Set(keys)
+        if let visible = retainedVisibleVerses {
+            guard visible.count <= keys.count, Set(visible).count == visible.count,
+                  Set(visible).isSubset(of: scope) else { throw QuranJournalFailure.invalidRecord }
+        }
         let observedWords = Dictionary(grouping: (observedSpeech ?? []).flatMap { span in
             (span.wordObservations ?? []).map { (span.takeID, $0) }
         }, by: { $0.1.observationID })
@@ -231,6 +238,8 @@ public struct QuranRecitationJournal {
         latest.wordingEvents = analysis.wordingEvents
         latest.evidence = analysis.evidence
         latest.recognitionUnavailable = analysis.recognitionUnavailable
+        let visible = Set(latest.retainedVisibleVerses ?? []).union(analysis.retainedVisibleVerses ?? [])
+        if !visible.isEmpty { latest.retainedVisibleVerses = latest.keys.filter { visible.contains($0) } }
         if analysis.textExposureOccurred == true { latest.textExposureOccurred = true }
         let analyzedTakes = Dictionary(uniqueKeysWithValues: analysis.takes.map { ($0.id, $0) })
         for index in latest.takes.indices {
@@ -240,6 +249,8 @@ public struct QuranRecitationJournal {
             // evidence. Grow the frame count, preserving a later pause/close.
             latest.takes[index].frames = max(latest.takes[index].frames, analyzed.frames)
             if analyzed.textExposureOccurred == true { latest.takes[index].textExposureOccurred = true }
+            let hints = Set(latest.takes[index].textHintIDs ?? []).union(analyzed.textHintIDs ?? [])
+            if !hints.isEmpty { latest.takes[index].textHintIDs = hints.sorted() }
         }
         try latest.validate(); try write(latest)
     }

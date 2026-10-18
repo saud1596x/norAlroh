@@ -32,7 +32,7 @@ professional forced alignment must never adjudicate a learner.
 | 13 | Recover from a mid-word start | Incomplete first word stays unassessable | P |
 | 14 | Recover after an interrupted word | No bridge over missing acoustic evidence | P |
 | 15 | Recognize verse joins across pauses | Same next-ayah evidence with bounded gap and no forced continuation | P |
-| 16 | Recognize spoken opening letters | Verified spoken aliases; display Quran bytes unchanged | P |
+| 16 | Recognize spoken opening letters | Position-bound complete names added; actual recognizer and long openings still under evaluation, display Quran bytes unchanged | I |
 | 17 | Distinguish an introduction from Quran progress | Istiadhah/control clips produce no false Quran confirmation | P |
 | 18 | Handle opening basmalah without wrong-surah jump | Ambiguous basmalah abstains without distinctive continuation | P |
 | 19 | Detect clipping bursts separately from sustained overload | Actual normalized PCM and no false error grading | P |
@@ -76,7 +76,7 @@ promoted merely by writing this ledger.
 
 ## First implementation batch
 
-Eight additional behaviors are integrated above; selected native verification
+Nine additional behaviors are integrated above; selected native verification
 is recorded below. Existing per-take guidance reset/inline placement is preserved and is
 not counted again. Local Python tests:14passed, including actual pinned112:1
 audio at3%gain with an injected0.15DC fault, compared against the same unaltered
@@ -113,8 +113,67 @@ the device tap. A missing, duplicate, reordered or rate-changed sample interval
 cannot be concatenated into a continuous take. Host-only timestamps are supported
 without using callback arrival time; missing stamps stop explicitly instead of
 guessing. Previous PCM remains saved and explicit resume starts a fresh take.
-Native policy/lifecycle regressions are added, but have not yet been executed on
-this new source; this does not establish a real hardware dropout test.
+Matching native run`6ad4eb2e7550aed8108fde80`on
+`18e7ac8d2f11ab26914f8db43668418da4b55cdc`passed49selectedReleasecases,
+0failures/testExit0 in27.128seconds, total10m28s. The device-clock and input
+lifecycle policies passed; this is not a real hardware dropout test. The newer
+initials changes below were not part of that run.
+
+`spoken-initials1` adds complete spoken letter-name aliases to the30initial
+groups at their exact positions in29surahs, including42:2. It accepts only
+ordered complete names, with alternative boundaries for recognizers that join
+adjacent names. Ordinaryألم and noninitial positions are unchanged. Incomplete,
+reordered or shared openings cannot choose a surah; the existing independent
+anchor/uncertainty rules remain. Canonical text, native IDs and glyphs are not
+rewritten, and raw observed words remain original. This lexical behavior is
+integrated in native and server binding; real long-initial recognition and
+phonetic correctness are not established. The native source after18e7ac8has
+not yet been tested. Do not attribute its previous native passes to this batch.
+
+Actual publicCPU eight-second-window diagnostics exposed a stronger failure:
+on a short prefix the finetuned decoder sometimes emits a whole compact
+opening with near1confidence and unrelated words. The full raw outputs are
+retained in`outputs/public-initials-evaluation/actual-windows.json`, not relabeled
+as correct. Therefore isolated-initial scopes are excluded from the general
+single-word confidence waiver. They require following independent context;
+neither a complete printed abbreviation nor a spoken-name alias alone proves
+completion. This is conservative wording/location behavior, not verified
+duration/pronunciation grading. Historical journal evidence is not claimed
+to have been acoustically reviewed by this change.
+
+The new negative native reference fixture is exact public AbdulBasitMurattal
+2:1 from`https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/002001.mp3`,
+63319bytes/SHA256`48077d6641b2403e04c15585b0ede3b8eb3a3c354ae4d8d6f6a4882dc8106ebb`.
+It is test-bundle-only and was not altered/spliced. No new private audio is
+uploaded or used as ground truth. Native execution of this new test is pending.
+
+Primary lexical references (reading names, not a pronunciation grading model):
+[Alif Lam Mim](https://qul.tarteel.ai/morphology/word?location=2%3A1%3A1),
+[Kaf Ha Ya Ayn Sad](https://corpus.quran.com/wordmorphology.jsp?location=%2819%3A1%3A1%29),
+[Ta Ha](https://corpus.quran.com/wordbyword.jsp?chapter=20),
+[Ya Sin](https://corpus.quran.com/wordmorphology.jsp?location=%2836%3A1%3A1%29).
+Device-time API reference:
+[Apple AVAudioTime](https://developer.apple.com/documentation/avfaudio/avaudiotime).
+
+## Latest learner request: keep a shown ayah visible
+
+The user specifically requested that a recited Fatiha ayah stay visible while
+reading the next. Completed-ayah display history is now separate from revisable
+word evidence: after every native word of an ayah has been shown from evidence,
+the complete ayah remains on screen even if a later overlapping ASR window
+retracts the earlier interpretation. This never reveals an unread next ayah,
+creates acoustic evidence, awards mastery or suppresses an uncertainty report.
+When retracted text remains visible, later attempts record that assistance.
+The display history survives pause/relaunch and stale analysis writes, resets
+for a new session, and uses the existing Mushaf with no additional screen.
+
+Implementation/native execution is pending for this new source. Added native
+policies reproduce Fatiha1:2 followed by a retracting window, confirm1:3stays
+hidden, reopen the real saved PCM/journal, and verify both write orders preserve
+visibility while allowing evidence retraction. These use injected recognized
+words over original public PCM; they are display/persistence tests, not ASR
+accuracy or physical microphone acceptance. Selected native pass18e7ac8does
+not include this new behavior.
 
 ## Visual acceptance queued after engine and readers
 

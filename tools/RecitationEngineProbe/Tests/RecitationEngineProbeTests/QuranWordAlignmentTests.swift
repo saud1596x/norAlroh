@@ -50,6 +50,10 @@ final class QuranWordAlignmentTests: XCTestCase {
             XCTAssertTrue(word.aliases.contains(["بعد", "ما"]))
         }
         XCTAssertTrue(bound.filter { $0.verse == "37:130" }[2].aliases.contains(["ال", "ياسين"]))
+        XCTAssertTrue(bound.filter { $0.verse == "2:1" }[0].aliases.contains(["الف", "لام", "ميم"]))
+        XCTAssertTrue(bound.filter { $0.verse == "2:1" }[0].requiresFollowingContext)
+        XCTAssertTrue(bound.filter { $0.verse == "19:1" }[0].aliases.contains(["كاف", "ها", "يا", "عين", "صاد"]))
+        XCTAssertFalse(bound.filter { $0.verse == "36:31" }[0].aliases.contains(["الف", "لام", "ميم"]))
         var damaged = native
         let first = damaged[0]
         damaged[0] = .init(id: first.id, verse: first.verse, position: first.position,
@@ -58,6 +62,32 @@ final class QuranWordAlignmentTests: XCTestCase {
     }
     func word(_ id: Int, _ forms: [[String]]) -> QuranAlignedWord {
         .init(id: id, verse: "112:1", page: 604, aliases: Set(forms))
+    }
+    func testSpokenInitialsNeedCompleteOrderedNamesAndCannotChooseASharedOpening() throws {
+        let forms = try QuranSpokenInitials.forms(verse: "2:1", position: 1, canonical: ["الٓمٓ"])
+        XCTAssertEqual(forms, [["الف","لام","ميم"], ["الفلام","ميم"], ["الف","لامميم"], ["الفلامميم"]])
+        XCTAssertTrue(try QuranSpokenInitials.forms(verse: "36:31", position: 1, canonical: ["أَلَمْ"]).isEmpty)
+        XCTAssertTrue(try QuranSpokenInitials.forms(verse: "2:1", position: 2, canonical: ["الم"]).isEmpty)
+        XCTAssertThrowsError(try QuranSpokenInitials.forms(verse: "2:1", position: 1, canonical: ["الر"]))
+        let opening = QuranAlignedWord(id: 1, verse: "2:1", page: 2, aliases: forms.union([["الم"]]), requiresFollowingContext: true)
+        let repeated = QuranAlignedWord(id: 50, verse: "3:1", page: 50, aliases: forms, requiresFollowingContext: true)
+        var ambiguous = QuranRecitationTracker(expected: [opening, repeated])
+        XCTAssertTrue(try ambiguous.consume(heard(["ألف","لام","ميم"]), takeID: UUID()).isEmpty)
+        var scope = QuranRecitationTracker(expected: [opening])
+        let take = UUID()
+        XCTAssertTrue(try scope.consume(heard(["ألف","ميم"]), takeID: take).isEmpty)
+        XCTAssertTrue(try scope.consume(heard(["ميم","لام","ألف"]), takeID: take).isEmpty)
+        let actual = ["ألف","لام","ميم"].enumerated().map {
+            QuranHeardWord(text: $0.element, start: Double($0.offset), end: Double($0.offset)+0.8, probability: 0.99)
+        }
+        XCTAssertTrue(try scope.consume(actual, takeID: take).isEmpty)
+        XCTAssertTrue(try scope.consume([.init(text: "الم", start: 0, end: 0.8, probability: 0.999)], takeID: take).isEmpty)
+        var context = QuranRecitationTracker(expected: [opening,
+            .init(id: 2, verse: "2:2", page: 2, aliases: [["ذلك"]]),
+            .init(id: 3, verse: "2:2", page: 2, aliases: [["الكتاب"]])])
+        XCTAssertEqual(try context.consume(actual + heard(["ذلك","الكتاب"],offset: 3), takeID: take).map(\.nativeID), [1,2,3])
+        XCTAssertEqual(context.evidence[0].start, 0)
+        XCTAssertEqual(context.evidence[0].end, 2.8)
     }
     func heard(_ tokens: [String], offset: Double = 0) -> [QuranHeardWord] {
         tokens.enumerated().map { .init(text: $0.element, start: offset + Double($0.offset),

@@ -48,13 +48,17 @@ public struct QuranWordScript: Decodable {
             for (record, group) in zip(records, lexical) {
                 guard record.page == group.page, record.glyph == group.glyph,
                       (1...604).contains(group.page) else { throw QuranAlignmentFailure.invalidEdition }
-                let aliases = Set([QuranAlignedWord.tokens(group.imlaei),
+                var aliases = Set([QuranAlignedWord.tokens(group.imlaei),
                                    QuranAlignedWord.tokens(group.canonical),
                                    QuranAlignedWord.tokens(group.canonical, expandDaggerAlif: true)])
+                let spoken = try QuranSpokenInitials.forms(verse: key, position: record.position,
+                                                          canonical: group.canonical)
+                aliases.formUnion(spoken)
                 guard aliases.allSatisfy({ !$0.isEmpty && $0.allSatisfy({ !$0.isEmpty }) }) else {
                     throw QuranAlignmentFailure.invalidScript
                 }
-                result.append(.init(id: record.id, verse: key, page: record.page, aliases: aliases))
+                result.append(.init(id: record.id, verse: key, page: record.page, aliases: aliases,
+                                    requiresFollowingContext: !spoken.isEmpty))
             }
         }
         return result
@@ -62,6 +66,49 @@ public struct QuranWordScript: Decodable {
 }
 
 public enum QuranAlignmentFailure: Error { case invalidScript, invalidEdition, invalidEvidence }
+
+/// Position-specific lexical aliases, never replacement Quran display text or
+/// an acoustic/phonetic correctness verdict. See the Quranic Arabic Corpus
+/// word morphology for2:1:1,19:1:1,20:1:1and36:1:1. A recognizer may separate
+/// or join letter names; accept only a complete, correctly ordered sequence.
+public enum QuranSpokenInitials {
+    public static let revision = "spoken-initials1"
+    private static let openings: [String: String] = [
+        "2:1":"الم", "3:1":"الم", "7:1":"المص", "10:1":"الر", "11:1":"الر",
+        "12:1":"الر", "13:1":"المر", "14:1":"الر", "15:1":"الر", "19:1":"كهيعص",
+        "20:1":"طه", "26:1":"طسم", "27:1":"طس", "28:1":"طسم", "29:1":"الم",
+        "30:1":"الم", "31:1":"الم", "32:1":"الم", "36:1":"يس", "38:1":"ص",
+        "40:1":"حم", "41:1":"حم", "42:1":"حم", "42:2":"عسق", "43:1":"حم",
+        "44:1":"حم", "45:1":"حم", "46:1":"حم", "50:1":"ق", "68:1":"ن"
+    ]
+    private static let names: [Character: String] = [
+        "ا":"الف", "ل":"لام", "م":"ميم", "ص":"صاد", "ر":"را", "ك":"كاف",
+        "ه":"ها", "ي":"يا", "ع":"عين", "ط":"طا", "س":"سين", "ح":"حا",
+        "ق":"قاف", "ن":"نون"
+    ]
+    public static func forms(verse: String, position: Int, canonical: [String]) throws -> Set<[String]> {
+        guard position == 1, let opening = openings[verse] else { return [] }
+        guard QuranAlignedWord.tokens(canonical) == [opening] else { throw QuranAlignmentFailure.invalidScript }
+        let spoken = try opening.map { letter -> String in
+            guard let name = names[letter] else { throw QuranAlignmentFailure.invalidScript }
+            return name
+        }
+        // Every partition joins whole spoken names only. Never delete/reorder a
+        // letter, infer a missing observation, or apply this to ordinary ألم.
+        var forms: Set<[String]> = [[]]
+        for name in spoken {
+            var next = Set<[String]>()
+            for form in forms {
+                next.insert(form + [name])
+                if !form.isEmpty {
+                    var joined = form; joined[joined.count - 1] += name; next.insert(joined)
+                }
+            }
+            forms = next
+        }
+        return forms
+    }
+}
 
 public struct QuranNativeWord: Equatable, Sendable {
     public let id: Int
@@ -79,8 +126,10 @@ public struct QuranAlignedWord: Sendable {
     public let verse: String
     public let page: Int
     public let aliases: Set<[String]>
-    public init(id: Int, verse: String, page: Int, aliases: Set<[String]>) {
+    public let requiresFollowingContext: Bool
+    public init(id: Int, verse: String, page: Int, aliases: Set<[String]>, requiresFollowingContext: Bool = false) {
         self.id = id; self.verse = verse; self.page = page; self.aliases = aliases
+        self.requiresFollowingContext = requiresFollowingContext
     }
     /// Keep long vowels and consonants. No fuzzy distance or deletion of alif.
     public static func normalize(_ text: String, expandDaggerAlif: Bool = false) -> String {
@@ -228,7 +277,10 @@ public struct QuranRecitationTracker: Sendable {
                 // A complete one-group scope cannot supply a two-group anchor.
                 // Require the entire authentic spoken form and stronger token
                 // confidence; ordinary/multi-group scopes keep their anchors.
-                let singleScope = expected.count == 1 && bounds.count == 1
+                // On actual partial initials the Quran-finetuned decoder can
+                // emit the whole opening with near1confidence. A restricted
+                // scope must not turn that memorized output into completion.
+                let singleScope = expected.count == 1 && bounds.count == 1 && !expected[0].requiresFollowingContext
                     && heard[bounds[0].1..<bounds[0].2].allSatisfy { $0.probability >= 0.95 }
                 // A nearby different passage is not evidence of continuation.
                 // After112:1, a partial "قل أعوذ" must not select113:1 merely

@@ -148,7 +148,7 @@ actor QuranRecognitionWorker {
             decoded.accepted, decoded.rejectedAudio, decoded.rejectedTiming, decoded.rejectedConfidence, decoded.rejectedQuiet, decoded.rejectedTokenBoundary)
         return Result(runs: decoded.runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: decoded.unresolved,
                       observations: decoded.observations, windowID: UUID(),
-                      processingConfiguration: QuranRecognitionModelDescriptor.bundled.map { $0.configuration + "/run-evidence2/untimed-segment1/dc-copy1" })
+                      processingConfiguration: QuranRecognitionModelDescriptor.bundled.map { $0.configuration + "/run-evidence2/untimed-segment1/dc-copy1/" + QuranSpokenInitials.revision })
     }
 }
 
