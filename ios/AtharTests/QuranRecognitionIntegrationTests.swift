@@ -503,7 +503,8 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         await reopened.resume(); XCTAssertEqual(reopened.state, .listening)
         NSLog("NOOR_SESSION_INTEGRATION finish.begin")
         await reopened.finish();
-        NSLog("NOOR_SESSION_INTEGRATION finish.end") XCTAssertEqual(reopened.state, .stopped)
+        NSLog("NOOR_SESSION_INTEGRATION finish.end")
+        XCTAssertEqual(reopened.state, .stopped)
         XCTAssertFalse(reopened.hasSession); XCTAssertTrue(reopened.hiddenIDs.isEmpty)
         let finished = try journal.load(first.id)
         XCTAssertEqual(finished.phase, .finished); XCTAssertNotNil(finished.finishedAt)
