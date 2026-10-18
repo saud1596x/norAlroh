@@ -19,14 +19,19 @@ workflows:
   reader-ease-check:
     name: Noor spacious reader, playback page lock and evidence regressions
     instance_type: mac_mini_m2
-    max_build_duration: 12
+    max_build_duration: 15
     environment:
       xcode: "26.3"
     cache:
       cache_paths:
-        - release/reader-ease-derived-data/ModuleCache.noindex
-        - release/reader-ease-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
-        - release/reader-ease-derived-data/SourcePackages
+        - release/continuous-reader-derived-data/ModuleCache.noindex
+        - release/continuous-reader-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/continuous-reader-derived-data/SourcePackages
+        - ios/Athar/Fonts
+        - ios/RecitationModel
+        - release/independent-coreml-model-seed0-float32
+        - ~/.cache/noor-independent-ctc
+        - ~/Library/Caches/pip
     scripts:
       - name: Install project generator
         script: command -v xcodegen >/dev/null || brew install xcodegen
@@ -425,6 +430,14 @@ workflows:
   ios-testflight-user-review:
     <<: *signed_saud_ios
     name: Noor Alruh user device review / TestFlight (checks unresolved)
+    max_build_duration: 18
+    cache:
+      cache_paths:
+        - ios/Athar/Fonts
+        - ios/RecitationModel
+        - release/independent-coreml-model-seed0-float32
+        - ~/.cache/noor-independent-ctc
+        - ~/Library/Caches/pip
     # User explicitly requested this unfinished build for their own iPhone
     # testing after disclosure. Do not relabel old native results as successful.
     environment:

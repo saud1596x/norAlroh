@@ -61,6 +61,17 @@ class ReleasePayloadTests(unittest.TestCase):
                                    'sha256': hashlib.sha256(data).hexdigest()}
                                   for name, data in self.model_files.items()]}))
         (root / 'content-sources/recitation-word-script.json').write_bytes(b'synthetic-word-script')
+        vocabulary=(gate.ROOT/'content-sources/independent-ctc-vocab.json').read_bytes()
+        notice=(gate.ROOT/'docs/QURAN-CTC-MODEL-NOTICE.txt').read_bytes()
+        (root/'content-sources/independent-ctc-vocab.json').write_bytes(vocabulary)
+        (root/'docs/QURAN-CTC-MODEL-NOTICE.txt').write_bytes(notice)
+        self.independent_files={'quran-ctc.mlmodelc/compiled.bin':b'synthetic-compiled-resource-not-a-model',
+            'vocab.json':vocabulary,'NOTICE.txt':notice}
+        self.independent_descriptor={'schema':1,'revision':gate._ctc_source.REVISION,'precision':'float32',
+            'sourceWeightsSHA256':'202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf',
+            'sourceSpecSHA256':gate._ctc_source.PINS['Data/com.apple.CoreML/model.mlmodel'],
+            'convertedWeightsSHA256':gate._ctc_source.PINS['Data/com.apple.CoreML/weights/weight.bin'],
+            'files':{n:hashlib.sha256(b).hexdigest() for n,b in self.independent_files.items()}}
         for name in ['WHISPER-MODEL-LICENSE.txt', 'TARTEEL-MODEL-LICENSE.txt', 'RECITATION-MODEL-NOTICE.txt']:
             (root / 'docs' / name).write_bytes(name.encode())
         self.root_patch = patch.object(gate, 'ROOT', root)
@@ -78,6 +89,8 @@ class ReleasePayloadTests(unittest.TestCase):
             resources = {'RecitationModel/' + name: data for name, data in self.model_files.items()}
             resources.update(self.quran_files)
             resources.update(self.tajweed_files)
+            resources.update({'IndependentCTC/'+name:data for name,data in self.independent_files.items()})
+            resources['IndependentCTC/verified-model.json']=json.dumps(self.independent_descriptor).encode()
             resources['mic-start.wav'] = b'synthetic-UI-feedback-not-recitation'
             resources['RecitationModel/verified-model.json'] = json.dumps({
                 'schema': 1, 'model': 'synthetic-test-model', 'revision': 'test-revision',
@@ -125,6 +138,17 @@ class ReleasePayloadTests(unittest.TestCase):
             for name in self.model_files:
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit='RecitationModel/' + name))
+
+    def test_independent_payload_rejects_missing_files_corruption_and_unreviewed_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in self.independent_files:
+                with self.subTest(name=name),self.assertRaises((KeyError,ValueError)):
+                    gate.verify(self.payload(folder,omit='IndependentCTC/'+name))
+                with self.subTest(name=name),self.assertRaises(ValueError):
+                    gate.verify(self.payload(folder,corrupt='IndependentCTC/'+name))
+            self.independent_descriptor['sourceSpecSHA256']='a'*64
+            with self.assertRaisesRegex(ValueError,'source descriptor'):
+                gate.verify(self.payload(folder))
 
     def test_missing_or_corrupted_original_tajweed_font_or_layers_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

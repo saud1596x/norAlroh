@@ -12,6 +12,9 @@ from urllib.parse import urlsplit
 from account_privacy import validate_accounts
 
 ROOT = Path(__file__).resolve().parents[1]
+_ctc_spec = importlib.util.spec_from_file_location('noor_independent_source', Path(__file__).with_name('prepare-independent-ctc.py'))
+_ctc_source = importlib.util.module_from_spec(_ctc_spec)
+_ctc_spec.loader.exec_module(_ctc_source)
 BUNDLE = 'com.saud1596x.nooralruh'
 EXTENSIONS = {
     BUNDLE + '.widgets': 'com.apple.widgetkit-extension',
@@ -59,6 +62,41 @@ def verify_recitation_resources(ipa, root):
     if ipa.read(root + 'recitation-word-script.json') != (ROOT / 'content-sources/recitation-word-script.json').read_bytes():
         raise ValueError('Incorrect bundled recognition word script')
     return len(manifest['files'])
+
+def verify_independent_resources(ipa, root):
+    prefix=root+'IndependentCTC/'
+    names=[n for n in ipa.namelist() if n.startswith(prefix) and not n.endswith('/')]
+    descriptor=json.loads(ipa.read(prefix+'verified-model.json'))
+    if (descriptor.get('schema')!=1 or descriptor.get('revision')!=_ctc_source.REVISION
+        or descriptor.get('precision')!='float32'
+        or descriptor.get('sourceWeightsSHA256')!='202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf'
+        or descriptor.get('sourceSpecSHA256')!=_ctc_source.PINS['Data/com.apple.CoreML/model.mlmodel']
+        or descriptor.get('convertedWeightsSHA256')!=_ctc_source.PINS['Data/com.apple.CoreML/weights/weight.bin']):
+        raise ValueError('Independent CTC source descriptor differs from tested source')
+    files=descriptor.get('files',{})
+    if (not isinstance(files,dict) or not 3<=len(files)<=128
+        or len(names)!=len(set(names))
+        or set(names)!={prefix+n for n in files}|{prefix+'verified-model.json'}
+        or not any(n.startswith('quran-ctc.mlmodelc/') for n in files)):
+        raise ValueError('Incomplete or duplicate independent CTC payload inventory')
+    for name,pin in files.items():
+        if (not name or name.startswith('/') or '..' in name.split('/')
+            or not isinstance(pin,str) or len(pin)!=64):
+            raise ValueError('Invalid independent CTC payload path/hash')
+        info=ipa.getinfo(prefix+name)
+        if (info.external_attr>>16)&0o170000==0o120000:
+            raise ValueError('Linked independent CTC payload')
+        digest=hashlib.sha256()
+        with ipa.open(info) as stream:
+            for chunk in iter(lambda:stream.read(1024*1024),b''):digest.update(chunk)
+        if digest.hexdigest()!=pin:
+            raise ValueError('Incorrect independent CTC compiled resource: '+name)
+    if ipa.read(prefix+'vocab.json')!=(ROOT/'content-sources/independent-ctc-vocab.json').read_bytes():
+        raise ValueError('Independent CTC vocabulary differs')
+    if ipa.read(prefix+'NOTICE.txt')!=(ROOT/'docs/QURAN-CTC-MODEL-NOTICE.txt').read_bytes():
+        raise ValueError('Independent CTC notice missing or changed')
+    return len(files)
+
 
 def verify_tajweed_resources(ipa, root):
     original = (ROOT / 'release/qcf-v4-manifest.json').read_bytes()
@@ -142,9 +180,11 @@ def verify(path):
         if catalog.get('schema') != 1 or not readers or any(
                 len(reader['surahs']) != 114 or set(reader['surahs']) != set(range(1, 115)) for reader in readers):
             raise ValueError('Reciter catalog contains an incomplete Quran')
+        independent_count=verify_independent_resources(ipa,root)
     return {'version': version[0], 'build': version[1], 'extensions': sorted(found),
             'accountConfigurationIncluded': True, 'recognitionResourcesVerified': recognition_count,
             'originalTajweedPagesVerified': tajweed_count,
+            'independentCTCResourcesVerified': independent_count,
             'microphoneFeedbackIncluded': True,
             'quranTextResourcesMatchSource': True, 'completeReciterCatalogs': len(readers),
             'deviceTested': False}

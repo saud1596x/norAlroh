@@ -21,12 +21,13 @@ try:
                 attachment_names[attachment.get('exportedFileName', '')] = attachment.get('suggestedHumanReadableName', '')
     for manifest in sorted(out.rglob('*.json'))[:2]:
         print('NOOR_SCREENSHOT_MANIFEST ' + manifest.read_text()[:16000].replace('\n', ' '), flush=True)
-    priorities = ['full-screen-reclaimed-reading-space', 'tajweed-reader-full-screen',
-                  'reader-controls-spaced-no-overlap', 'actual-ayah-yellow-selection-and-clear-actions']
+    priorities = ['user-reference-balanced-page-14', 'tajweed-reader-full-screen',
+                  'full-screen-reclaimed-reading-space', 'actual-ayah-yellow-selection-and-clear-actions',
+                  'reader-controls-spaced-no-overlap', 'automatic-fullscreen-reader']
     def priority(path):
         name = attachment_names.get(path.name, '')
         return (next((i for i, prefix in enumerate(priorities) if name.startswith(prefix)), len(priorities)), path.name)
-    candidates = sorted((p for p in out.rglob('*.png') if 20_000 < p.stat().st_size <= 1_500_000), key=priority)[:4]
+    candidates = sorted((p for p in out.rglob('*.png') if 20_000 < p.stat().st_size <= 1_500_000), key=priority)[:6]
     for p in candidates:
         b = p.read_bytes()
         print('NOOR_SCREENSHOT_BEGIN ' + json.dumps({'name':p.name, 'bytes':len(b), 'sha256':hashlib.sha256(b).hexdigest()}),flush=True)

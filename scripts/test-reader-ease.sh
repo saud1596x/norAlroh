@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p release/reader-ease
-xcodegen generate --spec ios/project.yml --project ios
+xcodegen generate --spec ios/project-accounts.yml --project ios
 device=$(python3 - <<'PY'
 import json,subprocess
 from pathlib import Path
@@ -15,7 +15,7 @@ Path('release/reader-ease/context.json').write_text(json.dumps({
  'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
  'xcode':subprocess.check_output(['xcodebuild','-version'],text=True).strip(),
  'runtime':runtime,'device':phones[0]['name'],'configuration':'Release',
- 'scope':'Reader layout/touch areas, manual page lock, exact captured-word alignment replay, both journal write orders; NOT actual ASR rerun, device microphone, all-reciter timing or release acceptance'
+ 'scope':'Account-enabled reader, all604originalTajweed/hidden-word geometry, full-screen/touch areas, actual normal/Tajweed/selection/reference-page screenshots, manual page lock, exact captured-word replay and journal orders; NOT device microphone, all-reciter timings or fullRelease acceptance'
 },indent=2)+'\n')
 print(phones[0]['udid'])
 PY
@@ -29,9 +29,9 @@ test_log=release/reader-ease/native-test-log.txt
 : > "$test_log"
 python3 scripts/record-reader-test.py "$device" "$test_log" release/reader-ease &
 video_watch=$!
-python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
+python3 scripts/run-native-with-deadline.py 720 xcodebuild test -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
  -destination "platform=iOS Simulator,id=$device" \
- -derivedDataPath release/reader-ease-derived-data CODE_SIGNING_ALLOWED=NO \
+ -derivedDataPath release/continuous-reader-derived-data CODE_SIGNING_ALLOWED=NO \
  ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO \
  'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING' \
  -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
@@ -42,7 +42,10 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test -project ios/Ath
  -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
  -only-testing:AtharTests/QuranWordAlignmentTests \
  -only-testing:AtharTests/MushafViewportTests \
+ -only-testing:AtharTests/NoorContinuousMushafTests/testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry \
  -only-testing:AtharUITests/NoorContinuousReaderUITests \
+ -only-testing:AtharUITests/NoorReaderComfortUITests/testUserReferencePage14IsCenteredAndFullyVisible \
+ -only-testing:AtharUITests/NoorReaderComfortUITests/testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone \
  -resultBundlePath release/reader-ease/actual-tests.xcresult 2>&1 | tee "$test_log" || test_exit=$?
 touch release/reader-ease/test-finished
 wait "$video_watch" || true
