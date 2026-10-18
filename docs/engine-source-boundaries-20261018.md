@@ -91,8 +91,8 @@ Subtracting the stream origin first avoids this reassociation error; absolute
 stream bounds still reject timestamps outside captured PCM. Source timestamps
 are not interpolated and no reference word replaces an acoustic observation.
 
-Three additional native regressions cover the source switch, revocation and
-fractional-frame clock. Their native result is PENDING; the26-test result above
+Four additional native regressions cover the source switch, revocation before
+and during decoding, and fractional-frame clock. Their native result is PENDING; the26-test result above
 must not be attributed to this follow-up. The remote origin remains unconfigured
 in the app; cloud TLS/identity/E2E and GPU quota are still prerequisites.
 

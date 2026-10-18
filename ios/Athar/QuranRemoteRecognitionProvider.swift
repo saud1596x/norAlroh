@@ -417,6 +417,9 @@ actor QuranRecognitionRouter: QuranSpeechRecognitionProvider {
         let token = generation
         let value = try await current.recognize(window)
         guard token == generation else { throw CancellationError() }
+        if !current.capabilities.processesLocally && !remoteAllowed() {
+            await endTake(); throw QuranRemoteRecognitionFailure.consentRequired
+        }
         return value
     }
     func endTake() async {

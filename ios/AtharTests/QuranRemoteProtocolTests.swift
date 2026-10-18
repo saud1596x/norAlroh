@@ -12,7 +12,10 @@ final class QuranRemoteProtocolTests: XCTestCase {
         nonisolated let capabilities: QuranRecognitionCapabilities
         private(set) var decodes = 0
         private(set) var endings = 0
-        init(id: String, local: Bool) {
+        private let held: Bool
+        private var pending: CheckedContinuation<QuranRecognitionWorker.Result, Never>?
+        init(id: String, local: Bool, held: Bool = false) {
+            self.held = held
             capabilities = .init(backendID: id, modelID: id, modelRevision: "policy-fixture",
                 configuredLanguage: "ar", delivery: .overlappingAudioWindows, processesLocally: local,
                 wordTimestamps: true, wordConfidence: true, phonemeEvidence: false,
@@ -20,9 +23,13 @@ final class QuranRemoteProtocolTests: XCTestCase {
         }
         func prepare() async throws {}
         func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
-            decodes += 1; return .init(runs: [], hasUnresolvedSpeech: false)
+            try Task.checkCancellation()
+            decodes += 1
+            if held { return await withCheckedContinuation { pending = $0 } }
+            return .init(runs: [], hasUnresolvedSpeech: false)
         }
-        func endTake() async { endings += 1 }
+        func release() { pending?.resume(returning: .init(runs: [], hasUnresolvedSpeech: false)); pending = nil }
+        func endTake() async { endings += 1; release() }
     }
     func testChangingPreferenceCannotRelabelAnAlreadyLocalTakeAsRemote() async throws {
         let preference = Preference()
@@ -56,6 +63,22 @@ final class QuranRemoteProtocolTests: XCTestCase {
         XCTAssertEqual(router.capabilities.backendID, "local-policy-fixture")
         let remoteCalls = await remote.decodes, endings = await remote.endings
         XCTAssertEqual(remoteCalls, 0); XCTAssertEqual(endings, 1)
+    }
+    func testConsentRevokedDuringDecodeDiscardsItsLateResult() async throws {
+        let preference = Preference(); preference.write(true)
+        let local = PolicyProvider(id: "local-policy-fixture", local: true)
+        let remote = PolicyProvider(id: "held-policy-fixture", local: false, held: true)
+        let router = QuranRecognitionRouter(local: local, remoteAllowed: { preference.read() }, makeRemote: { remote })
+        try await router.prepare()
+        let task = Task { try await router.recognize(.init(samples: [0.06], startFrame: 0, endFrame: 1)) }
+        let deadline = Date().addingTimeInterval(2)
+        while (await remote.decodes) == 0 && Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
+        let entered = await remote.decodes
+        guard entered == 1 else { task.cancel(); await router.endTake(); XCTFail("Policy fixture did not start"); return }
+        preference.write(false); await remote.release()
+        do { _ = try await task.value; XCTFail("A late result cannot survive withdrawal of consent") }
+        catch QuranRemoteRecognitionFailure.consentRequired {}
+        XCTAssertEqual(router.capabilities.backendID, "local-policy-fixture")
     }
     func testStreamClockConversionDoesNotRejectAZeroOffsetThroughRounding() throws {
         let start = Double(29-2) / 16000
