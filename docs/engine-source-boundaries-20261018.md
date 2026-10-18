@@ -43,6 +43,32 @@ regression for the new mapping and genuine public PCM cross-surah recognition.
 No existing playback assertion, reviewed-preview or publication gate is removed
 or marked successful. Its native result must be recorded after the actual run.
 
+The two opt-in real-model tests were then run explicitly with the pinned CPU
+model/public fixture environment: **2 passed in11.62s**. The continuous test also
+checks that each accepted response word exactly matches its ordered source
+observation. The real admission test still rejects the fifth connection and
+allows only one actual inference; this is not a sustained-capacity claim.
+
+The local existing RTX5060 comparison actually completed22 HTTP/WebSocket
+cases, including ten known public clips at normal/3% volume and silence/noise.
+Warm median latency0.250s/p950.375s, identical result replay22/22. No false
+silence/noise location was emitted. WER0.0909 and standalone verse-location
+rate0.4 describe only these reused clips/strict ambiguity abstentions, not unseen
+learner quality. Internet/iPhone/cloud-GPU timing remains unmeasured. This run
+loaded the evaluator before its additional source-identity assertion was added;
+that assertion is separately exercised by the explicit real-model test above.
+
+## Bundled backend follow-up
+
+The same audit found that the bundled local word gate could accept a timestamp
+up to100ms beyond its captured window and did not reject a word overlapping the
+previous decoded word. It also discarded all source words of a no-speech
+segment. The follow-up extracts a tested local accumulator: preserve uncertain
+source text, keep valid nullable source times and reject overlaps/out-of-window
+times as progress. It changes neither recorded PCM nor Quran display text.
+Three new policy cases plus genuine public PCM recognition are required in the
+subsequent native run before attributing any pass to this bundled-backend change.
+
 The known AVAudioPlayer.prepareToPlay/HAL timeout remains unresolved playback
 acceptance. The focused engine workflow does not claim to resolve that timeout,
 physical microphone behavior, remote iPhone/server E2E, all-reciter word timing,

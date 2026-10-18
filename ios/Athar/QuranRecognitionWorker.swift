@@ -2,6 +2,49 @@ import Foundation
 import WhisperKit
 import os
 
+/// Keep the bundled decoder's source uncertainty before exact Quran anchoring.
+/// This gate is independently testable without constructing a Core ML model.
+struct QuranLocalWordEvidence {
+    private(set) var runs: [[QuranHeardWord]] = [[]]
+    private(set) var observations: [QuranObservedWord] = []
+    private(set) var unresolved = false
+    private var previousEnd: Double = 0
+    private(set) var rejectedAudio = 0, rejectedTiming = 0, rejectedConfidence = 0
+    private(set) var rejectedQuiet = 0, rejectedTokenBoundary = 0, accepted = 0
+
+    mutating func consume(text: String, start: Float, end: Float, confidence: Float,
+                          speechSegment: Bool, samples: [Float], offset: Double) {
+        var rejection = AudioEvidenceGate.rejection(.init(start: start, end: end, probability: confidence), samples: samples)
+        let timing = start.isFinite && end.isFinite && start >= 0 && end > start
+            && Double(end) <= Double(samples.count) / 16_000
+        if !timing || Double(start) < previousEnd { rejection = .invalidTiming }
+        if timing { previousEnd = max(previousEnd, Double(end)) }
+        if !speechSegment, rejection == nil { rejection = .lowConfidence }
+        let invalidBoundary = QuranAlignedWord.tokens([text]).count != 1
+        let usable = rejection == nil && !invalidBoundary && !text.isEmpty
+        if !text.isEmpty {
+            observations.append(.init(occurrenceIndex: observations.count, runIndex: runs.count-1,
+                observedText: text, startInTakeSeconds: timing ? offset + Double(start) : nil,
+                endInTakeSeconds: timing ? offset + Double(end) : nil,
+                backendConfidence: confidence.isFinite && (0...1).contains(confidence) ? Double(confidence) : nil,
+                recognitionState: usable ? "accepted" : "unassessable", timingSource: timing ? "backend-word" : "unavailable"))
+        }
+        switch rejection {
+        case .invalidAudio: rejectedAudio += 1
+        case .invalidTiming: rejectedTiming += 1
+        case .lowConfidence: rejectedConfidence += 1
+        case .insufficientAudio: rejectedQuiet += 1
+        case nil: break
+        }
+        if invalidBoundary { rejectedTokenBoundary += 1 }
+        if usable {
+            accepted += 1
+            runs[runs.count-1].append(.init(text: text, start: Double(start), end: Double(end), probability: Double(confidence)))
+        } else { unresolved = true; runs.append([]) }
+    }
+    mutating func interrupt() { unresolved = true; runs.append([]) }
+}
+
 actor QuranRecognitionWorker {
     static let shared = QuranRecognitionWorker()
     private static let diagnostics = OSLog(subsystem: "com.noor.recitation", category: "Recognition evidence")
@@ -74,49 +117,15 @@ actor QuranRecognitionWorker {
             skipSpecialTokens: true, withoutTimestamps: false, wordTimestamps: true,
             suppressBlank: true, concurrentWorkerCount: 1)
         let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
-        var runs: [[QuranHeardWord]] = [[]]
-        var unresolved = false
-        var observations: [QuranObservedWord] = []
-        var rejectedAudio = 0, rejectedTiming = 0, rejectedConfidence = 0
-        var rejectedQuiet = 0, rejectedTokenBoundary = 0, accepted = 0
+        var decoded = QuranLocalWordEvidence()
         for segment in output.flatMap(\.segments) {
         // Amplification must not turn a decoder's no-speech segment into
         // Quran progress. Missing/non-finite confidence stays unresolved.
-        guard segment.noSpeechProb.isFinite, (0...1).contains(segment.noSpeechProb),
-              segment.noSpeechProb < 0.6 else {
-            runs.append([]); unresolved = true; continue
-        }
+        let speech = segment.noSpeechProb.isFinite && (0...1).contains(segment.noSpeechProb) && segment.noSpeechProb < 0.6
+        if !speech { decoded.interrupt() }
         for word in segment.words ?? [] {
-            let evidence = AudioEvidenceGate.Evidence(start: word.start, end: word.end, probability: word.probability)
-            let rejection = AudioEvidenceGate.rejection(evidence, samples: inferenceSamples)
-            let invalidBoundary = QuranAlignedWord.tokens([word.word]).count != 1
-            let start = Double(word.start), end = Double(word.end)
-            let validTiming = start.isFinite && end.isFinite && start >= 0 && end > start
-                && end <= Double(window.samples.count) / 16_000
-            if !word.word.isEmpty {
-                observations.append(.init(occurrenceIndex: observations.count, runIndex: runs.count - 1,
-                    observedText: word.word,
-                    startInTakeSeconds: validTiming ? window.offset + start : nil,
-                    endInTakeSeconds: validTiming ? window.offset + end : nil,
-                    backendConfidence: word.probability.isFinite && (0...1).contains(word.probability) ? Double(word.probability) : nil,
-                    recognitionState: rejection == nil && !invalidBoundary ? "accepted" : "unassessable",
-                    timingSource: validTiming ? "backend-word" : "unavailable"))
-            }
-            switch rejection {
-            case .invalidAudio: rejectedAudio += 1
-            case .invalidTiming: rejectedTiming += 1
-            case .lowConfidence: rejectedConfidence += 1
-            case .insufficientAudio: rejectedQuiet += 1
-            case nil: break
-            }
-            if invalidBoundary { rejectedTokenBoundary += 1 }
-            if rejection != nil || invalidBoundary {
-                runs.append([]); unresolved = true
-            } else {
-                accepted += 1
-                runs[runs.count - 1].append(.init(text: word.word, start: Double(word.start),
-                    end: Double(word.end), probability: Double(word.probability)))
-            }
+            decoded.consume(text: word.word, start: word.start, end: word.end, confidence: word.probability,
+                speechSegment: speech, samples: inferenceSamples, offset: window.offset)
         }
         }
         // Numeric counters only: no recognized text, samples, account or session
@@ -124,10 +133,10 @@ actor QuranRecognitionWorker {
         // from an alignment miss without measuring these separate boundaries.
         os_signpost(.event, log: Self.diagnostics, name: "Recognition gate counts",
             "accepted=%{public}d invalidAudio=%{public}d timing=%{public}d confidence=%{public}d quiet=%{public}d tokenBoundary=%{public}d",
-            accepted, rejectedAudio, rejectedTiming, rejectedConfidence, rejectedQuiet, rejectedTokenBoundary)
-        return Result(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved,
-                      observations: observations, windowID: UUID(),
-                      processingConfiguration: QuranRecognitionModelDescriptor.bundled?.configuration)
+            decoded.accepted, decoded.rejectedAudio, decoded.rejectedTiming, decoded.rejectedConfidence, decoded.rejectedQuiet, decoded.rejectedTokenBoundary)
+        return Result(runs: decoded.runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: decoded.unresolved,
+                      observations: decoded.observations, windowID: UUID(),
+                      processingConfiguration: QuranRecognitionModelDescriptor.bundled.map { $0.configuration + "/run-evidence2" })
     }
 }
 

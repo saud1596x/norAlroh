@@ -47,6 +47,11 @@ def test_actual_model_continuous_windows_recover_and_change_surah(settings, sign
                 ws.send_bytes(samples[first:end].tobytes())
                 result = ws.receive_json()
                 assert 'error' not in result, result
+                source = result['observations']
+                assert [w['occurrence_index'] for w in source] == list(range(len(source)))
+                accepted = [w for w in source if w['recognition_state'] == 'accepted']
+                fields = ['text','start','end','confidence','run_index']
+                assert [[w[k] for k in fields] for w in accepted] == [[w[k] for k in fields] for w in result['words']]
                 results.append(result)
                 locations.extend(e['payload']['verse'] for e in result['events'] if e['type']=='VERSE_LOCATION_CHANGED')
                 assert all(e['type']!='ERROR_CONFIRMED' for e in result['events'])

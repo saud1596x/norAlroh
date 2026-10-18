@@ -3,6 +3,36 @@ import XCTest
 
 /// Explicitly injected non-cancellable backend; not microphone/ASR evidence.
 final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
+    func testBundledLowConfidenceWordKeepsItsSourceAndDoesNotJoinNeighbors() {
+        var gate = QuranLocalWordEvidence()
+        let samples = Array(repeating: Float(0.06), count: 64_000)
+        for (index, text) in ["قل", "هو", "سيارة", "الله", "أحد"].enumerated() {
+            gate.consume(text: text, start: Float(index) * 0.3, end: Float(index) * 0.3 + 0.2,
+                confidence: index == 2 ? 0.4 : 0.99, speechSegment: true, samples: samples, offset: 2)
+        }
+        XCTAssertEqual(gate.runs.filter { !$0.isEmpty }.map { $0.map(\.text) }, [["قل", "هو"], ["الله", "أحد"]])
+        XCTAssertEqual(gate.observations.map(\.observedText), ["قل", "هو", "سيارة", "الله", "أحد"])
+        XCTAssertEqual(gate.observations[2].recognitionState, "unassessable")
+        XCTAssertTrue(gate.unresolved)
+    }
+    func testBundledWordCannotClaimAudioBeyondWindowOrOverlapEarlierWord() {
+        var gate = QuranLocalWordEvidence()
+        let samples = Array(repeating: Float(0.06), count: 16_000)
+        gate.consume(text: "قل", start: 0, end: 0.5, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        gate.consume(text: "هو", start: 0.2, end: 0.7, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        gate.consume(text: "أحد", start: 0.8, end: 1.05, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        XCTAssertEqual(gate.runs.flatMap { $0 }.map(\.text), ["قل"])
+        XCTAssertEqual(gate.rejectedTiming, 2)
+        XCTAssertNil(gate.observations[2].startInTakeSeconds)
+    }
+    func testBundledNoSpeechHypothesisRemainsAuditableAndCannotAwardProgress() {
+        var gate = QuranLocalWordEvidence()
+        gate.consume(text: "قل", start: 0, end: 0.2, confidence: 0.99, speechSegment: false,
+            samples: Array(repeating: 0.06, count: 16_000), offset: 0)
+        XCTAssertTrue(gate.runs.flatMap { $0 }.isEmpty)
+        XCTAssertEqual(gate.observations.first?.observedText, "قل")
+        XCTAssertEqual(gate.observations.first?.recognitionState, "unassessable")
+    }
     @MainActor func testQuranBindingRemainsAvailableWhileOldInferenceCannotReturn() async throws {
         let data = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: data).validated()
