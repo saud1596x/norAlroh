@@ -76,7 +76,7 @@ class Recognizer:
         peak = float(np.max(np.abs(original)))
         rms = float(np.sqrt(np.mean(original.astype(np.float64)**2)))
         hardware = f'cpu-threads{self.cpu_threads}' if self.device == 'cpu' else 'cuda'
-        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2'
+        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2/untimed-segment1'
         if peak == 0 or rms < 0.00001:
             return {'words': [], 'observations': [], 'unresolved': False, 'inference_ms': 0, 'processing_configuration':configuration}
         gain = max(1, min(256, 0.06/max(rms, 0.000001), 0.9/peak))
@@ -90,6 +90,16 @@ class Recognizer:
         for segment in segments:
             speech = math.isfinite(segment.no_speech_prob) and 0 <= segment.no_speech_prob < .6
             if not speech: unresolved = True
+            if not segment.words:
+                # A decoder may emit segment text but fail word timestamping.
+                # Dropping that segment would falsely connect its neighbors.
+                text = getattr(segment, 'text', '').strip()
+                if text:
+                    observations.append({'occurrence_index':len(observations), 'run_index':run_index,
+                        'text':text[:128], 'start':None, 'end':None, 'confidence':None,
+                        'recognition_state':'unassessable'})
+                unresolved = True; run_index += 1
+                continue
             for word in segment.words or []:
                 timing = all(math.isfinite(v) for v in [word.start, word.end]) and 0 <= word.start < word.end <= duration
                 confidence = word.probability if math.isfinite(word.probability) and 0 <= word.probability <= 1 else None

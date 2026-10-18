@@ -42,7 +42,15 @@ struct QuranLocalWordEvidence {
             runs[runs.count-1].append(.init(text: text, start: Double(start), end: Double(end), probability: Double(confidence)))
         } else { unresolved = true; runs.append([]) }
     }
-    mutating func interrupt() { unresolved = true; runs.append([]) }
+    mutating func interrupt(unassessableText: String? = nil) {
+        if let text = unassessableText?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
+            // A bounded raw segment hypothesis is not a timed/accepted word.
+            observations.append(.init(occurrenceIndex: observations.count, runIndex: runs.count-1,
+                observedText: String(text.prefix(128)), startInTakeSeconds: nil, endInTakeSeconds: nil,
+                backendConfidence: nil, recognitionState: "unassessable", timingSource: "unavailable"))
+        }
+        unresolved = true; runs.append([])
+    }
 }
 
 actor QuranRecognitionWorker {
@@ -119,11 +127,15 @@ actor QuranRecognitionWorker {
         let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
         var decoded = QuranLocalWordEvidence()
         for segment in output.flatMap(\.segments) {
+        guard let words = segment.words, !words.isEmpty else {
+            decoded.interrupt(unassessableText: segment.text)
+            continue
+        }
         // Amplification must not turn a decoder's no-speech segment into
         // Quran progress. Missing/non-finite confidence stays unresolved.
         let speech = segment.noSpeechProb.isFinite && (0...1).contains(segment.noSpeechProb) && segment.noSpeechProb < 0.6
         if !speech { decoded.interrupt() }
-        for word in segment.words ?? [] {
+        for word in words {
             decoded.consume(text: word.word, start: word.start, end: word.end, confidence: word.probability,
                 speechSegment: speech, samples: inferenceSamples, offset: window.offset)
         }
@@ -136,7 +148,7 @@ actor QuranRecognitionWorker {
             decoded.accepted, decoded.rejectedAudio, decoded.rejectedTiming, decoded.rejectedConfidence, decoded.rejectedQuiet, decoded.rejectedTokenBoundary)
         return Result(runs: decoded.runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: decoded.unresolved,
                       observations: decoded.observations, windowID: UUID(),
-                      processingConfiguration: QuranRecognitionModelDescriptor.bundled.map { $0.configuration + "/run-evidence2" })
+                      processingConfiguration: QuranRecognitionModelDescriptor.bundled.map { $0.configuration + "/run-evidence2/untimed-segment1" })
     }
 }
 

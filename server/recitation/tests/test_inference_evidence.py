@@ -60,3 +60,19 @@ def test_no_speech_segment_never_becomes_an_anchor_but_is_observable():
     assert not decoded['words'] and decoded['unresolved']
     assert len(decoded['observations']) == 4
     assert all(w['recognition_state'] == 'unassessable' for w in decoded['observations'])
+
+
+def test_segment_without_word_times_cannot_disappear_between_two_short_anchors():
+    recognizer = Recognizer(Path('.'))
+    class Model:
+        def transcribe(self, samples, **options):
+            return [SimpleNamespace(no_speech_prob=.01, text='قل هو', words=[word('قل', 0), word('هو', .3)]),
+                    SimpleNamespace(no_speech_prob=.01, text='كلام غير واضح', words=None),
+                    SimpleNamespace(no_speech_prob=.01, text='الله أحد', words=[word('الله', 1.5), word('أحد', 1.8)])], None
+    recognizer.model = Model()
+    decoded = recognizer._decode(np.full(64000, .06, dtype=np.float32))
+    assert decoded['unresolved'] is True
+    assert decoded['words'][1]['run_index'] != decoded['words'][2]['run_index']
+    missing = decoded['observations'][2]
+    assert missing['text'] == 'كلام غير واضح' and missing['recognition_state'] == 'unassessable'
+    assert missing['start'] is None and missing['end'] is None and missing['confidence'] is None

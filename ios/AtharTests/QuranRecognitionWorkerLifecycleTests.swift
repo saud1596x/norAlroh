@@ -3,6 +3,21 @@ import XCTest
 
 /// Explicitly injected non-cancellable backend; not microphone/ASR evidence.
 final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
+    func testUntimedSegmentCannotDisappearAndJoinNeighboringQuranWords() {
+        var gate = QuranLocalWordEvidence()
+        let samples = Array(repeating: Float(0.06), count: 64_000)
+        gate.consume(text: "قل", start: 0, end: 0.2, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        gate.consume(text: "هو", start: 0.3, end: 0.5, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        gate.interrupt(unassessableText: "كلام غير واضح")
+        gate.consume(text: "الله", start: 1.5, end: 1.7, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        gate.consume(text: "أحد", start: 1.8, end: 2, confidence: 0.99, speechSegment: true, samples: samples, offset: 0)
+        XCTAssertEqual(gate.runs.filter { !$0.isEmpty }.map { $0.map(\.text) }, [["قل", "هو"], ["الله", "أحد"]])
+        XCTAssertTrue(gate.unresolved)
+        XCTAssertEqual(gate.observations[2].observedText, "كلام غير واضح")
+        XCTAssertEqual(gate.observations[2].recognitionState, "unassessable")
+        XCTAssertNil(gate.observations[2].startInTakeSeconds)
+        XCTAssertNil(gate.observations[2].backendConfidence)
+    }
     func testBundledLowConfidenceWordKeepsItsSourceAndDoesNotJoinNeighbors() {
         var gate = QuranLocalWordEvidence()
         let samples = Array(repeating: Float(0.06), count: 64_000)

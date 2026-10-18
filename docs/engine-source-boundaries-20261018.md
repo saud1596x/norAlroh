@@ -92,9 +92,25 @@ stream bounds still reject timestamps outside captured PCM. Source timestamps
 are not interpolated and no reference word replaces an acoustic observation.
 
 Four additional native regressions cover the source switch, revocation before
-and during decoding, and fractional-frame clock. Their native result is PENDING; the26-test result above
-must not be attributed to this follow-up. The remote origin remains unconfigured
+and during decoding, and fractional-frame clock. Actual run5cbf2bf,
+[build6ad42ab47550aed8108fba1e](https://codemagic.io/app/6ac3b8b756235b59ec04e90a/build/6ad42ab47550aed8108fba1e),
+passed30selected tests,0failures/testExit0, in7minutes. The remote origin remains unconfigured
 in the app; cloud TLS/identity/E2E and GPU quota are still prerequisites.
+
+## Missing word timestamps are an acoustic discontinuity
+
+A further reproduced defect was a segment containing recognized text but no
+word timing array. Both decoders could silently drop it and join the preceding
+and following words as one run. The new server regression failed before repair
+(`unresolved` was false). Both providers now preserve a bounded raw untimed
+segment hypothesis as unassessable and break the run. No canonical words or
+timestamps are fabricated. The processing-configuration tag distinguishes it.
+
+The complete local server suite with explicit pinned actual-model/public PCM
+environment passed **39tests in48.73s**, including real continuous overlapping
+windows and admission behavior. Five decoder-boundary cases passed. This is
+not natural unseen learner speech. The new native segment regression still
+requires its own run; the30-test source above predates this last repair.
 
 The known AVAudioPlayer.prepareToPlay/HAL timeout remains unresolved playback
 acceptance. The focused engine workflow does not claim to resolve that timeout,
