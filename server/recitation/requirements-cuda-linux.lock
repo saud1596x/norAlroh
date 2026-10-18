@@ -1,0 +1,4 @@
+# Optional Linux x86_64 GPU libraries, PyPI hashes. Linux GPU execution remains unverified.
+nvidia-cublas-cu12==12.9.2.10 --hash=sha256:e4f53a8ca8c5d6e8c492d0d0a3d565ecb59a751b19cfdaa4f6da0ab2104c1702
+nvidia-cudnn-cu12==9.27.0.42 --hash=sha256:0a4aa3a7d2264256506c6857fc41fc0c499982f78d70195b1cfcc9055c1957cd
+nvidia-cuda-nvrtc-cu12==12.9.86 --hash=sha256:210cf05005a447e29214e9ce50851e83fc5f4358df8b453155d5e1918094dcb4
