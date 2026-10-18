@@ -57,6 +57,9 @@ jobs:
       NOOR_DISPLAY_CLASS: compact
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Verify production wording decisions and journal recovery before native UI
         run: python3 scripts/test-wording-behavior.py
       - uses: actions/cache@v4
@@ -87,6 +90,9 @@ jobs:
       NOOR_ALL_NATIVE_TESTS: '1'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Cache pinned resources that are revalidated before every build
         uses: actions/cache@v4
         with:
