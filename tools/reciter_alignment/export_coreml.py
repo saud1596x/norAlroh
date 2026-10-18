@@ -10,6 +10,9 @@ import hashlib
 import json
 from pathlib import Path
 import platform
+import struct
+import subprocess
+import tempfile
 import time
 import urllib.request
 
@@ -53,17 +56,42 @@ def download(url, path, expected, limit):
 
 
 def load_pcm(path):
-    import av
-    frames = []
-    with av.open(str(path)) as container:
-        resampler = av.audio.resampler.AudioResampler(format='fltp', layout='mono', rate=16000)
-        for frame in container.decode(audio=0):
-            frames.extend(value.to_ndarray().reshape(-1) for value in resampler.resample(frame))
-        frames.extend(value.to_ndarray().reshape(-1) for value in resampler.resample(None))
-    values = np.concatenate(frames).astype(np.float32)
+    # Apple's system decoder avoids compiling a separate FFmpeg binding on the
+    # Mac runner. Both models receive this same actual decoded PCM, no padding.
+    with tempfile.TemporaryDirectory(prefix='noor-public-pcm-') as temporary:
+        wave = Path(temporary)/'actual.wav'
+        subprocess.run(['/usr/bin/afconvert', '-f', 'WAVE', '-d', 'LEF32@16000',
+                        '-c', '1', str(path), str(wave)], check=True, timeout=20)
+        values = read_float_wave(wave.read_bytes())
     if not 400 <= len(values) <= 256000 or not np.isfinite(values).all():
         raise ValueError('Actual public clip outside bounded 16second conversion scope')
     return values
+
+
+def read_float_wave(data):
+    if len(data)>2_000_000 or data[:4]!=b'RIFF' or data[8:12]!=b'WAVE':
+        raise ValueError('Expected bounded actual float WAVE')
+    offset, fmt, pcm = 12, None, None
+    while offset+8 <= len(data):
+        name = data[offset:offset+4]
+        size = struct.unpack_from('<I',data,offset+4)[0]
+        first, end = offset+8, offset+8+size
+        if end>len(data):raise ValueError('Truncated actual WAVE')
+        if name==b'fmt ':fmt=data[first:end]
+        if name==b'data':
+            if pcm is not None:raise ValueError('Duplicate actual PCM chunk')
+            pcm=data[first:end]
+        offset=end+(size%2)
+    if fmt is None or len(fmt)<16 or pcm is None:
+        raise ValueError('Missing actual WAVE format/data')
+    code,channels,rate,byte_rate,align,bits=struct.unpack_from('<HHIIHH',fmt)
+    if code==0xfffe:
+        if len(fmt)<40 or fmt[24:40]!=bytes.fromhex('0300000000001000800000aa00389b71'):
+            raise ValueError('Unsupported actual WAVE subtype')
+        code=3
+    if (code,channels,rate,byte_rate,align,bits)!=(3,1,16000,64000,4,32) or len(pcm)%4:
+        raise ValueError('Actual PCM decoder format differs')
+    return np.frombuffer(pcm,dtype='<f4').copy()
 
 
 def project(logits, source_vocab, vocab):
@@ -98,6 +126,7 @@ def main():
         raise ValueError('Do not overwrite a previous conversion/evaluation receipt')
     report = {'scope': 'INDEPENDENT_CTC_COREML_CONVERSION_NOT_LEARNER_ACCEPTANCE',
               'sourceRevision': REVISION, 'sourceFiles': FILES, 'productionApproved': False,
+              'audioDecoder': 'Apple afconvert LEF32@16000 mono; no synthesized/padded samples',
               'phoneIntegrated': False, 'expectedTextPrompt': False, 'forcedAlignment': False,
               'cases': [], 'status': 'STARTED'}
     def save():

@@ -22,7 +22,7 @@ EXPORTS = {
 def inference_identity(precision, window_mode):
     if precision not in EXPORTS or window_mode not in ('whole', 'experimental-context-stitch1'):
         raise ValueError('Explicit pinned precision and acoustic window mode required')
-    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}'
+    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-3gb1'
 
 
 class InferenceIntervalLimit(RuntimeError):
@@ -147,6 +147,7 @@ class QuranONNXAligner(QuranAligner):
             options.profile_file_prefix = str(profile_prefix)
         self.model = ort.InferenceSession(str(model), sess_options=options,
             providers=[('CUDAExecutionProvider', {'gpu_mem_limit': 3 * 1024**3,
+                'arena_extend_strategy': 'kSameAsRequested',
                 'cudnn_conv_algo_search': 'HEURISTIC', 'cudnn_conv_use_max_workspace': '0',
                 'use_tf32': '0'}), 'CPUExecutionProvider'])
         if self.model.get_providers()[0] != 'CUDAExecutionProvider':

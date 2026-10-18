@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import sys
 import time
+import traceback
 
 import verify_catalog
 from quran_ctc import REVISION
@@ -68,7 +69,10 @@ def main():
             progress['records'][str(surah)]={'observed':len(observed['records']),
                                              'candidates':observed.get('measuredCandidates',0)}
         except Exception as error:
-            progress['failures'][str(surah)]={'type':type(error).__name__,'message':str(error)[:250]}
+            progress['failures'][str(surah)]={'type':type(error).__name__,'message':str(error)[:4000]}
+            # Preserve the actual backend reason; a truncated arena message
+            # cannot establish memory exhaustion or a model/recording defect.
+            (args.output/f'{surah:03}-failure.txt').write_text(traceback.format_exc(),encoding='utf-8')
         save()
     progress['stopReason']='LOCAL_TIME_LIMIT' if time.monotonic()>=deadline else 'REQUESTED_PASS_FINISHED'
     progress['wholeRecordingCandidates']=sum(r['candidates'] for r in progress['records'].values())
