@@ -22,7 +22,7 @@ EXPORTS = {
 def inference_identity(precision, window_mode):
     if precision not in EXPORTS or window_mode not in ('whole', 'experimental-context-stitch1'):
         raise ValueError('Explicit pinned precision and acoustic window mode required')
-    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-3gb1'
+    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-5gb1'
 
 
 class InferenceIntervalLimit(RuntimeError):
@@ -146,7 +146,10 @@ class QuranONNXAligner(QuranAligner):
             options.enable_profiling = True
             options.profile_file_prefix = str(profile_prefix)
         self.model = ort.InferenceSession(str(model), sess_options=options,
-            providers=[('CUDAExecutionProvider', {'gpu_mem_limit': 3 * 1024**3,
+            # The 3GB trial exposed an actual allocation refusal (131MB free
+            # inside its arena versus321MB requested). Keep a bounded5GB arena
+            # on the existing8GB development GPU; never relax acoustic filters.
+            providers=[('CUDAExecutionProvider', {'gpu_mem_limit': 5 * 1024**3,
                 'arena_extend_strategy': 'kSameAsRequested',
                 'cudnn_conv_algo_search': 'HEURISTIC', 'cudnn_conv_use_max_workspace': '0',
                 'use_tf32': '0'}), 'CPUExecutionProvider'])

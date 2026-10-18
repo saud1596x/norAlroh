@@ -2,7 +2,7 @@
 
 No expected passage or forced alignment enters either recognizer. A successful
 conversion does not establish learner accuracy, iPhone performance or release
-approval. The original source and both converted variants are compared on the
+approval. The original source and selected converted variant are compared on the
 same actual samples before any package can be considered for app integration.
 """
 import argparse
@@ -117,6 +117,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--precision', choices=('float16','float32'), default='float16')
     args = parser.parse_args()
     if platform.system() != 'Darwin':
         raise ValueError('Actual Core ML prediction is required; conversion-only output is insufficient')
@@ -128,6 +129,7 @@ def main():
               'sourceRevision': REVISION, 'sourceFiles': FILES, 'productionApproved': False,
               'audioDecoder': 'Apple afconvert LEF32@16000 mono; no synthesized/padded samples',
               'phoneIntegrated': False, 'expectedTextPrompt': False, 'forcedAlignment': False,
+              'precision': args.precision,
               'cases': [], 'status': 'STARTED'}
     def save():
         receipt_path.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
@@ -139,7 +141,6 @@ def main():
     print('NOOR_CTC_COREML_PINNED_SOURCE_READY', flush=True)
     import torch
     import coremltools as ct
-    import coremltools.optimize.coreml as cto
     from transformers import Wav2Vec2ForCTC
     torch.set_num_threads(4)
     model = Wav2Vec2ForCTC.from_pretrained(str(args.model), local_files_only=True,
@@ -166,30 +167,35 @@ def main():
     converted = ct.convert(traced, source='pytorch', convert_to='mlprogram',
         inputs=[ct.TensorType(name='input_values', shape=(1, ct.RangeDim(400, 256000, default=32000)), dtype=np.float32)],
         outputs=[ct.TensorType(name='logits', dtype=np.float32)],
-        compute_precision=ct.precision.FLOAT32, minimum_deployment_target=ct.target.iOS17,
+        compute_precision=ct.precision.FLOAT16 if args.precision=='float16' else ct.precision.FLOAT32,
+        minimum_deployment_target=ct.target.iOS17,
         compute_units=ct.ComputeUnit.CPU_AND_GPU)
-    float_path = args.output/'quran-ctc-float32.mlpackage'
+    float_path = args.output/f'quran-ctc-{args.precision}.mlpackage'
     converted.save(str(float_path))
-    print('NOOR_CTC_COREML_FLOAT_PACKAGE_READY', flush=True)
-    config = cto.OptimizationConfig(global_config=cto.OpLinearQuantizerConfig(
-        mode='linear_symmetric', dtype='int8', weight_threshold=512))
-    compressed = cto.linear_quantize_weights(converted, config=config)
-    int8_path = args.output/'quran-ctc-int8.mlpackage'
-    compressed.save(str(int8_path))
-    print('NOOR_CTC_COREML_COMPRESSED_PACKAGE_READY', flush=True)
+    print('NOOR_CTC_COREML_FLOAT16_PACKAGE_READY', flush=True)
     source_vocab = json.loads((args.model/'vocab.json').read_text())
     normalizer = object.__new__(QuranAligner).normalizer
     letters = sorted({normalizer(c) for c in source_vocab if len(c) == 1 and normalizer(c) and c != '|'})
     vocab = {'<pad>': 0, '|': 1, **{c:i+2 for i,c in enumerate(letters)}}
     root = Path(__file__).resolve().parents[2]
-    # Two exact public files already reviewed and present in the test bundle.
-    for name, pin in FIXTURES.items():
-        clip = root/'ios/AtharTests/RecitationFixtures'/f'{name}.mp3'
-        if clip.is_symlink() or digest(clip) != pin:
-            raise ValueError('Actual public parity fixture changed')
+    sources = json.loads((root/'tools/RecitationEngineProbe/fixtures/sources.json').read_text())
+    sources += [{'file':'002001.mp3','sha256':FIXTURES['002001'],
+                 'url':'https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/002001.mp3'}]
+    cases = []
+    for source in sources:
+        name, pin = source['file'], source['sha256']
+        if not name[:6].isdigit() or name[6:]!='.mp3' or source['url']!=f'https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/{name}':
+            raise ValueError('Unexpected public conversion fixture')
+        clip = args.output/'public-fixtures'/name
+        download(source['url'],clip,pin,2_000_000)
         original = load_pcm(clip)
-        for length in sorted({min(32000, len(original)), len(original)}):
-            pcm = original[:length]
+        cases.extend((name,pin,len(original),original*np.float32(gain),'public-gain='+str(gain)) for gain in (1.,.03))
+        if name in {'001002.mp3','002001.mp3'}:
+            cases.append((name,pin,len(original),original[:32000],'public-first-two-seconds'))
+    cases += [('silence',None,16000,np.zeros(16000,dtype=np.float32),'generated-negative-control'),
+              ('noise',None,16000,np.random.default_rng(14).normal(0,.001,16000).astype(np.float32),'generated-negative-control')]
+    for name,pin,original_frames,pcm,kind in cases:
+            length=len(pcm)
             conditioned = ((pcm-pcm.mean())/np.sqrt(pcm.var()+1e-7)).astype(np.float32)[None]
             with torch.inference_mode():
                 expected = wrapper(torch.from_numpy(conditioned)).numpy()[0]
@@ -197,15 +203,15 @@ def main():
             expected = project(expected, source_vocab, vocab)
             if not np.allclose(expected, project(traced_result,source_vocab,vocab), atol=1e-5):
                 raise ValueError('Traced source changed actual variable-length acoustic output')
-            for variant, candidate in [('float32', converted), ('weight-int8', compressed)]:
+            for variant, candidate in [(args.precision, converted)]:
                 before = time.monotonic()
                 actual = candidate.predict({'input_values': conditioned})['logits'][0]
                 elapsed = time.monotonic()-before
                 if actual.shape[0] != (length-400)//320+1 or not np.isfinite(actual).all():
                     raise ValueError('Converted output differs from actual frame clock')
                 actual = project(actual, source_vocab, vocab)
-                report['cases'].append({'sourceFile':name+'.mp3','sourceSHA256':digest(clip),
-                    'originalFrames':len(original),'decodedFrames':length,'variant':variant,
+                report['cases'].append({'sourceFile':name,'sourceSHA256':pin,'caseKind':kind,
+                    'originalFrames':original_frames,'decodedFrames':length,'variant':variant,
                     'sourceRawWords':greedy(expected,vocab),'convertedRawWords':greedy(actual,vocab),
                     'sameRawWords':greedy(expected,vocab)==greedy(actual,vocab),
                     'frameLabelAgreement':float(np.mean(expected.argmax(-1)==actual.argmax(-1))),
@@ -218,11 +224,14 @@ def main():
     report['packages'] = [{ 'variant':variant,'files':[
         {'path':p.relative_to(folder).as_posix(),'sha256':digest(p),'bytes':p.stat().st_size}
         for p in sorted(folder.rglob('*')) if p.is_file()]}
-        for variant,folder in [('float32',float_path),('weight-int8',int8_path)]]
+        for variant,folder in [(args.precision,float_path)]]
     save()
     print('NOOR_CTC_COREML_RESULT',json.dumps(report,ensure_ascii=False),flush=True)
     if not report['allRawWordsEqual']:
         raise ValueError('Actual raw words changed after conversion/compression; do not promote')
+    if any(case['convertedRawWords'] or case['sourceRawWords'] for case in report['cases']
+           if case['caseKind']=='generated-negative-control'):
+        raise ValueError('Raw acoustic negative control produced words; do not promote')
 
 
 if __name__ == '__main__':
