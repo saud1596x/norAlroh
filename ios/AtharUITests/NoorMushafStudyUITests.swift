@@ -82,7 +82,8 @@ final class NoorMushafStudyUITests: XCTestCase {
         let elapsed = app.staticTexts["study.elapsed"]
         XCTAssertTrue(elapsed.waitForExistence(timeout: 30))
         let actualFrames = expectation(for: NSPredicate { _, _ in
-            (5...59).contains { elapsed.label.contains(String(format: "0:%02d", $0)) }
+            let label = elapsed.label // One actual accessibility snapshot per poll.
+            return (5...59).contains { label.contains(String(format: "0:%02d", $0)) }
         }, evaluatedWith: elapsed)
         wait(for: [actualFrames], timeout: 30)
         XCTAssertEqual(page.frame, frame)

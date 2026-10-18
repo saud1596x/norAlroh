@@ -393,7 +393,10 @@ import os
             }
         }
         let audio = AVAudioSession.sharedInstance()
-        try audio.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
+        // Live recitation consumes microphone input only. Speaker/reference
+        // playback is excluded by audio focus; opening a duplex speaker route
+        // here is unnecessary and can contend with RemoteIO initialization.
+        try audio.setCategory(.record, mode: .measurement, options: [.allowBluetooth])
         try setSessionActive(true)
         // Use the highest hardware input gain only when this route supports it.
         // A route rejecting gain adjustment must not prevent microphone capture.

@@ -6,6 +6,35 @@ import WhisperKit
 /// Injected lifecycle notifications and identified reference PCM. These tests
 /// do not connect Bluetooth hardware or claim to exercise an iPhone microphone.
 final class QuranMicrophoneInputLifecycleTests: XCTestCase {
+    @MainActor func testLiveCaptureRequestsInputOnlyMeasurementWithoutSpeakerPlayback() async throws {
+        // Actual AVAudioSession policy, injected empty capture. This does not
+        // claim that physical/Simulator hardware opened or recognized speech.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var inspected = false
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, _ in
+                inspected = true
+                let session = AVAudioSession.sharedInstance()
+                XCTAssertEqual(session.category, .record)
+                XCTAssertEqual(session.mode, .measurement)
+                XCTAssertFalse(session.categoryOptions.contains(.defaultToSpeaker))
+                return EmptyPolicyCapture(writer: writer)
+            }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        XCTAssertTrue(inspected); XCTAssertEqual(controller.state, .listening)
+        await controller.finish(); XCTAssertTrue(controller.revealed.isEmpty)
+    }
+    private final class EmptyPolicyCapture: QuranAudioCapture {
+        private let writer: QuranPCMWriter
+        init(writer: QuranPCMWriter) { self.writer = writer }
+        func start() throws {}
+        func stop() async -> Result<Int64, Error> {
+            await withCheckedContinuation { reply in writer.finish { reply.resume(returning: $0) } }
+        }
+    }
+
     func testDeviceSampleClockRejectsMissingDuplicatedAndReorderedInputBeforeJoiningPCM() throws {
         for nextStart in [Int64(8_191), 8_193, 4_096] {
             var clock = QuranCaptureClock()

@@ -28,6 +28,22 @@ location, storage cancellation and input lifecycle cases after this change.
 The original one-tap OS assertion is retained. Actual execution of this repair
 is required; moving the call does not by itself prove the OS timeout resolved.
 
+Build6ad558807550aed8108ff7ab on943e833 then compiled and passed15selected
+native lifecycle/location/storage cases in12.275s, including closing while
+hardware startup is pending. The actual first-allow UI still failed. Its ips
+shows the same RemoteIO RPC abort, now on Noor.MicrophoneHardware, while the
+main thread is in its ordinary run loop. Thus the UI-thread blockage was
+removed, but this does not establish successful microphone input. Original
+archive and extracted reports: outputs/hardware-943-evidence.
+
+The next distinct change uses the input-only record/measurement audio category
+instead of opening an unnecessary duplex speaker route during live recitation.
+Reference playback is already excluded by audio focus. A native policy case
+checks the category; only the unchanged real OS first-allow/captured-frame UI
+can establish that this route actually works. That result remains pending.
+The UI predicate also reads its real elapsed label once per poll, preserving
+the same five-second capture requirement and no-second-tap rule.
+
 Code review then found an additional display ambiguity: if older accepted
 words remained in the session, two conflicting latest acoustic bindings could
 leave that older word highlighted. The display frontier now advances even on
