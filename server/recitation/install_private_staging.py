@@ -47,6 +47,12 @@ def unpack_verified(archive, digest, destination):
             with package.extractfile(member) as source, target.open('wb') as output:
                 shutil.copyfileobj(source, output)
             target.chmod(0o644)
+    # The operator's umask protects credentials, but image source directories
+    # must be traversable by the unprivileged image UID. COPY preserves modes.
+    destination.chmod(0o755)
+    for directory in destination.rglob('*'):
+        if directory.is_symlink(): raise ValueError('Unexpected source symlink')
+        if directory.is_dir(): directory.chmod(0o755)
 
 
 def run(*args):
@@ -73,6 +79,8 @@ def container_command(tag, digest, env, model, name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive-sha256',required=True)
+    parser.add_argument('--repair-existing-import',action='store_true',
+                        help='Rebuild the exact installed source and retain the stopped prior container')
     args = parser.parse_args()
     digest = args.archive_sha256
     if len(digest)!=64 or any(c not in '0123456789abcdef' for c in digest):
@@ -81,6 +89,8 @@ def main():
     os.umask(0o077)
     run('docker','version','--format','{{.Server.Version}}')
     marker = DESTINATION/'installation.json'
+    if args.repair_existing_import and not marker.is_file():
+        raise SystemExit('Import repair requires an existing matching pilot')
     if DESTINATION.exists():
         if DESTINATION.is_symlink() or not marker.is_file(): raise SystemExit('Existing destination not owned by this installer')
         if json.loads(marker.read_text()).get('sourceArchiveSHA256')!=digest:
@@ -117,8 +127,14 @@ def main():
         with env.open('x') as output:
             output.write('NOOR_DATA_KEY='+base64.urlsafe_b64encode(os.urandom(32)).decode()+'\n')
         env.chmod(0o600)
-    tag = PROJECT+':'+digest[:12]
+    tag = PROJECT+':'+digest[:12]+('-importfix1' if args.repair_existing_import else '')
     run('docker','build','--pull','--tag',tag,'--file',str(app/'server/recitation/Dockerfile'),str(app))
+    # Exercise Python imports as image UID 10001 before replacing any container.
+    # No credentials, host mounts, network, model load or database writes.
+    run('docker','run','--rm','--network','none','--read-only',
+        '--cap-drop','ALL','--security-opt','no-new-privileges:true',
+        '--memory','512m','--cpus','1',tag,'python','-c',
+        'import noor_engine.api; print("NOOR_IMAGE_IMPORT_OK")')
     run('docker','volume','create',DATA)
     run('docker','run','--rm','--network','none','--user','0',
         '--mount','type=volume,source='+DATA+',target=/data',tag,'python','-c',
@@ -130,7 +146,16 @@ def main():
         labels=existing.get('Config',{}).get('Labels',{}) or {}
         if labels.get('noor.source-sha256')!=digest or labels.get('noor.scope')!='private-staging':
             raise SystemExit('Existing container identity differs; no container changed')
-        run('docker','start',name)
+        if args.repair_existing_import:
+            backup = name+'-before-importfix1'
+            prior = subprocess.run(['docker','container','inspect',backup],capture_output=True)
+            if prior.returncode==0:
+                raise SystemExit('Prior repair container already exists; inspect it before retrying')
+            run('docker','stop',name)
+            run('docker','rename',name,backup)
+            run(*container_command(tag,digest,env,model,name))
+        else:
+            run('docker','start',name)
     else:
         run(*container_command(tag,digest,env,model,name))
     deadline = time.monotonic()+120

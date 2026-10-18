@@ -5,6 +5,8 @@ from pathlib import Path, PurePosixPath
 import tarfile
 import tempfile
 import unittest
+import os
+import stat
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('noor_staging_installer',ROOT/'server/recitation/install_private_staging.py')
@@ -51,3 +53,16 @@ class StagingPayloadTests(unittest.TestCase):
             root=Path(folder);archive=root/'source.tar.gz';digest=self.archive(archive);target=root/'target';target.mkdir()
             installer.unpack_verified(archive,digest,target)
             self.assertEqual({p.relative_to(target).as_posix() for p in target.rglob('*') if p.is_file()},installer.EXACT)
+
+    @unittest.skipUnless(os.name=='posix','Unix mode behavior requires a POSIX filesystem')
+    def test_private_operator_umask_does_not_make_image_source_unreadable(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);archive=root/'source.tar.gz';digest=self.archive(archive)
+            target=root/'target';target.mkdir(mode=0o700)
+            previous=os.umask(0o077)
+            try: installer.unpack_verified(archive,digest,target)
+            finally: os.umask(previous)
+            for directory in [target]+[p for p in target.rglob('*') if p.is_dir()]:
+                self.assertEqual(stat.S_IMODE(directory.stat().st_mode),0o755)
+            for source in [p for p in target.rglob('*') if p.is_file()]:
+                self.assertEqual(stat.S_IMODE(source.stat().st_mode),0o644)
