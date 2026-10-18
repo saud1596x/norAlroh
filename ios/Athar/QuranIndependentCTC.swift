@@ -10,7 +10,7 @@ actor QuranIndependentCTC {
     private var projection: [Int] = []
     private var characters: [String] = []
     static let revision = "b539d5fa66deb820c8e4762171ecb284ace4b52d"
-    static let configuration = "coreml-ctc-float16/raw-20ms/no-prompt/paired1"
+    static let configuration = "coreml-ctc-float32/raw-20ms/no-prompt/paired1"
     private struct Descriptor: Decodable {
         let schema: Int
         let revision: String
@@ -25,9 +25,9 @@ actor QuranIndependentCTC {
             throw CocoaError(.fileNoSuchFile)
         }
         let descriptor = try JSONDecoder().decode(Descriptor.self, from: Data(contentsOf: folder.appendingPathComponent("verified-model.json")))
-        guard descriptor.schema == 1, descriptor.revision == Self.revision, descriptor.precision == "float16",
+        guard descriptor.schema == 1, descriptor.revision == Self.revision, descriptor.precision == "float32",
               descriptor.sourceWeightsSHA256 == "202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf",
-              descriptor.convertedWeightsSHA256 == "aba870d30a2b9330fb31dcc0caea51a6300a4d31da9b4d5680d13196ab5bd0c2",
+              descriptor.convertedWeightsSHA256 == "bb4a2ffd5eb4082d8383c721887294886594ba77ec0d4611b38ea1796e231833",
               !descriptor.files.isEmpty, descriptor.files.count <= 128 else { throw CocoaError(.fileReadCorruptFile) }
         for (path, expected) in descriptor.files {
             guard !path.hasPrefix("/"), !path.split(separator: "/").contains(".."),

@@ -96,7 +96,7 @@ workflows:
         - release/continuous-reader-derived-data/SourcePackages
         - ios/Athar/Fonts
         - ios/RecitationModel
-        - release/independent-coreml-model
+        - release/independent-coreml-model-seed0-float32
         - ~/.cache/noor-independent-ctc
         - ~/Library/Caches/pip
     scripts:

@@ -229,9 +229,17 @@ Deterministic protobuf encoding and a fixed process hash seed were then added;
 the next actual float16 trial on14ac32apassed25/26raw-word cases and failed the
 first2seconds of public Fatiha1:2 (`لن` became `لل`). This failure is retained.
 The previous36afe9a26/26result does not override a later failed precision gate.
-No compressed candidate was released. Fullfloat32source5b63f27is undergoing
-26-case actual parity and separate-process source-byte reproducibility checks;
-neither result is assumed successful before the actual logs.
+No compressed candidate was released. Fullfloat32source5b63f27passed all26
+actual raw-word comparisons and separate-process source-byte reproducibility
+in Codemagic6ad505db7550aed8108fe58a(5m23s). The exact canonical graph SHA is
+`a03be761fad1c1da230d0c3522ae3be7e20523147603d219751ad2abaaced5d7`;
+converted weights SHA is
+`bb4a2ffd5eb4082d8383c721887294886594ba77ec0d4611b38ea1796e231833`.
+These actual pins now replace the failed float16 app-generation candidate.
+Native compilation/integration tests, phone memory/latency and natural learner
+quality remain unverified. No new TestFlight upload follows from conversion
+parity alone. Proofs: outputs/coreml-5b6-actual-receipt.json and
+outputs/coreml-5b6-reproducibility.json.
 
 Streaming exact publisher windows and shrinking unused GPU arena allocations
 after each inference completed both full Baqara source decodes without an

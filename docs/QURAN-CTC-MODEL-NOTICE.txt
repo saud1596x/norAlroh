@@ -6,7 +6,7 @@ Source: https://huggingface.co/rabah2026/wav2vec2-large-xlsr-53-arabic-quran
 Publisher model-card license: Apache License 2.0.
 Base named by the publisher: jonatasgrosman/wav2vec2-large-xlsr-53-arabic.
 
-Noor conversion: Core ML float16, coremltools9.0, PyTorch2.7.0,
+Noor conversion: Core ML float32, coremltools9.0, PyTorch2.7.0,
 Transformers4.51.3. Source and converted weights are hash-pinned.
 No expected Quran text is passed to the independent acoustic recognizer.
 Its uncalibrated acoustic posteriors do not establish recitation or Tajweed

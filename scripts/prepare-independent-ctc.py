@@ -15,8 +15,8 @@ import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 PINS={
-    'Data/com.apple.CoreML/model.mlmodel':'ce02e01e784c33889f2b60451402533952877f44a175140b802856414db0f0cb',
-    'Data/com.apple.CoreML/weights/weight.bin':'aba870d30a2b9330fb31dcc0caea51a6300a4d31da9b4d5680d13196ab5bd0c2',
+    'Data/com.apple.CoreML/model.mlmodel':'a03be761fad1c1da230d0c3522ae3be7e20523147603d219751ad2abaaced5d7',
+    'Data/com.apple.CoreML/weights/weight.bin':'bb4a2ffd5eb4082d8383c721887294886594ba77ec0d4611b38ea1796e231833',
 }
 REVISION='b539d5fa66deb820c8e4762171ecb284ace4b52d'
 
@@ -77,8 +77,8 @@ def main():
             pass
         else:
             raise ValueError('Cached compiled CTC differs; preserve it for diagnosis instead of overwriting')
-    cache=ROOT/'release/independent-coreml-model'
-    source=cache/'quran-ctc-float16.mlpackage'
+    cache=ROOT/'release/independent-coreml-model-seed0-float32'
+    source=cache/'quran-ctc-float32.mlpackage'
     if not source.exists():
         runtime=Path('/tmp/noor-coreml-runtime')/'bin/python'
         subprocess.run(['python3','-m','venv','/tmp/noor-coreml-runtime'],check=True)
@@ -89,11 +89,11 @@ def main():
             work=Path(temporary)
             subprocess.run([str(runtime),str(ROOT/'tools/reciter_alignment/export_coreml.py'),
                 '--model',str(Path.home()/'.cache/noor-independent-ctc'),
-                '--output',str(work),'--precision','float16','--prepare-only'],
+                '--output',str(work),'--precision','float32','--prepare-only'],
                 env=dict(os.environ,PYTHONHASHSEED='0'),check=True)
-            verify_source(work/'quran-ctc-float16.mlpackage')
+            verify_source(work/'quran-ctc-float32.mlpackage')
             cache.mkdir(exist_ok=True)
-            shutil.copytree(work/'quran-ctc-float16.mlpackage',source)
+            shutil.copytree(work/'quran-ctc-float32.mlpackage',source)
     verify_source(source)
     if destination.exists() and not descriptor_path.is_file():
         raise ValueError('Refusing incomplete/existing compiled CTC destination')
@@ -101,7 +101,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ctc-compiled-',dir=destination.parent) as temporary:
         work=Path(temporary)
         subprocess.run(['xcrun','coremlcompiler','compile',str(source),str(work)],check=True)
-        compiled=work/'quran-ctc-float16.mlmodelc'
+        compiled=work/'quran-ctc-float32.mlmodelc'
         if not compiled.is_dir():raise ValueError('Apple compiler did not produce the expected model')
         if destination.exists():
             if destination.is_symlink() or destination.resolve().parent != (ROOT/'ios').resolve():
@@ -114,7 +114,7 @@ def main():
         raise ValueError('Independent acoustic vocabulary changed')
     shutil.copyfile(vocabulary,destination/'vocab.json')
     shutil.copyfile(ROOT/'docs/QURAN-CTC-MODEL-NOTICE.txt',destination/'NOTICE.txt')
-    descriptor={'schema':1,'revision':REVISION,'precision':'float16','compiler':compiler,
+    descriptor={'schema':1,'revision':REVISION,'precision':'float32','compiler':compiler,
         'sourceWeightsSHA256':'202cb1eefd7c399d117140014dc773da358e895e6e6b2312d999e7fda503febf',
         'convertedWeightsSHA256':PINS['Data/com.apple.CoreML/weights/weight.bin'],
         'sourceSpecSHA256':PINS['Data/com.apple.CoreML/model.mlmodel'],
