@@ -1,6 +1,10 @@
 # Noor recitation service
 
-Implemented local service, **not deployed staging or production**. Existing
+Implemented service; the current source is **not deployed to production**. A
+prior source archive passed an isolated loopback-only CPU pilot on the existing
+Roleva host (see `docs/staging-and-word-timing-status-20261018.md`). That pilot
+does not include the current word-evidence-v2 repair or connect to the iPhone.
+Existing
 Apple/Firebase login and local iPhone recognition are preserved. No service URL
 or remote consent is enabled in the current app bundle. The604-page edition
 is preserved; this service binds the pinned77,429 native
@@ -135,9 +139,10 @@ retains the real worker lease until it exits; it never permits overlapping work
 after a timeout. Production must use one Uvicorn process until distributed
 admission/connection leases exist. Do not add replicas and claim linear scaling.
 
-Actual staging host/TLS/database/secret access, Docker build, PostgreSQL restore,
-real Apple network validation, native client-to-staging build and device latency
-are **not verified**. No production deployment is claimed. Configuring
+Current-source deployment, public TLS, production PostgreSQL restore, real Apple
+network validation, native client-to-staging connection and device latency are
+**not verified**. The prior private CPU pilot is not evidence for those steps.
+No production deployment is claimed. Configuring
 `NoorRecitationServerURL` requires updated privacy disclosures/consent and Apple
 privacy questionnaire review before distributing that remote-enabled build.
 Without the URL the native app stays fully local; no hidden fallback upload.
