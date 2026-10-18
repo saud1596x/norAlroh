@@ -2,6 +2,7 @@
 # Focused acoustic-boundary/native ASR verification. Not speaker/mic/release acceptance.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 scripts/check-native-test-selectors.py
 repair=${NOOR_READER_REPAIR_CHECK:-0}
 case "$repair" in 0|1) ;; *) echo 'Unsupported reader repair scope'; exit 2;; esac
 python3 scripts/run-native-with-deadline.py --check "${NOOR_NATIVE_TEST_DEADLINE:-600}"

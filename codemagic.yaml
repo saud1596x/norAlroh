@@ -134,7 +134,7 @@ workflows:
         script: NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
     artifacts:
       - release/engine-boundaries/**
-  device-reported-reader-repair-check:
+  device-reported-reader-repair-check: &device_reported_reader_check
     <<: *continuous_reader_check
     name: Noor build24 reported mic tap, offline reader, paging and acoustic regressions
     max_build_duration: 18
@@ -157,7 +157,19 @@ workflows:
         script: NOOR_READER_REPAIR_CHECK=1 NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
     artifacts:
       - release/engine-boundaries/**
+  beta-critical-journeys-check:
+    <<: *device_reported_reader_check
+    name: Noor integrated app journeys and real simulator microphone start/resume
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Check integrated navigation, actual ward, reminders, reader selection and microphone lifecycle
+        script: bash scripts/test-beta-critical-journeys.sh
+    artifacts:
+      - release/beta-journeys/**
   daily-ease-check:
+    # Independent legacy scope retained below; broader beta acceptance has its
+    # own result bundle and cannot inherit a narrow success.
     name: Noor daily ward, automatic setup and clear adhkar
     instance_type: mac_mini_m2
     max_build_duration: 15

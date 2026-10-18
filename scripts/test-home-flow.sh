@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 scripts/check-native-test-selectors.py
 python3 -m unittest discover -s scripts/tests -p test_recording_ui_evidence.py -v
 mkdir -p release/home-flow
 python3 scripts/select-xcode.py > release/home-flow/xcode.env
@@ -37,7 +38,7 @@ if [[ "${NOOR_RECITER_SMOKE_ONLY:-0}" == 1 ]]; then
     -only-testing:AtharTests/QuranGuidedPracticeTests \
     -only-testing:AtharUITests/NoorReciterLibraryTests \
     -only-testing:AtharUITests/NoorNavigationTests/testNativeHomeSaudiCitySelectionAndAdhkarSearch \
-    -only-testing:AtharUITests/NoorAllScreensTests/testMemorizationWorkspaceAndManualReviewAreReachableFromMushaf \
+    -only-testing:AtharUITests/NoorAllScreensTests/testMushafHasNoSeparateMemorizationWorkspaceOrSessionHistory \
     -resultBundlePath release/home-flow/reciter-smoke.xcresult
   exit 0
 fi
@@ -60,7 +61,7 @@ xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorReminderUITests \
   -only-testing:AtharUITests/NoorKhatmahProtectionUITests \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
-  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRecitationRemainsInsideReaderWithoutScopeOrHistoryScreens \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRenderingFailureWithHiddenToolsHasAccessibleRecovery \

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 scripts/check-native-test-selectors.py
 python3 -m unittest discover -s scripts/tests -p test_recording_ui_evidence.py -v
 mkdir -p release/recitation-app
 noor_configuration="${NOOR_TEST_CONFIGURATION:-Debug}"
@@ -86,7 +87,7 @@ xcrun simctl io "$noor_recitation_device" recordVideo --codec=h264 --force relea
 noor_video_pid=$!
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary \
-  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testSecondaryScopeSelectsSurahAndRangeWithoutStartingMicrophone \
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRecitationRemainsInsideReaderWithoutScopeOrHistoryScreens \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testActualVersePlaybackFailureShowsNoticeAndRestoresReader \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings \
   -only-testing:AtharUITests/NoorInteractiveMushafUITests/testRenderingFailureWithHiddenToolsHasAccessibleRecovery \
