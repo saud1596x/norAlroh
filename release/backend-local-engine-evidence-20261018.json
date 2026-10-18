@@ -2,7 +2,6 @@
   "schema": 1,
   "date": "2026-10-18",
   "status": "LOCAL_IMPLEMENTATION_VERIFIED_NOT_DEPLOYED",
-  "appNativeSourceUnderTest": "d239bf2bef27b053c4a77363bd3f9a995531c6b9",
   "backendSourceHashes": {
     "server/recitation/corpus-manifest.json": "99cf0513f4a02bb7a5bbbd77e3775fa5a1dcd8425ae2e6f8370adb2ff6836171",
     "server/recitation/evaluate.py": "e724b4c12727883603949ef0e9846c4808f7129ce44b72abc34f69502c80d157",
@@ -57,5 +56,11 @@
     "All-reciter word timing incomplete;1816 new tracks are ayah timings only",
     "PostgreSQL runtime/migration/restore and Docker deployment unverified",
     "Device microphone, calibrated mistake/Tajweed and full product acceptance unverified"
-  ]
+  ],
+  "appNativeVerification": {
+    "source": "d239bf2bef27b053c4a77363bd3f9a995531c6b9",
+    "build": "6ad409b17550aed8108fb533",
+    "status": "FAILED_BEFORE_TESTS",
+    "reason": "Caller720 exceeded wrapper600; helper/preflight corrected at3129de5. New inline-only UI needs its own native run."
+  }
 }

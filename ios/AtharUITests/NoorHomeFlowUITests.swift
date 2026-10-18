@@ -25,20 +25,17 @@ final class NoorHomeFlowUITests: XCTestCase {
         XCTAssertTrue(account.waitForExistence(timeout: 10)); XCTAssertTrue(account.isHittable)
         XCTAssertTrue(app.buttons["home.resume"].exists)
     }
-    func testReviewOpensScopeInMushafAndBookmarksPersistWithoutReflectionEditor() {
+    func testReaderKeepsInlineRecitationAndBookmarksPersistWithoutReflectionEditor() {
         let app = XCUIApplication(); launchNoorApp(app)
         let review = app.buttons["home.resume"]
         reveal(review, app: app); review.tap()
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120))
-        app.buttons["reader.study"].press(forDuration: 0.6)
-        app.buttons["اختيار مقطع التسميع"].tap()
-        let closeScope = app.buttons["recitation.scope.close"]
-        XCTAssertTrue(closeScope.waitForExistence(timeout: 120))
-        XCTAssertGreaterThanOrEqual(closeScope.frame.height, 44)
-        XCTAssertTrue(app.buttons["recitation.scope.start"].exists)
-        XCTAssertTrue(app.segmentedControls["recitation.scope.kind"].exists)
-        XCTAssertFalse(app.buttons["study.finish"].exists, "Opening review must not start a microphone session")
-        closeScope.tap()
+        app.buttons["reader.more"].tap()
+        XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout:5))
+        XCTAssertFalse(app.buttons["اختيار مقطع التسميع"].exists)
+        XCTAssertFalse(app.buttons["الحفظ والمراجعة"].exists)
+        XCTAssertFalse(app.buttons["study.finish"].exists)
+        app.buttons["reader.options.close"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 20))
         XCTAssertFalse(app.buttons["study.finish"].exists)

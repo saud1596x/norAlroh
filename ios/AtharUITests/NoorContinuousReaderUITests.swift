@@ -29,7 +29,10 @@ final class NoorContinuousReaderUITests: XCTestCase {
         let readerScreenshot = XCTAttachment(screenshot: app.screenshot())
         readerScreenshot.name = "reader-controls-spaced-no-overlap"; readerScreenshot.lifetime = .keepAlways; add(readerScreenshot)
         more.tap()
-        XCTAssertTrue(app.buttons["اختيار مقطع التسميع"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reader.tajweed"].waitForExistence(timeout: 5))
+        for title in ["اختيار مقطع التسميع", "تسجيلاتي", "الحفظ والمراجعة"] {
+            XCTAssertFalse(app.buttons[title].exists,"Recitation stays inside the Mushaf without a workspace/history route")
+        }
         let tajweed = app.buttons["reader.tajweed"]
         XCTAssertTrue(tajweed.isHittable)
         if tajweed.value as? String == "متوقفة" { tajweed.tap() }

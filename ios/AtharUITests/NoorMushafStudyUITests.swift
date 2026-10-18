@@ -41,50 +41,31 @@ final class NoorMushafStudyUITests: XCTestCase {
         capture(app, "repeat-options-restored-after-relaunch")
         app.buttons["verse.sheet.close"].tap()
     }
-    // These journeys exercise the current one-tap acoustic reader. The old
-    // self-grading setup is separately covered in memorization tests; it must
-    // not be mistaken for the real microphone engine.
-    // These journeys exercise the current one-tap acoustic reader. The old
-    // self-grading setup is separately covered in memorization tests; it must
-    // not be mistaken for the real microphone engine.
-    func testFormerVoiceEntryOpensActualInlineMushafWithBundledModelWithoutAccount() {
-        let app = XCUIApplication(); application = app
-        openReader(app)
-        app.buttons["reader.study"].press(forDuration: 0.6)
-        app.buttons["الحفظ والمراجعة"].tap()
-        let entry = app.buttons["hifz.speech"]
-        XCTAssertTrue(entry.waitForExistence(timeout: 15))
-        for _ in 0..<6 where !entry.isHittable { app.swipeUp() }
-        XCTAssertTrue(entry.isHittable); entry.tap()
-        XCTAssertTrue(app.staticTexts["study.elapsed"].waitForExistence(timeout: 60), "Bundled model must prepare and start the actual microphone")
+    // Real capture journeys remain in the full microphone suite. The user
+    // removed dedicated setup/history/grade screens; capture is still actual.
+    func testOneTapStartsActualInlineMicrophoneWithoutSetupOrAccount() {
+        let app = XCUIApplication(); application = app;openReader(app)
+        app.buttons["reader.study"].tap()
+        XCTAssertTrue(app.staticTexts["study.elapsed"].waitForExistence(timeout:60))
         XCTAssertTrue(app.buttons["study.pause"].isHittable)
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.exists)
-        XCTAssertFalse(app.buttons["speech.prepare"].exists)
-        XCTAssertFalse(app.buttons["speech.listen"].exists)
-        capture(app, "former-voice-entry-now-real-inline-microphone")
+        XCTAssertTrue(app.descendants(matching:.any)["reader.page.ready"].exists)
+        XCTAssertFalse(app.buttons["recitation.scope.start"].exists)
+        XCTAssertFalse(app.buttons["hifz.speech"].exists)
+        capture(app,"one-tap-inline-actual-microphone")
         app.buttons["study.finish"].tap()
-        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout:30))
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
-        XCTAssertFalse(app.staticTexts["study.result.helped"].exists, "Acoustic tracking cannot invent an old self-assessment score")
-        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "إغلاق المصحف")).count, 1,
-                       "Only the presented reader must be exposed to accessibility")
+        XCTAssertFalse(app.staticTexts["study.result.helped"].exists)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format:"label == %@","إغلاق المصحف")).count,1)
         app.buttons["إغلاق المصحف"].tap()
-        XCTAssertTrue(entry.waitForExistence(timeout: 10), "Leaving must restore the actual memorization navigation context")
-        app.buttons["reader.memorization.close"].tap()
-        app.buttons["إغلاق المصحف"].tap()
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout:10))
     }
     func testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch() {
         let app = XCUIApplication(); application = app
         openReader(app, page: 604)
-        app.buttons["reader.study"].press(forDuration: 0.6)
-        app.buttons["اختيار مقطع التسميع"].tap()
-        XCTAssertTrue(app.buttons["recitation.scope.start"].waitForExistence(timeout: 10))
-        app.buttons["تدريب إضافي"].tap()
-        let closed = app.switches["recitation.scope.closedText"]
-        XCTAssertTrue(closed.waitForExistence(timeout: 5))
-        if closed.value as? String != "1" { closed.tap() }
-        capture(app, "32-inline-mushaf-study-setup")
-        app.buttons["recitation.scope.start"].tap()
+        let visibility = app.buttons["reader.textVisibility"]
+        if visibility.value as? String != "الآيات مخفية" { visibility.tap() }
+        app.buttons["reader.study"].tap()
         XCTAssertTrue(app.staticTexts["study.elapsed"].waitForExistence(timeout: 60))
         let first = app.buttons["reader.verse.112:1"]
         XCTAssertTrue(first.waitForExistence(timeout: 10)); XCTAssertTrue(first.label.contains("مخفي"))
@@ -123,7 +104,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         capture(app, "native-hint-assistance-result-after-recovery")
         app.buttons["إغلاق المصحف"].tap()
     }
-    func testMicCaptureBackgroundResumeAndPlaybackAreRealAndDurable() {
+    func testMicCaptureBackgroundResumeStaysInMushafWithoutHistory() {
         // The full CI journey grants the simulator's actual OS permission for
         // this class after the independent denial journeys have completed.
         let app = XCUIApplication(); application = app
@@ -133,7 +114,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(elapsed.waitForExistence(timeout: 60))
         let captured = NSPredicate { object, _ in
             guard let text = object as? XCUIElement else { return false }
-            return text.label.contains("تسجيل محلي") && (5...59).contains { text.label.contains(String(format: "0:%02d", $0)) }
+            return (5...59).contains { text.label.contains(String(format: "0:%02d", $0)) }
         }
         let recording = expectation(for: captured, evaluatedWith: elapsed)
         wait(for: [recording], timeout: 30)
@@ -152,28 +133,25 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["study.pause"].tap()
         let pausedAgain = expectation(for: NSPredicate(format: "label CONTAINS %@", "استئناف"), evaluatedWith: app.buttons["study.pause"])
         wait(for: [pausedAgain], timeout: 20)
-        app.buttons["study.options"].tap(); app.buttons["study.recordings"].tap()
-        let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "study.recording.play.")).firstMatch
-        XCTAssertTrue(play.waitForExistence(timeout: 15), "An actual decodable microphone take must survive termination")
-        XCTAssertGreaterThanOrEqual(play.frame.height, 44)
-        XCTAssertGreaterThanOrEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "study.recording.play.")).count, 2,
-            "Resume must retain the first closed take and save a distinct second take")
-        capture(app, "study-recording-restored-and-playable")
-        play.tap()
-        let playing = expectation(for: NSPredicate(format: "label CONTAINS %@", "إيقاف مؤقت"), evaluatedWith: play)
-        wait(for: [playing], timeout: 10)
-        capture(app, "study-real-recording-playback")
-        play.tap(); app.buttons["study.recordings.close"].tap()
+        app.buttons["study.options"].tap()
+        XCTAssertFalse(app.buttons["study.recordings"].exists)
+        app.buttons["study.reciters"].tap()
+        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout:10))
+        app.buttons["إغلاق"].tap()
+        XCTAssertTrue(app.buttons["study.pause"].waitForExistence(timeout:10))
+        capture(app,"actual-capture-recovered-with-inline-reader-controls")
         app.buttons["study.finish"].tap()
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists)
         capture(app, "study-recording-finish-without-automatic-grades")
-        app.buttons["reader.study"].press(forDuration: 0.6); app.buttons["تسجيلاتي"].tap()
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "study.recording.session.")).firstMatch.waitForExistence(timeout: 15))
-        capture(app, "native-durable-recording-history")
-        app.buttons["إغلاق"].tap(); app.buttons["إغلاق المصحف"].tap()
+        app.buttons["reader.more"].tap()
+        XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout:5))
+        XCTAssertFalse(app.buttons["تسجيلاتي"].exists)
+        XCTAssertFalse(app.buttons["الحفظ والمراجعة"].exists)
+        app.buttons["reader.options.close"].tap();app.buttons["إغلاق المصحف"].tap()
     }
+
     private func openReader(_ app: XCUIApplication, page: Int? = nil) {
         launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()

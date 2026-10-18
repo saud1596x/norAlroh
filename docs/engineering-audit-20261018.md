@@ -92,3 +92,16 @@ Full application regressions, real iPhone microphone measurements, calibrated
 mistake/Tajweed evaluation, all-reader word timing, native client→deployed backend,
 PostgreSQL deployment/restore/load exercise, reviewer content approval, and final
 TestFlight availability. A local backend test or compilation cannot clear these.
+
+## User-directed inline-only recitation
+
+Latest product instruction removes standalone memorization/setup/history routes.
+The microphone, hide/reveal, provisional tracking and optional contextual controls
+remain in the same Mushaf. Legacy data/journals are preserved; settings retain
+explicit audio deletion/export controls. Recovery storage is internal evidence,
+not a score/history screen. Old navigation tests now assert the requested absence;
+real capture/background/recovery tests remain in the full microphone suite.
+These UI changes have not yet passed a current native build. Native attempt
+6ad409b17550aed8108fb533 failed before tests because of the720/600 deadline
+contract mismatch; corrected helper and early preflight have local regression
+coverage. Never relabel that failed run as an application or acoustic pass.

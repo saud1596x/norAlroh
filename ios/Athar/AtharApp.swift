@@ -180,7 +180,7 @@ struct RootView: View {
                 InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: destination.page)
             } else if ["review", "ward"].contains(destination.host) {
                 InteractiveMushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from,
-                    initialPage: nil, opensStudyScope: true)
+                    initialPage: nil)
             } else {
                 NavigationStack {
                     Group {
