@@ -150,11 +150,11 @@ import os
         }
         record = latest
     }
-    private func retainShownText(_ value: inout QuranRecitationRecord, evidence: [QuranWordEvidence]) {
-        let visible = Set(value.retainedVisibleVerses ?? []).union(practiceVisibility.newlyShownVerses(evidence: evidence))
+    private func retainShownText(_ value: inout QuranRecitationRecord, completed: Set<String>, recognizedIDs: Set<Int>) {
+        let visible = Set(value.retainedVisibleVerses ?? []).union(completed)
         if !visible.isEmpty { value.retainedVisibleVerses = value.keys.filter { visible.contains($0) } }
         let retained = practiceVisibility.visibleIDs(verses: value.retainedVisibleVerses ?? [])
-        let assistance = retained.subtracting(Set(evidence.map(\.nativeID)))
+        let assistance = retained.subtracting(recognizedIDs)
         if !assistance.isEmpty, let index = value.takes.indices.last {
             value.textExposureOccurred = true; value.takes[index].textExposureOccurred = true
             value.takes[index].textHintIDs = Set(value.takes[index].textHintIDs ?? []).union(assistance).sorted()
@@ -524,6 +524,7 @@ import os
                 // Full-Quran candidate matching and ambiguity resolution must
                 // not run on MainActor for every audio window. Work on a value
                 // copy; only this still-current take may publish its result.
+                let displayPolicy = practiceVisibility
                 let alignment = Task.detached(priority: .userInitiated) {
                     var nextTracker = inputTracker
                     try Task.checkCancellation()
@@ -534,9 +535,16 @@ import os
                         try Task.checkCancellation()
                         additions += try nextTracker.consume(run, takeID: take, offset: window.offset)
                     }
-                    return (nextTracker, additions)
+                    // Long-session evidence can contain many repeated takes.
+                    // Reduce that history off the UI actor as well as matching.
+                    let visible = displayPolicy.newlyShownVerses(evidence: nextTracker.evidence)
+                    let revealed = nextTracker.revealedIDs
+                    let matched = nextTracker.evidence.contains {
+                        $0.takeID == take && $0.start >= window.offset && $0.end <= Double(window.endFrame) / 16_000
+                    }
+                    return (nextTracker, additions, visible, revealed, matched)
                 }
-                let (updatedTracker, additions) = try await withTaskCancellationHandler(
+                let (updatedTracker, additions, completedVerses, recognizedIDs, matchedThisWindow) = try await withTaskCancellationHandler(
                     operation: { try await alignment.value }, onCancel: { alignment.cancel() })
                 guard revision == token, !Task.isCancelled else { return }
                 let available = recognitionAvailable || !additions.isEmpty
@@ -564,7 +572,7 @@ import os
                 let priorEvents = current.wordingEvents ?? []
                 // Assessment must know when previously shown/retracted text
                 // assisted a later attempt; visibility is never mastery.
-                retainShownText(&current,evidence:updatedTracker.evidence)
+                retainShownText(&current,completed:completedVerses,recognizedIDs:recognizedIDs)
                 let sessionTakes = current.takes
                 let events = await Task.detached(priority: .userInitiated) {
                     let fresh = QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
@@ -582,7 +590,7 @@ import os
                 current.evidence = updatedTracker.evidence; current.recognitionUnavailable = !available
                 // If an interpretation is later retracted, its text can stay
                 // visible without becoming permanent correctness evidence.
-                retainShownText(&current,evidence:updatedTracker.evidence)
+                retainShownText(&current,completed:completedVerses,recognizedIDs:recognizedIDs)
                 // Preserve in memory for a final save retry, but do not reveal
                 // anything until its durable evidence has actually been saved.
                 do { try await saveAnalysis(current) }
@@ -594,12 +602,9 @@ import os
                 guard revision == token, !Task.isCancelled else { return }
                 mergeAnalysis(current); tracker = updatedTracker
                 recognitionAvailable = available
-                revealed = Set(current.evidence.map(\.nativeID))
+                revealed = recognizedIDs
                 currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
-                let matchedThisWindow = updatedTracker.evidence.contains {
-                    $0.takeID == take && $0.start >= window.offset && $0.end <= Double(window.endFrame) / 16_000
-                }
                 if recognized.runs.isEmpty {
                     trackingUncertainty = recognized.hasUnresolvedSpeech ? .unreliableWords : .noSpeech
                 } else if !matchedThisWindow { trackingUncertainty = .passageUnclear }
