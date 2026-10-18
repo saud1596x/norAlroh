@@ -3,6 +3,8 @@
 # Does not claim a new full Release, hardware audio, or acoustic acceptance.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Validate against the shared runner before downloading or generating anything.
+python3 scripts/run-native-with-deadline.py --check 720
 mkdir -p release/reader-visual
 xcodegen generate --spec ios/project-accounts.yml --project ios
 device=$(python3 - <<'PY'
@@ -26,7 +28,7 @@ state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
 test_exit=0
-python3 scripts/run-native-with-deadline.py 900 xcodebuild test \
+python3 scripts/run-native-with-deadline.py 720 xcodebuild test \
  -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
  -destination "platform=iOS Simulator,id=$device" \
  -derivedDataPath release/continuous-reader-derived-data CODE_SIGNING_ALLOWED=NO \
