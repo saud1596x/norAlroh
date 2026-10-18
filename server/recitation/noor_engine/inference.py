@@ -6,6 +6,7 @@ import math
 import time
 from pathlib import Path
 import numpy as np
+from .audio import condition
 
 
 class Busy(Exception): pass
@@ -73,14 +74,13 @@ class Recognizer:
 
     def _decode(self, original):
         start = time.monotonic()
-        peak = float(np.max(np.abs(original)))
-        rms = float(np.sqrt(np.mean(original.astype(np.float64)**2)))
+        samples = condition(original)
+        peak = float(np.max(np.abs(samples)))
+        rms = float(np.sqrt(np.mean(samples.astype(np.float64)**2)))
         hardware = f'cpu-threads{self.cpu_threads}' if self.device == 'cpu' else 'cuda'
-        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2/untimed-segment1'
+        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2/untimed-segment1/dc-copy1'
         if peak == 0 or rms < 0.00001:
             return {'words': [], 'observations': [], 'unresolved': False, 'inference_ms': 0, 'processing_configuration':configuration}
-        gain = max(1, min(256, 0.06/max(rms, 0.000001), 0.9/peak))
-        samples = original * gain
         segments, _ = self.model.transcribe(samples, language='ar', beam_size=1, temperature=0,
             condition_on_previous_text=False, word_timestamps=True, vad_filter=True,
             vad_parameters={'min_speech_duration_ms': 100, 'min_silence_duration_ms': 300})

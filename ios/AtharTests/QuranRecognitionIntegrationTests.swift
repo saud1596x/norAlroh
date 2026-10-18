@@ -658,6 +658,27 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertTrue(noiseTracker.revealedIDs.isEmpty, "Amplified background noise must not advance Quran words")
     }
 
+    func testActualQuietReferenceWithDCFaultStillAnchorsAndFlatlineCannotRevealWords() async throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        XCTAssertEqual(SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined(),
+                       "2b0db8027952e0e7f1620467a34ed908f117a67399765ef538e182e7fb83f7ec")
+        let original = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let faulted = original.map { $0 * 0.03 + 0.15 }
+        let expected = ["قل", "هو", "الله", "أحد"].enumerated().map {
+            QuranAlignedWord(id: $0.offset + 1, verse: "112:1", page: 604,
+                aliases: [[QuranAlignedWord.normalize($0.element)]])
+        }
+        let worker = QuranRecognitionWorker()
+        let output = try await worker.recognize(.init(samples: faulted, startFrame: 0, endFrame: Int64(faulted.count)))
+        var tracker = QuranRecitationTracker(expected: expected)
+        for run in output.runs { try tracker.consume(run, takeID: UUID()) }
+        XCTAssertGreaterThanOrEqual(tracker.revealedIDs.count, 2,
+            "Real quiet speech with an injected DC fault must still establish actual word evidence")
+        let constant = Array(repeating: Float(0.15), count: 64000)
+        let control = try await worker.recognize(.init(samples: constant, startFrame: 0, endFrame: 64000))
+        XCTAssertTrue(control.runs.isEmpty, "A flat digital signal cannot become Quran progress")
+        XCTAssertEqual(faulted, original.map { $0 * 0.03 + 0.15 }, "Original input remains unchanged")
+    }
     func testActualAudioAndSessionEvidenceSurviveIndependentReopening() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

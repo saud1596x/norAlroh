@@ -13,8 +13,8 @@ def decode(words, no_speech=.01):
         def transcribe(self, samples, **options):
             return [SimpleNamespace(no_speech_prob=no_speech, words=words)], None
     recognizer.model = Model()
-    # Constant samples are a deterministic gate fixture, never ASR evidence.
-    return recognizer._decode(np.full(64000, .06, dtype=np.float32))
+    # Alternating values exercise only word gating, never actual ASR evidence.
+    return recognizer._decode(np.tile(np.array([.06, -.06], dtype=np.float32), 32000))
 
 
 def word(text, start, probability=.99, end=None):
@@ -70,7 +70,7 @@ def test_segment_without_word_times_cannot_disappear_between_two_short_anchors()
                     SimpleNamespace(no_speech_prob=.01, text='كلام غير واضح', words=None),
                     SimpleNamespace(no_speech_prob=.01, text='الله أحد', words=[word('الله', 1.5), word('أحد', 1.8)])], None
     recognizer.model = Model()
-    decoded = recognizer._decode(np.full(64000, .06, dtype=np.float32))
+    decoded = recognizer._decode(np.tile(np.array([.06, -.06], dtype=np.float32), 32000))
     assert decoded['unresolved'] is True
     assert decoded['words'][1]['run_index'] != decoded['words'][2]['run_index']
     missing = decoded['observations'][2]

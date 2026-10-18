@@ -33,4 +33,17 @@ final class QuranRecognitionAudioTests: XCTestCase {
         XCTAssertTrue(output.allSatisfy { $0.isFinite && abs($0) <= 0.900001 })
         XCTAssertEqual(input[4000], 0.02, "Original audio remains available unchanged")
     }
+    func testDCOffsetIsRemovedFromInferenceCopyWithoutChangingClockOrOriginal() throws {
+        let voice = (0..<16000).map { Float(sin(Double($0) * 0.1) * 0.001) }
+        let input = voice.map { $0 + 0.15 }, original = voice.map { $0 + 0.15 }
+        let output = try QuranRecognitionAudio.conditioned(input)
+        XCTAssertEqual(input, original)
+        XCTAssertEqual(output.count, input.count)
+        XCTAssertEqual(output.reduce(0.0) { $0 + Double($1) } / Double(output.count), 0, accuracy: 0.000001)
+        let rms = sqrt(output.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(output.count))
+        XCTAssertEqual(rms, 0.06, accuracy: 0.000001)
+        XCTAssertEqual(try QuranRecognitionAudio.conditioned(Array(repeating: Float(0.15), count: 16000)),
+                       Array(repeating: Float(0), count: 16000))
+        XCTAssertThrowsError(try QuranRecognitionAudio.conditioned([1.1, -1.1]))
+    }
 }

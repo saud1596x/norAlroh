@@ -16,8 +16,7 @@ import os
     @Published private(set) var permissionDenied = false
     @Published private(set) var microphonePeak: Float?
     @Published private(set) var inputGuidance: String?
-    private var weakInputWindows = 0
-    private var clippedInputWindows = 0
+    private var microphoneGuidance = QuranInputGuidance()
     @Published var message: String?
     enum GuidedPhase: Equatable { case inactive, reference, clearance, ready, attempt, feedback }
     @Published private(set) var guidedPhase: GuidedPhase = .inactive
@@ -381,15 +380,12 @@ import os
                 }
             })
             microphonePeak = nil
-            inputGuidance = nil; weakInputWindows = 0; clippedInputWindows = 0
+            inputGuidance = nil; microphoneGuidance = QuranInputGuidance()
             microphone.observeQuality { [weak self] reading in
                 Task { @MainActor in
                     guard let self, self.revision == token, self.capturing else { return }
-                    self.weakInputWindows = reading == .weak || reading == .noSignal ? self.weakInputWindows + 1 : 0
-                    self.clippedInputWindows = reading == .clipping ? self.clippedInputWindows + 1 : 0
-                    if self.clippedInputWindows >= 2 { self.inputGuidance = "الصوت مرتفع ومشوّش؛ أبعد الميكروفون قليلًا." }
-                    else if self.weakInputWindows >= 6 { self.inputGuidance = "الصوت منخفض أو أنك متوقف؛ قرّب الميكروفون عند القراءة." }
-                    else if reading == .present { self.inputGuidance = nil }
+                    self.microphoneGuidance.consume(reading)
+                    self.inputGuidance = self.microphoneGuidance.message
                 }
             }
             microphone.observeLevel { [weak self] peak in

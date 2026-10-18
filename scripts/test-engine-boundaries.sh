@@ -32,10 +32,14 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test \
  -only-testing:AtharTests/QuranRemoteProtocolTests \
  -only-testing:AtharTests/QuranWordAlignmentTests \
  -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
+ -only-testing:AtharTests/QuranRecognitionAudioTests \
+ -only-testing:AtharTests/QuranObservedSpeechTests/testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes \
+ -only-testing:AtharTests/QuranObservedSpeechTests/testSignalFaultsCountActualCaptureFramesAndGuidanceRecoversAfterSustainedHealthyAudio \
  -only-testing:AtharTests/NoorContinuousMushafTests/testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testQuietActualReferenceStillAnchorsWhileNoiseCannotRevealWords \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot \
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualQuietReferenceWithDCFaultStillAnchorsAndFlatlineCannotRevealWords \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional \
  -resultBundlePath release/engine-boundaries/actual-tests.xcresult 2>&1 | tee release/engine-boundaries/native-test-log.txt || result=$?
 python3 - "$result" <<'PY'

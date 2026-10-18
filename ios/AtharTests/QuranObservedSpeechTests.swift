@@ -40,12 +40,29 @@ final class QuranObservedSpeechTests: XCTestCase {
         XCTAssertTrue(quality.consume(Array(repeating: 0, count: 7999)).isEmpty)
         XCTAssertEqual(quality.consume([0]), [.noSignal])
         XCTAssertEqual(quality.consume(Array(repeating: 0.0001, count: 8000)), [.weak])
-        XCTAssertEqual(quality.consume(Array(repeating: 0.1, count: 8000)), [.present])
-        var transient = Array(repeating: Float(0.1), count: 8000); transient[0] = 1
+        let varying = (0..<8000).map { Float(sin(Double($0) * 0.1) * 0.1) }
+        XCTAssertEqual(quality.consume(varying), [.present])
+        var transient = varying; transient[0] = 1
         XCTAssertEqual(quality.consume(transient), [.present])
         XCTAssertEqual(quality.consume(Array(repeating: 1, count: 8000)), [.clipping])
         XCTAssertEqual(quality.consume(Array(repeating: -1, count: 8000)), [.clipping])
         XCTAssertTrue(quality.consume([.nan, .infinity]).isEmpty)
+    }
+    func testSignalFaultsCountActualCaptureFramesAndGuidanceRecoversAfterSustainedHealthyAudio() {
+        var quality = QuranInputQuality()
+        XCTAssertEqual(quality.consume(Array(repeating: 0.1, count: 8000)), [.frozenInput])
+        let offset = (0..<8000).map { Float(0.15 + sin(Double($0) * 0.1) * 0.01) }
+        XCTAssertEqual(quality.consume(offset), [.dcOffset])
+        var malformed = Array(repeating: Float(0), count: 8000); malformed[5] = .nan
+        XCTAssertEqual(quality.consume(malformed), [.invalidSignal])
+        var guidance = QuranInputGuidance()
+        guidance.consume(.frozenInput); XCTAssertNil(guidance.message)
+        guidance.consume(.frozenInput); XCTAssertNotNil(guidance.message)
+        guidance.consume(.present); XCTAssertNotNil(guidance.message)
+        guidance.consume(.present); XCTAssertNotNil(guidance.message)
+        guidance.consume(.present); XCTAssertNil(guidance.message)
+        guidance.consume(.invalidSignal); XCTAssertNotNil(guidance.message)
+        guidance = QuranInputGuidance(); XCTAssertNil(guidance.message, "A resumed take starts with fresh signal guidance")
     }
     func testWordTimingConfidenceAndRepeatedOccurrencesSurviveJournalRoundTrip() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

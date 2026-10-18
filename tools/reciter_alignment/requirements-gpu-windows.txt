@@ -1,0 +1,10 @@
+# Optional development export/runtime additions, CPython3.12 Windows x64.
+# Existing local PyTorch2.14.1+cpu/Transformers5.20.1, NumPy, protobuf,
+# flatbuffers, PyAV and package metadata remain required. No app dependency.
+# CUDA12.9 cuBLAS/cuDNN9 were already installed in the isolated local runtime.
+onnx==1.23.2 --hash=sha256:9b382ba898a7c142a0801d03cf04ecabced96c1543c7b643a86f0928143802de
+ml_dtypes==0.5.4 --hash=sha256:c1a953995cccb9e25a4ae19e34316671e4e2edaebe4cf538229b1fc7109087b7
+onnxruntime-gpu==1.26.0 --hash=sha256:5f49c44689894650990e4c8a857d2edafc276fbd79bba57ceb224bd18d25d491
+nvidia-cufft-cu12==11.3.3.83 --hash=sha256:7a64a98ef2a7c47f905aaf8931b69a3a43f27c55530c698bb2ed7c75c0b42cb7
+nvidia-curand-cu12==10.3.9.90 --hash=sha256:f149a8ca457277da854f89cf282d6ef43176861926c7ac85b2a0fbd237c587ec
+nvidia-cuda-runtime-cu12==12.9.79 --hash=sha256:8e018af8fa02363876860388bd10ccb89eb9ab8fb0aa749aaf58430a9f7c4891
