@@ -160,11 +160,24 @@ workflows:
   beta-critical-journeys-check:
     <<: *device_reported_reader_check
     name: Noor integrated app journeys and real simulator microphone start/resume
+    # Full scope includes its long walkthrough; the18min repair/rerun cap below
+    # must not be mistaken for a sufficient full-journey budget.
+    max_build_duration: 22
     scripts:
       - name: Install project generator
         script: command -v xcodegen >/dev/null || brew install xcodegen
       - name: Check integrated navigation, actual ward, reminders, reader selection and microphone lifecycle
         script: bash scripts/test-beta-critical-journeys.sh
+    artifacts:
+      - release/beta-journeys/**
+  beta-remaining-journeys-check:
+    <<: *device_reported_reader_check
+    name: Noor unfinished whole-screen ward and actual microphone journeys
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Complete only the four unfinished actual UI journeys
+        script: NOOR_BETA_REMAINING_CHECK=1 bash scripts/test-beta-critical-journeys.sh
     artifacts:
       - release/beta-journeys/**
   daily-ease-check:

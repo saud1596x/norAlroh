@@ -44,3 +44,35 @@ capture. That changed path needs its own actual permitted-capture evidence.
 The50additional-feature ledger is still incomplete. Do not mark planned
 capabilities verified from these narrow tests or describe this beta as a fully
 calibrated Quran/Tajweed engine.
+
+## Integrated run ebf2f4e: partial evidence, failed overall
+
+Original artifact `6ad52c337550aed8108fef00` confirms63unit/0failures,
+and two UI cases passed: searchable last reciter/Tajweed/selection/fullscreen
+controls70.240s and separate morning/evening reading26.421s. The overall run
+**failed**: navigationExit124 (420s deadline), microphoneExit65 (two failures).
+The long walkthrough exceeded the180s allowance; the outer420s deadline later
+interrupted the real twenty-page ward at its page-number field. Neither is a
+completed walkthrough/ward pass.
+
+Both microphone cases failed at the helper's home.resume assertion, before
+pressing a microphone. The ward legitimately replaced that home action; the
+failed hierarchy retains the real plan. Correct the test route to the public
+Mushaf index without erasing a plan, and use that route after relaunch too.
+This is a test-path correction, **not proof of repaired physical capture**.
+
+The bounded follow-up selects only these four uncompleted UI cases, retains
+all assertions and grants actual simulator permission. It does not rerun the
+two passed UI cases or63passed units. The whole-screen case has a finite300s
+allowance. The original full-scope workflow now has a separate22min ceiling;
+the follow-up remains capped18min. Do not launch the former against a budget
+reserved for the latter.
+
+Local helper discovery now executes the same two model-integrity checks under
+stdlib unittest:60passed/2platform skips. Exact-source Linux checkout now fetches
+the reviewed commit instead of assuming it belongs to the historical repair
+branch. Local API/security/transport suite:47passed/4skipped in35.14s. Its first
+sandboxed attempt stalled before ASGI startup in asyncio socketpair; a bounded
+stack trace identified that point. Re-running with local loopback allowed
+completed. Three actual-model tests and one optional evaluator module remain
+skipped; this is **not an acoustic or deployed-backend pass**.

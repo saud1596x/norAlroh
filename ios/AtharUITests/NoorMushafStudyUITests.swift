@@ -58,7 +58,8 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format:"label == %@","إغلاق المصحف")).count,1)
         app.buttons["إغلاق المصحف"].tap()
-        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.buttons["surah.1"].waitForExistence(timeout:10),
+                      "Stopping and closing returns to the ordinary Mushaf index, even with an active daily ward")
     }
     func testInlinePageSessionRevealPauseResumeAndPartialFinishSurviveRelaunch() {
         let app = XCUIApplication(); application = app
@@ -86,7 +87,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertEqual(first.frame, originalFrame, "A textual hint cannot reflow Quran glyphs")
         XCTAssertTrue(first.label.contains("مخفي"), "One hint must not expose the entire ayah to VoiceOver")
         capture(app, "38-practice-mushaf-hint")
-        app.terminate(); launchNoorApp(app); app.buttons["home.resume"].tap()
+        app.terminate(); openReader(app, page: 604, finishRecoveredTake: false)
         XCTAssertTrue(app.buttons["study.pause"].waitForExistence(timeout: 60))
         XCTAssertTrue(app.buttons["study.pause"].label.contains("استئناف"))
         XCTAssertTrue(first.label.contains("مخفي"))
@@ -105,6 +106,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["إغلاق المصحف"].tap()
     }
     func testMicCaptureBackgroundResumeStaysInMushafWithoutHistory() {
+        executionTimeAllowance = 180
         // The full CI journey grants the simulator's actual OS permission for
         // this class after the independent denial journeys have completed.
         let app = XCUIApplication(); application = app
@@ -123,7 +125,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         let paused = expectation(for: NSPredicate(format: "label CONTAINS %@", "استئناف"), evaluatedWith: app.buttons["study.pause"])
         wait(for: [paused], timeout: 20)
         capture(app, "study-background-paused-with-durable-take")
-        app.terminate(); launchNoorApp(app); app.buttons["home.resume"].tap()
+        app.terminate(); openReader(app, page: 604, finishRecoveredTake: false)
         XCTAssertTrue(app.buttons["study.pause"].waitForExistence(timeout: 60))
         XCTAssertTrue(app.buttons["study.pause"].label.contains("استئناف"))
         let beforeResume = elapsed.label
@@ -152,14 +154,20 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["reader.options.close"].tap();app.buttons["إغلاق المصحف"].tap()
     }
 
-    private func openReader(_ app: XCUIApplication, page: Int? = nil) {
+    private func openReader(_ app: XCUIApplication, page: Int? = nil, finishRecoveredTake: Bool = true) {
         launchNoorApp(app)
-        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
+        // Home intentionally replaces ordinary resume with the reading-only
+        // daily ward/completed message when a plan exists. Exercise the actual
+        // public Mushaf route instead of requiring the previous test to erase
+        // its real plan or accidentally opening a ward without a microphone.
+        selectNoorTab("المصحف", in: app)
+        let surah = app.buttons[page == 604 ? "surah.112" : "surah.1"]
+        XCTAssertTrue(surah.waitForExistence(timeout: 10)); surah.tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         // A previous interrupted journey may have a real recoverable take.
         // Finish it through the shipped controls; never erase or seed state to
         // make the new microphone journey appear to start successfully.
-        if app.buttons["study.finish"].exists {
+        if finishRecoveredTake && app.buttons["study.finish"].exists {
             app.buttons["study.finish"].tap()
             XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)

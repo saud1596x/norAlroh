@@ -20,6 +20,10 @@ final class NoorAllScreensTests: XCTestCase {
     }
 
     func testAllScreensWalkthrough() {
+        // This real navigation/screenshot journey is longer than the default
+        //180s suite limit. Keep its full assertions and a finite five-minute
+        // ceiling instead of treating active navigation as a completed pass.
+        executionTimeAllowance = 300
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 15))
         capture(app, "01-home")

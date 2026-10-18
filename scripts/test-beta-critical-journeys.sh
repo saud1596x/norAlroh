@@ -2,12 +2,14 @@
 # Current integrated app journeys, not calibrated learner/full-release acceptance.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+remaining=${NOOR_BETA_REMAINING_CHECK:-0}
+case "$remaining" in 0|1) ;; *) echo 'Unsupported beta journey scope'; exit 2;; esac
 python3 scripts/check-native-test-selectors.py
 python3 scripts/run-native-with-deadline.py --check 720
 mkdir -p release/beta-journeys
 xcodegen generate --spec ios/project-accounts.yml --project ios
 device=$(python3 - <<'PY'
-import json,subprocess
+import json,os,subprocess
 from pathlib import Path
 runtime='com.apple.CoreSimulator.SimRuntime.iOS-26-2'
 devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
@@ -16,7 +18,10 @@ Path('release/beta-journeys/context.json').write_text(json.dumps({
  'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
  'xcode':subprocess.check_output(['xcodebuild','-version'],text=True).strip(),
  'runtime':runtime,'device':phone['name'],'configuration':'Release','projectSpec':'ios/project-accounts.yml',
- 'scope':'Integrated home/reader/adhkar/prayer/settings/legal navigation, twenty-page ward, reciter picker, notification logic and actual simulator microphone start. NOT physical learner accuracy, notification delivery, Apple sign-in E2E, all20wordtimings or entire Release suite'
+ 'scope':'Remaining whole-screen walkthrough, real twenty-page ward and actual simulator microphone start/background/resume only' if os.environ.get('NOOR_BETA_REMAINING_CHECK') == '1' else 'Integrated home/reader/adhkar/prayer/settings/legal navigation, twenty-page ward, reciter picker, notification logic and actual simulator microphone start. NOT physical learner accuracy, notification delivery, Apple sign-in E2E, all20wordtimings or entire Release suite',
+ 'remainingOnly': os.environ.get('NOOR_BETA_REMAINING_CHECK') == '1',
+ 'priorPartialRun': '6ad52c337550aed8108fef00' if os.environ.get('NOOR_BETA_REMAINING_CHECK') == '1' else None,
+ 'limits':'NOT fullRelease, physical learner accuracy, delivery, Apple sign-in E2E or all20wordtimings'
 },indent=2)+'\n')
 print(phone['udid'])
 PY
@@ -31,9 +36,34 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Release
  'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
 python3 scripts/run-native-with-deadline.py 720 xcodebuild build-for-testing "${common[@]}" \
  2>&1 | tee release/beta-journeys/build-log.txt
+if [[ "$remaining" == 1 ]]; then
+ # These four cases never completed in the preceding run. Retain that failed
+ # result; do not rerun its63 passed units or its two passed UI cases. One
+ # invocation avoids repeated package resolution/runner startup. All real
+ # navigation/capture assertions remain, with a bounded combined deadline.
+ xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
+ remaining_exit=0
+ python3 scripts/run-native-with-deadline.py 540 xcodebuild test-without-building "${common[@]}" \
+  -test-timeouts-enabled YES -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 300 \
+  -only-testing:AtharUITests/NoorAllScreensTests/testAllScreensWalkthrough \
+  -only-testing:AtharUITests/NoorKhatmahUITests/testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction \
+  -only-testing:AtharUITests/NoorMushafStudyUITests/testOneTapStartsActualInlineMicrophoneWithoutSetupOrAccount \
+  -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeStaysInMushafWithoutHistory \
+  -resultBundlePath release/beta-journeys/remaining.xcresult \
+  2>&1 | tee release/beta-journeys/remaining-log.txt || remaining_exit=$?
+ python3 scripts/export-reader-proof.py release/beta-journeys/remaining.xcresult
+ python3 - "$remaining_exit" <<'PY'
+import json,sys
+from pathlib import Path
+p=Path('release/beta-journeys/context.json');data=json.loads(p.read_text())
+data['remainingExit']=int(sys.argv[1]);p.write_text(json.dumps(data,indent=2)+'\n')
+print('NOOR_BETA_REMAINING_RESULT',json.dumps(data))
+PY
+ exit "$remaining_exit"
+fi
 navigation_exit=0
-python3 scripts/run-native-with-deadline.py 420 xcodebuild test-without-building "${common[@]}" \
- -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 \
+python3 scripts/run-native-with-deadline.py 600 xcodebuild test-without-building "${common[@]}" \
+ -test-timeouts-enabled YES -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 300 \
  -only-testing:AtharTests/AutomaticPrayerTests \
  -only-testing:AtharTests/PrayerNotificationPlanTests \
  -only-testing:AtharTests/NotificationReconciliationTests \
