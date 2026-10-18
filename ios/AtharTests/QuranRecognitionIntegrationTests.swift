@@ -449,11 +449,15 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
                 makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) },
                 setSessionActive: { _ in })
         }
+        NSLog("NOOR_SESSION_INTEGRATION begin")
         let original = controller()
+        NSLog("NOOR_SESSION_INTEGRATION start.begin")
         await original.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(original.state, .listening)
         XCTAssertTrue(original.hiddenIDs.isEmpty, "Opening the microphone must not blank the page before real recognized word evidence")
+        NSLog("NOOR_SESSION_INTEGRATION pause.begin")
         await original.pause()
+        NSLog("NOOR_SESSION_INTEGRATION pause.end")
         XCTAssertEqual(original.state, .paused); XCTAssertNil(original.message)
         let first = try XCTUnwrap(original.record)
         XCTAssertEqual(first.takes.count, 1); XCTAssertTrue(first.takes[0].closed)
@@ -485,6 +489,7 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         let removedTake = try XCTUnwrap(MushafRecordingArchive.takes(session: first.id, base: root).first)
         try MushafRecordingArchive.moveAudio(removedTake, toDeleted: true, base: root)
         let reopened = controller()
+        NSLog("NOOR_SESSION_INTEGRATION restore.begin")
         await reopened.restore(id: first.id, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(reopened.state, .paused); XCTAssertNil(reopened.message)
         XCTAssertEqual(reopened.revealed, Set(first.evidence.map(\.nativeID)))
@@ -494,8 +499,11 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         let recoverable = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: first.id, base: root).first)
         XCTAssertEqual(try Data(contentsOf: recoverable.url), firstAudio)
         try MushafRecordingArchive.moveAudio(recoverable, toDeleted: false, base: root)
+        NSLog("NOOR_SESSION_INTEGRATION resume.begin")
         await reopened.resume(); XCTAssertEqual(reopened.state, .listening)
-        await reopened.finish(); XCTAssertEqual(reopened.state, .stopped)
+        NSLog("NOOR_SESSION_INTEGRATION finish.begin")
+        await reopened.finish();
+        NSLog("NOOR_SESSION_INTEGRATION finish.end") XCTAssertEqual(reopened.state, .stopped)
         XCTAssertFalse(reopened.hasSession); XCTAssertTrue(reopened.hiddenIDs.isEmpty)
         let finished = try journal.load(first.id)
         XCTAssertEqual(finished.phase, .finished); XCTAssertNotNil(finished.finishedAt)
@@ -507,8 +515,11 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         for take in playable {
             let file = try AVAudioFile(forReading: take.url)
             XCTAssertEqual(file.length, Int64(samples.count))
+            NSLog("NOOR_SESSION_INTEGRATION audio.prepare.begin")
             XCTAssertTrue(try AVAudioPlayer(contentsOf: take.url).prepareToPlay())
+            NSLog("NOOR_SESSION_INTEGRATION audio.prepare.end")
         }
+        NSLog("NOOR_SESSION_INTEGRATION reopen.finished")
         let finishedReopened = controller()
         await finishedReopened.restore(id: first.id, snapshot: snapshot, corpus: corpus)
         XCTAssertEqual(finishedReopened.state, .stopped)

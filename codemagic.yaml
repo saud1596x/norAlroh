@@ -46,6 +46,17 @@ workflows:
       vars:
         NOOR_PROJECT_SPEC: ios/project-accounts.yml
         NOOR_NATIVE_TEST_DEADLINE: '720'
+  focused-engine-repair-check:
+    <<: *continuous_reader_check
+    name: Noor exact ambiguity repair and genuine session stall diagnosis
+    max_build_duration: 15
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify exact engine repairs and actual stalled session
+        script: python3 scripts/run-native-with-deadline.py 720 bash scripts/test-engine-repair.sh
+    artifacts:
+      - release/engine-repair/**
   daily-ease-check:
     name: Noor daily ward, automatic setup and clear adhkar
     instance_type: mac_mini_m2
