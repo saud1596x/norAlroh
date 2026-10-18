@@ -127,8 +127,8 @@ reordered or shared openings cannot choose a surah; the existing independent
 anchor/uncertainty rules remain. Canonical text, native IDs and glyphs are not
 rewritten, and raw observed words remain original. This lexical behavior is
 integrated in native and server binding; real long-initial recognition and
-phonetic correctness are not established. The native source after18e7ac8has
-not yet been tested. Do not attribute its previous native passes to this batch.
+phonetic correctness are not established. Matching native source3e961fcpassed53selected Release tests,0failures;
+the earlier18e7ac8run did not include these changes.
 
 Actual publicCPU eight-second-window diagnostics exposed a stronger failure:
 on a short prefix the finetuned decoder sometimes emits a whole compact
@@ -145,7 +145,7 @@ The new negative native reference fixture is exact public AbdulBasitMurattal
 2:1 from`https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/002001.mp3`,
 63319bytes/SHA256`48077d6641b2403e04c15585b0ede3b8eb3a3c354ae4d8d6f6a4882dc8106ebb`.
 It is test-bundle-only and was not altered/spliced. No new private audio is
-uploaded or used as ground truth. Native execution of this new test is pending.
+uploaded or used as ground truth. The actual public-prefix negative test was included in the matching53-case native pass.
 
 Primary lexical references (reading names, not a pronunciation grading model):
 [Alif Lam Mim](https://qul.tarteel.ai/morphology/word?location=2%3A1%3A1),
@@ -154,6 +154,13 @@ Primary lexical references (reading names, not a pronunciation grading model):
 [Ya Sin](https://corpus.quran.com/wordmorphology.jsp?location=%2836%3A1%3A1%29).
 Device-time API reference:
 [Apple AVAudioTime](https://developer.apple.com/documentation/avfaudio/avaudiotime).
+
+Independent raw CTC diagnostics on the same exact public prefix/full bytes
+confirmed a separate hypothesis:2:1prefix `ال` versus full `الم`, and
+19:1prefix `ك` versus full `كهيعص`. Eight bounded cases completed without
+reference prompts or forced alignment; raw results are retained in
+`outputs/public-initials-evaluation/independent-ctc.json`. This diagnostic
+is not an integrated phone verifier or measured natural-learner accuracy.
 
 ## Latest learner request: keep a shown ayah visible
 
@@ -167,13 +174,16 @@ When retracted text remains visible, later attempts record that assistance.
 The display history survives pause/relaunch and stale analysis writes, resets
 for a new session, and uses the existing Mushaf with no additional screen.
 
-Implementation/native execution is pending for this new source. Added native
+Implementation and matching native execution passed on3e961fc. Added native
 policies reproduce Fatiha1:2 followed by a retracting window, confirm1:3stays
 hidden, reopen the real saved PCM/journal, and verify both write orders preserve
 visibility while allowing evidence retraction. These use injected recognized
 words over original public PCM; they are display/persistence tests, not ASR
-accuracy or physical microphone acceptance. Selected native pass18e7ac8does
-not include this new behavior.
+accuracy or physical microphone acceptance. Matching Codemagic build
+6ad4f12b7550aed8108fe005passed53selected account-enabled Release tests with
+0failures/testExit0 in33.176seconds; total10m16s, Xcode26.3/iOS26.2/iPhone17Pro.
+Proof: outputs/engine-3e9-visible-ayah-passed.txt. This is not full Release,
+physical microphone or all-reader acceptance.
 
 ## Visual acceptance queued after engine and readers
 
