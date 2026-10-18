@@ -192,7 +192,7 @@ public struct QuranRecitationTracker: Sendable {
         }
         guard !expected.isEmpty else { return [] }
         let tokens = heard.map { QuranAlignedWord.normalize($0.text) }
-        struct Match { let first: Int; let bounds: [(Int, Int, Int)] }
+        struct Match { let first: Int; let bounds: [(Int, Int, Int)]; let eligible: Bool }
         var candidates: [Match] = []
         let lower = max(0, cursor - 12), upper = min(expected.count, cursor + 13)
         let neighboringVerses = Set([cursor - 1, cursor].compactMap {
@@ -239,7 +239,14 @@ public struct QuranRecitationTracker: Sendable {
                 let nearbyContinuation = (lower..<upper).contains(first)
                     && neighboringVerses.contains(expected[first].verse)
                 let minimumAnchor = singleScope ? 1 : nearbyContinuation ? 2 : 3
-                if bounds.count >= minimumAnchor { candidates.append(.init(first: first, bounds: bounds)) }
+                // A short alternative outside the continuation scope still
+                // competes as ambiguity evidence. Excluding it before the
+                // optimal-path comparison would falsely make the nearby copy
+                // of a repeated two-word phrase appear unique.
+                if bounds.count >= 2 || singleScope {
+                    candidates.append(.init(first: first, bounds: bounds,
+                                            eligible: bounds.count >= minimumAnchor))
+                }
             }
         }
         // Select non-overlapping exact anchors. Squared HEARD-token length
@@ -287,7 +294,7 @@ public struct QuranRecitationTracker: Sendable {
             }
         }
         var certain = Set<Binding>()
-        for candidate in optimal {
+        for candidate in optimal where candidate.eligible {
             let bindings = candidate.bounds.map { Binding(index: $0.0, first: $0.1, end: $0.2) }
             guard bindings.allSatisfy({ binding in
                 (binding.first..<binding.end).allSatisfy {

@@ -71,6 +71,7 @@ class Corpus:
         """
         tokens = [normalize(v['text']) for v in heard]
         candidates = []
+        eligible = set()
         adjacent_verses = {self.words[i].verse for i in [expected_cursor-1, expected_cursor]
             if 0 <= i < len(self.words)} if expected_cursor is not None else set()
         for h, token in enumerate(tokens):
@@ -87,7 +88,10 @@ class Corpus:
                 near = expected_cursor is not None and max(0, expected_cursor-12) <= first <= expected_cursor+12 \
                     and self.words[first].verse in adjacent_verses
                 minimum = 2 if near else 3
-                if len(bound) >= minimum: candidates.append(tuple(bound))
+                # Outside-scope short matches still compete for ambiguity;
+                # they never become eligible merely because they are unique.
+                if len(bound) >= 2: candidates.append(tuple(bound))
+                if len(bound) >= minimum: eligible.add(tuple(bound))
         # Match the native engine's non-overlapping optimal-anchor policy. A
         # cross-surah suffix bridge must not erase two stronger independent
         # passages. Keep only bindings shared by EVERY optimal interpretation.
@@ -114,6 +118,7 @@ class Corpus:
                 for p in range(binding[0],binding[1]): alternatives[p].add(binding)
         certain = set()
         for candidate in optimal:
+            if candidate not in eligible: continue
             if all(all(not unmatched[p] and alternatives[p] == {binding}
                        for p in range(binding[0],binding[1])) for binding in candidate):
                 certain.update(candidate)

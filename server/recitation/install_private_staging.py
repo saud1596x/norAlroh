@@ -53,6 +53,23 @@ def run(*args):
     subprocess.run(args,check=True)
 
 
+def container_command(tag, digest, env, model, name):
+    # No compose installation, host network, public listener or existing app
+    # mount. Resource bounds and Docker's loopback binding are explicit.
+    return ['docker','run','--detach','--name',name,
+        '--label','noor.source-sha256='+digest,'--label','noor.scope=private-staging',
+        '--env-file',str(env),'--env','NOOR_DATABASE_URL=sqlite:////data/noor.db',
+        '--env','NOOR_ENVIRONMENT=local','--env','NOOR_FIREBASE_PROJECT_ID=noor-alruh',
+        '--env','NOOR_INFERENCE_DEVICE=cpu','--env','NOOR_CPU_THREADS=2',
+        '--env','NOOR_MAX_SESSIONS=2','--publish','127.0.0.1:8080:8080',
+        '--mount','type=bind,source='+str(model)+',target=/model,readonly',
+        '--mount','type=volume,source='+DATA+',target=/data',
+        '--read-only','--tmpfs','/tmp:size=32m,noexec,nosuid','--cap-drop','ALL',
+        '--security-opt','no-new-privileges:true','--pids-limit','96','--memory','1800m',
+        '--cpus','1.5','--stop-timeout','45','--restart','unless-stopped',
+        '--log-driver','local','--log-opt','max-size=5m','--log-opt','max-file=2',tag]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive-sha256',required=True)
@@ -62,7 +79,7 @@ def main():
         raise SystemExit('Exact source SHA256 required')
     if os.name!='posix' or os.geteuid()!=0: raise SystemExit('Host operator must run this installer as root')
     os.umask(0o077)
-    run('docker','compose','version')
+    run('docker','version','--format','{{.Server.Version}}')
     marker = DESTINATION/'installation.json'
     if DESTINATION.exists():
         if DESTINATION.is_symlink() or not marker.is_file(): raise SystemExit('Existing destination not owned by this installer')
@@ -106,34 +123,16 @@ def main():
     run('docker','run','--rm','--network','none','--user','0',
         '--mount','type=volume,source='+DATA+',target=/data',tag,'python','-c',
         'import os;os.chown("/data",10001,10001);os.chmod("/data",0o700)')
-    compose = DESTINATION/'compose.yaml'
-    compose.write_text(f'''services:
-  recitation:
-    image: {tag}
-    env_file: [runtime.env]
-    environment:
-      NOOR_DATABASE_URL: sqlite:////data/noor.db
-      NOOR_ENVIRONMENT: local
-      NOOR_FIREBASE_PROJECT_ID: noor-alruh
-      NOOR_INFERENCE_DEVICE: cpu
-      NOOR_CPU_THREADS: '2'
-      NOOR_MAX_SESSIONS: '2'
-    ports: ['127.0.0.1:8080:8080']
-    volumes: ['./model:/model:ro', '{DATA}:/data']
-    read_only: true
-    tmpfs: ['/tmp:size=32m,noexec,nosuid']
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 96
-    mem_limit: 1800m
-    cpus: 1.5
-    stop_grace_period: 45s
-    restart: unless-stopped
-volumes:
-  {DATA}:
-    external: true
-''')
-    run('docker','compose','--project-name',PROJECT,'--file',str(compose),'up','-d','--no-build')
+    name = PROJECT+'-api'
+    found = subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+    if found.returncode==0:
+        existing=json.loads(found.stdout)[0]
+        labels=existing.get('Config',{}).get('Labels',{}) or {}
+        if labels.get('noor.source-sha256')!=digest or labels.get('noor.scope')!='private-staging':
+            raise SystemExit('Existing container identity differs; no container changed')
+        run('docker','start',name)
+    else:
+        run(*container_command(tag,digest,env,model,name))
     deadline = time.monotonic()+120
     while time.monotonic()<deadline:
         try:

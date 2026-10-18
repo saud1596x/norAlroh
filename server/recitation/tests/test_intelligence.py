@@ -44,6 +44,18 @@ def test_short_verse_needs_a_prior_real_anchor_and_never_a_visible_page_hint(cor
     assert not corpus.align(partial, expected_cursor=first)
 
 
+def test_short_repeated_scope_does_not_become_unique_by_filtering_alternatives():
+    # Policy fixture, not rendered Quran or ASR acceptance audio.
+    from noor_engine.corpus import Word
+    fixture=object.__new__(Corpus)
+    fixture.words=[Word(1,'112:1',604,1,(('الله',),)),Word(2,'112:1',604,2,(('الصمد',),)),
+                   Word(3,'112:2',604,1,(('الله',),)),Word(4,'112:2',604,2,(('الصمد',),))]
+    fixture.starts={'الله':{0,2},'الصمد':{1,3}}
+    heard=[{'text':text,'start':i,'end':i+.8,'confidence':.99}
+           for i,text in enumerate(['الله','الصمد'])]
+    assert fixture.align(heard,expected_cursor=0)==[]
+
+
 def test_high_confidence_substitution_is_provisional_and_pause_not_error(corpus):
     heard = heard_words(corpus, '2:255')
     heard[8]['text'] = 'سيارة'

@@ -1,7 +1,7 @@
 import hashlib
 import importlib.util
 import io
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import tarfile
 import tempfile
 import unittest
@@ -12,6 +12,18 @@ installer = importlib.util.module_from_spec(spec);spec.loader.exec_module(instal
 
 
 class StagingPayloadTests(unittest.TestCase):
+    def test_pilot_exposes_only_loopback_and_cannot_mount_another_application(self):
+        command=installer.container_command('noor:test','a'*64,PurePosixPath('/opt/noor/runtime.env'),
+                                            PurePosixPath('/opt/noor/model'),'noor-test')
+        self.assertEqual(command[command.index('--publish')+1],'127.0.0.1:8080:8080')
+        mounts=[command[i+1] for i,x in enumerate(command) if x=='--mount']
+        self.assertEqual(mounts,['type=bind,source=/opt/noor/model,target=/model,readonly',
+                                'type=volume,source=noor_recitation_staging_data,target=/data'])
+        self.assertNotIn('--privileged',command)
+        self.assertNotIn('--network=host',command)
+        self.assertIn('--read-only',command)
+        self.assertEqual(command[command.index('--memory')+1],'1800m')
+
     def archive(self,path,extra=None):
         with tarfile.open(path,'w:gz') as package:
             for name in sorted(installer.EXACT):
