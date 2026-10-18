@@ -132,6 +132,11 @@ actor QuranRecognitionWorker {
         let options = DecodingOptions(language: "ar", temperatureFallbackCount: 0,
             skipSpecialTokens: true, withoutTimestamps: false, wordTimestamps: true,
             suppressBlank: true, concurrentWorkerCount: 1)
+        // Both recognizers consume the same immutable captured window and
+        // neither needs the other's text. Start acoustic verification now,
+        // rather than adding its entire inference time after primary decoding.
+        // The exact agreement gate below remains mandatory and unchanged.
+        async let independentDecode = QuranIndependentCTC.shared.recognize(window)
         let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
         var decoded = QuranLocalWordEvidence()
         for segment in output.flatMap(\.segments) {
@@ -159,7 +164,7 @@ actor QuranRecognitionWorker {
         } ?? "bundled-primary"
         let independent: QuranIndependentObservation
         do {
-            independent = try await QuranIndependentCTC.shared.recognize(window)
+            independent = try await independentDecode
         } catch is CancellationError { throw CancellationError() }
         catch {
             // Keep the genuine primary hypothesis, but do not let an absent

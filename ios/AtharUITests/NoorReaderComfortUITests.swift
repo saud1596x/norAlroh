@@ -69,6 +69,26 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(app.frame.contains(page.frame))
         capture(app, "automatic-fullscreen-reader")
     }
+    func testRepeatedPageTurnsStayInTheReadyReaderWithoutDownloadUI() {
+        let app = XCUIApplication(); launchNoorApp(app)
+        XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
+        app.buttons["home.resume"].tap()
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 20))
+        jump(14, app: app)
+        let originalFrame = page.frame
+        for (target, forward) in [(15, true), (16, true), (17, true), (18, true),
+                                  (17, false), (16, false), (15, false), (14, false)] {
+            let started = ProcessInfo.processInfo.systemUptime
+            if forward { page.swipeRight() } else { page.swipeLeft() }
+            requirePage(target, app: app)
+            XCTAssertTrue(page.exists)
+            XCTAssertFalse(app.descendants(matching: .any)["reader.downloading"].exists)
+            XCTAssertEqual(page.frame, originalFrame)
+            print("NOOR_ACTUAL_PAGE_TURN target=\(target) seconds=\(ProcessInfo.processInfo.systemUptime - started)")
+        }
+        capture(app, "repeated-page-turns-return-to-page-14")
+    }
     private var screenshotBackground: UInt32?
     private var acceptanceApp: XCUIApplication?
     override func setUpWithError() throws {

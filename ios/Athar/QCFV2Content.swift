@@ -113,6 +113,7 @@ actor QCFV2ContentCache {
     private var pending: Task<Entry, Error>?
     private var verifiedFile: SHA256.Digest?
     private var verifiedEntry: Entry?
+    private var packagedEntry: Entry?
 
     init(file: URL, endpoint: URL,
          fetch: @escaping @Sendable (URL) async throws -> Data = QCFV2ContentCache.download,
@@ -129,7 +130,8 @@ actor QCFV2ContentCache {
                 == "125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d" else {
             throw QCFV2Snapshot.Invalid.edition
         }
-        _ = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
+        // The exact immutable edition is pinned above; readingEntry validates
+        // its schema. Do not decode this 23 MB payload a second time here.
         return bytes
     }
 
@@ -150,18 +152,20 @@ actor QCFV2ContentCache {
     }
 
     /// Open a verified offline copy without waiting for a connected refresh.
-    /// The existing seven-day refresh policy still runs in the background.
+    /// Installed content stays offline; cache-only callers retain background refresh.
     func readingEntry(now: Date = Date(),
                       onDownload: @MainActor @Sendable () -> Void = {}) async throws -> Entry {
-        if let entry = cached() {
-            Task { _ = try? await self.refresh(now: now) }
-            return entry
-        }
+        if let packagedEntry { return packagedEntry }
         if let bytes = try packaged() {
             _ = try JSONDecoder().decode(QCFV2Snapshot.self, from: bytes).validated()
             let entry = Entry(downloadedAt: .distantPast, snapshot: bytes)
-            // Reading the packaged copy does not depend on writable storage or
-            // a connection. A failed background refresh cannot replace it.
+            packagedEntry = entry
+            // The installed edition is complete. Opening it neither downloads
+            // a replacement nor reads a large writable cache on each entry.
+            // Cache refresh remains explicit for callers without a bundle.
+            return entry
+        }
+        if let entry = cached() {
             Task { _ = try? await self.refresh(now: now) }
             return entry
         }
@@ -235,6 +239,11 @@ actor QCFV2ContentCache {
             packaged: QCFV2ContentCache.bundledSnapshot)
         contentCache = value
         return value
+    }
+    static func prepare(corpus: [Surah]) async throws -> MushafReadingPreparation.Content {
+        let entry = try await cache().readingEntry()
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        return try await MushafReadingPreparation.shared.prepare(entry.snapshot, keys: keys)
     }
 }
 

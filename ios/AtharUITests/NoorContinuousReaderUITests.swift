@@ -21,8 +21,8 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertFalse(mic.frame.intersects(visibility.frame), "Visibility keeps its own touch area")
         let more = app.buttons["reader.more"]
         XCTAssertTrue(more.isHittable, "Options are discoverable without a hidden long press")
-        mic.press(forDuration: 0.65)
-        XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout: 5), "A long press opens options without a start cue or microphone capture")
+        more.tap()
+        XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout: 5), "Options have their own button, separate from immediate microphone capture")
         XCTAssertFalse(app.buttons["study.pause"].exists)
         app.buttons["reader.options.close"].tap()
         XCTAssertTrue(mic.waitForExistence(timeout: 5))

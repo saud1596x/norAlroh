@@ -30,9 +30,9 @@ import UIKit
     }
 }
 
-/// Capture may start only after the real cue completion and an acoustic tail.
-/// A missing file starts quietly; a queued sound that never completes fails
-/// closed. Cancelling/leaving the reader invalidates every late callback.
+/// Primary microphone actions use haptic-only beginCapture. The optional
+/// audible-feedback path remains separate and fails closed on an unfinished
+/// sound. Cancelling/leaving the reader invalidates every late callback.
 @MainActor final class NoorMicrophoneCue: ObservableObject {
     @Published private(set) var pending = false
     @Published private(set) var error: String?
@@ -48,6 +48,15 @@ import UIKit
          deadlineNanoseconds: UInt64 = 1_000_000_000) {
         self.driver = driver ?? NoorSystemMicrophoneCue()
         self.haptics = haptics; self.deadlineNanoseconds = deadlineNanoseconds
+    }
+    /// The microphone is a primary action, never a dependent of system-sound
+    /// completion. No playback is queued here, so capture cannot record a cue
+    /// or be stranded by a missing audio completion callback. Haptic only.
+    func beginCapture(ready: () -> Void) {
+        cancel()
+        error = nil
+        if haptics { UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.65) }
+        ready()
     }
     func begin(ready: @escaping () -> Void) {
         guard !pending else { return }

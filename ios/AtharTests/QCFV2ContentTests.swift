@@ -2,20 +2,20 @@ import XCTest
 @testable import Athar
 
 final class QCFV2ContentTests: XCTestCase {
-    func testFirstOpenUsesVerifiedPackagedEditionWhileConnectionFails() async throws {
+    func testFirstAndRepeatedOpenUseVerifiedPackagedEditionWithoutNetworkOrCacheWrite() async throws {
         let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
-        let started = expectation(description: "Background refresh may fail independently")
         let cache = QCFV2ContentCache(file: folder.appendingPathComponent("not-created/cache.json"),
             endpoint: URL(string: "https://noor-quran-sync.onrender.com/v1/mushaf/snapshot")!,
-            fetch: { _ in started.fulfill(); throw URLError(.notConnectedToInternet) }, packaged: { bytes })
+            fetch: { _ in XCTFail("Bundled reading must never request a snapshot download"); throw URLError(.notConnectedToInternet) }, packaged: { bytes })
         let entry = try await cache.readingEntry(onDownload: { XCTFail("Packaged reading must not wait for a foreground download") })
         XCTAssertEqual(entry.snapshot, bytes)
         XCTAssertEqual(try JSONDecoder().decode(QCFV2Snapshot.self, from: entry.snapshot).validated().records.filter {
             $0.record_type == "mushaf_page"
         }.count, 604)
-        await fulfillment(of: [started], timeout: 5)
+        let reopened = try await cache.readingEntry(onDownload: { XCTFail("Reopening remains offline") })
+        XCTAssertEqual(reopened.snapshot, bytes)
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path), "The packaged reader works before any successful cache write")
     }
     func testLiveSnapshotAndAtomicOfflineRecovery() async throws {

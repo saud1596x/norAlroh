@@ -55,6 +55,9 @@ struct MushafDatabase: Codable {
 
 // QCF V2 page fonts are bundled in every build and verified against the pinned manifest.
 @MainActor final class MushafFonts: ObservableObject {
+    // Bundle contents cannot change within a running app. Reopening a reader
+    // reuses only fonts whose pinned bytes were already verified this launch.
+    private static var verifiedNames: [String: String] = [:]
     @Published private(set) var names: [String: String] = [:]
     @Published var error: String?
     private var pending: [String: Task<String, Error>] = [:]
@@ -88,6 +91,23 @@ struct MushafDatabase: Codable {
         }
     }
     private static func register(_ family: String) async throws -> String {
+        if let name = verifiedNames[family] { return name }
+        let fontData = try await Task.detached(priority: .userInitiated) {
+            try verifiedData(family)
+        }.value
+        try Task.checkCancellation()
+        guard let provider = CGDataProvider(data: fontData as CFData), let font = CGFont(provider),
+              let postScriptName = font.postScriptName, postScriptName as String == family else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        CTFontManagerRegisterGraphicsFont(font, nil)
+        guard UIFont(name: family, size: 24) != nil else { throw CocoaError(.fileReadCorruptFile) }
+        verifiedNames[family] = family
+        return family
+    }
+    // File reads, JSON parsing and SHA256 used to inherit MainActor on every
+    // neighbor font. Keep verification intact without blocking page gestures.
+    nonisolated private static func verifiedData(_ family: String) throws -> Data {
         guard family.hasPrefix("QCF2"), let page = Int(family.dropFirst(4)), (1...604).contains(page),
               let manifestURL = Bundle.main.url(forResource: "qcf-v2-manifest", withExtension: "json"),
               let manifest = try JSONSerialization.jsonObject(with: Data(contentsOf: manifestURL)) as? [String: Any],
@@ -101,14 +121,10 @@ struct MushafDatabase: Codable {
             fontData = try Data(contentsOf: url)
         } else { throw CocoaError(.fileNoSuchFile) }
         guard fontData.count == entry["bytes"] as? Int,
-              SHA256.hash(data: fontData).map({ String(format: "%02x", $0) }).joined() == digest,
-              let provider = CGDataProvider(data: fontData as CFData), let font = CGFont(provider),
-              let postScriptName = font.postScriptName, postScriptName as String == family else {
+              SHA256.hash(data: fontData).map({ String(format: "%02x", $0) }).joined() == digest else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        CTFontManagerRegisterGraphicsFont(font, nil)
-        guard UIFont(name: family, size: 24) != nil else { throw CocoaError(.fileReadCorruptFile) }
-        return family
+        return fontData
     }
     func load(page: MushafPage) async { await load(page.font) }
     func ready(page: MushafPage) -> Bool { names[page.font] != nil }

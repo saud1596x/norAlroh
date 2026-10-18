@@ -3,34 +3,6 @@ import UIKit
 import AVFoundation
 import Combine
 
-/// A native context menu on an actionable microphone Button can also release
-/// its primary action. Recognize these intents exclusively: a long press may
-/// open options, but must never obtain microphone permission or start capture.
-private struct NoorMushafMicrophonePressStyle: PrimitiveButtonStyle {
-    let onOptions: () -> Void
-    @Environment(\.isEnabled) private var enabled
-    @Environment(\.accessibilityReduceMotion) private var reduced
-    @EnvironmentObject private var store: AtharStore
-    @GestureState private var pressed = false
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.contentShape(RoundedRectangle(cornerRadius: 22))
-            .scaleEffect(pressed && !reduced && !store.data.lowMotion ? 0.93 : 1)
-            .opacity(pressed ? 0.8 : 1)
-            .animation(reduced || store.data.lowMotion ? nil : .spring(duration: 0.24, bounce: 0.16), value: pressed)
-            .gesture(LongPressGesture(minimumDuration: 0.45).exclusively(before: TapGesture())
-                .updating($pressed) { _, state, _ in state = true }
-                .onEnded { value in
-                    guard enabled else { return }
-                    switch value {
-                    case .first(let recognized): if recognized { onOptions() }
-                    case .second(_): configuration.trigger()
-                    }
-                })
-            .allowsHitTesting(enabled)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { if enabled { configuration.trigger() } }
-    }
-}
 @MainActor final class MushafTafsir: ObservableObject {
     struct Envelope: Decodable { let result: Result }
     struct Result: Codable { let sura: String; let aya: String; let translation: String }
@@ -136,6 +108,8 @@ struct InteractiveMushafReader: View {
     @State private var rows: OriginalMushafRows?
     @State private var pageIndex: [Int: OriginalPageData] = [:]
     @State private var number = 1
+    @State private var pageTurnRequest: UUID?
+    @State private var pageTurnTask: Task<Void, Never>?
     @State private var selected: String?
     @State private var manualSelection: VerseSelection?
     @State private var practiceSelection: String?
@@ -289,12 +263,8 @@ struct InteractiveMushafReader: View {
             await load()
             injectAcceptanceRenderFailureIfNeeded()
             completeInitialEntryIfReady()
-            if !readingOnly, let snapshot {
-                _ = try? await QuranRecognitionWorker.shared.bind(snapshot: snapshot, verseKeys: keys)
-            }
-            // Warm the bundled model during reading; never request microphone
-            // permission here or hold up the user's first recording tap.
-            if !readingOnly { try? await NoorOperationDeadline.run(seconds: 45) { try await QuranRecognitionWorker.shared.prepare() } }
+            // Reading must not load two large recognition models. Recognition
+            // is prepared after an explicit microphone action and actual capture.
         }
         .onAppear {
             readerVisible = true
@@ -319,7 +289,7 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { rememberWardPosition(); readerVisible = false; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
+        .onDisappear { rememberWardPosition(); readerVisible = false; pageTurnRequest = nil; pageTurnTask?.cancel(); pageTurnTask = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
         .onChange(of: scenePhase) { _, value in
             if value != .active { microphoneCue.cancel() }
             if value == .background { rememberWardPosition() }
@@ -584,7 +554,7 @@ struct InteractiveMushafReader: View {
         Button {
             guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
             audio.stop(); studyRecorder.stop(); legacyRecorder.stop()
-            microphoneCue.begin {
+            microphoneCue.beginCapture {
                 guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
                 if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
                 else { showStudySetup() }
@@ -596,7 +566,7 @@ struct InteractiveMushafReader: View {
         }.accessibilityLabel("ابدأ التسميع").accessibilityIdentifier("reader.study")
             .disabled(microphoneCue.pending || (recitation.state != .idle && recitation.state != .stopped)
                 || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
-            .buttonStyle(NoorMushafMicrophonePressStyle(onOptions: { readerActionsOpen = true }))
+            .buttonStyle(NoorReaderControlPressStyle())
             .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
     }
     private var readerPracticeDock: some View {
@@ -792,7 +762,7 @@ struct InteractiveMushafReader: View {
     private var studyMicrophoneButton: some View {
         Button {
             if recitation.state == .paused {
-                microphoneCue.begin {
+                microphoneCue.beginCapture {
                     guard readerVisible, recitation.state == .paused else { return }
                     Task { await recitation.resume() }
                 }
@@ -886,7 +856,22 @@ struct InteractiveMushafReader: View {
         guard !playbackLocksPage, allowedPages.contains(number + amount) else { return }
         followAudio = false
         let destination = number + amount
-        // Persist before publishing the new page, including a quick close/background.
+        pageTurnTask?.cancel()
+        let request = UUID(); pageTurnRequest = request
+        let family = String(format: "QCF2%03d", destination)
+        if fonts.names[family] != nil { commitPageTurn(destination, request: request); return }
+        // Keep the current UIKit viewport mounted until its replacement font
+        // is verified. Publishing number first used to replace it with a
+        // spinner and destroy the gesture, shaped-page cache and slide state.
+        pageTurnTask = Task {
+            await fonts.load(family)
+            guard !Task.isCancelled, fonts.names[family] != nil else { return }
+            commitPageTurn(destination, request: request)
+        }
+    }
+    private func commitPageTurn(_ destination: Int, request: UUID) {
+        guard readerVisible, pageTurnRequest == request, !playbackLocksPage else { return }
+        pageTurnRequest = nil; pageTurnTask = nil
         lastPage = destination
         number = destination; selected = nil; manualSelection = nil
     }
@@ -961,7 +946,7 @@ struct InteractiveMushafReader: View {
             await fonts.load(String(format: "QCF2%03d", number))
         } catch {
             guard !Task.isCancelled else { return }
-            self.error = "تعذّر التحقق من بيانات المصحف أو خطوطه. اتصل بالإنترنت للتنزيل الأول؛ تبقى النسخة المحفوظة متاحة دون اتصال بعد اكتماله." }
+            self.error = "تعذّر التحقق من موارد المصحف المضمّنة. أعد المحاولة أو أعد تثبيت نسخة موثوقة من التطبيق." }
     }
 }
 private struct ReaderControlHeight: PreferenceKey {

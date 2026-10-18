@@ -26,6 +26,27 @@ import XCTest
         try await Task.sleep(nanoseconds: 150_000_000)
         XCTAssertEqual(starts, 1, "A duplicate callback cannot acquire another microphone")
     }
+    func testPrimaryCaptureStartsImmediatelyWithoutPreparingOrPlayingSound() {
+        let driver = Driver(); let cue = NoorMicrophoneCue(driver: driver, haptics: false)
+        var starts = 0
+        cue.beginCapture { starts += 1 }
+        XCTAssertEqual(starts, 1)
+        XCTAssertEqual(driver.played, 0)
+        XCTAssertFalse(cue.pending)
+        XCTAssertNil(cue.error)
+    }
+    func testPrimaryCaptureInvalidatesAnOutstandingSoundAndItsLateCallback() async throws {
+        let driver = Driver(); let cue = NoorMicrophoneCue(driver: driver, haptics: false)
+        var obsoleteStarts = 0, directStarts = 0
+        cue.begin { obsoleteStarts += 1 }
+        let lateCompletion = driver.completion
+        cue.beginCapture { directStarts += 1 }
+        lateCompletion?()
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(directStarts, 1)
+        XCTAssertEqual(obsoleteStarts, 0)
+        XCTAssertFalse(cue.pending)
+    }
     func testLeavingReaderInvalidatesLateSoundCompletion() async throws {
         let driver = Driver(); let cue = NoorMicrophoneCue(driver: driver, haptics: false)
         var starts = 0

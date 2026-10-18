@@ -2,10 +2,13 @@
 # Focused acoustic-boundary/native ASR verification. Not speaker/mic/release acceptance.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+repair=${NOOR_READER_REPAIR_CHECK:-0}
+case "$repair" in 0|1) ;; *) echo 'Unsupported reader repair scope'; exit 2;; esac
+python3 scripts/run-native-with-deadline.py --check "${NOOR_NATIVE_TEST_DEADLINE:-600}"
 mkdir -p release/engine-boundaries
 xcodegen generate --spec ios/project-accounts.yml --project ios
 device=$(python3 - <<'PY'
-import json,subprocess
+import json,os,subprocess
 from pathlib import Path
 runtime='com.apple.CoreSimulator.SimRuntime.iOS-26-2'
 rows=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
@@ -14,7 +17,8 @@ Path('release/engine-boundaries/context.json').write_text(json.dumps({
  'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
  'xcode':subprocess.check_output(['xcodebuild','-version'],text=True).strip(),
  'runtime':runtime,'device':phone['name'],'configuration':'Release','projectSpec':'ios/project-accounts.yml',
- 'scope':'Remote rejected-word boundaries/source preservation + genuine bundled public PCM cross-surah ASR. NOT remote iPhone/server E2E, speaker playback, microphone hardware, all-reader timings or full release'
+ 'scope':'Remote rejected-word boundaries/source preservation + genuine bundled public PCM cross-surah ASR. NOT remote iPhone/server E2E, speaker playback, microphone hardware, all-reader timings or full release',
+ 'readerRepairCheck': os.environ.get('NOOR_READER_REPAIR_CHECK') == '1'
 },indent=2)+'\n')
 print(phone['udid'])
 PY
@@ -22,6 +26,18 @@ PY
 state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys;print(next(d["state"] for rows in json.load(sys.stdin)["devices"].values() for d in rows if d["udid"]==sys.argv[1]))' "$device")
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
+additional_tests=()
+if [[ "$repair" == 1 ]]; then
+ xcrun simctl privacy "$device" reset microphone
+ additional_tests=(
+  -only-testing:AtharTests/NoorMicrophoneCueTests
+  -only-testing:AtharTests/MushafViewportTests
+  -only-testing:AtharTests/QCFV2ContentTests/testFirstAndRepeatedOpenUseVerifiedPackagedEditionWithoutNetworkOrCacheWrite
+  -only-testing:AtharUITests/NoorInteractiveMushafUITests/testMicrophoneDenialKeepsReaderAvailableAndStationary
+  -only-testing:AtharUITests/NoorReaderComfortUITests/testRepeatedPageTurnsStayInTheReadyReaderWithoutDownloadUI
+  -only-testing:AtharUITests/NoorReaderComfortUITests/testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone
+ )
+fi
 result=0
 python3 scripts/run-native-with-deadline.py "${NOOR_NATIVE_TEST_DEADLINE:-600}" xcodebuild test \
  -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
@@ -46,7 +62,9 @@ python3 scripts/run-native-with-deadline.py "${NOOR_NATIVE_TEST_DEADLINE:-600}" 
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualQuietReferenceWithDCFaultStillAnchorsAndFlatlineCannotRevealWords \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional \
+ "${additional_tests[@]}" \
  -resultBundlePath release/engine-boundaries/actual-tests.xcresult 2>&1 | tee release/engine-boundaries/native-test-log.txt || result=$?
+if [[ "$repair" == 1 ]]; then python3 scripts/export-reader-proof.py release/engine-boundaries/actual-tests.xcresult; fi
 python3 - "$result" <<'PY'
 import json,sys
 from pathlib import Path

@@ -134,6 +134,29 @@ workflows:
         script: NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
     artifacts:
       - release/engine-boundaries/**
+  device-reported-reader-repair-check:
+    <<: *continuous_reader_check
+    name: Noor build24 reported mic tap, offline reader, paging and acoustic regressions
+    max_build_duration: 18
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - release/continuous-reader-derived-data/ModuleCache.noindex
+        - release/continuous-reader-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/continuous-reader-derived-data/SourcePackages
+        - ios/Athar/Fonts
+        - ios/RecitationModel
+        - release/independent-coreml-model-seed0-float32
+        - ~/.cache/noor-independent-ctc
+        - ~/Library/Caches/pip
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Test direct mic permission, offline edition, repeated turns and actual dual acoustic evidence
+        script: NOOR_READER_REPAIR_CHECK=1 NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
+    artifacts:
+      - release/engine-boundaries/**
   daily-ease-check:
     name: Noor daily ward, automatic setup and clear adhkar
     instance_type: mac_mini_m2

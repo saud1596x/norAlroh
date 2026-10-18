@@ -25,6 +25,14 @@ struct AtharApp: App {
                 .buttonStyle(NoorPressStyle())
                 .environmentObject(store)
                 .task { await retiredFriday.cleanup(); await khatmah.refreshReminders() }
+                .task {
+                    // Prepare installed scripture while the home screen is
+                    // visible. Never load acoustic models or access the network.
+                    _ = try? await MushafReadingResources.prepare(corpus: store.quran)
+                    guard !Task.isCancelled else { return }
+                    let fonts = MushafFonts()
+                    await fonts.load(String(format: "QCF2%03d", min(604, max(1, widgetPage))))
+                }
                 .environmentObject(notifications)
                 .environmentObject(prayerLocation)
                 .environmentObject(dhikrCounters)
