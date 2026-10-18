@@ -40,3 +40,31 @@ failure is retained and cannot certify this new app source.
 No claims of comparison superiority, natural-learner accuracy, Tajweed acoustic
 assessment, full20-reciter word timing or full Release acceptance follow from
 these changes. TestFlight24 is still the installed earlier app source.
+
+## Matching native result and subsequent repair
+
+GitHub39168566049 on f543ffe (app behavior26034dc) compiled Release with
+project-accounts/Xcode26.3/iOS26.2. Twelve selected units passed, including real
+reference PCM disposal, migration isolation, permission cancellation, source
+revision visibility and input lifecycle. Actual one-tap microphone UI passed
+47.340s; privacy UI passed24.832s. Overall FAILED: the long-capture case stopped
+at2s before it could reach its background step. Original log and screenshots
+are preserved in outputs/live-f543-evidence, outside the repository.
+
+Failure hierarchy shows the actual tracking-update error and a paused2s take.
+Both production no-speech branches constructed an empty observations array
+without a recognition-window UUID. The strict journal requires identity even
+for that empty array. This is an app defect, not evidence of unavailable sound
+hardware or a background-resume failure. Both paths now share an identified
+no-speech result factory. No word is invented, ASR is not prepared for silence,
+and journal validation remains strict. A new controller silence/pause/resume
+negative control and portable missing-identity regression cover the defect.
+These newer changes require their own native run; the earlier pass is not theirs.
+
+The new display-location frontier independently prevents an older overlapping
+word interpretation from moving the viewport backward. Retracted word evidence
+loses active highlighting while already shown text remains readable; a genuine
+later rereading can move to an earlier verse. This is display history, not added
+recitation correctness. Location reduction runs off the main actor alongside
+alignment. Four portable regressions cover ordering, withdrawal, repeated/backward
+recitation clocks and new-take isolation; native integration remains pending.

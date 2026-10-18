@@ -52,6 +52,8 @@ PY
 }
 run_case live-storage \
  -only-testing:AtharTests/QuranLiveRecitationStorageTests \
+ -only-testing:AtharTests/QuranLiveStoragePolicyTests \
+ -only-testing:AtharTests/QuranListeningLocationTests \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation

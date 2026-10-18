@@ -9,6 +9,11 @@ model, exact-word alignment and source provenance are baseline and do not count
 as new additions. Tests, libraries, numerical thresholds and logging alone do
 not count as user features either. No separate recitation/history screen.
 
+19October retention update: the user removed recordings permanently. Original
+PCM is now working data for the open Mushaf only, deleted on finish/close; the
+old recording library and scope picker are removed. This supersedes historical
+archive/relaunch requirements, without changing actual acoustic evidence gates.
+
 `P` = planned, `E` = experiment, `I` = integrated but not fully verified,
 `V` = implemented with the stated verification. Production/learner acceptance
 must still be reported separately. Never infer V from a checked box or a model
@@ -21,7 +26,7 @@ professional forced alignment must never adjudicate a learner.
 | 02 | Agreement from two independent recognizers | Native source-hash/clock and unique occurrence regressions passed; actual continuous public PCM passed; learner accuracy not established | V |
 | 03 | Suppress correction when recognizers disagree | Native independent-only/gap and raw-source preservation regressions passed; no calibrated learner correction precision claim | V |
 | 04 | Retry a low-confidence word with its genuine audio context | Bounded retry, original clock and original rejected hypothesis retained | P |
-| 05 | Stable partial-word display | Revisions cannot flicker already committed words | P |
+| 05 | Stable partial-word display | Retained shown ayahs plus source-clock navigation frontier integrated; withdrawn words lose active highlighting, older overlap cannot move page backward. Four new location regressions/native integration pending; natural learner acceptance remains pending | I |
 | 06 | Recover words straddling decode windows | Real continuous utterance, no duplicated word/progress | P |
 | 07 | Track deliberate repetition of the same ayah | New audio occurrences, no forced jump to another shared verse | P |
 | 08 | Track deliberate return to an earlier ayah | Independent distinctive acoustic anchor; preserve previous evidence | P |

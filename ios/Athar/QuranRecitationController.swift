@@ -11,6 +11,8 @@ import os
     @Published private(set) var record: QuranRecitationRecord?
     @Published private(set) var revealed = Set<Int>()
     @Published private(set) var currentVerse: String?
+    @Published private(set) var activeWordID: Int?
+    private var listeningLocation = QuranListeningLocation()
     @Published private(set) var uncertain = false
     @Published private(set) var recognitionAvailable = true
     @Published private(set) var permissionDenied = false
@@ -232,7 +234,7 @@ import os
             if revealed.isEmpty { return uncertain ? "أستمع · لم أتعرف على الموضع بعد" : "أستمع · أنتظر بداية التلاوة" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
         case .paused: return "متوقف مؤقتًا"
-        case .processing: return "حفظ الجلسة ومعالجة التلاوة"
+        case .processing: return "إيقاف الميكروفون…"
         case .stopped: return "انتهت الجلسة"
         }
     }
@@ -247,6 +249,7 @@ import os
         }
         let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
         record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
+        listeningLocation = QuranListeningLocation(); activeWordID = nil
         practiceVisibility = QuranPracticeVisibility(expected: [])
         state = .permission
         guard await requestPermission() else {
@@ -341,7 +344,12 @@ import os
             record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
-            currentVerse = restored.evidence.last?.verse ?? (restored.automaticScope == true ? nil : restored.keys.first)
+            listeningLocation = QuranListeningLocation()
+            if let take = restored.takes.last {
+                listeningLocation.begin(takeID: take.id); listeningLocation.update(restored.evidence)
+            }
+            currentVerse = listeningLocation.verse ?? (restored.automaticScope == true ? nil : restored.keys.first)
+            activeWordID = listeningLocation.activeNativeID
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
             guard revision == token else { return }
@@ -433,6 +441,7 @@ import os
             }
             capture = microphone; self.mailbox = mailbox; capturing = true
             try microphone.start(); started = true
+            listeningLocation.begin(takeID: take.id); activeWordID = nil
             // A new audio take does not prove that previously failed inference
             // has recovered. Keep text visible until a successful decode.
             recognitionAvailable = !next.recognitionUnavailable; state = .listening
@@ -489,8 +498,7 @@ import os
                 }.value
                 guard revision == token, !Task.isCancelled else { return }
                 if activity?.hasSpeech == false && worker.capabilities.processesLocally {
-                    recognized = .init(runs: [], hasUnresolvedSpeech: false, observations: [],
-                                       processingConfiguration: "NoorVAD/webrtc-no-speech/no-ASR")
+                    recognized = .noSpeechWindow()
                 } else {
                 if !prepared {
                     // Cold model loading has its own bounded deadline, after
@@ -529,6 +537,7 @@ import os
                 // not run on MainActor for every audio window. Work on a value
                 // copy; only this still-current take may publish its result.
                 let displayPolicy = practiceVisibility
+                let displayLocation = listeningLocation
                 let alignment = Task.detached(priority: .userInitiated) {
                     var nextTracker = inputTracker
                     try Task.checkCancellation()
@@ -546,9 +555,12 @@ import os
                     let matched = nextTracker.evidence.contains {
                         $0.takeID == take && $0.start >= window.offset && $0.end <= Double(window.endFrame) / 16_000
                     }
-                    return (nextTracker, additions, visible, revealed, matched)
+                    var nextLocation = displayLocation
+                    nextLocation.update(nextTracker.evidence)
+                    try Task.checkCancellation()
+                    return (nextTracker, additions, visible, revealed, matched, nextLocation)
                 }
-                let (updatedTracker, additions, completedVerses, recognizedIDs, matchedThisWindow) = try await withTaskCancellationHandler(
+                let (updatedTracker, additions, completedVerses, recognizedIDs, matchedThisWindow, updatedLocation) = try await withTaskCancellationHandler(
                     operation: { try await alignment.value }, onCancel: { alignment.cancel() })
                 guard revision == token, !Task.isCancelled else { return }
                 let available = recognitionAvailable || !additions.isEmpty
@@ -608,11 +620,13 @@ import os
                 mergeAnalysis(current); tracker = updatedTracker
                 recognitionAvailable = available
                 revealed = recognizedIDs
-                currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
-                uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
+                listeningLocation = updatedLocation
+                if let located = listeningLocation.verse { currentVerse = located }
+                activeWordID = listeningLocation.activeNativeID
+                uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech || activeWordID == nil
                 if recognized.runs.isEmpty {
                     trackingUncertainty = recognized.hasUnresolvedSpeech ? .unreliableWords : .noSpeech
-                } else if !matchedThisWindow { trackingUncertainty = .passageUnclear }
+                } else if !matchedThisWindow || activeWordID == nil { trackingUncertainty = .passageUnclear }
                 else { trackingUncertainty = recognized.hasUnresolvedSpeech ? .unreliableWords : .none }
             } catch is CancellationError { return }
             catch { guard revision == token else { return }; stopForJournalFailure(); return }

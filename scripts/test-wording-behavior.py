@@ -16,8 +16,11 @@ SOURCES = [
     "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranIndependentObservation.swift",
     "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranRecitationJournal.swift",
     "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranWordingAssessment.swift",
+    "tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift",
+    "ios/Athar/QuranLiveRecitationStorage.swift",
 ]
-TESTS = ["ios/AtharTests/QuranWordingAssessmentTests.swift", "ios/AtharTests/QuranObservedSpeechTests.swift"]
+TESTS = ["ios/AtharTests/QuranWordingAssessmentTests.swift", "ios/AtharTests/QuranObservedSpeechTests.swift",
+         "ios/AtharTests/QuranListeningLocationTests.swift", "ios/AtharTests/QuranLiveStoragePolicyTests.swift"]
 
 with tempfile.TemporaryDirectory(prefix="noor-wording-") as directory:
     package = Path(directory)

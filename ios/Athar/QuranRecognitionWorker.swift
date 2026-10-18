@@ -64,6 +64,13 @@ actor QuranRecognitionWorker {
         var windowID: UUID? = nil
         var processingConfiguration: String? = nil
         var independentRecognition: QuranIndependentObservation? = nil
+        // VAD still produced a real window result. Empty observations need
+        // their own identity too; otherwise the strict source journal rightly
+        // rejects the record and capture stops after the first silent window.
+        static func noSpeechWindow() -> Self {
+            .init(runs: [], hasUnresolvedSpeech: false, observations: [], windowID: UUID(),
+                  processingConfiguration: "NoorVAD/webrtc-no-speech/no-ASR")
+        }
     }
     private var engine: WhisperKit?
     private var loading: Task<Void, Error>?
@@ -123,8 +130,7 @@ actor QuranRecognitionWorker {
     private func decode(_ window: QuranAudioWindow) async throws -> Result {
         let inferenceSamples = try QuranRecognitionAudio.conditioned(window.samples)
         if let activity = try? QuranVoiceActivity.scan(inferenceSamples), !activity.hasSpeech {
-            return Result(runs: [], hasUnresolvedSpeech: false, observations: [],
-                          processingConfiguration: "NoorVAD/webrtc-no-speech/no-ASR")
+            return .noSpeechWindow()
         }
         try await prepare()
         try Task.checkCancellation()

@@ -426,7 +426,7 @@ struct InteractiveMushafReader: View {
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords,
                         reviewWordIDs: visibleReviewWordIDs,
-                        activeWordID: recitation.state == .listening ? recitation.record?.evidence.last?.nativeID : audio.activeWordID,
+                        activeWordID: recitation.state == .listening ? recitation.activeWordID : audio.activeWordID,
                         tajweedEnabled: tajweedColors,
                         pageRange: allowedPages,
                         allowsManualPageTurns: !playbackLocksPage,

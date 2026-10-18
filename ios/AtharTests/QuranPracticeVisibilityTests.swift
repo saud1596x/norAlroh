@@ -30,6 +30,7 @@ import WhisperKit
         try await eventually { controller.record?.retainedVisibleVerses == ["1:2"] }
         let firstIDs = Set(try XCTUnwrap(controller.record).evidence.map(\.nativeID))
         XCTAssertEqual(firstIDs.count,4)
+        XCTAssertNotNil(controller.activeWordID)
         XCTAssertTrue(controller.hiddenIDs.isDisjoint(with:firstIDs))
         let stillHidden = controller.hiddenIDs
         XCTAssertFalse(stillHidden.isEmpty,"The next unread ayah must stay hidden")
@@ -37,6 +38,7 @@ import WhisperKit
         try await eventually { (controller.record?.observedSpeech?.count ?? 0) >= 2 }
         XCTAssertTrue(controller.revealed.isEmpty,"Revisable evidence must actually retract")
         XCTAssertTrue(controller.record?.evidence.isEmpty == true,"Display history cannot award progress")
+        XCTAssertNil(controller.activeWordID,"Retracted speech must not leave a stale heard-word highlight")
         XCTAssertTrue(controller.hiddenIDs.isDisjoint(with:firstIDs),"Previously shown ayah must not disappear")
         XCTAssertEqual(controller.hiddenIDs,stillHidden,"Retention must not reveal the next ayah")
         await controller.pause()

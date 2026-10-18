@@ -7,7 +7,11 @@ on:
       - scripts/test-live-recitation.sh
       - ios/Athar/QuranLiveRecitationStorage.swift
       - ios/Athar/QuranRecitationController.swift
+      - ios/Athar/QuranRecognitionWorker.swift
       - ios/AtharTests/QuranLiveRecitationStorageTests.swift
+      - ios/AtharTests/QuranLiveStoragePolicyTests.swift
+      - ios/AtharTests/QuranListeningLocationTests.swift
+      - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift
 permissions:
   contents: read
 concurrency:

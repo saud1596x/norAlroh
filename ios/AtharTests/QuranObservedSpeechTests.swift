@@ -2,6 +2,19 @@ import XCTest
 @testable import Athar
 
 final class QuranObservedSpeechTests: XCTestCase {
+    func testNoSpeechWindowKeepsStrictIdentityEvenWhenItsObservationArrayIsEmpty() throws {
+        var record = QuranRecitationRecord(keys: ["112:1"], originPage: 604)
+        let take = QuranRecitationTake(startedAt: record.startedAt, frames: 32_000, closed: true)
+        record.takes = [take]
+        var silent = QuranObservedSpeech(takeID: take.id, start: 0, end: 2, words: [],
+            unresolved: false, backendID: "NoorVAD/webrtc-no-speech/no-ASR")
+        silent.evidenceVersion = 1; silent.recognitionRevision = 0; silent.wordObservations = []
+        record.observedSpeech = [silent]
+        XCTAssertThrowsError(try record.validate(), "Empty words do not waive source-window identity")
+        silent.recognitionWindowID = UUID(); record.observedSpeech = [silent]
+        XCTAssertNoThrow(try record.validate())
+        XCTAssertTrue(record.evidence.isEmpty, "A silent window does not create word evidence")
+    }
     func testHourEquivalentObservationJournalPreservesEverySourceOccurrence() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

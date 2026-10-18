@@ -27,6 +27,7 @@ from noor_engine.api import create_app
 from noor_engine.config import Settings
 from noor_engine.corpus import normalize
 from evaluation_metrics import measure
+from evaluation_evidence import save_progress
 
 
 def main():
@@ -70,6 +71,7 @@ def main():
                 reference = [normalize(w) for g in script['groups'][fixture['verse']] for token in g[2] for w in token.split()]
                 for gain in [1.,.03]: cases.append((fixture['verse']+f'/gain={gain}', (samples*gain).astype('<f4'), reference, fixture['verse']))
             results = []
+            save_progress(args.output/'progress.json', source_hashes, len(cases), results)
             for name, samples, reference, verse in cases:
                 response = client.post('/v1/sessions', headers=headers, json={'consent':'transient-audio-encrypted-recovery-1h'})
                 admission_wait = 0
@@ -113,7 +115,11 @@ def main():
                     'network_and_inference_seconds':latency,'inference_ms':result['inference_ms'],
                     'admission_wait_seconds':admission_wait,
                     'resume_replay_seconds':time.monotonic()-replay_start,'replay_identical':True,
-                    'matched_word_events':sum(e['type']=='WORD_CONFIRMED' for e in result['events'])})
+                    'matched_word_events':sum(e['type']=='WORD_CONFIRMED' for e in result['events']),
+                    'original_pcm_sha256':hashlib.sha256(payload).hexdigest(),
+                    'reference_tokens_after_decode':reference, 'raw_source_observations':source,
+                    'accepted_source_words':result['words']})
+                save_progress(args.output/'progress.json', source_hashes, len(cases), results)
                 client.delete('/v1/sessions/'+sid,headers=headers).raise_for_status()
                 print(name, 'words',len(actual),'edits',results[-1]['word_edits'],'locations',locations,flush=True)
             speech=[r for r in results if r['reference_words']]
@@ -128,6 +134,7 @@ def main():
                     'identical_recovery_count':sum(r['replay_identical'] for r in results),
                     'false_error_alert_rate':None,'tajweed_quality':None,'unseen_learner_accuracy':None},'cases':results}
             (args.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            save_progress(args.output/'progress.json', source_hashes, len(cases), results, complete=True)
             client.delete('/v1/account', headers=headers).raise_for_status()
             client.close()
         finally:

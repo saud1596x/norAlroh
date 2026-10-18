@@ -1,0 +1,206 @@
+{
+  "schema": 1,
+  "destination": "TESTFLIGHT_ONLY",
+  "overall": "INCOMPLETE_DO_NOT_PUBLISH_FROM_THIS_RECEIPT",
+  "runtimeSource": "PENDING_NATIVE_VERIFICATION_OF_CURRENT_FIXES",
+  "appDirectoryGitTree": "PENDING_LATEST_WORKING_TREE_VERIFICATION",
+  "testSource": "f543ffe09629241b72dd4ba7355672134dcc6807",
+  "publication": "No new TestFlight archive started;24 remains existing user build",
+  "nativeRuns": [
+    {
+      "buildId": "6ad526dc7550aed8108feda6",
+      "source": "abfe530fc9147e79a5bbcf8438c116cf98182eec",
+      "status": "SCOPED_PASS",
+      "unitPassed": 80,
+      "uiPassed": 3,
+      "failures": 0,
+      "scope": "Actual public PCM/boundaries, cue, fonts, offline reopening, denial UI and8page swipes"
+    },
+    {
+      "buildId": "6ad52c337550aed8108fef00",
+      "source": "ebf2f4ef4c4e9bbaa56858b9ec6866bf73be67bf",
+      "status": "FAILED_PARTIAL_EVIDENCE",
+      "unitPassed": 63,
+      "uiPassed": 2,
+      "navigationExit": 124,
+      "microphoneExit": 65,
+      "failures": "Walkthrough180s allowance;420s overall interrupted ward; two microphone cases failed at home.resume before capture"
+    },
+    {
+      "buildId": "6ad531b77550aed8108ff045",
+      "source": "09c1bae5ec39bb439bb1a2e5b31e194b452e7738",
+      "status": "FAILED_PARTIAL_EVIDENCE",
+      "scope": "Four remaining actual UI journeys only",
+      "remainingExit": 124,
+      "wardPassed": true,
+      "microphonePassed": false
+    }
+  ],
+  "localRuns": {
+    "helpers": {
+      "passed": 60,
+      "skipped": 2
+    },
+    "gateway": {
+      "passed": 8
+    },
+    "serviceTransportSecurity": {
+      "passed": 47,
+      "skipped": 4,
+      "seconds": 35.14,
+      "laterTargetedVerification": "The optional metric module and3real-model skips were subsequently run separately below"
+    },
+    "evaluationArithmetic": {
+      "passed": 3,
+      "seconds": 0.24
+    },
+    "realPinnedModelPublicAudio": {
+      "passed": 3,
+      "seconds": 19.74,
+      "model": "OdyAsh/faster-whisper-base-ar-quran",
+      "revision": "8578bafd427d122f671b187706650e76edf6f86f",
+      "limits": "Actual CPU model/public PCM and ASGI fault/admission checks, not phone capture, natural learner quality, internet or sustained capacity"
+    },
+    "professionalAlignmentPolicy": {
+      "passed": 32,
+      "subtestsPassed": 9,
+      "seconds": 2.23,
+      "limits": "Clock/bounds/policy and actual decoder parity; not timing approval for2280recordings"
+    }
+  },
+  "mustRemainExplicit": [
+    "All20reciters/all114surahs word tracking incomplete",
+    "Natural learner false-alert/word accuracy uncalibrated",
+    "Physical iPhone startup/frame pacing/microphone and long-session memory not measured",
+    "Cloud endpoint/identity/database deployment E2E incomplete",
+    "FullRelease and original publication gates not passed"
+  ],
+  "latestRequestedUI": {
+    "removeScopePickerAndRecordings": "Removed from current source. On next launch of this update, private legacy recording roots are deleted; live working audio is discarded on finish/reader close. Installed build24 has not received this change. No exported/outside-app files are deleted."
+  },
+  "proofs": {
+    "readerRepair": {
+      "path": "outputs/build24-repair-abf-confirmed-result.txt",
+      "sha256": "989d6f41904031aa9f3785b113972f3daf8432c1aaee5b89b1bfcd8d00a15cb6"
+    },
+    "readerArtifact": {
+      "path": "outputs/build24-repair-abf-evidence/download-receipt.json",
+      "sha256": "0388c892c6ab43609370b86bac591005db8bdc70f8e2a5576bb2de9ef8ac7df7"
+    },
+    "broaderArtifact": {
+      "path": "outputs/beta-critical-ebf-evidence/download-receipt.json",
+      "sha256": "24aef43e27bac0e3e7b8efb5c1795f2f99ba54878924398050bebc1a67072f94"
+    },
+    "broaderContext": {
+      "path": "outputs/beta-critical-ebf-evidence/release/beta-journeys/context.json",
+      "sha256": "30950fdf1790385618dac9de0e56b060cfffffdadf108db8ee96b1dcab0bbc51"
+    },
+    "helperTests": {
+      "path": "outputs/beta-all-helper-tests-current.txt",
+      "sha256": "553d8c5925e6b81eaca33315e319f5f924ec5d1e1fe5c49508f043880680662b"
+    },
+    "gatewayTests": {
+      "path": "outputs/beta-quran-gateway-tests.txt",
+      "sha256": "6d07fe7361cc780cb97cc9c156ee3642bf853836aa415be4036d1b41ff26c4a1"
+    },
+    "localAPI": {
+      "path": "outputs/beta-local-recitation-service-tests.txt",
+      "sha256": "4d79c815cfe4ab1ece5d49a07164a864c426287410412b19ab5529a4e9f6212e"
+    },
+    "metrics": {
+      "path": "outputs/beta-evaluation-metrics-tests.txt",
+      "sha256": "430ec0da199d69a9ffa473eaddf821e4bd62563da44baf9dbc613342bb7ad378"
+    },
+    "realPublicAudio": {
+      "path": "outputs/beta-real-service-tests.txt",
+      "sha256": "0fafd9756555a62458a6b285276cbcdb4c0619b799749720be6e541dff803230"
+    },
+    "realSourceEvidence": {
+      "path": "outputs/beta-real-service-audio.json",
+      "sha256": "c30eb053c33cc6e48b45b6ce244fd7dac002703babd1d90abafe0379c8e676b5"
+    },
+    "actualAdmission": {
+      "path": "outputs/beta-real-service-capacity.json",
+      "sha256": "b303ea2a967c335588cb15345417481af1554e9e83720ccd811f039a55264f85"
+    },
+    "alignmentPolicy": {
+      "path": "outputs/beta-alignment-policy-tests.txt",
+      "sha256": "880f773a27d850eab1faf25ceecd555318f908835a5e294c8b7c96b3058d20b3"
+    }
+  },
+  "status": "INCOMPLETE_DO_NOT_PUBLISH_FROM_THIS_RECEIPT",
+  "currentAppSource": "PENDING_NATIVE_VERIFICATION_OF_CURRENT_FIXES",
+  "currentNativeRun": {
+    "runId": 39168566049,
+    "source": "f543ffe09629241b72dd4ba7355672134dcc6807",
+    "runtimeSource": "26034dc1872cd8c42ec187b4f76082377334e2cf",
+    "status": "FAILED_PARTIAL_EVIDENCE",
+    "url": "https://github.com/saud1596x/norAlroh/actions/runs/39168566049",
+    "unitPassed": 12,
+    "unitFailures": 0,
+    "oneTapActualMicrophone": "PASS",
+    "privacyUI": "PASS",
+    "longCaptureBackground": "FAILED_BEFORE_BACKGROUND_STEP",
+    "exitCodes": {
+      "liveStorage": 0,
+      "oneTap": 0,
+      "background": 65,
+      "privacy": 0
+    },
+    "rootCause": "First local VAD no-speech result omitted recognitionWindowID; strict observedSpeech validation rejected save and paused capture at2seconds",
+    "originalLogSHA256": "67be35efe58aa8d3aa7cb0f0c4973f0bd40e12d71a19edcfa83e8ba2769c22bd",
+    "proof": "outputs/live-f543-evidence/logs.zip",
+    "paidBuildStarted": false
+  },
+  "priorNativeApplicability": "abfe530 narrow pass, ebf/09c failures and f543 partial pass retained with exact sources; none certify current runtime fixes",
+  "publicLoopbackDiagnostic": {
+    "cases": 22,
+    "status": "COMPLETED_DIAGNOSTIC_NOT_LEARNER_ACCEPTANCE",
+    "summary": {
+      "word_error_rate": 0.09090909090909091,
+      "character_error_rate": 0.023255813953488372,
+      "verse_detection_rate": 0.4,
+      "median_latency_seconds": 2.7344999999995707,
+      "p95_latency_seconds": 4.0,
+      "identical_recovery_count": 22,
+      "false_error_alert_rate": null,
+      "tajweed_quality": null,
+      "unseen_learner_accuracy": null
+    },
+    "sha256": "0ac7419e7cdb934f14ac3b6565b0c6f28a3f1ed0cab76e6df24220503daf2798",
+    "proof": "outputs/beta-actual-loopback-complete/report.json"
+  },
+  "pendingSourceChange": "No-speech window identity and source-clock display fixes written; f543 partial pass/failure does not verify these changes",
+  "learnerPilot": {
+    "status": "COMPLETED_DIAGNOSTIC_NOT_ACCEPTANCE",
+    "source": "https://huggingface.co/datasets/sobolev210/quran-recitation-errors",
+    "declaredLicense": "MIT",
+    "independentParticipantConsentDocumentation": "NOT_VERIFIED",
+    "cases": 12,
+    "rawWindowCount": 71,
+    "secondaryFinalWindowCases": 12,
+    "distinctSourceRecordingGroups": 12,
+    "distinctSpeakers": "UNKNOWN",
+    "primaryMedianSeconds": 1.547,
+    "primaryFinalAcceptedWords": 68,
+    "exactTimedAgreementWords": 54,
+    "verbatimReferenceAvailable": false,
+    "accuracy": null,
+    "trained": false,
+    "integratedNewModel": false,
+    "rawAudioRedistributed": false,
+    "limits": "Coarse annotations/intended text are not verbatim speech; no calibrated error or Tajweed score, speaker-heldout claim, iOS microphone result, training or model promotion",
+    "proofHashes": {
+      "pilot-manifest.json": "066a8d8b45b17964fe6e66f11a0a05dd83bb9b5032c6e6273fd40c02a561cc6c",
+      "actual-pilot-report.json": "73493604941f19e90e709c28dae5f5f9b9c2d7cd0dbc02eab3973e7c094d1361",
+      "actual-ctc-pilot-report.json": "d67de94244163754a052c50833b453802a7b2285e2f26afeb9a7350681476392"
+    }
+  },
+  "professionalTimingReview": {
+    "wholeRecordingCandidates": 75,
+    "expectedWholeRecordings": 2280,
+    "productionComplete": false,
+    "humanAcousticReview": "NOT_RUN",
+    "sourceProof": "outputs/reciter-cpu-full-review-20261018/progress.json"
+  }
+}
