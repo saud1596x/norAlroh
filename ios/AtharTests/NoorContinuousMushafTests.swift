@@ -279,12 +279,17 @@ import WhisperKit
                 let diagnostic = try JSONEncoder().encode(record)
                 let attachment = XCTAttachment(data: diagnostic, uniformTypeIdentifier: "public.json")
                 attachment.name = "public-fixture-recognition-evidence-\(file)"; attachment.lifetime = .keepAlways; add(attachment)
+                // Only this test's hash-pinned public fixture/injected capture;
+                // never production recordings or user account data. Preserve
+                // the actual unresolved words/clock before changing a gate.
+                print("NOOR_PUBLIC_PCM_FAILURE_EVIDENCE file=\(file) \(String(decoding:diagnostic,as:UTF8.self))")
             }
             XCTAssertEqual(controller.state, .listening)
             XCTAssertEqual(controller.record?.id, id)
             XCTAssertTrue(controller.hiddenIDs.isEmpty)
             let proof = XCTAttachment(string: "Public fixture \(file); buffer-feed-to-location \(Date().timeIntervalSince(started)) seconds; actual model; injected PCM transport, not a device microphone")
             proof.lifetime = .keepAlways; add(proof)
+            print("NOOR_ACTUAL_CONTINUOUS_ANCHOR file=\(file) expected=\(expected) seconds=\(Date().timeIntervalSince(started)) located=\(controller.currentVerse == expected)")
         }
         let position = controller.currentVerse
         await controller.finish()

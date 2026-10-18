@@ -79,9 +79,13 @@ actor QuranRecognitionWorker {
         try await QuranRecognitionReference.shared.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
     func prepare() async throws {
-        try? await QuranIndependentCTC.shared.prepare()
         if engine != nil { return }
         if let loading { try await loading.value; return }
+        // The independent model has no dependency on Whisper. Warming it
+        // first serially delays the first captured utterance unnecessarily.
+        // Capture remains immediate, and actual recognition still awaits both
+        // models before paired evidence can retain any words.
+        async let independentWarmup: Void? = try? QuranIndependentCTC.shared.prepare()
         guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
         }
@@ -93,6 +97,7 @@ actor QuranRecognitionWorker {
         loading = task
         defer { loading = nil }
         try await task.value
+        _ = await independentWarmup
     }
     func recognize(_ window: QuranAudioWindow) async throws -> Result {
         let previous = inference

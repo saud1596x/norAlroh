@@ -13,7 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCOPES = ['ios', 'tools', 'content-sources', 'scripts', 'codemagic.yaml',
           'release/qcf-v2-manifest.json', 'release/config.json',
           'release/qcf-v4-manifest.json',
-          'release/legal-content-accounts.json']
+          'release/legal-content-accounts.json',
+          'docs/QURAN-CTC-MODEL-NOTICE.txt',
+          'docs/WHISPER-MODEL-LICENSE.txt',
+          'docs/TARTEEL-MODEL-LICENSE.txt',
+          'docs/RECITATION-MODEL-NOTICE.txt']
 REQUEST = 'اريد تنشر ف تيست لايت انا بختبر التطبيق كامل'
 UNVERIFIED = {'actualSimulatorAudio': 'FAILED_OR_TIMED_OUT',
               'currentFullReleaseSuite': 'NOT_PASSED',

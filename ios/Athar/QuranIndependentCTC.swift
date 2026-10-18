@@ -21,6 +21,10 @@ actor QuranIndependentCTC {
     }
     func prepare() throws {
         guard model == nil else { return }
+        #if NOOR_ACCEPTANCE_TESTING
+        let preparationStarted = Date()
+        defer { print("NOOR_INDEPENDENT_PREPARATION seconds=\(Date().timeIntervalSince(preparationStarted))") }
+        #endif
         guard let folder = Bundle.main.url(forResource: "IndependentCTC", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
         }
