@@ -15,7 +15,7 @@ import numpy as np
 from faster_whisper.audio import decode_audio
 from ctc import Aligner, validate_recording_spans
 from audit import SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record, fingerprint, write_json
-from quran_onnx import InferenceIntervalLimit
+from quran_onnx import InferenceIntervalLimit, InferenceWorkDeadline
 
 
 class LocalDeadline(Exception):
@@ -105,6 +105,7 @@ def main(existing_aligner=None, stop_at=None):
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--quran-model',action='store_true')
     parser.add_argument('--onnx',type=Path,help='Pinned experimental CUDA export; never silently falls back to CPU')
+    parser.add_argument('--precision',choices=('float16','float32'),default='float16')
     parser.add_argument('--audio-cache',type=Path)
     parser.add_argument('--reciter',type=int,action='append')
     parser.add_argument('--ayah-windows',action='store_true')
@@ -163,11 +164,12 @@ def main(existing_aligner=None, stop_at=None):
     elif args.onnx:
         if not args.quran_model:raise ValueError('ONNX requires pinned Quran model')
         from quran_onnx import QuranONNXAligner
-        aligner=QuranONNXAligner(args.model,args.onnx)
+        aligner=QuranONNXAligner(args.model,args.onnx,precision=args.precision)
     elif args.quran_model:
         from quran_ctc import QuranAligner
         aligner=QuranAligner(args.model)
     else:aligner=Aligner(args.model)
+    if args.onnx:aligner.deadline=stop_at
     runtime=getattr(aligner,'runtime_identity',None)
     can_resume=compatible(previous,inputs,args.surah,catalog,runtime)
     previous_records={r['reciterID']:r for r in previous.get('records',[])} if can_resume else {}
@@ -237,6 +239,7 @@ def main(existing_aligner=None, stop_at=None):
                 record.update(aligner.align(pcm,words))
             validate_recording_spans(record['spans'],[w[0] for w in words],len(pcm)/16)
         except LocalDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
+        except InferenceWorkDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
         except InferenceIntervalLimit as error:record.update(status='RESOURCE_LIMIT_NOT_ASSESSED',reason=str(error))
         except ValueError as error:record.update(status='REJECTED',reason=str(error))
         record['diagnostics']=getattr(aligner,'diagnostics',None)

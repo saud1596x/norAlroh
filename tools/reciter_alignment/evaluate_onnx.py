@@ -11,7 +11,7 @@ import time
 import numpy as np
 from faster_whisper.audio import decode_audio
 from quran_ctc import QuranAligner, REVISION
-from quran_onnx import QuranONNXAligner, EXPORT_SHA256, collapse_words
+from quran_onnx import QuranONNXAligner, EXPORTS, collapse_words
 
 
 def main():
@@ -20,12 +20,14 @@ def main():
     parser.add_argument('--onnx', type=Path, required=True)
     parser.add_argument('--fixtures', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--precision', choices=('float16', 'float32'), default='float16')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     root = Path(__file__).resolve().parents[2]
     sources = json.loads((root/'tools/RecitationEngineProbe/fixtures/sources.json').read_text())
-    gpu = QuranONNXAligner(args.model, args.onnx, profile_prefix=args.output/'cuda-profile')
-    # Original non-quantized CPU model, to isolate export/FP16 from the old
+    gpu = QuranONNXAligner(args.model, args.onnx, profile_prefix=args.output/'cuda-profile',
+                          precision=args.precision)
+    # Original non-quantized CPU model, to isolate export/precision from the old
     # dynamic-int8 alignment implementation. Actual PCM is identical for both.
     import torch
     from transformers import Wav2Vec2ForCTC
@@ -76,7 +78,8 @@ def main():
     if not providers.get('CUDAExecutionProvider'):
         raise RuntimeError('No actual CUDA node execution')
     report = {'scope': 'EXPERIMENTAL_RAW_CTC_PUBLIC_AUDIO_EXPORT_PARITY_ONLY',
-        'sourceRevision': REVISION, 'exportSHA256': EXPORT_SHA256,
+        'sourceRevision': REVISION, 'exportSHA256': EXPORTS[args.precision],
+        'inferenceRuntime': gpu.runtime_identity,
         'sources': sources, 'executedNodes': providers, 'cases': results,
         'productionApproved': False, 'phoneIntegration': 'NOT_IMPLEMENTED',
         'naturalLearnerQuality': 'NOT_ESTABLISHED', 'forcedAlignmentUsed': False}

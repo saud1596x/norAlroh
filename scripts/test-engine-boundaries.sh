@@ -33,6 +33,7 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test \
  -only-testing:AtharTests/QuranWordAlignmentTests \
  -only-testing:AtharTests/QuranRecognitionWorkerLifecycleTests \
  -only-testing:AtharTests/QuranRecognitionAudioTests \
+ -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
  -only-testing:AtharTests/QuranObservedSpeechTests/testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes \
  -only-testing:AtharTests/QuranObservedSpeechTests/testSignalFaultsCountActualCaptureFramesAndGuidanceRecoversAfterSustainedHealthyAudio \
  -only-testing:AtharTests/NoorContinuousMushafTests/testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults \

@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--model',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--onnx',type=Path)
+    parser.add_argument('--precision',choices=('float16','float32'),default='float16')
     parser.add_argument('--max-minutes',type=int,default=30)
     parser.add_argument('--surahs',default='all')
     args=parser.parse_args()
@@ -37,8 +38,8 @@ def main():
     deadline=time.monotonic()+60*args.max_minutes
     aligner=None
     if args.onnx:
-        from quran_onnx import RUNTIME_ID
-        runtime=RUNTIME_ID
+        from quran_onnx import inference_identity
+        runtime=inference_identity(args.precision,'whole')
     else:
         from quran_ctc import runtime_identity
         runtime=runtime_identity()
@@ -60,7 +61,7 @@ def main():
                 save();continue
         sys.argv=['verify_catalog.py','--quran-model','--ayah-windows','--stream-cache',
                   '--surah',str(surah),'--model',str(args.model),'--output',str(report.parent),'--audio-cache',str(cache)]
-        if args.onnx:sys.argv+=['--onnx',str(args.onnx)]
+        if args.onnx:sys.argv+=['--onnx',str(args.onnx),'--precision',args.precision]
         try:
             aligner=verify_catalog.main(aligner,stop_at=deadline)
             observed=json.loads(report.read_text(encoding='utf-8'))

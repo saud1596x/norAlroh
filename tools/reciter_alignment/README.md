@@ -62,9 +62,9 @@ including empty silence/noise controls, but maximum frame posterior difference
 localRTX5060 is not iPhone/cloud speed or improved learner accuracy. Cold
 inference/shape planning was slow and emitted cuDNN warnings. No model is shipped.
 
-Pass`--onnx ONNX_DIRECTORY`to`run_library.py`for the bounded CUDA candidate
+Pass`--onnx ONNX_DIRECTORY --precision float32`to`run_library.py`for the bounded CUDA candidate
 audit. Code/precision/runtime/export hashes are part of resume identity;
-CPUcheckpoints cannot silently become GPUproof. A30second inference interval
+CPUcheckpoints cannot silently become GPUproof. A45second whole inference interval
 limit is recorded as`RESOURCE_LIMIT_NOT_ASSESSED`, never acoustic rejection.
 On a short known professional recording, an invalid/rejected publisher ayah
 clock may be replaced only by a complete independent whole-recording CTC path,
@@ -72,3 +72,21 @@ using exactly the same acoustic thresholds and native-ID/duration checks. The
 failed publisher proposal remains in the receipt. No clamped clock, interpolated
 word or learner-reference forcing. Candidates remain unavailable in the app
 until separately reviewed and integrated.
+
+The separately pinned FP32export
+`d854e74fe2726495e2f2a2d34dccdb46ef75ae2c681e6a7fae5ee0ee30f9c4c2`
+preserved all greedy words and frame labels on22actual public/control cases
+against original nonquantized CPU; maximum posterior difference0.000422.
+Measured cold61.219s/warm median31ms on the existing RTX5060. A38.0604s
+whole Fatiha recording also retained every greedy word/boundary and1902frames.
+These are export-comparison measurements, not recognition correctness or
+phone/cloud latency. FP16whole matched the long word strings but its posterior
+drift was0.1267. Raw source errors still exist in both precisions.
+
+Two-second context stitching changed whole-recording hypotheses in BOTH
+FP16andFP32 despite retaining exact frame count. Global attention makes this a
+different acoustic inference, not an equivalent acceleration. Therefore the
+candidate auditor uses whole intervals only; unsupported lengths remain
+`RESOURCE_LIMIT_NOT_ASSESSED`. `evaluate_long_onnx.py` keeps the stitch mode as
+an explicit experiment for diagnosis, never a silent fallback or accepted
+word-timing source. Its receipts preserve the failed comparisons.

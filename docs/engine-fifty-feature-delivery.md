@@ -1,7 +1,8 @@
 # Additional learner-engine scope — 18 October 2026
 
 User order: learner microphone engine, all professional-reader word/ayah
-following, then private TestFlight. Subsequent paid CI/beta budget: USD15.
+following, then visual Mushaf balance/centering, comfortable reading and Tajweed
+colors, then private TestFlight. Subsequent paid CI/beta budget: USD15.
 This ledger is a delivery contract, **not a list of implemented features**.
 Existing capture, VAD, bounded gain, original recording, cancellation, offline
 model, exact-word alignment and source provenance are baseline and do not count
@@ -38,7 +39,7 @@ professional forced alignment must never adjudicate a learner.
 | 20 | Detect a sustained DC offset in microphone input | Original PCM unchanged; bounded signal diagnostics | I |
 | 21 | Remove measured DC offset from inference copy | Unchanged frame clock and real-audio recognition comparison | I |
 | 22 | Detect disconnected/frozen microphone samples | Deterministic flatline evidence, not silence guessed as failure | I |
-| 23 | Identify intermittent audio dropouts | Time-bounded loss indicators without filling missing speech | P |
+| 23 | Identify intermittent audio dropouts | Device sample/host clock discontinuity stops before concatenation, no generated silence; hardware acceptance remains pending | I |
 | 24 | Avoid gain pumping from brief loud transients | Quiet speech+click controls; no clipping or timing shifts | P |
 | 25 | Distinguish usable quiet speech from stationary noise | Real speech/noise held-out diagnostic and abstention | P |
 | 26 | Cancel persistent signal advice after recovery | Hysteresis; brief healthy block cannot hide repeated fault | I |
@@ -75,8 +76,8 @@ promoted merely by writing this ledger.
 
 ## First implementation batch
 
-Seven additional behaviors are integrated above; native verification is not
-complete. Existing per-take guidance reset/inline placement is preserved and is
+Eight additional behaviors are integrated above; selected native verification
+is recorded below. Existing per-take guidance reset/inline placement is preserved and is
 not counted again. Local Python tests:14passed, including actual pinned112:1
 audio at3%gain with an injected0.15DC fault, compared against the same unaltered
 clip. The input array/frame count stays unchanged and constantDC produces no
@@ -99,5 +100,28 @@ are preserved; the fixture is now a balanced800Hz synthetic gate signal, and
 a separate regression requires DCflatline to preserve raw observations while
 revealing no words. No synthetic gate signal is acoustic acceptance. The other
 39cases passed, including actualDC-fault reference audio. The corrected source
-and new delayed inline worker/uncertainty feedback still need a matching native
-run. No fullRelease/physicalmicrophone/learner/Tajweed acceptance is implied.
+and new delayed inline worker/uncertainty feedback passed the matching native
+run on`cea234c71f2f95801c979f12e0482961f4927ac2`, build
+`6ad4e5bb7550aed8108fdd11`:43selected account-enabled Release cases,
+0failures/testExit0,35.352seconds of test execution; total11m33s.
+Xcode26.3/iOS26.2/iPhone17ProSimulator. The previous failure remains a
+failure; its unchanged assertions now pass with genuine balanced policy input.
+No fullRelease/physicalmicrophone/learner/Tajweed acceptance is implied.
+
+The next unverified capture repair now reads the actual AVAudioTime supplied by
+the device tap. A missing, duplicate, reordered or rate-changed sample interval
+cannot be concatenated into a continuous take. Host-only timestamps are supported
+without using callback arrival time; missing stamps stop explicitly instead of
+guessing. Previous PCM remains saved and explicit resume starts a fresh take.
+Native policy/lifecycle regressions are added, but have not yet been executed on
+this new source; this does not establish a real hardware dropout test.
+
+## Visual acceptance queued after engine and readers
+
+The user explicitly requested a visually balanced, centered Mushaf with
+comfortable reading and Tajweed colors before publication. Preserve the
+approved edition's Quran bytes, glyphs, authored line distribution and complete
+page visibility. Compare real iPhone Simulator captures with tools shown/hidden,
+regular/Tajweed modes, opening and dense pages, light/dark, small/large screens.
+Do not substitute an HTML mockup for native visual evidence. This is a separate
+product requirement and is not counted as extra engine features.

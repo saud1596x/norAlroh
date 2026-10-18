@@ -7,23 +7,74 @@ inherited align() method is exclusively for known professional recordings.
 import hashlib
 import json
 from pathlib import Path
+import time
 
 import numpy as np
 from quran_ctc import QuranAligner, REVISION, verify_assets
 
 EXPORT_SHA256 = 'a1dbb6be2a521c233cbb35f7a00c5016539b14e2750bb5708b21cec19cd9c333'
-RUNTIME_ID = f'onnxruntime1.26.0/cuda-float16/{EXPORT_SHA256}'
+EXPORTS = {
+    'float16': EXPORT_SHA256,
+    'float32': 'd854e74fe2726495e2f2a2d34dccdb46ef75ae2c681e6a7fae5ee0ee30f9c4c2',
+}
+
+
+def inference_identity(precision, window_mode):
+    if precision not in EXPORTS or window_mode not in ('whole', 'experimental-context-stitch1'):
+        raise ValueError('Explicit pinned precision and acoustic window mode required')
+    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}'
 
 
 class InferenceIntervalLimit(RuntimeError):
     """A development resource limit, not evidence of bad recitation/alignment."""
 
 
+class InferenceWorkDeadline(RuntimeError):
+    """No additional acoustic chunk may start after the local work deadline."""
+
+
+def acoustic_windows(samples):
+    """Exact Wav2Vec2 stride320/receptive400 clock, with two-second context.
+
+    Keep each output frame exactly once. No padding, interpolated logits,
+    shifted word times, omitted audio, or conditioning on the expected text.
+    Noncausal edge context can change hypotheses; acoustic review still applies.
+    """
+    if type(samples) is not int or not 400 <= samples <= 1_920_000:
+        raise InferenceIntervalLimit('Bounded acoustic interval requires400samples..120seconds')
+    frames = (samples-400)//320+1
+    if samples <= 480_000:
+        return [(0, frames, 0, samples, 0, frames)]
+    windows = []
+    for first in range(0, frames, 750):
+        end = min(frames, first+750)
+        context_first, context_end = max(0, first-100), min(frames, end+100)
+        windows.append((first, end, context_first*320, (context_end-1)*320+400,
+                        first-context_first, end-context_first))
+    return windows
+
+
+def acoustic_logits(values, decode, deadline=None):
+    pieces = []
+    for first, end, begin_sample, end_sample, crop_start, crop_end in acoustic_windows(len(values)):
+        if deadline is not None and time.monotonic() >= deadline:
+            raise InferenceWorkDeadline('Local limit reached before starting another acoustic chunk')
+        chunk = decode(values[begin_sample:end_sample])
+        expected = (end_sample-begin_sample-400)//320+1
+        if chunk.ndim != 2 or len(chunk) != expected or not np.isfinite(chunk).all():
+            raise ValueError('Acoustic decoder frame clock differs from actual chunk')
+        part = chunk[crop_start:crop_end]
+        if len(part) != end-first:
+            raise ValueError('Incomplete acoustic output interval')
+        pieces.append(part)
+    return np.concatenate(pieces, axis=0)
+
+
 def collapse_words(logp, vocab, samples):
     """Greedy source words, no dictionary/prompt/forced canonical spelling."""
     logp = np.asarray(logp)
     if (logp.ndim != 2 or not len(logp) or logp.shape[1] != len(vocab)
-            or not np.isfinite(logp).all() or not 400 <= samples <= 480_000):
+            or not np.isfinite(logp).all() or not 400 <= samples <= 1_920_000):
         raise ValueError('Invalid bounded CTC emissions/audio')
     reverse = {i: c for c, i in vocab.items()}
     if len(reverse) != len(vocab) or vocab.get('<pad>') != 0 or '|' not in vocab:
@@ -67,8 +118,10 @@ def collapse_words(logp, vocab, samples):
 
 
 class QuranONNXAligner(QuranAligner):
-    def __init__(self, model_dir, onnx_dir, threads=4, profile_prefix=None):
+    def __init__(self, model_dir, onnx_dir, threads=4, profile_prefix=None,
+                 precision='float16', window_mode='whole'):
         import onnxruntime as ort
+        identity = inference_identity(precision, window_mode)
         if ort.__version__ != '1.26.0':
             raise ValueError('Use the evaluated pinned ONNX Runtime1.26.0')
         model_dir, onnx_dir = Path(model_dir), Path(onnx_dir)
@@ -80,7 +133,7 @@ class QuranONNXAligner(QuranAligner):
         with model.open('rb') as source:
             for part in iter(lambda: source.read(1024 * 1024), b''):
                 sha.update(part)
-        if sha.hexdigest() != EXPORT_SHA256:
+        if sha.hexdigest() != EXPORTS[precision]:
             raise ValueError('ONNX export differs from evaluated artifact')
         self.source_vocab = json.loads((model_dir / 'vocab.json').read_text())
         letters = sorted({self.normalizer(c) for c in self.source_vocab
@@ -98,17 +151,31 @@ class QuranONNXAligner(QuranAligner):
                 'use_tf32': '0'}), 'CPUExecutionProvider'])
         if self.model.get_providers()[0] != 'CUDAExecutionProvider':
             raise RuntimeError('CUDA unavailable; refusing silent CPU fallback')
-        self.device = 'cuda-onnx-float16'
+        self.device = f'cuda-onnx-{precision}'
         self.revision = REVISION
-        self.runtime_identity = RUNTIME_ID
+        self.runtime_identity = identity
+        self.window_mode = window_mode
+        self.deadline = None
 
     def emissions(self, values):
         values = np.asarray(values, dtype=np.float32)
-        if values.ndim == 1 and len(values) > 480_000:
-            raise InferenceIntervalLimit('CUDA evaluation currently limits one interval to30seconds')
+        if values.ndim == 1 and len(values) > 1_920_000:
+            raise InferenceIntervalLimit('CUDA evaluation currently limits one interval to120seconds')
         if (values.ndim != 1 or len(values) < 400 or not np.isfinite(values).all()):
             raise ValueError('CUDA evaluation requires finite mono PCM with at least400samples')
-        logits = self.model.run(['logits'], {'input_values': values[None]})[0][0]
+        decode = lambda chunk: self.model.run(['logits'], {'input_values': chunk[None]})[0][0]
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise InferenceWorkDeadline('Local limit reached before another acoustic interval')
+        if self.window_mode == 'experimental-context-stitch1':
+            logits = acoustic_logits(values, decode, self.deadline)
+        else:
+            # Global attention makes independently chunked logits different from
+            # whole-interval inference. Never silently substitute that experiment.
+            if len(values) > 720_000:
+                raise InferenceIntervalLimit('Whole GPU evaluation limits an interval to45seconds')
+            logits = decode(values)
+            if logits.ndim != 2 or len(logits) != (len(values)-400)//320+1:
+                raise ValueError('Whole decoder differs from original acoustic frame clock')
         if not np.isfinite(logits).all():
             raise ValueError('Nonfinite independent acoustic output')
         peak = logits.max(axis=-1, keepdims=True)

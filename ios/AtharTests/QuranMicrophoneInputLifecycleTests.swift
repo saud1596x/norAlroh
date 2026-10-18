@@ -6,6 +6,38 @@ import WhisperKit
 /// Injected lifecycle notifications and identified reference PCM. These tests
 /// do not connect Bluetooth hardware or claim to exercise an iPhone microphone.
 final class QuranMicrophoneInputLifecycleTests: XCTestCase {
+    func testDeviceSampleClockRejectsMissingDuplicatedAndReorderedInputBeforeJoiningPCM() throws {
+        for nextStart in [Int64(8_191), 8_193, 4_096] {
+            var clock = QuranCaptureClock()
+            try clock.consume(frames: 4_096, rate: 48_000, sampleTime: 4_096, sampleRate: 48_000, hostTime: nil)
+            XCTAssertThrowsError(try clock.consume(frames: 4_096, rate: 48_000,
+                sampleTime: nextStart, sampleRate: 48_000, hostTime: nil))
+            // A rejected input never advances the accepted device clock.
+            XCTAssertNoThrow(try clock.consume(frames: 2_048, rate: 48_000,
+                sampleTime: 8_192, sampleRate: 48_000, hostTime: nil))
+        }
+        var clock = QuranCaptureClock()
+        try clock.consume(frames: 512, rate: 44_100, sampleTime: -512, sampleRate: 44_100, hostTime: nil)
+        try clock.consume(frames: 1_024, rate: 44_100, sampleTime: 0, sampleRate: 44_100, hostTime: nil)
+        XCTAssertThrowsError(try clock.consume(frames: 512, rate: 48_000, sampleTime: 1_024, sampleRate: 48_000, hostTime: nil))
+        XCTAssertThrowsError(try clock.consume(frames: 512, rate: 44_100, sampleTime: nil, sampleRate: nil, hostTime: 100))
+    }
+
+    func testHostOnlyAcousticClockUsesDeviceTicksAndDoesNotGuessMissingTimestamps() throws {
+        let origin = AVAudioTime.hostTime(forSeconds: 10)
+        var clock = QuranCaptureClock()
+        try clock.consume(frames: 4_800, rate: 48_000, sampleTime: nil, sampleRate: nil, hostTime: origin)
+        let next = origin + AVAudioTime.hostTime(forSeconds: 0.1)
+        try clock.consume(frames: 4_800, rate: 48_000, sampleTime: nil, sampleRate: nil, hostTime: next)
+        XCTAssertThrowsError(try clock.consume(frames: 4_800, rate: 48_000,
+            sampleTime: nil, sampleRate: nil, hostTime: origin + AVAudioTime.hostTime(forSeconds: 0.3)))
+        XCTAssertThrowsError(try clock.consume(frames: 4_800, rate: 48_000,
+            sampleTime: nil, sampleRate: nil, hostTime: nil))
+        var unstamped = QuranCaptureClock()
+        XCTAssertThrowsError(try unstamped.consume(frames: 512, rate: 48_000, sampleTime: nil, sampleRate: nil, hostTime: nil))
+        var overflow = QuranCaptureClock()
+        XCTAssertThrowsError(try overflow.consume(frames: 512, rate: 48_000, sampleTime: .max, sampleRate: 48_000, hostTime: nil))
+    }
     @MainActor func testBackgroundInputNotificationCanHandOffToMainActor() async {
         let center = NotificationCenter(), engine = NSObject()
         let received = expectation(description: "Background input failure reaches the UI actor")

@@ -36,8 +36,8 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         let pipe = self.pipe
         // Retain the node/format for this take. Shutdown must not ask the
         // engine to initialize or rediscover its input after route loss.
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
-            pipe.append(buffer)
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, time in
+            pipe.append(buffer, at: time)
         }
         installed = true; engine.prepare()
         inputEvents.arm()
@@ -65,13 +65,23 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         private var levelObserver: (@Sendable (Float) -> Void)?
         private var qualityObserver: (@Sendable (QuranInputQuality.Reading) -> Void)?
         private var quality = QuranInputQuality()
+        private var clock = QuranCaptureClock()
         init(format: AVAudioFormat, writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
             resampler = try QuranPCMResampler(input: format); self.writer = writer; self.onFailure = onFailure
         }
-        func append(_ buffer: AVAudioPCMBuffer) {
+        func append(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
             lock.lock(); defer { lock.unlock() }
             guard !stopped else { return }
             do {
+                // Tap delivery time is not the device's acoustic clock. Do not
+                // concatenate a lost/repeated device interval into a fake
+                // continuous take or fill it with generated silence.
+                if buffer.frameLength > 0 {
+                    try clock.consume(frames: Int64(buffer.frameLength), rate: buffer.format.sampleRate,
+                        sampleTime: time.isSampleTimeValid ? time.sampleTime : nil,
+                        sampleRate: time.isSampleTimeValid ? time.sampleRate : nil,
+                        hostTime: time.isHostTimeValid ? time.hostTime : nil)
+                }
                 let samples = try resampler.convert(buffer)
                 if !samples.isEmpty {
                     // Read the converted microphone samples, independently of
@@ -104,6 +114,50 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
 
 enum QuranAudioInputFailure: Error {
     case configurationChanged, routeChanged, interrupted, mediaServicesUnavailable
+    case invalidDeviceClock, discontinuousDeviceClock
+}
+
+/// Per-take acoustic continuity before resampling. Sample positions are exact;
+/// host-only stamps use elapsed device ticks, never callback arrival latency.
+/// AVAudioTime may provide either representation (Apple AVAudioTime docs).
+struct QuranCaptureClock {
+    private enum Source { case samples(next: Int64), host(origin: UInt64, frames: Int64) }
+    private var source: Source?
+    private var rate: Double?
+    mutating func consume(frames: Int64, rate: Double, sampleTime: Int64?,
+                          sampleRate: Double?, hostTime: UInt64?) throws {
+        guard frames > 0, rate.isFinite, rate > 0,
+              self.rate == nil || self.rate == rate else { throw QuranAudioInputFailure.invalidDeviceClock }
+        let next: Source
+        if let source {
+            switch source {
+            case .samples(let expected):
+                guard let sampleTime, sampleRate == rate else { throw QuranAudioInputFailure.invalidDeviceClock }
+                guard sampleTime == expected else { throw QuranAudioInputFailure.discontinuousDeviceClock }
+                let (end, overflow) = sampleTime.addingReportingOverflow(frames)
+                guard !overflow else { throw QuranAudioInputFailure.invalidDeviceClock }
+                next = .samples(next: end)
+            case .host(let origin, let recorded):
+                guard let hostTime, hostTime >= origin else { throw QuranAudioInputFailure.invalidDeviceClock }
+                let elapsed = AVAudioTime.seconds(forHostTime: hostTime - origin)
+                // One microsecond tolerates host-tick conversion, not a missing
+                // PCM frame at the supported 8..192kHz device sampling rates.
+                guard elapsed.isFinite, abs(elapsed - Double(recorded) / rate) <= min(0.000001, 0.1 / rate) else {
+                    throw QuranAudioInputFailure.discontinuousDeviceClock
+                }
+                let (total, overflow) = recorded.addingReportingOverflow(frames)
+                guard !overflow else { throw QuranAudioInputFailure.invalidDeviceClock }
+                next = .host(origin: origin, frames: total)
+            }
+        } else if let sampleTime {
+            guard sampleRate == rate else { throw QuranAudioInputFailure.invalidDeviceClock }
+            let (end, overflow) = sampleTime.addingReportingOverflow(frames)
+            guard !overflow else { throw QuranAudioInputFailure.invalidDeviceClock }
+            next = .samples(next: end)
+        } else if let hostTime { next = .host(origin: hostTime, frames: frames) }
+        else { throw QuranAudioInputFailure.invalidDeviceClock }
+        self.source = next; self.rate = rate
+    }
 }
 
 /// A stopped hardware engine does not necessarily deliver another tap buffer or
