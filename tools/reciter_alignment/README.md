@@ -39,3 +39,14 @@ controls rejected for each surah. Seven algorithm/pinning tests passed. These
 are neither human acoustic review nor app playback acceptance. Full2280-track
 coverage, weak-word repair, long-surah/isolated-letter evaluation, candidate
 review and runtime resource integration remain incomplete.
+
+The bounded runner now fingerprints the alignment code, exact reader catalog,
+published ayah data and canonical edition before resuming. Every ayah is
+checkpointed; a time limit is not a rejected word or a completed recording.
+Missing/duplicate/overlapping/out-of-duration ayah windows reject the track.
+Reports are written atomically, public audio is fetched one file at a time, and
+each subsequent fetch/ayah checks the local deadline. A single running model
+call can still finish after that deadline; the next call cannot start.
+`full-library-coverage.json` enumerates all2280 expected recordings, including
+missing tracks. Old-policy candidates remain distinct from current-policy
+results. Neither a candidate nor a passed silence control is acoustic approval.
