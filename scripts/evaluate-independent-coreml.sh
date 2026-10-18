@@ -10,6 +10,6 @@ python3 -m venv /tmp/noor-coreml-runtime
  'numpy==2.1.3' 'safetensors==0.5.3'
 python3 scripts/run-native-with-deadline.py 480 /tmp/noor-coreml-runtime/bin/python \
  tools/reciter_alignment/export_coreml.py --model "$HOME/.cache/noor-independent-ctc" \
- --output release/independent-coreml 2>&1 | tee release/independent-coreml/actual-log.txt
+ --output release/independent-coreml --precision float32 2>&1 | tee release/independent-coreml/actual-log.txt
 python3 scripts/run-native-with-deadline.py 180 python3 scripts/verify-coreml-reproducibility.py \
  2>&1 | tee release/independent-coreml/reproducibility-log.txt

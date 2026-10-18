@@ -22,7 +22,7 @@ EXPORTS = {
 def inference_identity(precision, window_mode):
     if precision not in EXPORTS or window_mode not in ('whole', 'experimental-context-stitch1'):
         raise ValueError('Explicit pinned precision and acoustic window mode required')
-    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-5gb1'
+    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-5gb1/shrink-gpu0-after-run1'
 
 
 class InferenceIntervalLimit(RuntimeError):
@@ -153,6 +153,11 @@ class QuranONNXAligner(QuranAligner):
                 'arena_extend_strategy': 'kSameAsRequested',
                 'cudnn_conv_algo_search': 'HEURISTIC', 'cudnn_conv_use_max_workspace': '0',
                 'use_tf32': '0'}), 'CPUExecutionProvider'])
+        self.run_options = ort.RunOptions()
+        # Actual long-surah passes exposed arena accumulation after142ayahs.
+        # Shrink unused CUDA blocks between completed runs instead of retaining
+        # every former shape. Weights/precision/acoustic thresholds are unchanged.
+        self.run_options.add_run_config_entry('memory.enable_memory_arena_shrinkage', 'gpu:0')
         if self.model.get_providers()[0] != 'CUDAExecutionProvider':
             raise RuntimeError('CUDA unavailable; refusing silent CPU fallback')
         self.device = f'cuda-onnx-{precision}'
@@ -167,7 +172,7 @@ class QuranONNXAligner(QuranAligner):
             raise InferenceIntervalLimit('CUDA evaluation currently limits one interval to120seconds')
         if (values.ndim != 1 or len(values) < 400 or not np.isfinite(values).all()):
             raise ValueError('CUDA evaluation requires finite mono PCM with at least400samples')
-        decode = lambda chunk: self.model.run(['logits'], {'input_values': chunk[None]})[0][0]
+        decode = lambda chunk: self.model.run(['logits'], {'input_values': chunk[None]}, self.run_options)[0][0]
         if self.deadline is not None and time.monotonic() >= self.deadline:
             raise InferenceWorkDeadline('Local limit reached before another acoustic interval')
         if self.window_mode == 'experimental-context-stitch1':

@@ -8,7 +8,7 @@ workflows:
     cache:
       cache_paths:
         - ~/.cache/noor-independent-ctc
-        - release/independent-coreml-model-seed0
+        - release/independent-coreml-model-seed0-float32
         - ~/Library/Caches/pip
     scripts:
       - name: Convert and compare independent CTC on original public PCM

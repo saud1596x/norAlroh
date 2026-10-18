@@ -21,7 +21,8 @@ def digest(path):
 def main():
     first=ROOT/'release/independent-coreml'
     receipt=json.loads((first/'actual-conversion.json').read_text())
-    if (receipt.get('status')!='ACTUAL_PARITY_FINISHED' or receipt.get('precision')!='float16'
+    precision=receipt.get('precision')
+    if (receipt.get('status')!='ACTUAL_PARITY_FINISHED' or precision not in {'float16','float32'}
         or len(receipt.get('cases',[]))!=26 or receipt.get('allRawWordsEqual') is not True
         or any(row['convertedRawWords'] or row['sourceRawWords'] for row in receipt['cases']
                if row['caseKind']=='generated-negative-control')):
@@ -32,23 +33,23 @@ def main():
         second=Path(temporary)
         subprocess.run([runtime,str(ROOT/'tools/reciter_alignment/export_coreml.py'),
             '--model',str(Path.home()/'.cache/noor-independent-ctc'),'--output',str(second),
-            '--prepare-only','--precision','float16'],env=environment,check=True)
+            '--prepare-only','--precision',precision],env=environment,check=True)
         pins={}
         for name in ['Data/com.apple.CoreML/model.mlmodel','Data/com.apple.CoreML/weights/weight.bin']:
-            left=digest(first/'quran-ctc-float16.mlpackage'/name)
-            right=digest(second/'quran-ctc-float16.mlpackage'/name)
+            left=digest(first/f'quran-ctc-{precision}.mlpackage'/name)
+            right=digest(second/f'quran-ctc-{precision}.mlpackage'/name)
             pins[name]=left
             if left!=right:raise ValueError('Independent processes produced different actual source bytes: '+name+' first='+left+' second='+right)
-    cache=ROOT/'release/independent-coreml-model-seed0'
-    package=cache/'quran-ctc-float16.mlpackage'
+    cache=ROOT/f'release/independent-coreml-model-seed0-{precision}'
+    package=cache/f'quran-ctc-{precision}.mlpackage'
     if package.exists():
         if any(digest(package/name)!=value for name,value in pins.items()):
             raise ValueError('Preserve mismatching frozen cache for inspection')
     else:
         cache.mkdir(exist_ok=True)
-        shutil.copytree(first/'quran-ctc-float16.mlpackage',package)
+        shutil.copytree(first/f'quran-ctc-{precision}.mlpackage',package)
     proof={'scope':'ACTUAL26CASE_PARITY_AND_TWO_PROCESS_SOURCE_REPRODUCIBILITY_NOT_LEARNER_ACCEPTANCE',
-        'pythonHashSeed':'0','sourcePins':pins,'productionApproved':False,
+        'pythonHashSeed':'0','precision':precision,'sourcePins':pins,'productionApproved':False,
         'currentAppNativeAcceptance':'NOT_RUN','cases':26,'sameWords':26}
     (first/'reproducibility.json').write_text(json.dumps(proof,indent=2)+'\n')
     print('NOOR_COREML_SOURCE_REPRODUCIBILITY',json.dumps(proof),flush=True)

@@ -180,7 +180,7 @@ def main():
     model_spec.write_bytes(converted.get_spec().SerializeToString(deterministic=True))
     report['sourceSerialization']='protobuf-deterministic1'
     converted=ct.models.MLModel(str(float_path),compute_units=ct.ComputeUnit.CPU_AND_GPU)
-    print('NOOR_CTC_COREML_FLOAT16_PACKAGE_READY', flush=True)
+    print('NOOR_CTC_COREML_PACKAGE_READY precision='+args.precision, flush=True)
     if args.prepare_only:
         print('NOOR_CTC_SOURCE_GENERATED_NOT_ACOUSTICALLY_TESTED',flush=True)
         return

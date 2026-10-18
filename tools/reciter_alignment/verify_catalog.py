@@ -169,6 +169,9 @@ def main(existing_aligner=None, stop_at=None):
     parser.add_argument('--surah',type=int,default=1)
     parser.add_argument('--stream-cache',action='store_true',help='One public audio asset at a time, delete own temporary audio after its hash/receipt is stored')
     args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=True)
+    if args.audio_cache is not None:
+        if args.audio_cache.is_symlink():raise ValueError('Audio cache may not be linked')
+        args.audio_cache.mkdir(parents=True,exist_ok=True)
     root=Path(__file__).resolve().parents[2]
     catalog=json.loads((root/'ios/Athar/haramain-reciters.json').read_text(encoding='utf-8'))['reciters']
     if args.reciter:catalog=[r for r in catalog if r['id'] in args.reciter]
