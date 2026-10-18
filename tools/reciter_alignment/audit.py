@@ -64,6 +64,42 @@ def write_json(path, value):
     temporary.replace(path)
 
 
+def archive_report(path):
+    """Keep exact prior bytes before a retry; never rewrite a prior receipt."""
+    path = Path(path)
+    if not path.exists():
+        return
+    if path.is_symlink():
+        raise ValueError('Linked timing receipt')
+    content = path.read_bytes()
+    history = path.parent / 'report-history'
+    if history.is_symlink():
+        raise ValueError('Linked timing receipt history')
+    history.mkdir(exist_ok=True)
+    destination = history / (hashlib.sha256(content).hexdigest() + '.json')
+    if destination.is_symlink():
+        raise ValueError('Linked archived timing receipt')
+    if destination.exists():
+        if destination.read_bytes() != content:
+            raise ValueError('Timing receipt archive differs')
+        return
+    destination.write_bytes(content)
+
+
+def fetch_failure_record(previous, reciter, surah, status, reason):
+    """A failed refetch cannot erase previously measured source intervals.
+
+    The caller must already have checked the complete policy/runtime fingerprint.
+    This records a failed check, not a newly measured or revalidated recording.
+    """
+    failure = {'status': status, 'reason': reason}
+    if (previous is not None and exact_record(previous, reciter, surah)
+            and (previous.get('spans') or previous.get('ayahResults'))):
+        return {**previous, 'lastSourceCheck': failure}
+    return {'reciterID': reciter['id'], 'recordingID': reciter['recordingID'],
+            'audioURL': reciter['server'] + f'{surah:03}.mp3', **failure}
+
+
 def library_coverage(root, directories):
     """Always enumerate all114 x catalog readers, including absent reports."""
     root = Path(root)

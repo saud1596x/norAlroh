@@ -7,14 +7,17 @@ import argparse
 import gzip
 import hashlib
 import json
+import socket
 from pathlib import Path
 import time
+import urllib.error
 import urllib.request
 
 import numpy as np
 from faster_whisper.audio import decode_audio
 from ctc import Aligner, validate_recording_spans
-from audit import SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record, fingerprint, write_json
+from audit import (SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record,
+                   fingerprint, write_json, archive_report, fetch_failure_record)
 from quran_onnx import InferenceIntervalLimit, InferenceWorkDeadline
 from stream_audio import pcm_blocks, bounded_pcm, control_prefix, windowed_pcm, AudioIntervalResourceLimit
 
@@ -23,6 +26,11 @@ class LocalDeadline(Exception):
     pass
 
 class LocalDiskReserve(Exception):
+    pass
+
+
+class LocalSourceUnavailable(Exception):
+    """Host DNS failed; do not label every remaining recording as defective."""
     pass
 
 
@@ -220,6 +228,7 @@ def main(existing_aligner=None, stop_at=None):
     inputs=fingerprint(root)
     previous_path=args.output/'report.json'
     previous=json.loads(previous_path.read_text(encoding='utf-8')) if previous_path.exists() else {}
+    archive_report(previous_path)
     check_deadline(stop_at)
     if existing_aligner is not None:aligner=existing_aligner
     elif args.onnx:
@@ -282,15 +291,16 @@ def main(existing_aligner=None, stop_at=None):
         except LocalDeadline:break
         except LocalDiskReserve:raise
         except AudioIntervalResourceLimit as error:
-            records[reciter['id']]={'reciterID':reciter['id'],'recordingID':reciter['recordingID'],
-                'audioURL':reciter['server']+f'{args.surah:03}.mp3','status':'RESOURCE_LIMIT_NOT_ASSESSED','reason':str(error)}
+            records[reciter['id']]=fetch_failure_record(old,reciter,args.surah,
+                'RESOURCE_LIMIT_NOT_ASSESSED',str(error))
             if path is not None and args.stream_cache and path.exists():path.unlink()
             save_records();continue
         except Exception as error:
-            records[reciter['id']]={'reciterID':reciter['id'],'recordingID':reciter['recordingID'],
-                'audioURL':reciter['server']+f'{args.surah:03}.mp3',
-                'status':'FETCH_OR_DECODE_FAILED','reason':type(error).__name__+': '+str(error)[:250]}
+            records[reciter['id']]=fetch_failure_record(old,reciter,args.surah,
+                'FETCH_OR_DECODE_FAILED',type(error).__name__+': '+str(error)[:250])
             save_records()
+            if isinstance(error, urllib.error.URLError) and isinstance(error.reason, socket.gaierror):
+                raise LocalSourceUnavailable('Host DNS unavailable; prior evidence retained, remaining sources not assessed') from error
             continue
         if control_pcm is None and pcm is not None:
             # A bounded excerpt of the actual recording also permits negative

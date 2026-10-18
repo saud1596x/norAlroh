@@ -7,7 +7,8 @@ import unittest
 
 import numpy as np
 
-from audit import SCHEMA, AYAH_POLICY, complete_report, fingerprint, library_coverage, write_json
+from audit import (SCHEMA, AYAH_POLICY, complete_report, fingerprint, library_coverage,
+                   write_json, archive_report, fetch_failure_record)
 from quran_ctc import REVISION
 from verify_catalog import LocalDeadline, align_windows, align_known_recording, validate_ayah_windows
 from quran_onnx import InferenceIntervalLimit
@@ -29,6 +30,38 @@ class AuditTests(unittest.TestCase):
                     'audioURL': r['server']+'001.mp3', 'audioSHA256': 'a'*64, 'status': 'REJECTED'}
                     for r in self.catalog],
                 'controls': [{'name': n, 'rejected': True} for n in ('silence','noise','wrong-known-text')]}
+
+    def test_failed_control_refetch_keeps_exact_measured_or_partial_audio_evidence(self):
+        reciter = self.catalog[0]
+        previous = self.report()['records'][0]
+        for measured in ({'spans': [[1, 20, 100]], 'status': 'MEASURED_CANDIDATE_REQUIRES_REVIEW'},
+                         {'ayahResults': {'1': {'status': 'REJECTED', 'reason': 'fixture'}},
+                          'status': 'LOCAL_TIME_LIMIT'}):
+            source = {**previous, **measured}
+            untouched = copy.deepcopy(source)
+            result = fetch_failure_record(source, reciter, 1, 'FETCH_OR_DECODE_FAILED', 'fixture DNS failure')
+            self.assertEqual(source, untouched)
+            self.assertEqual({k: v for k, v in result.items() if k != 'lastSourceCheck'}, source)
+            self.assertEqual(result['lastSourceCheck']['status'], 'FETCH_OR_DECODE_FAILED')
+            self.assertNotIn('sourceRevalidated', result)
+        # A different URL/recording is never inherited from a prior measurement.
+        changed = {**previous, 'spans': [[1, 20, 100]], 'audioURL': 'https://another.example/001.mp3'}
+        result = fetch_failure_record(changed, reciter, 1, 'FETCH_OR_DECODE_FAILED', 'fixture')
+        self.assertEqual(result['status'], 'FETCH_OR_DECODE_FAILED')
+        self.assertNotIn('audioSHA256', result)
+        self.assertNotIn('spans', result)
+
+    def test_retry_archive_keeps_original_bytes_and_all_distinct_receipt_versions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'report.json'
+            first = b'{"status":"LOCAL_TIME_LIMIT","originalSpacing": true}\n'
+            path.write_bytes(first); archive_report(path); archive_report(path)
+            second = b'{"status":"FETCH_OR_DECODE_FAILED"}\n'
+            path.write_bytes(second); archive_report(path)
+            archived = list((path.parent / 'report-history').glob('*.json'))
+            self.assertEqual(len(archived), 2)
+            self.assertEqual({p.read_bytes() for p in archived}, {first, second})
+            self.assertEqual(path.read_bytes(), second)
 
     def test_resume_requires_policy_recording_identity_complete_catalog_and_negative_controls(self):
         report = self.report()

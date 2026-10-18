@@ -24,15 +24,20 @@ public struct QuranListeningLocation: Sendable {
                 && $0.start >= 0 && $0.end > $0.start && $0.nativeID > 0
                 && $0.minimumConfidence.isFinite && (0.75...1).contains($0.minimumConfidence)
         }
-        if let newestEnd = current.map(\.end).max(), newestEnd > frontier {
+        if let newestEnd = current.map(\.end).max(), newestEnd >= frontier {
+            // Advance the source frontier even when its latest interpretation
+            // conflicts. Otherwise an older, still-retained accepted word can
+            // remain highlighted as though it were current speech. Equality
+            // permits a later coherent revision of that same acoustic interval.
+            frontier = newestEnd
             let newest = current.filter { $0.end == newestEnd }
             // Conflicting identities on the same final acoustic interval do
             // not authorize picking a page according to collection order.
             if let word = newest.first, newest.allSatisfy({
                 $0.nativeID == word.nativeID && $0.verse == word.verse && $0.start == word.start
             }) {
-                anchor = word; frontier = word.end; verse = word.verse
-            }
+                anchor = word; verse = word.verse
+            } else { anchor = nil }
         }
         guard let anchor, current.contains(where: {
             $0.nativeID == anchor.nativeID && $0.verse == anchor.verse

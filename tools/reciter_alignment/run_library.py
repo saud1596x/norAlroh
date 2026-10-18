@@ -72,6 +72,10 @@ def main():
             progress['stopReason']='LOCAL_DISK_RESERVE'
             progress['resourceReason']=str(error)
             save();break
+        except verify_catalog.LocalSourceUnavailable as error:
+            progress['stopReason']='SOURCE_DNS_UNAVAILABLE'
+            progress['resourceReason']=str(error)
+            save();break
         except Exception as error:
             progress['failures'][str(surah)]={'type':type(error).__name__,'message':str(error)[:4000]}
             # Preserve the actual backend reason; a truncated arena message
