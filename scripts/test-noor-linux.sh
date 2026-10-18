@@ -12,6 +12,9 @@ mkdir -p "$noor_quality_root/temp"
 export TMPDIR="$noor_quality_root/temp"
 git clone --quiet --filter=blob:none --no-checkout --single-branch \
   --branch repair/noor-recitation-20261014 https://github.com/saud1596x/norAlroh.git "$noor_quality_root/source"
+# A reviewed verification-branch SHA may not be reachable from the historical
+# repair branch. Fetch that exact source, never silently fall back to its tip.
+git -C "$noor_quality_root/source" fetch --quiet --depth 1 origin "$noor_source_commit"
 git -C "$noor_quality_root/source" checkout --quiet --detach "$noor_source_commit"
 [[ "$(git -C "$noor_quality_root/source" rev-parse HEAD)" == "$noor_source_commit" ]] || exit 2
 cd "$noor_quality_root/source"
