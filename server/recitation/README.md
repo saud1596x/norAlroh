@@ -9,7 +9,7 @@ word IDs across6,236 ayahs, never supplies display text.
 ## Responsibilities and boundaries
 
 One FastAPI service: identity validation → opaque rotated credentials → bounded
-session/WebSocket transport → actual pinned CPU ASR → exact whole-corpus native
+session/WebSocket transport → actual pinned ASR → exact whole-corpus native
 alignment → provisional differences → encrypted recovery state. No Redis,
 external speech API, recording bucket, GPU cluster or billing setup. One service
 process / one inference worker / four active session slots. This is an initial
@@ -17,7 +17,13 @@ capacity configuration, **not a measured four-way inference capacity claim**.
 
 Recognition uses the existing Quran-adapted third-party model
 `OdyAsh/faster-whisper-base-ar-quran` at
-`8578bafd427d122f671b187706650e76edf6f86f`, CTranslate2 int8 CPU and Silero VAD.
+`8578bafd427d122f671b187706650e76edf6f86f`, CTranslate2 and Silero VAD.
+CPU int8 remains the default. Explicit `NOOR_INFERENCE_DEVICE=cuda` uses float16
+on an existing compatible NVIDIA host; startup compiles kernels using discarded
+silent input before readiness. This artificial warmup is never quality evidence.
+It requires official CUDA12 cuBLAS and cuDNN9 runtime libraries. The default
+CPU-only Docker image does not include those libraries or reserve a GPU. There
+is no automatic GPU purchase, device fallback or deployment claim.
 The project owns orchestration, contracts, native binding, ambiguity policy and
 session recovery; it does not claim to have trained or own these model weights.
 Publisher-declared Apache2 notice and upstream project notices remain in docs.
@@ -110,6 +116,9 @@ rotate in place and promise seamless recovery. The service owns no reading data;
 Firebase continues to own opt-in reading sync. Future schema changes require a
 versioned migration, rollback plan and PostgreSQL migration tests.
 
+Health refuses readiness/new sessions while an overdue decode still holds the
+real compute lease. Atomic conditional database upserts enforce rate limits even
+when the first requests arrive concurrently; an absent row cannot be SELECT-locked.
 Health and authenticated numeric metrics cover inference completion/timeouts,
 replays/rejections and active connections. Set alerts on readiness failure,
 sustained engine-busy responses and timeout ratio. An uncooperative SDK decode

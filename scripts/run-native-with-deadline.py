@@ -5,10 +5,21 @@ import subprocess
 import sys
 
 
-def main():
-    seconds = float(sys.argv[1])
-    if not 0 < seconds <= 600 or len(sys.argv) < 3:
+def validated_deadline(raw):
+    seconds = float(raw)
+    if not 0 < seconds <= 720:
         raise ValueError("Explicit positive test deadline and command required")
+    return seconds
+
+
+def main():
+    if len(sys.argv) < 3:
+        raise ValueError("Explicit positive test deadline and command required")
+    if sys.argv[1] == '--check':
+        validated_deadline(sys.argv[2])
+        print('NOOR_NATIVE_DEADLINE_VALID')
+        return 0
+    seconds = validated_deadline(sys.argv[1])
     process = subprocess.Popen(sys.argv[2:], start_new_session=(os.name == "posix"))
     try:
         return process.wait(timeout=seconds)

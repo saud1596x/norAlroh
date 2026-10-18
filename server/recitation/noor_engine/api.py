@@ -46,7 +46,7 @@ class Start(Body):
 def create_app(settings, recognizer=None, verifier=None):
     store = Store(settings)
     corpus = Corpus(settings.corpus_root)
-    recognizer = recognizer or Recognizer(settings.model_path, settings.inference_timeout, settings.cpu_threads)
+    recognizer = recognizer or Recognizer(settings.model_path, settings.inference_timeout, settings.cpu_threads, settings.device)
     verifier = verifier or IdentityVerifier(settings)
     intelligence = SessionIntelligence(corpus, recognizer.model_id, recognizer.revision)
     leases = set()
@@ -149,6 +149,7 @@ def create_app(settings, recognizer=None, verifier=None):
     @app.get('/health/ready', response_model=ReadyReply)
     def ready():
         if not app.state.model_ready: raise HTTPException(503, 'model_unavailable')
+        if not getattr(recognizer, 'healthy', True): raise HTTPException(503, 'engine_stalled')
         if not app.state.retention_healthy: raise HTTPException(503, 'retention_unavailable')
         try:
             with store.engine.connect() as c:
@@ -208,6 +209,7 @@ def create_app(settings, recognizer=None, verifier=None):
     def start_session(body: Start, request: Request):
         owner = owner_for(request.headers.get('authorization')); limited('sessions:' + owner, 10)
         if not app.state.model_ready: raise HTTPException(503, 'model_unavailable')
+        if not getattr(recognizer, 'healthy', True): raise HTTPException(503, 'engine_stalled')
         if not app.state.retention_healthy: raise HTTPException(503, 'retention_unavailable')
         sid = store.create_session(owner, {'evidence':[], 'verse':None, 'source':intelligence.source})
         if not sid: raise HTTPException(429, 'session_capacity', headers={'Retry-After':'60'})

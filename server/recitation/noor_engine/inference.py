@@ -1,4 +1,4 @@
-"""Bounded actual CPU inference. No prompts containing the expected scripture."""
+"""Bounded actual inference. No prompts containing the expected scripture."""
 import asyncio
 import hashlib
 import json
@@ -13,15 +13,25 @@ class InferenceDeadline(Exception): pass
 
 
 class Recognizer:
-    def __init__(self, model_path, timeout=20, cpu_threads=2):
+    def __init__(self, model_path, timeout=20, cpu_threads=2, device='cpu'):
+        if device not in {'cpu', 'cuda'}: raise ValueError('unsupported inference device')
         self.path, self.timeout, self.cpu_threads = model_path, timeout, cpu_threads
+        self.device = device
+        self.compute_type = 'float16' if device == 'cuda' else 'int8'
         self.model = None
         self.pending = None
+        self.pending_since = None
+        self.overdue = False
         self.gate = asyncio.Lock()
         self.model_id = 'OdyAsh/faster-whisper-base-ar-quran'
         self.revision = '8578bafd427d122f671b187706650e76edf6f86f'
         self.completed = self.timeouts = 0
         self.total_seconds = 0.0
+
+    @property
+    def healthy(self):
+        return self.model is not None and not self.overdue and (self.pending_since is None
+            or time.monotonic()-self.pending_since <= self.timeout)
 
     def load(self):
         manifest = json.loads((Path(__file__).resolve().parents[1]/'model-manifest.json').read_text())
@@ -30,8 +40,15 @@ class Recognizer:
             if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest() != digest:
                 raise ValueError('pinned inference asset unavailable')
         from faster_whisper import WhisperModel
-        self.model = WhisperModel(str(self.path), device='cpu', compute_type='int8',
+        self.model = WhisperModel(str(self.path), device=self.device, compute_type=self.compute_type,
                                   cpu_threads=self.cpu_threads, num_workers=1, local_files_only=True)
+        if self.device == 'cuda':
+            # Compile/initialize kernels before readiness, not on a learner's
+            # first window. Discard this artificial silent warmup completely;
+            # it is not an acoustic test or recitation/progress evidence.
+            warmup, _ = self.model.transcribe(np.zeros(16000,dtype=np.float32), language='ar',
+                beam_size=1, temperature=0, condition_on_previous_text=False, vad_filter=False)
+            for _ in warmup: pass
 
     async def recognize(self, samples):
         if self.model is None: raise RuntimeError('model unavailable')
@@ -40,22 +57,26 @@ class Recognizer:
         if self.gate.locked() or self.pending is not None: raise Busy()
         await self.gate.acquire()
         task = asyncio.create_task(asyncio.to_thread(self._decode, samples.copy()))
-        self.pending = task
+        self.pending = task; self.pending_since = time.monotonic(); self.overdue = False
         def finished(done):
             try: done.exception()
             except (asyncio.CancelledError, Exception): pass
-            self.pending = None; self.gate.release()
+            self.pending = None; self.pending_since = None; self.overdue = False; self.gate.release()
         task.add_done_callback(finished)
         try:
             return await asyncio.wait_for(asyncio.shield(task), self.timeout)
         except asyncio.TimeoutError:
+            # Record the actual deadline event; do not infer it solely from a
+            # platform monotonic clock with coarser resolution than the timer.
+            if self.pending is task: self.overdue = True
             self.timeouts += 1; raise InferenceDeadline() from None
 
     def _decode(self, original):
         start = time.monotonic()
         peak = float(np.max(np.abs(original)))
         rms = float(np.sqrt(np.mean(original.astype(np.float64)**2)))
-        configuration = f'faster-whisper1.2.1/int8/cpu-threads{self.cpu_threads}/beam1/silero-v6/no-prompt/audio-gate1'
+        hardware = f'cpu-threads{self.cpu_threads}' if self.device == 'cpu' else 'cuda'
+        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1'
         if peak == 0 or rms < 0.00001:
             return {'words': [], 'unresolved': False, 'inference_ms': 0, 'processing_configuration':configuration}
         gain = max(1, min(256, 0.06/max(rms, 0.000001), 0.9/peak))

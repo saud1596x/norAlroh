@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "date": "2026-10-18",
+  "status": "LOCAL_IMPLEMENTATION_VERIFIED_NOT_DEPLOYED",
+  "appNativeSourceUnderTest": "d239bf2bef27b053c4a77363bd3f9a995531c6b9",
+  "backendSourceHashes": {
+    "server/recitation/corpus-manifest.json": "99cf0513f4a02bb7a5bbbd77e3775fa5a1dcd8425ae2e6f8370adb2ff6836171",
+    "server/recitation/evaluate.py": "e724b4c12727883603949ef0e9846c4808f7129ce44b72abc34f69502c80d157",
+    "server/recitation/model-manifest.json": "0a7b70b82294d4b499ab62d82c120259842fd2fdaef3d8e9daa7bf195a8d9ef2",
+    "server/recitation/requirements.txt": "1e53af377980ee28f3a6b02dc2fa48fcee53fa3446bd98a6e369b75b57941af4",
+    "server/recitation/noor_engine/api.py": "1df6f0f7253f5dea90aab3a950c000223e98e933a9af7f11e0c00c58dc85bc88",
+    "server/recitation/noor_engine/config.py": "45292b84936d2d19270bfef346a76ec4e88e6672997b0a85dafba28f28ece625",
+    "server/recitation/noor_engine/contracts.py": "eb9ab871b9fc4f70b71f96cf1709acc322ea9ea0cf0d672681e6b312346aae3f",
+    "server/recitation/noor_engine/corpus.py": "7daf5af8af8f3f491a5e71c96198801351b760f78bdf0d9dffcd338ddf814153",
+    "server/recitation/noor_engine/identity.py": "ae5f21c27ccd44a52d286cb129e8fe1db924c102e1e7c588f1b93aad52893d81",
+    "server/recitation/noor_engine/inference.py": "b6d97c031dee1a012359ad578b9b83156aa7a52b6ec9a14b085cecd6ba5793e8",
+    "server/recitation/noor_engine/observations.py": "77ad4d06515c099746ec6734d899f8935efda8a08b87a3d48c7cb2ff7cf0e4c1",
+    "server/recitation/noor_engine/protocol.py": "ea1c5d6b9d7a99cd7231eeb871359da5ccd66e36831d71122e003534e1e87342",
+    "server/recitation/noor_engine/storage.py": "2eacbe20ec6132d76676900ba33fcaa641a52d17fab790857607a06973ffbf9e",
+    "server/recitation/noor_engine/__init__.py": "fe047b77bf001d6a92024fce70124e31cf8f81cf25d28d9544f83ebd5e3c5cde",
+    "server/recitation/tests/conftest.py": "dc8cadcb29fab30e4bff8a7b7e177ec1cabe2c91bb73e36f64ae69d4aa51b4a0",
+    "server/recitation/tests/test_contracts.py": "f36de01a0311ff7d460b593399dcf79d22536c395fda5d0833c66d07a8d606fe",
+    "server/recitation/tests/test_intelligence.py": "e9b894b2110905559e92a81af171b9eefb0da8e8891ca8dfc5f29e197ef32fef",
+    "server/recitation/tests/test_protocol.py": "bf7fa6496ca6d2281375a352e332e85196f41f95c79afb6831e3bad4b86490ce",
+    "server/recitation/tests/test_real_audio.py": "878ca342aad2319af59a3af9fdb6b6ea77262e0e8b927a88fce9512bbca72036",
+    "server/recitation/tests/test_security.py": "6526a56b56f988a14798f63ad5697243bf4f6e02f1024746304b954ce4f59e49"
+  },
+  "localBackendTests": {
+    "tests": 33,
+    "failures": 0,
+    "skipped": 0,
+    "seconds": 50.918,
+    "includes": "Two actual pinned-model/public-PCM tests; other tests verify crypto/protocol/policy/faults, not acoustic quality"
+  },
+  "transport": {
+    "device": "existing local NVIDIA RTX5060, float16",
+    "cases": 22,
+    "summary": {
+      "word_error_rate": 0.09090909090909091,
+      "character_error_rate": 0.023255813953488372,
+      "verse_detection_rate": 0.4,
+      "median_latency_seconds": 0.2734999999993306,
+      "p95_latency_seconds": 0.375,
+      "identical_recovery_count": 22,
+      "false_error_alert_rate": null,
+      "tajweed_quality": null,
+      "unseen_learner_accuracy": null
+    },
+    "sourceReportSHA256": "a22976f7b68446748d19758231055b319fa750c0b9026e5ab23967e2e84746ba",
+    "reportFile": "outputs/recitation-backend-cuda-verified/report.json",
+    "conditions": "Loopback real HTTP/WebSocket,10 previously used public clips plus silence/seeded-noise, normal and3%gain. Admission quotas honored, exact reconnect replays. Warm kernels; excludes capture/network-internet startup. Not unseen learner accuracy or4-way inference capacity."
+  },
+  "remaining": [
+    "Current native account-enabled run pending",
+    "No public staging endpoint configured in app",
+    "CPU-only existing DigitalOcean host has no verified ASR latency yet",
+    "All-reciter word timing incomplete;1816 new tracks are ayah timings only",
+    "PostgreSQL runtime/migration/restore and Docker deployment unverified",
+    "Device microphone, calibrated mistake/Tajweed and full product acceptance unverified"
+  ]
+}

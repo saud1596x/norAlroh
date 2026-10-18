@@ -13,7 +13,7 @@ import secrets
 import time
 from cryptography.fernet import Fernet
 from sqlalchemy import (create_engine, MetaData, Table, Column, String, Integer, Float, Text,
-                        ForeignKey, select, update, delete, event, func)
+                        ForeignKey, select, update, delete, event, func, case, or_)
 from sqlalchemy.pool import StaticPool
 
 metadata = MetaData()
@@ -79,14 +79,20 @@ class Store:
 
     def limit(self, key, maximum=30, seconds=60):
         key = self.pseudonym('rate:' + key); now = self.clock()
+        # A SELECT lock cannot lock a missing row. Use one atomic conditional
+        # upsert so concurrent first requests cannot collide or exceed the cap.
+        if self.engine.dialect.name == 'postgresql':
+            from sqlalchemy.dialects.postgresql import insert
+        else:
+            from sqlalchemy.dialects.sqlite import insert
+        statement = insert(buckets).values(key=key, reset=now+seconds, count=1)
+        expired = buckets.c.reset <= now
+        statement = statement.on_conflict_do_update(index_elements=[buckets.c.key], set_={
+            'reset':case((expired, now+seconds), else_=buckets.c.reset),
+            'count':case((expired, 1), else_=buckets.c.count+1)},
+            where=or_(expired, buckets.c.count < maximum)).returning(buckets.c.key)
         with self.engine.begin() as c:
-            # Atomic increment is safe across requests; service is single process.
-            row = c.execute(select(buckets).where(buckets.c.key == key).with_for_update()).mappings().first()
-            if not row: c.execute(buckets.insert().values(key=key, reset=now + seconds, count=1)); return True
-            if row['reset'] < now:
-                c.execute(update(buckets).where(buckets.c.key == key).values(reset=now + seconds, count=1)); return True
-            if row['count'] >= maximum: return False
-            c.execute(update(buckets).where(buckets.c.key == key).values(count=buckets.c.count + 1)); return True
+            return c.execute(statement).scalar_one_or_none() is not None
 
     def challenge(self):
         challenge, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(32)

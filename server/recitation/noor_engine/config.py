@@ -19,6 +19,7 @@ class Settings:
     session_ttl: int = 3600
     token_ttl: int = 900
     cpu_threads: int = 2
+    device: str = 'cpu'
 
     def __post_init__(self):
         Fernet(self.data_key.encode('ascii'))
@@ -34,6 +35,8 @@ class Settings:
             raise ValueError('invalid admission limits')
         if type(self.cpu_threads) is not int or not 1 <= self.cpu_threads <= 8:
             raise ValueError('invalid CPU allocation')
+        if self.device not in {'cpu', 'cuda'}:
+            raise ValueError('unsupported inference device')
 
     @classmethod
     def from_env(cls):
@@ -42,4 +45,5 @@ class Settings:
                    firebase_project=os.environ.get('NOOR_FIREBASE_PROJECT_ID', ''),
                    environment=os.environ.get('NOOR_ENVIRONMENT', 'production'),
                    max_sessions=int(os.environ.get('NOOR_MAX_SESSIONS', '4')),
-                   cpu_threads=int(os.environ.get('NOOR_CPU_THREADS', '2')))
+                   cpu_threads=int(os.environ.get('NOOR_CPU_THREADS', '2')),
+                   device=os.environ.get('NOOR_INFERENCE_DEVICE', 'cpu'))

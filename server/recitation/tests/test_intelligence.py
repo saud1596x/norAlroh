@@ -87,13 +87,22 @@ def test_revised_window_retracts_candidates_and_does_not_reveal_missing_word(cor
 
 def test_timeout_retains_actual_compute_lease_until_decoder_returns(tmp_path):
     async def scenario():
+        from threading import Event
+        release = Event()
         recognizer = Recognizer(tmp_path, timeout=.01)
         recognizer.model = object()
-        def slow(samples): time.sleep(.1); return {'words':[], 'unresolved':False, 'inference_ms':100}
+        def slow(samples):
+            release.wait(5)
+            return {'words':[], 'unresolved':False, 'inference_ms':100}
         recognizer._decode = slow
-        with pytest.raises(InferenceDeadline): await recognizer.recognize(np.zeros(1000))
-        with pytest.raises(Busy): await recognizer.recognize(np.zeros(1000))
-        await asyncio.shield(recognizer.pending)
+        try:
+            with pytest.raises(InferenceDeadline): await recognizer.recognize(np.zeros(1000))
+            assert recognizer.healthy is False
+            with pytest.raises(Busy): await recognizer.recognize(np.zeros(1000))
+            pending = recognizer.pending
+        finally: release.set()
+        await asyncio.shield(pending)
         await asyncio.sleep(0)
         assert recognizer.pending is None and not recognizer.gate.locked()
+        assert recognizer.healthy is True
     asyncio.run(scenario())

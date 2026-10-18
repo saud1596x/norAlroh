@@ -43,13 +43,14 @@ def main():
     parser.add_argument('--model', type=Path, required=True)
     parser.add_argument('--fixtures', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--device', choices=['cpu','cuda'], default='cpu')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     source_hashes = {str(p.relative_to(args.corpus_root)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()
         for p in (args.corpus_root/'server/recitation').rglob('*') if p.is_file() and p.suffix in {'.py','.json','.txt'}}
     with tempfile.TemporaryDirectory() as temp:
         settings = Settings(database_url='sqlite:///'+str(Path(temp)/'evaluation.db'), data_key=Fernet.generate_key().decode(),
-            corpus_root=args.corpus_root, model_path=args.model, environment='local')
+            corpus_root=args.corpus_root, model_path=args.model, environment='local', device=args.device)
         app = create_app(settings)
         bound = socket.socket(); bound.bind(('127.0.0.1', 0)); port = bound.getsockname()[1]
         server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=port, log_level='warning',
@@ -57,7 +58,7 @@ def main():
         thread = threading.Thread(target=lambda:server.run(sockets=[bound]), daemon=True); thread.start()
         start = time.monotonic()
         while not server.started:
-            if not thread.is_alive() or time.monotonic()-start>30: raise RuntimeError('server did not start')
+            if not thread.is_alive() or time.monotonic()-start>90: raise RuntimeError('server did not start')
             time.sleep(.02)
         try:
             base = f'http://127.0.0.1:{port}'
@@ -114,9 +115,9 @@ def main():
                 print(name, 'words',len(actual),'edits',results[-1]['word_edits'],'locations',locations,flush=True)
             speech=[r for r in results if r['reference_words']]
             latencies=sorted(r['network_and_inference_seconds'] for r in speech)
-            report={'scope':'Real local TCP/WebSocket and CPU model on ten previously used public reference clips plus acoustic controls, normal/3% gain. Not unseen learner assessment, iOS microphone, GPU capacity, internet jitter, calibrated errors or Tajweed.',
+            report={'scope':f'Real local TCP/WebSocket and {settings.device} model on ten previously used public reference clips plus acoustic controls, normal/3% gain. Not unseen learner assessment, iOS microphone, sustained capacity, internet jitter, calibrated errors or Tajweed.',
                 'platform':platform.platform(),'python':sys.version,'ready':ready.json(), 'source_hashes':source_hashes,
-                'capacity_configuration':{'instances':1,'cpu_threads':settings.cpu_threads,'concurrent_inferences':1,'max_session_slots':4},
+                'capacity_configuration':{'instances':1,'device':settings.device,'cpu_threads':settings.cpu_threads,'concurrent_inferences':1,'max_session_slots':4},
                 'summary':{'word_error_rate':sum(r['word_edits'] for r in speech)/sum(r['reference_words'] for r in speech),
                     'character_error_rate':sum(r['character_edits'] for r in speech)/sum(r['reference_characters'] for r in speech),
                     'verse_detection_rate':sum(r['correct_verse'] for r in speech)/len(speech),

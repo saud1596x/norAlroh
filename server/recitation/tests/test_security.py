@@ -106,6 +106,14 @@ def test_readiness_fails_closed_when_retention_cleanup_unhealthy(client, app, au
         json={'consent':'transient-audio-encrypted-recovery-1h'}).status_code == 503
 
 
+def test_stalled_compute_cannot_advertise_readiness_or_admit_new_session(client, app, auth):
+    app.state.recognizer.healthy = False
+    assert client.get('/health/live').status_code == 200
+    assert client.get('/health/ready').status_code == 503
+    assert client.post('/v1/sessions',headers={'Authorization':'Bearer '+auth['access_token']},
+        json={'consent':'transient-audio-encrypted-recovery-1h'}).status_code == 503
+
+
 def test_identity_provider_network_failure_is_not_reported_as_bad_user_identity(client, app):
     from noor_engine.identity import IdentityUnavailable
     async def unavailable(token, provider): raise IdentityUnavailable()
@@ -118,3 +126,18 @@ def test_repeated_login_does_not_leave_unbounded_credential_families(client, app
     tokens = [app.state.store.login('bounded-local-test-principal') for _ in range(6)]
     assert app.state.store.authenticate(tokens[0]['access_token']) is None
     assert all(app.state.store.authenticate(t['access_token']) for t in tokens[1:])
+
+
+def test_concurrent_first_rate_requests_cannot_collide_or_exceed_cap(settings):
+    from concurrent.futures import ThreadPoolExecutor
+    from noor_engine.storage import Store
+    store = Store(settings, clock=lambda:100.0)
+    store.migrate()
+    try:
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            accepted = list(executor.map(lambda _:store.limit('same-first-bucket',maximum=7),range(32)))
+        assert sum(accepted) == 7
+        assert store.limit('same-first-bucket',maximum=7) is False
+        store.clock = lambda:160.0
+        assert store.limit('same-first-bucket',maximum=7) is True
+    finally: store.engine.dispose()

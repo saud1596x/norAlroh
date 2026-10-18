@@ -7,9 +7,10 @@ project_spec=${NOOR_PROJECT_SPEC:-ios/project.yml}
 case "$project_spec" in ios/project.yml|ios/project-accounts.yml) ;; *) echo 'Unsupported native test project'; exit 2;; esac
 test_deadline=${NOOR_NATIVE_TEST_DEADLINE:-600}
 case "$test_deadline" in 600|720) ;; *) echo 'Unsupported native test deadline'; exit 2;; esac
+python3 scripts/run-native-with-deadline.py --check "$test_deadline"
 xcodegen generate --spec "$project_spec" --project ios
 device=$(python3 - <<'PY'
-import json,subprocess
+import json,os,subprocess
 from pathlib import Path
 runtime='com.apple.CoreSimulator.SimRuntime.iOS-26-2'
 devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','--json']))
@@ -20,6 +21,7 @@ Path('release/continuous-reader/context.json').write_text(json.dumps({
   'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
   'xcode':subprocess.check_output(['xcodebuild','-version'],text=True).strip(),
   'runtime':runtime,'device':phone['name'],'configuration':'Release',
+  'projectSpec':os.environ.get('NOOR_PROJECT_SPEC','ios/project.yml'),
   'scope':'All604 native canvas rendering, reciter identity/search, public PCM continuous cross-surah recognition, VAD; not device microphone or calibrated error/Tajweed acceptance'
 },indent=2)+'\n')
 print(phone['udid'])
@@ -29,6 +31,7 @@ cat release/continuous-reader/context.json
 state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["state"] for rows in json.load(sys.stdin)["devices"].values() for d in rows if d["udid"]==sys.argv[1]))' "$device")
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
+xcrun simctl list devices available --json | python3 -c 'import json,sys; d=next(d for rows in json.load(sys.stdin)["devices"].values() for d in rows if d["udid"]==sys.argv[1]); assert d["state"]=="Booted", "Simulator did not enter Booted state"' "$device"
 test_exit=0
 test_log=release/continuous-reader/native-test-log.txt
 : > "$test_log"
