@@ -24,6 +24,13 @@ struct AtharApp: App {
             NoorLaunchGate()
                 .buttonStyle(NoorPressStyle())
                 .environmentObject(store)
+                .task {
+                    // The user removed the recording library. Do not migrate
+                    // old voice files into the new live-only recitation flow.
+                    _ = try? await Task.detached(priority: .utility) {
+                        try QuranLiveRecitationStorage.removePreviousRecordings()
+                    }.value
+                }
                 .task { await retiredFriday.cleanup(); await khatmah.refreshReminders() }
                 .task {
                     // Prepare installed scripture while the home screen is

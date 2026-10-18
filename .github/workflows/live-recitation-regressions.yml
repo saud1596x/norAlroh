@@ -1,0 +1,41 @@
+name: Live Mushaf recitation regressions
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/live-recitation-regressions.yml
+      - scripts/test-live-recitation.sh
+      - ios/Athar/QuranLiveRecitationStorage.swift
+      - ios/Athar/QuranRecitationController.swift
+      - ios/AtharTests/QuranLiveRecitationStorageTests.swift
+permissions:
+  contents: read
+concurrency:
+  group: live-recitation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-reader:
+    # Standard hosted runner, public repository; no paid/larger runner or keys.
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select installed Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Install project generator
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify live-only storage and actual one-tap capture separately
+        run: bash scripts/test-live-recitation.sh
+      - name: Preserve bounded original evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-recitation-${{ github.sha }}
+          path: |
+            release/live-recitation/*.json
+            release/live-recitation/*.txt
+            release/live-recitation/*.ips
+            release/live-recitation/*-screenshots/*.png
+            release/live-recitation/*-screenshots/*.json
+          retention-days: 1
+          compression-level: 9

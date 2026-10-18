@@ -58,33 +58,16 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         capture(app, "reader-render-recovered-with-real-resources")
     }
     func testExplicitRecitationRemovalAndMicrophoneSettings() {
+        // Upgrade now deletes old recordings automatically; no library,
+        // export-audio or erase-recordings action remains in the shipped UI.
         let app = XCUIApplication(); launchNoorApp(app)
-        func openSettings() {
-            XCTAssertTrue(app.buttons["app.settings"].waitForExistence(timeout: 20))
-            app.buttons["app.settings"].tap()
-            openNoorSettingsSection("الميكروفون والتسجيلات", in: app)
-        }
-        openSettings()
-        let remove = app.buttons["settings.recitation.erase"]
-        for _ in 0..<8 {
-            if remove.exists && remove.isHittable && remove.frame.maxY < app.frame.maxY - 44 { break }
-            app.collectionViews.firstMatch.swipeUp()
-        }
-        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["app.settings"].waitForExistence(timeout: 20))
+        app.buttons["app.settings"].tap()
+        openNoorSettingsSection("الميكروفون", in: app)
         XCTAssertTrue(app.staticTexts["settings.microphone.status"].exists)
         XCTAssertFalse(app.buttons["settings.recordings"].exists)
-        remove.tap()
-        XCTAssertTrue(app.buttons["إلغاء"].waitForExistence(timeout: 5))
-        app.buttons["إلغاء"].tap()
-        XCTAssertFalse(app.staticTexts["settings.recitation.erased"].exists)
-        remove.tap()
-        let confirm = app.buttons["حذف تسجيلات التسميع"]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5)); confirm.tap()
-        XCTAssertTrue(app.staticTexts["settings.recitation.erased"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["settings.recitation.erase"].exists)
         capture(app, "20-recitation-privacy-and-microphone")
-        app.terminate(); launchNoorApp(app); openSettings()
-        XCTAssertFalse(app.buttons["settings.recordings"].exists)
-        XCTAssertTrue(app.buttons["settings.recitation.erase"].exists)
     }
     func test604ActualReaderEveryVerseToolsAndZoom() {
         let app = XCUIApplication(); launchNoorApp(app)

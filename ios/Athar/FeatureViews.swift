@@ -148,9 +148,6 @@ struct SettingsView: View {
     @State private var erasing = false
     @State private var microphonePermission = AVAudioApplication.shared.recordPermission
     @State private var requestingMicrophone = false
-    @State private var eraseRecitation = false
-    @State private var erasingRecitation = false
-    @State private var recitationRemovalMessage: String?
     @State private var preparingExport = false
     var body: some View {
         Form {
@@ -169,7 +166,7 @@ struct SettingsView: View {
                 NavigationLink("حماية وقت الورد") { NoorFocusView() }
             }
             Section("الميكروفون والتسميع") {
-                DisclosureGroup("الميكروفون والتسجيلات") {
+                DisclosureGroup("الميكروفون") {
                 Text(microphonePermission == .granted ? "الميكروفون مسموح" : microphonePermission == .denied ? "إذن الميكروفون مرفوض" : "لم يُطلب إذن الميكروفون بعد")
                     .accessibilityIdentifier("settings.microphone.status")
                 if microphonePermission == .undetermined {
@@ -190,10 +187,7 @@ struct SettingsView: View {
                 }
                 Text("يُستخدم الميكروفون عند بدء التسميع. السماح به لا يضمن دقة التعرّف على القراءة.")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button("حذف تسجيلات وسجلات التسميع", role: .destructive) { eraseRecitation = true }
-                    .disabled(erasingRecitation || erasing || preparingExport).accessibilityIdentifier("settings.recitation.erase")
-                if erasingRecitation { ProgressView("حذف تسجيلات التسميع…") }
-                if let recitationRemovalMessage { Text(recitationRemovalMessage).font(.footnote).accessibilityIdentifier(recitationRemovalMessage == "حُذفت تسجيلات وسجلات التسميع." ? "settings.recitation.erased" : "settings.recitation.eraseError") }
+                Text("التسميع مباشر داخل المصحف. تُحذف ملفات الصوت المؤقتة عند إنهائه أو إغلاق المصحف، ولا توجد مكتبة تسجيلات.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
             Section("مساحة تحترم خصوصيتك") {
@@ -208,21 +202,17 @@ struct SettingsView: View {
                 DisclosureGroup("إدارة بياناتي") {
                 Button("تصدير بياناتي") {
                     Task { @MainActor in
-                    guard !preparingExport, !erasing, !erasingRecitation else { return }
+                    guard !preparingExport, !erasing else { return }
                     preparingExport = true; exportMessage = nil; defer { preparingExport = false }
                     do {
-                        let recording = try await recitation.exportRecordingAsync()
-                        let recordingMetadata = try await Task.detached(priority: .userInitiated) {
-                            try MushafRecordingArchive.exportMetadata()
-                        }.value
                         let snapshot = NoorPrivacyExport(device: store.data, adhkarCounters: dhikrCounters.counts, adhkarFavorites: Array(dhikrCounters.favorites).sorted(),
                             memorizationPlan: memorization.plan, memorizationHistory: memorization.history, memorizationSession: memorization.session,
-                            prayerPreferences: notifications.preferences, localRecording: recording,
+                            prayerPreferences: notifications.preferences, localRecording: nil,
                             lastMushafPage: max(1, min(604, UserDefaults.standard.integer(forKey: "noor.mushaf.lastPage"))),
                             unreadableDeviceData: store.unreadableDeviceData, unreadableMemorizationHistory: memorization.unreadableHistory,
                             memorizationProgress: memorization.progress, memorizationPractice: memorization.practice,
                             unreadableMemorizationPractice: memorization.unreadablePractice, speechPosition: speech.savedPosition,
-                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: recordingMetadata, salawatArchive: salawat.exportBytes, personalReminderArchive: notifications.personalExport)
+                            unreadableSpeechPosition: speech.unreadablePosition, previousSpeechPosition: speech.previousPosition, preCloudMerge: memorization.preCloudMerge, syncJournal: NoorReadingSyncJournal.shared.exportBytes, preReadingMerge: UserDefaults.standard.data(forKey: "noor.sync.preReadingMerge"), khatmahArchive: KhatmahStore.shared.exportBytes, mushafStudy: memorization.mushafStudy, unreadableMushafStudy: memorization.unreadableMushafStudy, mushafRecordings: [], salawatArchive: salawat.exportBytes, personalReminderArchive: notifications.personalExport)
                         let bytes = try await Task.detached(priority: .userInitiated) {
                             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
                             return try encoder.encode(snapshot)
@@ -232,10 +222,10 @@ struct SettingsView: View {
                     catch { exportMessage = "تعذر تجهيز ملف التصدير." }
                     }
                 }
-                .disabled(preparingExport || erasing || erasingRecitation)
+                .disabled(preparingExport || erasing)
                 if preparingExport { ProgressView("تجهيز ملف التصدير…") }
-                Text("ملف التصدير غير مشفر. احفظه في مكان خاص. يمكن حذف ملفات التسميع من قسم الميكروفون والتسميع.").font(.subheadline).foregroundStyle(.secondary)
-                Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing || erasingRecitation || preparingExport)
+                Text("ملف التصدير غير مشفر. احفظه في مكان خاص. لا يتضمن ملف التصدير صوت التسميع.").font(.subheadline).foregroundStyle(.secondary)
+                Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing || preparingExport)
                 if erasing { ProgressView("حذف البيانات والنموذج المحلي…") }
                 }
                 DisclosureGroup("المساعدة والأدوات") {
@@ -247,7 +237,7 @@ struct SettingsView: View {
             }
             Section("عن نور الروح") {
                 DisclosureGroup("عن التطبيق") {
-                Text("مصحف كامل، وأذكار ومواقيت الصلاة. التسميع يحاول تحديد موضع التلاوة داخل المصحف، وقد يتعذّر التتبع. لا يقيس صحة النطق أو التجويد. يمكن حذف الصوت وبيانات التسميع المحلية من الإعدادات.")
+                Text("مصحف كامل، وأذكار ومواقيت الصلاة. التسميع يحاول تحديد موضع التلاوة داخل المصحف، وقد يتعذّر التتبع. لا يقيس صحة النطق أو التجويد. التسميع مباشر داخل المصحف دون مكتبة تسجيلات.")
                     .accessibilityIdentifier("settings.studyCapability")
                 Text("النص القرآني مضمّن في التطبيق. مواقيت الصلاة محسوبة محليًا. لا يقدم نور الروح فتاوى أو تفسيرًا مولدًا.")
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · البناء \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
@@ -261,22 +251,6 @@ struct SettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             microphonePermission = AVAudioApplication.shared.recordPermission
         }
-        .confirmationDialog("حذف تسجيلات وسجلات التسميع نهائيًا؟ تبقى بيانات الحفظ والعلامات والحساب.", isPresented: $eraseRecitation, titleVisibility: .visible) {
-            Button("حذف تسجيلات التسميع", role: .destructive) {
-                Task { @MainActor in
-                    guard !erasingRecitation, !erasing, !preparingExport else { return }
-                    erasingRecitation = true
-                    defer { erasingRecitation = false }
-                    guard recitation.erase() else { recitationRemovalMessage = recitation.message; return }
-                    do {
-                        try await Task.detached(priority: .userInitiated) { try MushafRecordingArchive.erase() }.value
-                        speech.eraseSavedPosition()
-                        recitationRemovalMessage = "حُذفت تسجيلات وسجلات التسميع."
-                    } catch { recitationRemovalMessage = "تعذّر إكمال حذف التسجيلات. أعد المحاولة بعد فتح قفل الجهاز." }
-                }
-            }
-            Button("إلغاء", role: .cancel) {}
-        }
         // Pulling a long settings list must not dismiss the entire sheet.
         // Users can still leave explicitly with the Done button.
         .interactiveDismissDisabled()
@@ -284,7 +258,7 @@ struct SettingsView: View {
         .confirmationDialog("سيُحذف سجل الرحلات والتأملات والعلامات والحفظ والأذكار والتسجيل والنموذج الصوتي المحلي والإعدادات المحلية نهائيًا وتتوقف المزامنة. تبقى بيانات حسابك السحابية حتى تحذف الحساب.", isPresented: $erase, titleVisibility: .visible) {
             Button("حذف كل بياناتي", role: .destructive) {
                 Task {
-                guard !erasing, !erasingRecitation, !preparingExport else { return }
+                guard !erasing, !preparingExport else { return }
                 erasing = true; defer { erasing = false }
                 account.disconnectLocalSync()
                 guard await speech.eraseModel() else { exportMessage = speech.message; return }

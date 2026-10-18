@@ -106,7 +106,7 @@ final class NoorAllScreensTests: XCTestCase {
         tap(app.buttons["app.settings"], in: app)
         capture(app, "21-settings")
         XCTAssertFalse(app.buttons["settings.recordings"].exists)
-        openNoorSettingsSection("الميكروفون والتسجيلات", in: app)
+        openNoorSettingsSection("الميكروفون", in: app)
         XCTAssertTrue(app.staticTexts["settings.microphone.status"].exists)
         capture(app, "20-recitation-privacy-and-microphone")
         tap(app.buttons["settings.downloads"], in: app)

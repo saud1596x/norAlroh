@@ -228,6 +228,15 @@ public struct QuranRecitationJournal {
         }
         try write(record)
     }
+    /// Serialize deletion with every pending analysis write. Those writes load
+    /// an existing record first, so a late result cannot recreate a deleted take.
+    public func discard(_ id: UUID) throws {
+        Self.accessLock.lock(); defer { Self.accessLock.unlock() }
+        let directory = folder(id)
+        if FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.removeItem(at: directory)
+        }
+    }
     public func saveAnalysis(_ analysis: QuranRecitationRecord) throws {
         Self.accessLock.lock(); defer { Self.accessLock.unlock() }
         try analysis.validate()

@@ -98,7 +98,8 @@ import os
         self.analysisPersistence = analysisPersistence
         self.recognitionTimeout = recognitionTimeout
         self.recognizeWindow = recognizeWindow ?? { window in try await recognitionProvider.recognize(window) }
-        self.archiveRoot = archiveRoot; self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
+        self.archiveRoot = archiveRoot ?? (try? QuranLiveRecitationStorage.root())
+        self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
     private var capture: (any QuranAudioCapture)?
     private var mailbox: QuranWindowMailbox?
@@ -113,8 +114,7 @@ import os
     private var finishRequest = false
     private var closing = false
     private var journal: QuranRecitationJournal? {
-        if let archiveRoot { return QuranRecitationJournal(root: archiveRoot) }
-        return (try? MushafRecordingArchive.root()).map(QuranRecitationJournal.init(root:))
+        archiveRoot.map(QuranRecitationJournal.init(root:))
     }
     private func save(_ value: QuranRecitationRecord) throws {
         let span = OSSignpostID(log: Self.performanceLog)
@@ -257,6 +257,10 @@ import os
         guard revision == token else { return }
         state = .preparing
         do {
+            try await Task.detached(priority: .utility) {
+                try QuranLiveRecitationStorage.removePreviousRecordings()
+            }.value
+            guard revision == token, state == .preparing else { return }
             guard MushafStudySession(keys: keys, scope: .range, page: page).valid(corpus: corpus), let journal else {
                 throw QuranJournalFailure.invalidRecord
             }
@@ -341,7 +345,7 @@ import os
             finishRequest = false; revision = UUID(); uncertain = restored.recognitionUnavailable; state = .paused
         } catch {
             guard revision == token else { return }
-            state = .idle; message = "تعذّر استعادة الجلسة. لم تُحذف ملفات الصوت أو بياناتها؛ يمكنك فتح التسجيلات لفحص المتاح."
+            state = .idle; message = "تعذّر استئناف التسميع. اضغط الميكروفون لبدء محاولة جديدة داخل المصحف."
         }
     }
     func resume() async {
@@ -351,7 +355,7 @@ import os
         let token = revision
         guard await requestPermission() else {
             guard revision == token else { return }
-            state = .paused; permissionDenied = true; message = "الميكروفون غير مسموح. تقدمك وتسجيلاتك محفوظة."; return
+            state = .paused; permissionDenied = true; message = "الميكروفون غير مسموح. يمكنك متابعة القراءة دون الميكروفون."; return
         }
         guard revision == token, state == .permission else { return }
         do {
@@ -360,7 +364,7 @@ import os
         }
         catch {
             guard revision == token else { return }
-            state = .paused; message = "تعذّر استئناف الميكروفون. احتُفظ بالتسجيل السابق."
+            state = .paused; message = "تعذّر استئناف الميكروفون. أعد المحاولة داخل المصحف."
         }
     }
     private func beginTake(token: UUID) async throws {
@@ -397,7 +401,7 @@ import os
             onWindow: { mailbox.put($0) }, onFailure: { @Sendable [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }
-                    self.message = "تعذّر حفظ بقية الصوت. احتُفظ بالجزء المسجل؛ توقفت الجلسة لحماية تسجيلك."
+                    self.message = "تعذّرت معالجة بقية الصوت؛ توقف الميكروفون. أعد المحاولة داخل المصحف."
                     await self.pause()
                 }
             })
@@ -407,7 +411,7 @@ import os
             let microphone = try makeCapture(writer, { [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }
-                    self.message = "انقطع إدخال الصوت. احتُفظ بالتسجيل؛ استأنف عندما يصبح الميكروفون متاحًا."
+                    self.message = "انقطع إدخال الصوت؛ استأنف عندما يصبح الميكروفون متاحًا."
                     await self.pause()
                 }
             })
@@ -444,7 +448,7 @@ import os
             }
             record = next
             do { try journal.save(next) }
-            catch { message = "الصوت محفوظ، لكن تعذّر حفظ حالة الجلسة. أعد محاولة الإنهاء." }
+            catch { message = "تعذّر تحديث حالة التسميع. أعد محاولة الإنهاء." }
             throw error
         }
     }
@@ -459,7 +463,7 @@ import os
                 record = current; uncertain = true; recognitionAvailable = false
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
-                message = "تأخر التتبع عن التسجيل؛ احتُفظ بالصوت. أوقف التسميع ثم استأنفه لإعادة المحاولة."
+                message = "تأخر التتبع عن صوتك. أوقف التسميع ثم استأنفه لإعادة المحاولة."
                 return
             }
             guard let window = pendingWindow else {
@@ -511,7 +515,7 @@ import os
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
                 if (error as? URLError)?.code == .timedOut {
-                    message = "تعذّر التتبع الآن. التسجيل مستمر ومحفوظ؛ يمكنك إنهاء الجلسة ومراجعة الصوت."
+                    message = "تعذّر التتبع الآن. أوقف التسميع ثم أعد المحاولة؛ يمكنك متابعة قراءة المصحف."
                     // A Core ML call can ignore cancellation. Do not queue more
                     // recognition behind it or accept its eventual late result.
                     return
@@ -616,7 +620,7 @@ import os
         }
     }
     private func stopForJournalFailure() {
-        message = "تعذّر حفظ نتيجة التتبع. توقف الميكروفون لحماية الجلسة؛ احتُفظ بملف الصوت."
+        message = "تعذّر تحديث التتبع. توقف الميكروفون؛ أعد المحاولة داخل المصحف."
         // Do not await this from the inference task: pause drains that task.
         Task { [weak self] in await self?.pause() }
     }
@@ -636,7 +640,7 @@ import os
                 case .failure:
                     if let url = journal?.audio(session: current.id, take: current.takes[index].id),
                        let file = try? AVAudioFile(forReading: url) { current.takes[index].frames = file.length }
-                    message = "توقفت الجلسة بسبب تعذّر حفظ الصوت كاملًا. الجزء المتاح محفوظ في التسجيلات."
+                    message = "توقف الميكروفون بسبب مشكلة في معالجة الصوت. أعد المحاولة داخل المصحف."
                 }
                 current.takes[index].closed = true; record = current
             }
@@ -660,21 +664,34 @@ import os
             current.phase = finishRequest ? .finished : .paused
             current.finishedAt = finishRequest ? Date() : nil
             do { try save(current); record = current; state = finishRequest ? .stopped : .paused }
-            catch { record = current; state = .paused; message = "الصوت محفوظ، لكن تعذّر حفظ ملخص الجلسة. أعد محاولة الإنهاء." }
+            catch { record = current; state = .paused; message = "تعذّر تحديث حالة التسميع. أعد محاولة الإنهاء." }
         }
         closing = false
         try? setSessionActive(false)
         if let lease = audioFocusLease { NoorAudioFocus.shared.releaseRecording(lease) }
         audioFocusLease = nil
+        if finishRequest { await discardWorkingSession() }
     }
     func finish() async {
         cancelGuided()
         finishRequest = true
         if state == .listening { await pause(); return }
-        guard state == .paused, !closing, var current = record else { return }
+        // Cancel permission/model continuations before disposing working files.
+        guard !closing else { return }
+        await discardWorkingSession()
+    }
+    private func discardWorkingSession() async {
+        closing = true; defer { closing = false }
+        revision = UUID(); pump?.cancel(); pump = nil; mailbox = nil
+        guard var current = record else { state = .idle; return }
         current.phase = .finished; current.finishedAt = Date()
-        do { try save(current); record = current; state = .stopped }
-        catch { message = "تعذّر حفظ الملخص. التسجيلات محفوظة؛ أعد المحاولة." }
+        record = current
+        let sessionID = current.id
+        do {
+            guard let journal else { throw QuranJournalFailure.invalidRecord }
+            try await Task.detached(priority: .utility) { try journal.discard(sessionID) }.value
+            state = .stopped
+        } catch { state = .paused; message = "تعذّر حذف ملفات التسميع المؤقتة. أعد محاولة الإنهاء بعد فتح قفل الجهاز." }
     }
     @discardableResult func reviewFinding(_ id: UUID, disputed: Bool) -> Bool {
         guard !closing, state == .paused || state == .stopped, var current = record,

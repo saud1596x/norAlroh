@@ -82,9 +82,7 @@ struct InteractiveMushafReader: View {
         #endif
         return MushafVerseAudio()
     }()
-    @StateObject private var studyRecorder = MushafSessionRecorder()
     @StateObject private var recitation = QuranRecitationController()
-    @AppStorage("noor.recitation.pending") private var pendingRecitation = ""
     @EnvironmentObject private var legacyRecorder: LocalRecitationRecorder
     let chapter: Int; let ayah: Int; let initialPage: Int?
     let startsStudy: Bool
@@ -195,7 +193,6 @@ struct InteractiveMushafReader: View {
         presentedReader
         .onChange(of: recitation.record?.id) { _, value in
             completedFeedbackVerses = []; feedbackVerse = recitation.currentVerse; feedbackAnnounced = false
-            if let value { pendingRecitation = value.uuidString }
         }
         .onChange(of: recitation.record?.wordingEvents) { _, _ in announceReviewFeedback() }
         .onChange(of: audio.error) { _, value in
@@ -231,7 +228,7 @@ struct InteractiveMushafReader: View {
                let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) { number = destination; lastPage = destination }
         }
         .onChange(of: recitation.state) { _, state in
-            if state == .stopped { pendingRecitation = ""; tools = true }
+            if state == .stopped { tools = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { event in
             if (event.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue {
@@ -289,7 +286,7 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { rememberWardPosition(); readerVisible = false; pageTurnRequest = nil; pageTurnTask?.cancel(); pageTurnTask = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.pause() }; audio.stop(); audio.onVerse = nil; studyRecorder.stop() }
+        .onDisappear { rememberWardPosition(); readerVisible = false; pageTurnRequest = nil; pageTurnTask?.cancel(); pageTurnTask = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
         .onChange(of: scenePhase) { _, value in
             if value != .active { microphoneCue.cancel() }
             if value == .background { rememberWardPosition() }
@@ -424,9 +421,7 @@ struct InteractiveMushafReader: View {
     }
     private var readerPage: some View {
             GeometryReader { geometry in
-                if recitation.state == .preparing, UUID(uuidString: pendingRecitation) != nil, recitation.record == nil {
-                    ProgressView("استعادة موضع التسميع…").frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
+                if let page, fonts.names[String(format: "QCF2%03d", number)] != nil, !renderingFailed {
                     let renderedIdentity = MushafRenderIdentity(page: page.number, generation: renderGeneration)
                     OriginalMushafDrawing(page: page, corpus: store.quran, selected: visibleSelection, reduceMotion: reduced || store.data.lowMotion,
                         hiddenWordIDs: hiddenStudyWords,
@@ -542,7 +537,7 @@ struct InteractiveMushafReader: View {
     private func startRecitation(keys scope: [String], automatic: Bool = false) {
         guard !readingOnly, readerVisible, let snapshot, !recitation.hasSession else { return }
         followAudio = true
-        audio.stop(); studyRecorder.stop(); legacyRecorder.stop(); clearManualSelection()
+        audio.stop(); legacyRecorder.stop(); clearManualSelection()
         tools = true
         Task {
             guard readerVisible, !Task.isCancelled else { return }
@@ -553,7 +548,7 @@ struct InteractiveMushafReader: View {
     private var startRecitationButton: some View {
         Button {
             guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
-            audio.stop(); studyRecorder.stop(); legacyRecorder.stop()
+            audio.stop(); legacyRecorder.stop()
             microphoneCue.beginCapture {
                 guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
                 if recitation.guidedPhase == .ready { startRecitation(keys: guidedKeys) }
@@ -936,13 +931,6 @@ struct InteractiveMushafReader: View {
             // Reconcile observable player state after resources load too:
             // a one-shot start callback can arrive while an ayah sheet closes.
             followPlayback()
-            if first, !readingOnly, let pending = UUID(uuidString: pendingRecitation) {
-                await recitation.restore(id: pending, snapshot: data, corpus: store.quran)
-                if recitation.hasSession, followAudio {
-                    selected = recitation.currentVerse
-                    if let key = recitation.currentVerse, let destination = versePages[key], allowedPages.contains(destination) { number = destination; lastPage = destination }
-                }
-            }
             await fonts.load(String(format: "QCF2%03d", number))
         } catch {
             guard !Task.isCancelled else { return }

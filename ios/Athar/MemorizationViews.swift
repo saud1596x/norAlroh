@@ -696,7 +696,6 @@ struct MemorizationTestView: View {
     private var surah: Surah? { store.quran.first { $0.number == chapter } }
     private var ayah: Ayah? { guard index < keys.count else { return nil }; return surah?.ayahs.first { $0.number == keys[index] } }
     @State private var wordCount = 0
-    @State private var recording = false
     var body: some View {
         VStack(spacing: 8) {
             if done {
@@ -744,11 +743,6 @@ struct MemorizationTestView: View {
                 Button("إعادة المحاولة") { start() }
             }
         }.background(Theme.panel).noorScreenChrome().navigationTitle("اختبار الاسترجاع").navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button { recording = true } label: { Image(systemName: "mic") }.accessibilityLabel("تسجيل تسميع للمراجعة").accessibilityIdentifier("hifz.recording") }
-            .sheet(isPresented: $recording) {
-                NavigationStack { ScrollView { RecitationRecordingControls(recordingAllowed: !paused).padding(20) }
-                    .noorScreenChrome().navigationTitle("تسجيل التسميع").toolbar { Button("إغلاق") { recording = false }.accessibilityIdentifier("hifz.recording.close") } }
-            }
             .onAppear { if keys.isEmpty { start() } }
             .onDisappear { persistSession(); audio.stop() }
             .onChange(of: phase) { _, new in if new != .active { persistSession(); paused = true; audio.stop() } }
