@@ -68,6 +68,13 @@ xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 run_case one-tap -only-testing:AtharUITests/NoorMushafStudyUITests/testOneTapStartsActualInlineMicrophoneWithoutSetupOrAccount
 run_case background -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeStaysInMushafWithoutHistory
 run_case privacy -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings
+else
+ # After changing the hardware-start boundary, verify cancellation/draining
+ # and source display policy too. No injected audio counts as hardware proof.
+ run_case startup-policy \
+  -only-testing:AtharTests/QuranLiveRecitationStorageTests \
+  -only-testing:AtharTests/QuranListeningLocationTests \
+  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests
 fi
 # First approval is distinct from capture after an OS pre-grant. The app must
 # start from the original tap; a second microphone tap cannot rescue the test.

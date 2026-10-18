@@ -12,6 +12,22 @@ build6ad553657550aed8108ff6d1. It resets the real microphone permission,
 requires the OS prompt and permits only one original microphone tap. Result
 was pending when this note was written. No accuracy claim follows from capture.
 
+That first-use check subsequently failed: after the actual OS Allow action,
+the app terminated before study.elapsed could be inspected. Original artifact
+SHA256 is2981becb039775d2512e80b4c72c0ef3a0a519f16417cbb5223ed9d1f30919d6.
+The ips report identifies SIGABRT/_ReportRPCTimeout/AURemoteIO.Initialize at
+AVAudioEngine.inputNode in QuranMicrophoneCapture.init on the main thread.
+This is not a proved ASR failure, absent microphone hardware, or proof that the
+cloud provider alone caused the failure.
+
+Capture now opens/starts/stops/destroys its engine on one serial hardware lane,
+instead of constructing inputNode on MainActor. Start is asynchronous; closing
+or pausing drains outstanding startup and rejects late listening publication
+before removing working files. The first-use workflow also includes source
+location, storage cancellation and input lifecycle cases after this change.
+The original one-tap OS assertion is retained. Actual execution of this repair
+is required; moving the call does not by itself prove the OS timeout resolved.
+
 Code review then found an additional display ambiguity: if older accepted
 words remained in the session, two conflicting latest acoustic bindings could
 leave that older word highlighted. The display frontier now advances even on

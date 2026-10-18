@@ -91,7 +91,7 @@ import os
          analysisPersistence: ((QuranRecitationRecord) async throws -> Void)? = nil,
          recognitionProvider: any QuranSpeechRecognitionProvider = QuranRecognitionRouter(),
          makeCapture: @escaping (QuranPCMWriter, @escaping @Sendable (Error) -> Void) throws -> any QuranAudioCapture = {
-             try QuranMicrophoneCapture(writer: $0, onFailure: $1)
+             QuranMicrophoneCapture(writer: $0, onFailure: $1)
          }, setSessionActive: @escaping (Bool) throws -> Void = { active in
              try AVAudioSession.sharedInstance().setActive(active, options: active ? [] : .notifyOthersOnDeactivation)
          }) {
@@ -104,6 +104,7 @@ import os
         self.makeCapture = makeCapture; self.setSessionActive = setSessionActive
     }
     private var capture: (any QuranAudioCapture)?
+    private var captureStart: Task<Void, Error>?
     private var mailbox: QuranWindowMailbox?
     private var pump: Task<Void, Never>?
     private var capturing = false
@@ -385,7 +386,7 @@ import os
         audioFocusLease = lease
         var started = false
         defer {
-            if !started {
+            if !started, audioFocusLease == lease {
                 try? setSessionActive(false)
                 NoorAudioFocus.shared.releaseRecording(lease)
                 audioFocusLease = nil
@@ -440,7 +441,14 @@ import os
                 }
             }
             capture = microphone; self.mailbox = mailbox; capturing = true
-            try microphone.start(); started = true
+            let opening = Task { try await microphone.start() }
+            captureStart = opening
+            defer { captureStart = nil }
+            try await opening.value
+            // Closing/pausing while the audio service opens cannot publish a
+            // late listening state or recreate a deleted working session.
+            guard revision == token, state == .preparing else { throw CancellationError() }
+            started = true
             listeningLocation.begin(takeID: take.id); activeWordID = nil
             // A new audio take does not prove that previously failed inference
             // has recovered. Keep text visible until a successful decode.
@@ -451,6 +459,7 @@ import os
             if let capture { _ = await capture.stop() }
             else { _ = await withCheckedContinuation { continuation in writer.finish { continuation.resume(returning: $0) } } }
             capture = nil; self.mailbox = nil
+            guard revision == token else { throw CancellationError() }
             next.takes[next.takes.count - 1].closed = true; next.phase = .paused
             if let saved = try? AVAudioFile(forReading: journal.audio(session: next.id, take: take.id)) {
                 next.takes[next.takes.count - 1].frames = saved.length
@@ -641,7 +650,33 @@ import os
     func pause() async {
         guard !closing else { return }
         if state == .permission || state == .preparing {
-            revision = UUID(); state = record == nil ? .idle : .paused; return
+            revision = UUID()
+            closing = true; state = .processing
+            defer { closing = false }
+            // Hardware startup is asynchronous. Drain its serial lane before
+            // closing the take; never leave a late microphone running.
+            if let captureStart { _ = try? await captureStart.value }
+            var closedFrames: Int64?
+            if let capture {
+                if case .success(let frames) = await capture.stop() { closedFrames = frames }
+                self.capture = nil
+            }
+            capturing = false
+            if var current = record, !current.takes.isEmpty {
+                if closedFrames == nil, let journal,
+                   let file = try? AVAudioFile(forReading: journal.audio(session: current.id, take: current.takes.last!.id)) {
+                    closedFrames = file.length
+                }
+                if let closedFrames { current.takes[current.takes.count - 1].frames = closedFrames }
+                current.takes[current.takes.count - 1].closed = true
+                current.phase = .paused; record = current
+                try? save(current)
+            }
+            if let lease = audioFocusLease {
+                try? setSessionActive(false)
+                NoorAudioFocus.shared.releaseRecording(lease); audioFocusLease = nil
+            }
+            state = record == nil ? .idle : .paused; return
         }
         guard state == .listening else { return }
         closing = true; state = .processing
@@ -696,7 +731,15 @@ import os
     }
     private func discardWorkingSession() async {
         closing = true; defer { closing = false }
+        state = .processing
         revision = UUID(); pump?.cancel(); pump = nil; mailbox = nil
+        if let captureStart { _ = try? await captureStart.value }
+        if let capture { _ = await capture.stop(); self.capture = nil }
+        capturing = false
+        if let lease = audioFocusLease {
+            try? setSessionActive(false)
+            NoorAudioFocus.shared.releaseRecording(lease); audioFocusLease = nil
+        }
         guard var current = record else { state = .idle; return }
         current.phase = .finished; current.finishedAt = Date()
         record = current

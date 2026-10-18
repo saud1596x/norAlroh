@@ -4,7 +4,7 @@ import Foundation
 /// Audio capture never waits for model loading, inference or UI updates.
 /// The pipe serializes tap shutdown with conversion and drains the final PCM.
 protocol QuranAudioCapture: AnyObject {
-    func start() throws
+    func start() async throws
     func stop() async -> Result<Int64, Error>
     func observeLevel(_ observer: @escaping @Sendable (Float) -> Void)
     func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void)
@@ -15,6 +15,72 @@ extension QuranAudioCapture {
 }
 
 final class QuranMicrophoneCapture: QuranAudioCapture {
+    // RemoteIO can synchronously wait for the audio service while constructing
+    // inputNode. It must never hold MainActor/the permission UI run loop. All
+    // engine construction, start, stop and destruction share this serial lane.
+    private let queue = DispatchQueue(label: "Noor.MicrophoneHardware", qos: .userInitiated)
+    private let writer: QuranPCMWriter
+    private let onFailure: @Sendable (Error) -> Void
+    private let observerLock = NSLock()
+    private var levelObserver: (@Sendable (Float) -> Void)?
+    private var qualityObserver: (@Sendable (QuranInputQuality.Reading) -> Void)?
+    private final class HardwareState {
+        var hardware: QuranMicrophoneHardware?
+        var closed = false
+    }
+    private let hardwareState = HardwareState()
+    init(writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) {
+        self.writer = writer; self.onFailure = onFailure
+    }
+    func start() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async { [self] in
+                do {
+                    guard !hardwareState.closed else { throw QuranCaptureFailure.closed }
+                    if hardwareState.hardware == nil {
+                        let input = try QuranMicrophoneHardware(writer: writer, onFailure: onFailure)
+                        input.observeLevel { [weak self] value in self?.deliverLevel(value) }
+                        input.observeQuality { [weak self] value in self?.deliverQuality(value) }
+                        hardwareState.hardware = input
+                    }
+                    try hardwareState.hardware!.start()
+                    continuation.resume()
+                } catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
+    func stop() async -> Result<Int64, Error> {
+        await withCheckedContinuation { continuation in
+            queue.async { [self] in
+                hardwareState.closed = true
+                if let input = hardwareState.hardware {
+                    input.stop { continuation.resume(returning: $0) }
+                    hardwareState.hardware = nil
+                } else { writer.finish { continuation.resume(returning: $0) } }
+            }
+        }
+    }
+    func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) {
+        observerLock.lock(); levelObserver = observer; observerLock.unlock()
+    }
+    func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) {
+        observerLock.lock(); qualityObserver = observer; observerLock.unlock()
+    }
+    private func deliverLevel(_ value: Float) {
+        observerLock.lock(); let observer = levelObserver; observerLock.unlock(); observer?(value)
+    }
+    private func deliverQuality(_ value: QuranInputQuality.Reading) {
+        observerLock.lock(); let observer = qualityObserver; observerLock.unlock(); observer?(value)
+    }
+    deinit {
+        let state = hardwareState
+        queue.async { state.hardware?.stop { _ in }; state.hardware = nil }
+    }
+}
+
+/// Owned only by QuranMicrophoneCapture's serial hardware lane. Tap conversion
+/// and callbacks retain their existing separately locked PCM pipeline.
+private final class QuranMicrophoneHardware {
     private let engine: AVAudioEngine
     private let inputNode: AVAudioInputNode
     private let inputFormat: AVAudioFormat
@@ -22,8 +88,14 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
     private let inputEvents: QuranAudioInputEvents
     private var installed = false
     init(writer: QuranPCMWriter, onFailure: @escaping @Sendable (Error) -> Void) throws {
+        #if NOOR_ACCEPTANCE_TESTING
+        print("NOOR_CAPTURE_HARDWARE_INIT mainThread=\(Thread.isMainThread)")
+        #endif
         let engine = AVAudioEngine()
         let inputNode = engine.inputNode
+        #if NOOR_ACCEPTANCE_TESTING
+        print("NOOR_CAPTURE_INPUT_NODE_READY")
+        #endif
         let input = inputNode.outputFormat(forBus: 0)
         guard input.sampleRate > 0, input.channelCount > 0 else { throw QuranCaptureFailure.invalidSamples }
         self.engine = engine
@@ -46,13 +118,11 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
     }
     func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) { pipe.observeLevel(observer) }
     func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) { pipe.observeQuality(observer) }
-    func stop() async -> Result<Int64, Error> {
+    func stop(_ completion: @escaping @Sendable (Result<Int64, Error>) -> Void) {
         inputEvents.disarm()
         engine.stop()
         if installed { inputNode.removeTap(onBus: 0); installed = false }
-        return await withCheckedContinuation { continuation in
-            pipe.finish { continuation.resume(returning: $0) }
-        }
+        pipe.finish(completion)
     }
     deinit { inputEvents.disarm(); engine.stop(); if installed { inputNode.removeTap(onBus: 0) } }
     private final class Pipe {
@@ -98,7 +168,7 @@ final class QuranMicrophoneCapture: QuranAudioCapture {
         func observeQuality(_ observer: @escaping @Sendable (QuranInputQuality.Reading) -> Void) {
             lock.lock(); qualityObserver = observer; lock.unlock()
         }
-        func finish(_ completion: @escaping (Result<Int64, Error>) -> Void) {
+        func finish(_ completion: @escaping @Sendable (Result<Int64, Error>) -> Void) {
             lock.lock()
             if !stopped {
                 stopped = true

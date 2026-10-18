@@ -4,6 +4,50 @@ import WhisperKit
 @testable import Athar
 
 final class QuranLiveRecitationStorageTests: XCTestCase {
+    @MainActor func testFinishWhileHardwareStartsDrainsWithoutLateListeningOrRecreatedFiles() async throws {
+        // Injected startup barrier only: verifies cancellation ordering and UI
+        // responsiveness, not a real hardware or acoustic recognition result.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let gate = CaptureStartGate()
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, _ in DelayedCapture(writer: writer, gate: gate) }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let starting = Task { await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus) }
+        let deadline = Date().addingTimeInterval(8)
+        while !(await gate.waiting) && Date() < deadline { await Task.yield() }
+        let waiting = await gate.waiting; XCTAssertTrue(waiting)
+        let session = try XCTUnwrap(controller.record).id
+        let finishing = Task { await controller.finish() }
+        while controller.state != .processing && Date() < deadline { await Task.yield() }
+        XCTAssertEqual(controller.state, .processing)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: QuranRecitationJournal(root: root).folder(session).path),
+                      "Do not delete working audio while its hardware start is outstanding")
+        await gate.release()
+        await starting.value; await finishing.value
+        XCTAssertEqual(controller.state, .stopped)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: QuranRecitationJournal(root: root).folder(session).path))
+        await Task.yield(); XCTAssertNotEqual(controller.state, .listening)
+        XCTAssertTrue(controller.revealed.isEmpty)
+    }
+
+    private actor CaptureStartGate {
+        private var reply: CheckedContinuation<Void, Never>?
+        private(set) var waiting = false
+        func wait() async { waiting = true; await withCheckedContinuation { reply = $0 } }
+        func release() { reply?.resume(); reply = nil }
+    }
+    private final class DelayedCapture: QuranAudioCapture {
+        private let writer: QuranPCMWriter
+        private let gate: CaptureStartGate
+        init(writer: QuranPCMWriter, gate: CaptureStartGate) { self.writer = writer; self.gate = gate }
+        func start() async throws { await gate.wait() }
+        func stop() async -> Result<Int64, Error> {
+            await withCheckedContinuation { reply in writer.finish { reply.resume(returning: $0) } }
+        }
+    }
+
     @MainActor func testSilentInputWindowsRemainValidAcrossPauseResumeWithoutPreparingASROrInventingWords() async throws {
         // Explicit digital-silence negative control; not a physical microphone
         // or natural-learner accuracy claim. The actual UI suite covers input.
