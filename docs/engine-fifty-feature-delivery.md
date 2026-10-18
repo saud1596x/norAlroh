@@ -17,9 +17,9 @@ professional forced alignment must never adjudicate a learner.
 
 | ID | Additional behavior | Required acceptance | State |
 |---|---|---|---|
-| 01 | Independent Quran CTC recognition opinion | Real PCM raw output without reference text; pinned assets | E |
-| 02 | Agreement from two independent recognizers | Same actual source-word interval; measured disagreement abstention | P |
-| 03 | Suppress correction when recognizers disagree | Disagreement cannot become a confirmed learner error | P |
+| 01 | Independent Quran CTC recognition opinion | Bundled float16 integration,26-case conversion parity; current native acceptance pending | I |
+| 02 | Agreement from two independent recognizers | Same original PCM hash/clock; unique contemporaneous occurrences; native acceptance pending | I |
+| 03 | Suppress correction when recognizers disagree | Independent-only words/gaps cannot bridge primary evidence; raw hypotheses retained; native acceptance pending | I |
 | 04 | Retry a low-confidence word with its genuine audio context | Bounded retry, original clock and original rejected hypothesis retained | P |
 | 05 | Stable partial-word display | Revisions cannot flicker already committed words | P |
 | 06 | Recover words straddling decode windows | Real continuous utterance, no duplicated word/progress | P |
@@ -76,7 +76,7 @@ promoted merely by writing this ledger.
 
 ## First implementation batch
 
-Nine additional behaviors are integrated above; selected native verification
+Twelve additional behaviors are integrated above; selected native verification
 is recorded below. Existing per-take guidance reset/inline placement is preserved and is
 not counted again. Local Python tests:14passed, including actual pinned112:1
 audio at3%gain with an injected0.15DC fault, compared against the same unaltered
@@ -194,3 +194,29 @@ page visibility. Compare real iPhone Simulator captures with tools shown/hidden,
 regular/Tajweed modes, opening and dense pages, light/dark, small/large screens.
 Do not substitute an HTML mockup for native visual evidence. This is a separate
 product requirement and is not counted as extra engine features.
+
+## Independent native integration (not yet verified)
+
+Source2e96410bundles independent CTC for actual microphone windows. Original
+PCM hash and capture-frame clock bind the two acoustic opinions. Only a unique
+matching contemporaneous occurrence may retain a primary word; primary or
+secondary gaps split the run. No reference text enters CTC. Disagreement and
+verifier failure withhold progress while original PCM and hypotheses survive.
+
+Actual Mac source36afe9aconversion matched raw words26/26, including the
+public first-two-second openings and empty generated negative controls. This
+was conversion parity, not accuracy: minimum frame-label agreement0.99537,
+maximum posterior difference0.9937. Earlierint8candidate changed a public
+prefix and failed its gate; it was not promoted. The float16 source graph and
+weight bytes are pinned before Apple compilation. No model runtime download.
+
+Local decoder/package policies:7passed. Current paired native integration
+has not compiled/run yet; do not attribute3e961fc53/0to it. Full Release,
+physical microphone, natural learner correction precision and Tajweed quality
+remain unverified. No new TestFlight upload.
+
+Professional timing: a bounded5GB localGPU allocator completed40records for
+surahs94/97withoutbackenderrors:29candidates,9rejected,2resource-limited.
+These remain unreviewed and unshipped. A separate60minute all114/all20pass
+is running with exact policy fingerprints; historical/partial receipts never
+constitute whole-library approval.

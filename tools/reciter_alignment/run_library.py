@@ -68,13 +68,17 @@ def main():
             observed=json.loads(report.read_text(encoding='utf-8'))
             progress['records'][str(surah)]={'observed':len(observed['records']),
                                              'candidates':observed.get('measuredCandidates',0)}
+        except verify_catalog.LocalDiskReserve as error:
+            progress['stopReason']='LOCAL_DISK_RESERVE'
+            progress['resourceReason']=str(error)
+            save();break
         except Exception as error:
             progress['failures'][str(surah)]={'type':type(error).__name__,'message':str(error)[:4000]}
             # Preserve the actual backend reason; a truncated arena message
             # cannot establish memory exhaustion or a model/recording defect.
             (args.output/f'{surah:03}-failure.txt').write_text(traceback.format_exc(),encoding='utf-8')
         save()
-    progress['stopReason']='LOCAL_TIME_LIMIT' if time.monotonic()>=deadline else 'REQUESTED_PASS_FINISHED'
+    progress.setdefault('stopReason','LOCAL_TIME_LIMIT' if time.monotonic()>=deadline else 'REQUESTED_PASS_FINISHED')
     progress['wholeRecordingCandidates']=sum(r['candidates'] for r in progress['records'].values())
     progress['expectedWholeRecordingsForFullLibrary']=114*len(ids)
     save()

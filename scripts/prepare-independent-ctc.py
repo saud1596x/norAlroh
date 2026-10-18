@@ -89,7 +89,8 @@ def main():
             work=Path(temporary)
             subprocess.run([str(runtime),str(ROOT/'tools/reciter_alignment/export_coreml.py'),
                 '--model',str(Path.home()/'.cache/noor-independent-ctc'),
-                '--output',str(work),'--precision','float16','--prepare-only'],check=True)
+                '--output',str(work),'--precision','float16','--prepare-only'],
+                env=dict(os.environ,PYTHONHASHSEED='0'),check=True)
             verify_source(work/'quran-ctc-float16.mlpackage')
             cache.mkdir(exist_ok=True)
             shutil.copytree(work/'quran-ctc-float16.mlpackage',source)

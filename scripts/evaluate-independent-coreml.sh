@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Development conversion/parity only: no signing, deployment, audio upload or app replacement.
 set -euo pipefail
+export PYTHONHASHSEED=0
 cd "$(dirname "$0")/.."
 mkdir -p release/independent-coreml
 python3 -m venv /tmp/noor-coreml-runtime
@@ -10,3 +11,5 @@ python3 -m venv /tmp/noor-coreml-runtime
 python3 scripts/run-native-with-deadline.py 480 /tmp/noor-coreml-runtime/bin/python \
  tools/reciter_alignment/export_coreml.py --model "$HOME/.cache/noor-independent-ctc" \
  --output release/independent-coreml 2>&1 | tee release/independent-coreml/actual-log.txt
+python3 scripts/run-native-with-deadline.py 180 python3 scripts/verify-coreml-reproducibility.py \
+ 2>&1 | tee release/independent-coreml/reproducibility-log.txt

@@ -16,10 +16,21 @@ from faster_whisper.audio import decode_audio
 from ctc import Aligner, validate_recording_spans
 from audit import SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record, fingerprint, write_json
 from quran_onnx import InferenceIntervalLimit, InferenceWorkDeadline
+from stream_audio import pcm_blocks, bounded_pcm, windowed_pcm, AudioIntervalResourceLimit
 
 
 class LocalDeadline(Exception):
     pass
+
+class LocalDiskReserve(Exception):
+    pass
+
+
+def file_sha256(path):
+    digest=hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda:stream.read(1024*1024),b''):digest.update(chunk)
+    return digest.hexdigest()
 
 
 def check_deadline(stop_at):
@@ -99,6 +110,52 @@ def align_known_recording(aligner, pcm, windows, by_ayah, record, save, stop_at=
         record.update(result, alignmentMethod='WHOLE_SHORT_RECORDING_CTC_NO_PUBLISHER_CLOCK')
 
 
+def align_streamed_recording(aligner,path,windows,by_ayah,record,save,stop_at=None):
+    if not windows:raise ValueError('Missing exact publisher windows')
+    validate_ayah_windows(windows,by_ayah,windows[-1][2])
+    results=record.setdefault('ayahResults',{})
+    def unavailable(ayah):
+        results[str(ayah)]={'status':'RESOURCE_LIMIT_NOT_ASSESSED','reason':'Actual ayah exceeds bounded45second whole CTC interval'}
+        save()
+    def align(ayah,first,pcm):
+        check_deadline(stop_at)
+        cached=results.get(str(ayah))
+        if cached and cached.get('status')=='REJECTED':return
+        if cached and cached.get('status')=='MEASURED_CANDIDATE_REQUIRES_REVIEW':
+            try:
+                validate_recording_spans(cached['spans'],[w[0] for w in by_ayah[ayah]],(first+len(pcm))/16)
+                if cached['spans'][0][1]<first/16:raise ValueError('Cached span precedes actual window')
+                return
+            except (ValueError,KeyError,TypeError):results.pop(str(ayah),None)
+        try:
+            measured=aligner.align(pcm,by_ayah[ayah])
+            spans=[[word,first//16+start,first//16+end] for word,start,end in measured['spans']]
+            validate_recording_spans(spans,[w[0] for w in by_ayah[ayah]],(first+len(pcm))/16)
+            results[str(ayah)]={'status':'MEASURED_CANDIDATE_REQUIRES_REVIEW','spans':spans,
+                'minimumWordPosterior':measured['minimumWordPosterior'],'sourceFirstFrame':first,'sourceFrameCount':len(pcm),
+                'diagnostics':getattr(aligner,'diagnostics',None)}
+        except InferenceIntervalLimit as error:
+            results[str(ayah)]={'status':'RESOURCE_LIMIT_NOT_ASSESSED','reason':str(error)}
+        except ValueError as error:
+            results[str(ayah)]={'status':'REJECTED','reason':str(error),'diagnostics':getattr(aligner,'diagnostics',None)}
+        save()
+    total,control,largest=windowed_pcm(pcm_blocks(path),windows,align,unavailable,
+        check=lambda:check_deadline(stop_at))
+    record.update(durationSeconds=total/16000,sourceFrameCount=total,maximumRetainedPCMFrames=largest,
+                  alignmentMethod='EXACT_PUBLISHER_WINDOWS_SEQUENTIAL_S16_CTC1')
+    validate_ayah_windows(windows,by_ayah,total/16)
+    record['acceptedNativeWords']=sum(len(row.get('spans',[])) for row in results.values())
+    save()
+    if any(row['status']=='RESOURCE_LIMIT_NOT_ASSESSED' for row in results.values()):
+        record['controlClipAvailable']=True
+        return control,'RESOURCE_LIMIT_NOT_ASSESSED'
+    if any(row['status']=='REJECTED' for row in results.values()):return control,'REJECTED'
+    spans=[span for ayah in by_ayah for span in results[str(ayah)]['spans']]
+    validate_recording_spans(spans,[w[0] for words in by_ayah.values() for w in words],total/16)
+    record.update(spans=spans,minimumWordPosterior=min(row['minimumWordPosterior'] for row in results.values()))
+    return control,'MEASURED_CANDIDATE_REQUIRES_REVIEW'
+
+
 def main(existing_aligner=None, stop_at=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model',type=Path,required=True)
@@ -138,7 +195,7 @@ def main(existing_aligner=None, stop_at=None):
         if path.is_symlink():raise ValueError('Audio cache may not be a symlink')
         if not path.exists():
             import shutil
-            if shutil.disk_usage(args.output).free<1_000_000_000:raise ValueError('Keep1GB disk reserve; no audio fetched')
+            if shutil.disk_usage(args.output).free<1_000_000_000:raise LocalDiskReserve('Keep1GB disk reserve; stop audit, do not mark recordings failed')
             remaining=45 if stop_at is None else max(.1,min(45,stop_at-time.monotonic()))
             # Never leave a partial download looking like a valid cached MP3.
             temporary=path.with_suffix('.mp3.partial')
@@ -150,7 +207,8 @@ def main(existing_aligner=None, stop_at=None):
                         chunk=response.read(256*1024)
                         if not chunk:break
                         total+=len(chunk)
-                        if total>128_000_000:raise ValueError('Oversized public recording')
+                        if total>512_000_000:raise AudioIntervalResourceLimit('Public recording exceeds512MB development fetch limit')
+                        if shutil.disk_usage(args.output).free<1_000_000_000:raise LocalDiskReserve('Keep1GB disk reserve during bounded fetch')
                         sink.write(chunk)
                 temporary.replace(path)
             finally:
@@ -203,17 +261,27 @@ def main(existing_aligner=None, stop_at=None):
             if controls_passed(report) or control_pcm is not None:continue
             # Recover a real bounded control clip after a partial controls run.
         path=None
+        timing=published.get(reciter['server']) if args.ayah_windows else None
+        proposal=(timing['surahs'].get(str(args.surah)) if timing
+            and timing['recordingID']==reciter['recordingID'] and timing['reciterID']==reciter['id'] else None)
+        streamed=bool(proposal and proposal[-1][2]>30000 and args.onnx)
         try:
             _,path,url=fetch(reciter)
-            pcm=decode_audio(str(path),sampling_rate=16000)
+            pcm=None if streamed else bounded_pcm(path)
         except LocalDeadline:break
+        except LocalDiskReserve:raise
+        except AudioIntervalResourceLimit as error:
+            records[reciter['id']]={'reciterID':reciter['id'],'recordingID':reciter['recordingID'],
+                'audioURL':reciter['server']+f'{args.surah:03}.mp3','status':'RESOURCE_LIMIT_NOT_ASSESSED','reason':str(error)}
+            if path is not None and args.stream_cache and path.exists():path.unlink()
+            save_records();continue
         except Exception as error:
             records[reciter['id']]={'reciterID':reciter['id'],'recordingID':reciter['recordingID'],
                 'audioURL':reciter['server']+f'{args.surah:03}.mp3',
                 'status':'FETCH_OR_DECODE_FAILED','reason':type(error).__name__+': '+str(error)[:250]}
             save_records()
             continue
-        if control_pcm is None:
+        if control_pcm is None and pcm is not None:
             # A bounded excerpt of the actual recording also permits negative
             # controls for long surahs; never substitute generated acceptance.
             control_pcm=pcm[:480_000 if args.onnx else 1_920_000].copy()
@@ -221,23 +289,28 @@ def main(existing_aligner=None, stop_at=None):
             if args.stream_cache:path.unlink()
             continue
         record={'reciterID':reciter['id'],'recordingID':reciter['recordingID'],
-                'audioURL':url,'audioSHA256':hashlib.sha256(path.read_bytes()).hexdigest(),
-                'durationSeconds':len(pcm)/16000,'expectedNativeWords':len(words)}
+                'audioURL':url,'audioSHA256':file_sha256(path),
+                'expectedNativeWords':len(words)}
+        if pcm is not None:record['durationSeconds']=len(pcm)/16000
         if old is not None and old.get('audioSHA256')==record['audioSHA256']:
             record['ayahResults']=old.get('ayahResults',{})
         record['status']='IN_PROGRESS'
         records[reciter['id']]=record
         start=time.monotonic()
         try:
-            timing=published.get(reciter['server']) if args.ayah_windows else None
-            if timing and timing['recordingID']==reciter['recordingID'] and timing['reciterID']==reciter['id'] and str(args.surah) in timing['surahs']:
+            if streamed:
+                bounded_control,status=align_streamed_recording(aligner,path,proposal,by_ayah,record,save_records,stop_at)
+                if control_pcm is None:control_pcm=bounded_control
+                record['status']=status
+            elif timing and timing['recordingID']==reciter['recordingID'] and timing['reciterID']==reciter['id'] and str(args.surah) in timing['surahs']:
                 align_known_recording(aligner,pcm,timing['surahs'][str(args.surah)],by_ayah,record,save_records,stop_at)
             else:
                 check_deadline(stop_at)
                 if len(pcm)>1_920_000:
                     raise InferenceIntervalLimit('Long whole recording needs separately evidenced ayah intervals')
                 record.update(aligner.align(pcm,words))
-            validate_recording_spans(record['spans'],[w[0] for w in words],len(pcm)/16)
+            if not streamed:
+                validate_recording_spans(record['spans'],[w[0] for w in words],len(pcm)/16)
         except LocalDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
         except InferenceWorkDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
         except InferenceIntervalLimit as error:record.update(status='RESOURCE_LIMIT_NOT_ASSESSED',reason=str(error))
@@ -250,6 +323,7 @@ def main(existing_aligner=None, stop_at=None):
             cache=(args.audio_cache or args.output).resolve()
             if path.resolve().parent!=cache or path.is_symlink():raise ValueError('Unsafe cache cleanup target')
             path.unlink()
+        pcm=None
     # Negative inputs are genuine absence/noise controls, never acceptance audio.
     controls=[('silence',np.zeros(16000,dtype=np.float32),words),
             ('noise',np.random.default_rng(42).normal(0,.02,16000).astype(np.float32),words),

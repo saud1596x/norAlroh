@@ -173,6 +173,13 @@ def main():
         compute_units=ct.ComputeUnit.CPU_AND_GPU)
     float_path = args.output/f'quran-ctc-{args.precision}.mlpackage'
     converted.save(str(float_path))
+    # Protocol-buffer maps may serialize in a different order across processes.
+    # Preserve every graph/metadata field and weight, but canonicalize their
+    # wire encoding. Actual prediction below reloads these very source bytes.
+    model_spec=float_path/'Data/com.apple.CoreML/model.mlmodel'
+    model_spec.write_bytes(converted.get_spec().SerializeToString(deterministic=True))
+    report['sourceSerialization']='protobuf-deterministic1'
+    converted=ct.models.MLModel(str(float_path),compute_units=ct.ComputeUnit.CPU_AND_GPU)
     print('NOOR_CTC_COREML_FLOAT16_PACKAGE_READY', flush=True)
     if args.prepare_only:
         print('NOOR_CTC_SOURCE_GENERATED_NOT_ACOUSTICALLY_TESTED',flush=True)

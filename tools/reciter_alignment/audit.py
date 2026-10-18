@@ -14,7 +14,7 @@ def fingerprint(root):
         'ios/Athar/quran.json', 'ios/Athar/haramain-reciters.json',
         'ios/Athar/surah-ayah-timings.json',
         *[f'tools/reciter_alignment/{name}.py' for name in
-          ('ctc', 'quran_ctc', 'quran_onnx', 'verify_catalog', 'run_library', 'audit')],
+          ('ctc', 'quran_ctc', 'quran_onnx', 'stream_audio', 'verify_catalog', 'run_library', 'audit')],
     ]
     hashes = {name: hashlib.sha256((Path(root)/name).read_bytes()).hexdigest() for name in paths}
     digest = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
