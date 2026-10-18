@@ -3,7 +3,16 @@
 This document authorizes no purchase, quota request, credential, public endpoint
 or recurring deployment. The account's actual create page currently states:
 "You don't have access to Droplet GPUs" and disables creation. No resource was
-created and no access request was submitted.
+created at proposal preparation.
+
+Subsequent explicit user approval authorized sending the GPU limit request and
+a separate two-hour trial with a total USD3 ceiling, not recurring operation.
+Actual support portal confirms ticket12918189, Open, requested facet
+DROPLET_GPU_COUNT=1 and the exact Noor/public-audio reason. No benchmark host
+exists yet and trial spend is zero. The existing Roleva SSH key was not selected
+or expanded. No additional credentials or public endpoint were created.
+
+[Submitted request12918189](https://cloudsupport.digitalocean.com/s/case-detail?recordId=500QP00001p5xCsYAI)
 
 ## Selected initial comparison
 
