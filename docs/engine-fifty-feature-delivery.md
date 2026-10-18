@@ -17,9 +17,9 @@ professional forced alignment must never adjudicate a learner.
 
 | ID | Additional behavior | Required acceptance | State |
 |---|---|---|---|
-| 01 | Independent Quran CTC recognition opinion | Native path written; later float16 prefix parity failed, full-precision conversion and native acceptance pending | I |
-| 02 | Agreement from two independent recognizers | Same original PCM hash/clock; unique contemporaneous occurrences; native acceptance pending | I |
-| 03 | Suppress correction when recognizers disagree | Independent-only words/gaps cannot bridge primary evidence; raw hypotheses retained; native acceptance pending | I |
+| 01 | Independent Quran CTC recognition opinion | Actual bundled FP32 prefix/whole recognition passed in native run ed44bf0; natural learner/device accuracy not established | V |
+| 02 | Agreement from two independent recognizers | Native source-hash/clock and unique occurrence regressions passed; actual continuous public PCM passed; learner accuracy not established | V |
+| 03 | Suppress correction when recognizers disagree | Native independent-only/gap and raw-source preservation regressions passed; no calibrated learner correction precision claim | V |
 | 04 | Retry a low-confidence word with its genuine audio context | Bounded retry, original clock and original rejected hypothesis retained | P |
 | 05 | Stable partial-word display | Revisions cannot flicker already committed words | P |
 | 06 | Recover words straddling decode windows | Real continuous utterance, no duplicated word/progress | P |
@@ -195,7 +195,7 @@ regular/Tajweed modes, opening and dense pages, light/dark, small/large screens.
 Do not substitute an HTML mockup for native visual evidence. This is a separate
 product requirement and is not counted as extra engine features.
 
-## Independent native integration (not yet verified)
+## Initial independent native integration (historical state)
 
 Source2e96410bundles independent CTC for actual microphone windows. Original
 PCM hash and capture-frame clock bind the two acoustic opinions. Only a unique
@@ -256,3 +256,35 @@ and remeasures if the bytes changed. The prefix is never a complete-recording
 acceptance sample. The local tooling/package suite passed34cases plus9subtests,
 including exact public-PCM decoder/prefix parity. These tests do not establish
 learner or professional timing accuracy.
+
+## Current native verification — ed44bf0
+
+Codemagic `6ad50d777550aed8108fe77d` on exact source
+`ed44bf01da9d7732d146de7030e8be649dbe64b5` completed 59 selected Release
+tests with zero failures in 70.450 seconds, Xcode26.3/iOS26.2/iPhone17Pro.
+This includes actual bundled full-precision CTC on a public first-two-second
+prefix and its full clip, source identity/occurrence agreement policies, and
+the real controller locating112:1 then114:1 within the same listening take.
+The controller's transport supplies original public PCM; this is not a
+physical microphone test. The two recognition checkpoints took16.772seconds
+and5.735seconds respectively, including current preparation/processing.
+They are not calibrated per-word latency measurements on a phone.
+
+The earlier27d7069native run passed58/59, failing its first112:1checkpoint.
+That failure remains recorded. Independent and primary model preparation
+previously ran serially; ed44bf0warms them concurrently and retains the same
+20second checkpoint condition. This matching rerun passed. Preparation of
+the independent model measured10.952seconds in this run. No inference
+precision, matching criterion or original PCM was changed to obtain the pass.
+
+Proof: `outputs/native-ed4-confirmed-pass.txt`. Subsequent commits dd8d481
+and2e1138cchange CI screenshot collection only; the `ios/` application tree
+is identical to the passed source. Current native UI screenshot collection is
+separate and pending. A previous UI workflow completed47unit cases including
+all604Tajweed/hidden-word geometry and one UI journey, but timed out during
+an additional comfort test; do not relabel that workflow as successful.
+
+This verifies the limited scope of ledger01–03, not all50additions, natural
+learner correction precision, calibrated Tajweed assessment, phone audio,
+complete app Release acceptance, or word tracking for all20readers. No new
+TestFlight upload has occurred yet.
