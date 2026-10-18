@@ -565,7 +565,7 @@ import os
                         $0.takeID == take && $0.start >= window.offset && $0.end <= Double(window.endFrame) / 16_000
                     }
                     var nextLocation = displayLocation
-                    nextLocation.update(nextTracker.evidence)
+                    nextLocation.update(nextTracker.evidence, matchingCurrentWindow: matched)
                     try Task.checkCancellation()
                     return (nextTracker, additions, visible, revealed, matched, nextLocation)
                 }

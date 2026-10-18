@@ -18,7 +18,11 @@ public struct QuranListeningLocation: Sendable {
         self.takeID = takeID; frontier = -1; anchor = nil; activeNativeID = nil
     }
 
-    public mutating func update(_ evidence: [QuranWordEvidence]) {
+    public mutating func update(_ evidence: [QuranWordEvidence], matchingCurrentWindow: Bool = true) {
+        // Older audio can remain valid session evidence without being current
+        // speech. An unlocated/silent window cannot keep that word highlighted.
+        // Keep the reading position and shown text; no new error is inferred.
+        guard matchingCurrentWindow else { anchor = nil; activeNativeID = nil; return }
         let current = evidence.filter {
             $0.takeID == takeID && $0.start.isFinite && $0.end.isFinite
                 && $0.start >= 0 && $0.end > $0.start && $0.nativeID > 0

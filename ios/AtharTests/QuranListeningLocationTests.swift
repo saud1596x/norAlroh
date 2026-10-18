@@ -58,4 +58,15 @@ final class QuranListeningLocationTests: XCTestCase {
         XCTAssertNil(location.activeNativeID)
         XCTAssertEqual(location.verse, "1:4", "Losing the latest evidence cannot send the viewport back to older audio")
     }
+
+    func testUnlocatedWindowCannotKeepOlderAcceptedWordHighlightedAsCurrentSpeech() {
+        var location = QuranListeningLocation(); location.begin(takeID: take)
+        let older = word(8, "1:3", 4, 5)
+        location.update([older]); XCTAssertEqual(location.activeNativeID, 8)
+        location.update([older], matchingCurrentWindow: false)
+        XCTAssertNil(location.activeNativeID)
+        XCTAssertEqual(location.verse, "1:3", "Previously read text/location is retained without current-word certainty")
+        location.update([older, word(11, "1:4", 7, 8)])
+        XCTAssertEqual(location.activeNativeID, 11); XCTAssertEqual(location.verse, "1:4")
+    }
 }

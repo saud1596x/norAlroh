@@ -35,6 +35,10 @@ conflict, clears the current highlight while retaining viewport history, and
 allows coherent re-interpretation at the same source clock. A regression covers
 this sequence and refusal to jump back to older audio. Native/Swift execution
 of this new change is still required; the69case result predates it.
+An unlocated/silent current window also clears the active-word highlight,
+even if earlier accepted audio remains elsewhere in the session. This does
+not hide any previously shown ayah, create a wording error, or replace source
+observations. Fresh actual matching evidence can resume the highlight.
 
 Professional-reciter development audit also had a retry preservation defect.
 When a partial chapter needed a new negative-control excerpt, failed DNS on
