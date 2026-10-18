@@ -57,6 +57,17 @@ workflows:
         script: python3 scripts/run-native-with-deadline.py 720 bash scripts/test-engine-repair.sh
     artifacts:
       - release/engine-repair/**
+  engine-boundary-check:
+    <<: *continuous_reader_check
+    name: Noor source-word boundaries and genuine PCM ASR (not full release)
+    max_build_duration: 12
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify source evidence and continuous bundled recognition
+        script: bash scripts/test-engine-boundaries.sh
+    artifacts:
+      - release/engine-boundaries/**
   daily-ease-check:
     name: Noor daily ward, automatic setup and clear adhkar
     instance_type: mac_mini_m2

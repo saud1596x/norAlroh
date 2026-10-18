@@ -76,30 +76,42 @@ class Recognizer:
         peak = float(np.max(np.abs(original)))
         rms = float(np.sqrt(np.mean(original.astype(np.float64)**2)))
         hardware = f'cpu-threads{self.cpu_threads}' if self.device == 'cpu' else 'cuda'
-        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1'
+        configuration = f'faster-whisper1.2.1/{self.compute_type}/{hardware}/beam1/silero-v6/no-prompt/audio-gate1/run-evidence2'
         if peak == 0 or rms < 0.00001:
-            return {'words': [], 'unresolved': False, 'inference_ms': 0, 'processing_configuration':configuration}
+            return {'words': [], 'observations': [], 'unresolved': False, 'inference_ms': 0, 'processing_configuration':configuration}
         gain = max(1, min(256, 0.06/max(rms, 0.000001), 0.9/peak))
         samples = original * gain
         segments, _ = self.model.transcribe(samples, language='ar', beam_size=1, temperature=0,
             condition_on_previous_text=False, word_timestamps=True, vad_filter=True,
             vad_parameters={'min_speech_duration_ms': 100, 'min_silence_duration_ms': 300})
-        words, unresolved = [], False
+        words, observations, unresolved = [], [], False
+        run_index, previous_end = 0, 0.0
         duration = len(samples)/16000
         for segment in segments:
-            if not math.isfinite(segment.no_speech_prob) or not 0 <= segment.no_speech_prob < .6:
-                unresolved = True; continue
+            speech = math.isfinite(segment.no_speech_prob) and 0 <= segment.no_speech_prob < .6
+            if not speech: unresolved = True
             for word in segment.words or []:
-                timing = all(math.isfinite(v) for v in [word.start, word.end, word.probability])
-                valid = timing and 0 <= word.start < word.end <= duration and .75 <= word.probability <= 1
+                timing = all(math.isfinite(v) for v in [word.start, word.end]) and 0 <= word.start < word.end <= duration
+                confidence = word.probability if math.isfinite(word.probability) and 0 <= word.probability <= 1 else None
+                text = word.word.strip()
+                valid = speech and timing and word.start >= previous_end and confidence is not None and confidence >= .75
+                if timing: previous_end = max(previous_end, word.end)
                 if valid:
                     local = samples[int(word.start*16000):int(word.end*16000)]
                     valid = bool(len(local)) and float(np.sqrt(np.mean(local.astype(np.float64)**2))) >= .02
-                if not valid or len(word.word.split()) != 1:
-                    unresolved = True; continue
-                words.append({'text': word.word.strip(), 'start': word.start, 'end': word.end,
-                              'confidence': word.probability})
+                valid = valid and len(text.split()) == 1 and len(text) <= 128
+                if text and len(text) <= 128:
+                    observations.append({'occurrence_index':len(observations), 'run_index':run_index,
+                        'text':text, 'start':word.start if timing else None, 'end':word.end if timing else None,
+                        'confidence':confidence, 'recognition_state':'accepted' if valid else 'unassessable'})
+                if not valid:
+                    # A discarded source token is an acoustic discontinuity,
+                    # not permission to join its two neighbors into an anchor.
+                    unresolved = True; run_index += 1; continue
+                words.append({'text':text, 'start':word.start, 'end':word.end,
+                              'confidence':confidence, 'run_index':run_index})
+            if not speech: run_index += 1
         elapsed = time.monotonic()-start
         self.completed += 1; self.total_seconds += elapsed
-        return {'words': words, 'unresolved': unresolved, 'inference_ms': round(elapsed*1000, 3),
+        return {'words': words, 'observations':observations, 'unresolved': unresolved, 'inference_ms': round(elapsed*1000, 3),
                 'processing_configuration':configuration}

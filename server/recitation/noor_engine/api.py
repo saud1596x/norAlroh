@@ -157,7 +157,8 @@ def create_app(settings, recognizer=None, verifier=None):
                 c.execute(text('SELECT 1'))
         except Exception: raise HTTPException(503, 'database_unavailable') from None
         return {'ready':True, 'model_id':recognizer.model_id, 'model_revision':recognizer.revision,
-                'corpus_version':corpus.version, 'wording_assessment':'uncalibrated', 'tajweed_assessment':'unsupported'}
+                'corpus_version':corpus.version, 'wording_assessment':'uncalibrated', 'tajweed_assessment':'unsupported',
+                'word_evidence_version':2}
 
     @app.post('/v1/auth/apple/challenge', response_model=ChallengeReply)
     def challenge(request: Request):

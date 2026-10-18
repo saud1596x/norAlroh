@@ -96,6 +96,15 @@ uncalibrated ASR text. A pause/shared phrase yields uncertainty, not a mistake.
 The native client validates events transactionally then passes source words
 through its independent acoustic gate, tracker and durable local journal.
 
+Word evidence version2 adds ordered source observations (including rejected
+tokens with nullable timing/confidence) and explicit acoustic run indices.
+Rejected/no-speech/overlapping-timestamp tokens break a run; their two neighbors
+cannot form an artificial contiguous anchor. The native client requires version2
+readiness, verifies accepted source identity, rechecks actual PCM independently
+and retains unassessable observations without awarding progress. Existing local
+capture and approved Mushaf appearance are unaffected. This is a contract/policy
+repair, not a claim of calibrated ASR or physical-device verification.
+
 ## Staging operations / remaining blockers
 
 `compose.yaml` builds from repository root, binds port8080 to loopback only and

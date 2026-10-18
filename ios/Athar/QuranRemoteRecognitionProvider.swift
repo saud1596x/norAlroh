@@ -59,6 +59,61 @@ enum QuranRemoteRecognitionFailure: Error {
     case consentRequired, identityRequired, invalidResponse, serverUnavailable, concurrentWindow, cancelled
 }
 
+/// Preserve the source decoder's uncertainty boundaries before native anchoring.
+/// Rejected observations are retained locally but can never reveal a Quran word.
+enum QuranRemoteWordEvidence {
+    struct Word: Decodable {
+        let text: String; let start: Double; let end: Double; let confidence: Double; let run_index: Int
+    }
+    struct Observation: Decodable {
+        let occurrence_index: Int; let run_index: Int; let text: String
+        let start: Double?; let end: Double?; let confidence: Double?; let recognition_state: String
+    }
+    static func resolve(words: [Word], observations: [Observation], window: QuranAudioWindow,
+                        baseFrame: Int64, unresolved: Bool) throws -> QuranRecognitionWorker.Result {
+        guard words.count <= 160, observations.count <= 320 else { throw QuranRemoteRecognitionFailure.invalidResponse }
+        let accepted = observations.filter { $0.recognition_state == "accepted" }
+        guard accepted.count == words.count, zip(accepted, words).allSatisfy({ source, word in
+            source.text == word.text && source.start == word.start && source.end == word.end
+                && source.confidence == word.confidence && source.run_index == word.run_index
+        }) else { throw QuranRemoteRecognitionFailure.invalidResponse }
+        let samples = try QuranRecognitionAudio.conditioned(window.samples)
+        var runs: [[QuranHeardWord]] = [[]]
+        var saved: [QuranObservedWord] = []
+        var uncertain = unresolved
+        var previousRun = 0
+        var previousEnd: Double = 0
+        for (index, source) in observations.enumerated() {
+            guard source.occurrence_index == index, (previousRun...320).contains(source.run_index),
+                  !source.text.isEmpty, source.text.count <= 128,
+                  ["accepted", "unassessable"].contains(source.recognition_state),
+                  source.confidence.map({ $0.isFinite && (0...1).contains($0) }) ?? true,
+                  (source.start == nil) == (source.end == nil) else { throw QuranRemoteRecognitionFailure.invalidResponse }
+            if source.run_index != previousRun { runs.append([]) }
+            previousRun = source.run_index
+            let takeStart = source.start.map { $0 + Double(baseFrame) / 16000 }
+            let takeEnd = source.end.map { $0 + Double(baseFrame) / 16000 }
+            let start = takeStart.map { $0 - window.offset }, end = takeEnd.map { $0 - window.offset }
+            if let start, let end {
+                guard start.isFinite, end.isFinite, start >= 0, end > start,
+                      end <= Double(samples.count) / 16000 else { throw QuranRemoteRecognitionFailure.invalidResponse }
+            }
+            var usable = false
+            if source.recognition_state == "accepted", let start, let end, let confidence = source.confidence {
+                usable = start >= previousEnd && QuranAlignedWord.tokens([source.text]).count == 1
+                    && AudioEvidenceGate.rejection(.init(start: Float(start), end: Float(end), probability: Float(confidence)), samples: samples) == nil
+                if usable { runs[runs.count-1].append(.init(text: source.text, start: start, end: end, probability: confidence)) }
+            }
+            if let end { previousEnd = max(previousEnd, end) }
+            saved.append(.init(occurrenceIndex: index, runIndex: runs.count-1, observedText: source.text,
+                startInTakeSeconds: takeStart, endInTakeSeconds: takeEnd, backendConfidence: source.confidence,
+                recognitionState: usable ? "accepted" : "unassessable", timingSource: start == nil ? "unavailable" : "backend-word"))
+            if !usable { uncertain = true; runs.append([]) }
+        }
+        return .init(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: uncertain, observations: saved)
+    }
+}
+
 /// Remote recognition still returns source words to the existing local acoustic
 /// gate / native-ID tracker / durable journal. Server event IDs cannot directly
 /// reveal scripture, award progress or assert pronunciation correctness.
@@ -136,9 +191,9 @@ actor QuranRemoteRecognitionProvider: QuranSpeechRecognitionProvider {
             refreshToken = credential.refresh_token; accessExpiry = Date().addingTimeInterval(Double(credential.expires_in))
         }
         let ready = try await request("health/ready")
-        struct Ready: Decodable { let model_id: String; let model_revision: String; let corpus_version: String }
+        struct Ready: Decodable { let model_id: String; let model_revision: String; let corpus_version: String; let word_evidence_version: Int }
         let model = try JSONDecoder().decode(Ready.self, from: ready)
-        guard model.model_id == capabilities.modelID, model.model_revision == capabilities.modelRevision,
+        guard model.word_evidence_version == 2, model.model_id == capabilities.modelID, model.model_revision == capabilities.modelRevision,
               model.corpus_version == "1968cf3a4e8338ae2056b5fba309099d2f7645b1609062cc1a52eac1804c5951" else {
             throw QuranRemoteRecognitionFailure.invalidResponse
         }
@@ -164,9 +219,9 @@ actor QuranRemoteRecognitionProvider: QuranSpeechRecognitionProvider {
         let sequence: Int; let start_frame: Int64; let end_frame: Int64
     }
     private struct Response: Decodable {
-        struct Word: Decodable { let text: String; let start: Double; let end: Double; let confidence: Double }
         let sequence: Int
-        let words: [Word]
+        let words: [QuranRemoteWordEvidence.Word]
+        let observations: [QuranRemoteWordEvidence.Observation]
         let has_unresolved_speech: Bool
         let events: [QuranRemoteEventReducer.Event]
         let processing_configuration: String
@@ -238,30 +293,11 @@ actor QuranRemoteRecognitionProvider: QuranSpeechRecognitionProvider {
         guard let sessionID else { throw QuranRemoteRecognitionFailure.invalidResponse }
         try eventReducer.consume(response.events, session: sessionID, sequence: sequence,
             startFrame: streamStart, endFrame: streamEnd)
-        let samples = try QuranRecognitionAudio.conditioned(window.samples)
-        var runs: [[QuranHeardWord]] = [[]]
-        var observations: [QuranObservedWord] = []
-        var unresolved = response.has_unresolved_speech
-        for (index, word) in response.words.enumerated() {
-            // Server positions are take-relative; existing provider contract
-            // supplies window-relative heard words and take-relative observations.
-            let takeStart = word.start+Double(base)/16000, takeEnd = word.end+Double(base)/16000
-            let start = takeStart-window.offset, end = takeEnd-window.offset
-            let evidence = AudioEvidenceGate.Evidence(start: Float(start), end: Float(end), probability: Float(word.confidence))
-            guard start.isFinite, end.isFinite, word.confidence.isFinite,
-                  start >= 0, end <= Double(samples.count)/16000,
-                  AudioEvidenceGate.rejection(evidence, samples: samples) == nil,
-                  QuranAlignedWord.tokens([word.text]).count == 1 else {
-                unresolved = true; runs.append([]); continue
-            }
-            runs[runs.count-1].append(.init(text: word.text, start: start, end: end, probability: word.confidence))
-            observations.append(.init(occurrenceIndex: index, runIndex: runs.count-1, observedText: word.text,
-                startInTakeSeconds: takeStart, endInTakeSeconds: takeEnd, backendConfidence: word.confidence,
-                recognitionState: "accepted", timingSource: "backend-word"))
-        }
+        var result = try QuranRemoteWordEvidence.resolve(words: response.words, observations: response.observations,
+            window: window, baseFrame: base, unresolved: response.has_unresolved_speech)
         self.sequence += 1
-        return .init(runs: runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: unresolved, observations: observations,
-                     windowID: UUID(), processingConfiguration: response.processing_configuration)
+        result.windowID = UUID(); result.processingConfiguration = response.processing_configuration
+        return result
     }
     func endTake() async {
         generation = UUID(); socket?.cancel(with: .goingAway, reason: nil); socket = nil

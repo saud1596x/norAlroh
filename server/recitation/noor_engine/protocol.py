@@ -2,6 +2,7 @@
 import hashlib
 import struct
 import time
+from itertools import groupby
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 from .observations import candidates
@@ -50,7 +51,12 @@ class SessionIntelligence:
         first, last = header.start_frame/16000, header.end_frame/16000
         retained = [e for e in previous.get('evidence', []) if not (e['start'] >= first and e['end'] <= last)]
         surviving_cursor = self.corpus.by_id[retained[-1]['native_id']]+1 if retained else None
-        aligned = self.corpus.align(heard, expected_cursor=surviving_cursor)
+        aligned = []
+        cursor = surviving_cursor
+        for _, run in groupby(heard, key=lambda w:w.get('run_index', 0)):
+            anchor = self.corpus.align(list(run), expected_cursor=cursor)
+            aligned.extend(anchor)
+            if anchor: cursor = self.corpus.by_id[anchor[-1]['native_id']]+1
         observations = candidates(self.corpus, heard, aligned) if not decoded['unresolved'] else []
         retained_observations = [e for e in previous.get('observations', []) if not (e['start'] >= first and e['end'] <= last)]
         state = {'evidence': (retained + aligned)[-200:], 'verse':retained[-1]['verse'] if retained else None,
@@ -88,6 +94,8 @@ class SessionIntelligence:
             state['cursor'] = self.corpus.by_id[aligned[-1]['native_id']]+1
         elif not heard:
             emit('SESSION_INTERRUPTED', {'reason':'silence_or_unresolved_audio', 'is_recitation_error':False})
-        return state, {'sequence':header.sequence, 'events':events, 'words':heard,
+        source_observations = [dict(w, start=w['start']+offset if w['start'] is not None else None,
+            end=w['end']+offset if w['end'] is not None else None) for w in decoded.get('observations', [])]
+        return state, {'sequence':header.sequence, 'events':events, 'words':heard, 'observations':source_observations,
                        'has_unresolved_speech':decoded['unresolved'], 'inference_ms':decoded['inference_ms'],
                        'processing_configuration':decoded.get('processing_configuration','unavailable')}, counter

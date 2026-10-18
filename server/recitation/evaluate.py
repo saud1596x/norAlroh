@@ -101,10 +101,19 @@ def main():
                 resume=client.get('/v1/sessions/'+sid,headers=headers);resume.raise_for_status()
                 if resume.json()['next_sequence']!=1: raise ValueError('invalid recovery state')
                 actual=[normalize(w['text']) for w in result['words']]
+                source=result['observations']
+                accepted=[w for w in source if w['recognition_state']=='accepted']
+                if any(w['occurrence_index'] != index for index,w in enumerate(source)):
+                    raise ValueError('source occurrence order changed')
+                identity=lambda w:tuple(w[k] for k in ['text','start','end','confidence','run_index'])
+                if [identity(w) for w in accepted] != [identity(w) for w in result['words']]:
+                    raise ValueError('accepted source observations do not match decoded words')
                 locations=[e['payload']['verse'] for e in result['events'] if e['type']=='VERSE_LOCATION_CHANGED']
                 chars_left=''.join(reference);chars_right=''.join(actual)
                 results.append({'case':name,'audio_seconds':len(samples)/16000,'reference_words':len(reference),
                     'recognized_words':len(actual),'word_edits':distance(reference,actual),'reference_characters':len(chars_left),
+                    'source_observations':len(source),'unassessable_observations':len(source)-len(accepted),
+                    'acoustic_runs':len({w['run_index'] for w in accepted}),'source_word_identity_verified':True,
                     'character_edits':distance(chars_left,chars_right),'correct_verse':locations==[verse] if verse else None,
                     'reported_locations':locations,'false_control_location':bool(locations) if not verse else None,
                     'network_and_inference_seconds':latency,'inference_ms':result['inference_ms'],
