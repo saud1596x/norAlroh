@@ -562,6 +562,7 @@ import os
                     observed.recognitionRevision = 0
                     observed.wordObservations = observations
                     observed.processingConfiguration = recognized.processingConfiguration
+                    observed.independentRecognition = recognized.independentRecognition
                 }
                 var spans = current.observedSpeech ?? []
                 // Keep recognizer revisions as source evidence. Assessment can

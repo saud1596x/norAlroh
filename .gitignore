@@ -34,4 +34,7 @@ backend/node_modules/
 backend/*debug.log
 
 ios/RecitationModel/
+ios/IndependentCTC/
+ios/ctc-compiled-*/
+release/independent-coreml-model/
 ios/Athar/mushaf-snapshot.json

@@ -1,6 +1,7 @@
 import Foundation
 import WhisperKit
 import os
+import CryptoKit
 
 /// Keep the bundled decoder's source uncertainty before exact Quran anchoring.
 /// This gate is independently testable without constructing a Core ML model.
@@ -62,6 +63,7 @@ actor QuranRecognitionWorker {
         var observations: [QuranObservedWord]? = nil
         var windowID: UUID? = nil
         var processingConfiguration: String? = nil
+        var independentRecognition: QuranIndependentObservation? = nil
     }
     private var engine: WhisperKit?
     private var loading: Task<Void, Error>?
@@ -77,6 +79,7 @@ actor QuranRecognitionWorker {
         try await QuranRecognitionReference.shared.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
     func prepare() async throws {
+        try? await QuranIndependentCTC.shared.prepare()
         if engine != nil { return }
         if let loading { try await loading.value; return }
         guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil) else {
@@ -146,9 +149,58 @@ actor QuranRecognitionWorker {
         os_signpost(.event, log: Self.diagnostics, name: "Recognition gate counts",
             "accepted=%{public}d invalidAudio=%{public}d timing=%{public}d confidence=%{public}d quiet=%{public}d tokenBoundary=%{public}d",
             decoded.accepted, decoded.rejectedAudio, decoded.rejectedTiming, decoded.rejectedConfidence, decoded.rejectedQuiet, decoded.rejectedTokenBoundary)
-        return Result(runs: decoded.runs.filter { !$0.isEmpty }, hasUnresolvedSpeech: decoded.unresolved,
-                      observations: decoded.observations, windowID: UUID(),
-                      processingConfiguration: QuranRecognitionModelDescriptor.bundled.map { $0.configuration + "/run-evidence2/untimed-segment1/dc-copy1/" + QuranSpokenInitials.revision })
+        let sourceConfiguration = QuranRecognitionModelDescriptor.bundled.map {
+            $0.configuration + "/run-evidence2/untimed-segment1/dc-copy1/" + QuranSpokenInitials.revision
+        } ?? "bundled-primary"
+        let independent: QuranIndependentObservation
+        do {
+            independent = try await QuranIndependentCTC.shared.recognize(window)
+        } catch is CancellationError { throw CancellationError() }
+        catch {
+            // Keep the genuine primary hypothesis, but do not let an absent
+            // verifier silently masquerade as agreement. Capture stays alive.
+            let raw = decoded.observations.map { word in QuranObservedWord(
+                observationID:word.observationID,occurrenceIndex:word.occurrenceIndex,runIndex:word.runIndex,
+                observedText:word.observedText,startInTakeSeconds:word.startInTakeSeconds,
+                endInTakeSeconds:word.endInTakeSeconds,backendConfidence:word.backendConfidence,
+                recognitionState:"unassessable",timingSource:word.timingSource) }
+            return Result(runs:[],hasUnresolvedSpeech:true,observations:raw,windowID:UUID(),
+                          processingConfiguration:sourceConfiguration+"/independent-unavailable1")
+        }
+        try Task.checkCancellation()
+        let expectedSHA = window.samples.withUnsafeBufferPointer { buffer in
+            SHA256.hash(data:Data(buffer:buffer)).map{String(format:"%02x",$0)}.joined()
+        }
+        guard independent.sourceSHA256 == expectedSHA,
+              independent.valid(start:window.offset,end:Double(window.endFrame)/16_000) else {
+            throw QuranAlignmentFailure.invalidEvidence
+        }
+        let agreement = try QuranIndependentAgreement.evaluate(decoded.runs,independent:independent.words,
+                                                                duration:Double(window.samples.count)/16_000)
+        let accepted = Set(agreement.retained.map { QuranIndependentAgreement.Key(text:$0.text,
+            start:window.offset+$0.start,end:window.offset+$0.end) })
+        let starts = Set(agreement.runs.compactMap { $0.first }.map {
+            QuranIndependentAgreement.Key(text:$0.text,start:window.offset+$0.start,end:window.offset+$0.end)
+        })
+        var raw: [QuranObservedWord] = [], runIndex = 0, previousOriginalRun: Int?
+        for word in decoded.observations {
+            if let previousOriginalRun, word.runIndex != previousOriginalRun { runIndex += 1 }
+            previousOriginalRun = word.runIndex
+            let retained = word.recognitionState == "accepted" && word.startInTakeSeconds != nil
+                && word.endInTakeSeconds != nil && accepted.contains(.init(text:word.observedText,
+                    start:word.startInTakeSeconds!,end:word.endInTakeSeconds!))
+            if retained, starts.contains(.init(text:word.observedText,start:word.startInTakeSeconds!,end:word.endInTakeSeconds!)) {
+                runIndex += 1
+            }
+            raw.append(QuranObservedWord(observationID:word.observationID,occurrenceIndex:word.occurrenceIndex,
+                runIndex:runIndex,observedText:word.observedText,startInTakeSeconds:word.startInTakeSeconds,
+                endInTakeSeconds:word.endInTakeSeconds,backendConfidence:word.backendConfidence,
+                recognitionState:retained ? "accepted" : "unassessable",timingSource:word.timingSource))
+            if !retained { runIndex += 1 }
+        }
+        return Result(runs:agreement.runs,hasUnresolvedSpeech:decoded.unresolved || agreement.disagreements > 0 || agreement.hasIndependentOnlyWords,
+                      observations:raw,windowID:UUID(),processingConfiguration:sourceConfiguration+"/paired-ctc1",
+                      independentRecognition:independent)
     }
 }
 

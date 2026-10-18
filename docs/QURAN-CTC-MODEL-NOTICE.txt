@@ -1,0 +1,19 @@
+Independent acoustic verification model
+
+Model: rabah2026/wav2vec2-large-xlsr-53-arabic-quran
+Pinned revision: b539d5fa66deb820c8e4762171ecb284ace4b52d
+Source: https://huggingface.co/rabah2026/wav2vec2-large-xlsr-53-arabic-quran
+Publisher model-card license: Apache License 2.0.
+Base named by the publisher: jonatasgrosman/wav2vec2-large-xlsr-53-arabic.
+
+Noor conversion: Core ML float16, coremltools9.0, PyTorch2.7.0,
+Transformers4.51.3. Source and converted weights are hash-pinned.
+No expected Quran text is passed to the independent acoustic recognizer.
+Its uncalibrated acoustic posteriors do not establish recitation or Tajweed
+correctness. The comparison may withhold uncertain primary hypotheses;
+it never substitutes canonical text or awards memorization progress.
+
+Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+The full Apache2 license is included with the existing bundled recognition
+licenses. Copyright and rights in the pretrained model remain with their
+respective holders. No publisher endorsement is implied.

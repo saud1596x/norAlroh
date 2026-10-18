@@ -23,7 +23,7 @@ state=$(xcrun simctl list devices available --json | python3 -c 'import json,sys
 if [[ "$state" != Booted ]]; then xcrun simctl boot "$device"; fi
 xcrun simctl bootstatus "$device" -b
 result=0
-python3 scripts/run-native-with-deadline.py 600 xcodebuild test \
+python3 scripts/run-native-with-deadline.py "${NOOR_NATIVE_TEST_DEADLINE:-600}" xcodebuild test \
  -project ios/Athar.xcodeproj -scheme Athar -configuration Release \
  -destination "platform=iOS Simulator,id=$device" -derivedDataPath release/continuous-reader-derived-data \
  CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO \
@@ -35,6 +35,7 @@ python3 scripts/run-native-with-deadline.py 600 xcodebuild test \
  -only-testing:AtharTests/QuranRecognitionAudioTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
+ -only-testing:AtharTests/QuranIndependentAgreementTests \
  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testVisibilityAndAnalysisPreserveEvidenceInBothDiskWriteOrders \
  -only-testing:AtharTests/QuranObservedSpeechTests/testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes \
  -only-testing:AtharTests/QuranObservedSpeechTests/testSignalFaultsCountActualCaptureFramesAndGuidanceRecoversAfterSustainedHealthyAudio \

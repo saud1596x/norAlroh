@@ -51,6 +51,7 @@ public struct QuranObservedSpeech: Codable, Equatable, Sendable {
     public var recognitionRevision: Int? = nil
     public var wordObservations: [QuranObservedWord]? = nil
     public var processingConfiguration: String? = nil
+    public var independentRecognition: QuranIndependentObservation? = nil
     public init(takeID: UUID, start: Double, end: Double, words: [String], unresolved: Bool, backendID: String,
                 modelID: String? = nil, modelRevision: String? = nil) {
         self.takeID = takeID; self.start = start; self.end = end; self.words = words
@@ -116,6 +117,7 @@ public struct QuranRecitationRecord: Codable, Identifiable {
                       && (span.modelID.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? true)
                       && (span.modelRevision.map { !$0.isEmpty && $0.utf8.count <= 256 } ?? true)
                       && (span.evidenceVersion == nil || span.evidenceVersion == 1)
+                      && (span.independentRecognition.map { $0.valid(start: span.start, end: span.end) } ?? true)
                       && (span.wordObservations == nil || (span.evidenceVersion == 1
                           && span.recognitionWindowID != nil && (span.recognitionRevision ?? -1) >= 0))
                       && (span.wordObservations.map { words in

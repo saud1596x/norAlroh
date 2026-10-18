@@ -118,6 +118,7 @@ def main():
     parser.add_argument('--model', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--precision', choices=('float16','float32'), default='float16')
+    parser.add_argument('--prepare-only', action='store_true', help='Generate for a separate byte-pinned build step; not a parity pass')
     args = parser.parse_args()
     if platform.system() != 'Darwin':
         raise ValueError('Actual Core ML prediction is required; conversion-only output is insufficient')
@@ -173,6 +174,9 @@ def main():
     float_path = args.output/f'quran-ctc-{args.precision}.mlpackage'
     converted.save(str(float_path))
     print('NOOR_CTC_COREML_FLOAT16_PACKAGE_READY', flush=True)
+    if args.prepare_only:
+        print('NOOR_CTC_SOURCE_GENERATED_NOT_ACOUSTICALLY_TESTED',flush=True)
+        return
     source_vocab = json.loads((args.model/'vocab.json').read_text())
     normalizer = object.__new__(QuranAligner).normalizer
     letters = sorted({normalizer(c) for c in source_vocab if len(c) == 1 and normalizer(c) and c != '|'})

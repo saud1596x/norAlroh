@@ -10,3 +10,4 @@ cp release/qcf-v2-manifest.json ios/Athar/qcf-v2-manifest.json
 python3 scripts/prepare-tajweed-fonts.py --output ios/Athar/Fonts/Tajweed
 cp release/qcf-v4-manifest.json ios/Athar/qcf-v4-manifest.json
 python3 scripts/prepare-recitation-model.py
+python3 scripts/prepare-independent-ctc.py

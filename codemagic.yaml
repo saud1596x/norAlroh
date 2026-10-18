@@ -83,6 +83,27 @@ workflows:
         script: bash scripts/test-engine-boundaries.sh
     artifacts:
       - release/engine-boundaries/**
+  engine-independent-native-check:
+    <<: *continuous_reader_check
+    name: Noor bundled independent CTC and actual native evidence (not full release)
+    max_build_duration: 15
+    cache:
+      cache_paths:
+        - release/continuous-reader-derived-data/ModuleCache.noindex
+        - release/continuous-reader-derived-data/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+        - release/continuous-reader-derived-data/SourcePackages
+        - ios/Athar/Fonts
+        - ios/RecitationModel
+        - release/independent-coreml-model
+        - ~/.cache/noor-independent-ctc
+        - ~/Library/Caches/pip
+    scripts:
+      - name: Install project generator
+        script: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify bundled independent CTC and actual public microphone-session evidence
+        script: NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
+    artifacts:
+      - release/engine-boundaries/**
   daily-ease-check:
     name: Noor daily ward, automatic setup and clear adhkar
     instance_type: mac_mini_m2
