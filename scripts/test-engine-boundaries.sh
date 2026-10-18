@@ -7,6 +7,7 @@ repair=${NOOR_READER_REPAIR_CHECK:-0}
 case "$repair" in 0|1) ;; *) echo 'Unsupported reader repair scope'; exit 2;; esac
 python3 scripts/run-native-with-deadline.py --check "${NOOR_NATIVE_TEST_DEADLINE:-600}"
 mkdir -p release/engine-boundaries
+system_profiler SPAudioDataType -json > release/engine-boundaries/host-audio.json
 xcodegen generate --spec ios/project-accounts.yml --project ios
 device=$(python3 - <<'PY'
 import json,os,subprocess
@@ -52,10 +53,14 @@ python3 scripts/run-native-with-deadline.py "${NOOR_NATIVE_TEST_DEADLINE:-600}" 
  -only-testing:AtharTests/QuranRecognitionAudioTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
+ -only-testing:AtharTests/QuranListeningLocationTests \
+ -only-testing:AtharTests/QuranLiveRecitationStorageTests \
+ -only-testing:AtharTests/QuranLiveStoragePolicyTests \
  -only-testing:AtharTests/QuranIndependentAgreementTests \
  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testVisibilityAndAnalysisPreserveEvidenceInBothDiskWriteOrders \
  -only-testing:AtharTests/QuranObservedSpeechTests/testInputGuidanceUsesPCMAndDoesNotTreatSilenceOrBriefPeaksAsMistakes \
  -only-testing:AtharTests/QuranObservedSpeechTests/testSignalFaultsCountActualCaptureFramesAndGuidanceRecoversAfterSustainedHealthyAudio \
+ -only-testing:AtharTests/QuranObservedSpeechTests/testNoSpeechWindowKeepsStrictIdentityEvenWhenItsObservationArrayIsEmpty \
  -only-testing:AtharTests/NoorContinuousMushafTests/testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualInitialPrefixCannotCompleteAnIsolatedScopeFromDecoderConfidenceAlone \
@@ -65,6 +70,13 @@ python3 scripts/run-native-with-deadline.py "${NOOR_NATIVE_TEST_DEADLINE:-600}" 
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional \
  "${additional_tests[@]}" \
  -resultBundlePath release/engine-boundaries/actual-tests.xcresult 2>&1 | tee release/engine-boundaries/native-test-log.txt || result=$?
+if [[ "$result" != 0 ]]; then
+ # Preserve the actual app/XCTest boundary on a startup timeout. A missing
+ # test-case line is not proof that an app test, recognizer or device failed.
+ python3 scripts/run-native-with-deadline.py 15 xcrun simctl spawn "$device" log show \
+  --last 5m --style compact --predicate 'process == "Athar" OR subsystem BEGINSWITH "com.apple.dt.xctest"' \
+  > release/engine-boundaries/failed-test-startup.txt 2>&1 || true
+fi
 if [[ "$repair" == 1 ]]; then python3 scripts/export-reader-proof.py release/engine-boundaries/actual-tests.xcresult; fi
 python3 - "$result" <<'PY'
 import json,sys

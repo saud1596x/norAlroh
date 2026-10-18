@@ -157,6 +157,18 @@ workflows:
         script: NOOR_READER_REPAIR_CHECK=1 NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
     artifacts:
       - release/engine-boundaries/**
+  live-engine-verification-check:
+    <<: *device_reported_reader_check
+    name: Noor live-only engine, silence identity, location and actual dual ASR
+    max_build_duration: 18
+    scripts:
+      - name: Validate scope and install project generator
+        script: |
+          python3 scripts/check-native-test-selectors.py scripts/test-engine-boundaries.sh
+          python3 scripts/run-native-with-deadline.py --check 720
+          command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify live engine with actual public PCM and separate policy regressions
+        script: NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
   beta-critical-journeys-check:
     <<: *device_reported_reader_check
     name: Noor integrated app journeys and real simulator microphone start/resume
