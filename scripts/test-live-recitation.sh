@@ -2,6 +2,8 @@
 # Actual current-source Release tests, never a full-product/accuracy certificate.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+first_allow_only=${NOOR_MIC_FIRST_ALLOW_ONLY:-0}
+case "$first_allow_only" in 0|1) ;; *) echo 'Invalid first-allow scope'; exit 2;; esac
 out=release/live-recitation
 mkdir -p "$out"
 python3 scripts/check-native-test-selectors.py
@@ -11,7 +13,7 @@ xcrun simctl list devices available --json > "$out/devices.json"
 system_profiler SPAudioDataType -json > "$out/host-audio.json"
 xcodegen generate --spec ios/project-accounts.yml --project ios
 device=$(python3 - <<'PY'
-import json
+import json,os
 from pathlib import Path
 data=json.loads(Path('release/live-recitation/devices.json').read_text())
 phones=[(runtime,d) for runtime,rows in data['devices'].items() for d in rows
@@ -21,14 +23,17 @@ runtime,phone=max(phones,key=lambda item:item[0])
 Path('release/live-recitation/context.json').write_text(json.dumps({
  'runtime':runtime,'device':phone['name'],'configuration':'Release','project':'project-accounts.yml',
  'limits':'NOT learner accuracy, physical microphone, all20reciter timing or fullRelease acceptance',
+ 'firstMicrophoneAllowOnly':os.environ.get('NOOR_MIC_FIRST_ALLOW_ONLY') == '1',
  'results':{}},indent=2)+'\n')
 print(phone['udid'])
 PY
 )
 xcrun simctl boot "$device" || true
 xcrun simctl bootstatus "$device" -b
+derived=release/live-recitation-derived
+if [[ "$first_allow_only" == 1 ]]; then derived=release/continuous-reader-derived-data; fi
 common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Release
- -destination "platform=iOS Simulator,id=$device" -derivedDataPath release/live-recitation-derived
+ -destination "platform=iOS Simulator,id=$device" -derivedDataPath "$derived"
  CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO
  'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
 python3 scripts/run-native-with-deadline.py 720 xcodebuild build-for-testing "${common[@]}" 2>&1 | tee "$out/build.txt"
@@ -50,6 +55,7 @@ print('NOOR_LIVE_RESULT',sys.argv[1],sys.argv[2])
 PY
  [[ "$result" == 0 ]] || failed=1
 }
+if [[ "$first_allow_only" == 0 ]]; then
 run_case live-storage \
  -only-testing:AtharTests/QuranLiveRecitationStorageTests \
  -only-testing:AtharTests/QuranLiveStoragePolicyTests \
@@ -62,6 +68,11 @@ xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 run_case one-tap -only-testing:AtharUITests/NoorMushafStudyUITests/testOneTapStartsActualInlineMicrophoneWithoutSetupOrAccount
 run_case background -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeStaysInMushafWithoutHistory
 run_case privacy -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings
+fi
+# First approval is distinct from capture after an OS pre-grant. The app must
+# start from the original tap; a second microphone tap cannot rescue the test.
+xcrun simctl privacy "$device" reset microphone com.saud1596x.nooralruh
+run_case first-allow -only-testing:AtharUITests/NoorMushafStudyUITests/testFirstMicrophoneAllowStartsCaptureFromTheOriginalTap
 python3 - <<'PY'
 from pathlib import Path
 import shutil

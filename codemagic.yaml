@@ -180,6 +180,19 @@ workflows:
           command -v xcodegen >/dev/null || brew install xcodegen
       - name: Verify live engine with actual public PCM and separate policy regressions
         script: NOOR_NATIVE_TEST_DEADLINE=720 bash scripts/test-engine-boundaries.sh
+  first-microphone-allow-check:
+    <<: *device_reported_reader_check
+    name: Noor actual first OS microphone approval from one original tap
+    max_build_duration: 20
+    scripts:
+      - name: Validate first-use microphone selector and install generator
+        script: |
+          python3 scripts/check-native-test-selectors.py scripts/test-live-recitation.sh
+          command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Reset actual OS permission and require capture without a second tap
+        script: NOOR_MIC_FIRST_ALLOW_ONLY=1 bash scripts/test-live-recitation.sh
+    artifacts:
+      - release/live-recitation/**
   beta-critical-journeys-check:
     <<: *device_reported_reader_check
     name: Noor integrated app journeys and real simulator microphone start/resume

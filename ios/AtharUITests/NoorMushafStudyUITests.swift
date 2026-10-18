@@ -61,6 +61,37 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["surah.1"].waitForExistence(timeout:10),
                       "Stopping and closing returns to the ordinary Mushaf index, even with an active daily ward")
     }
+    func testFirstMicrophoneAllowStartsCaptureFromTheOriginalTap() {
+        // XCTest resets the real Simulator microphone permission first.
+        // No injected permission result, source PCM or pre-grant is used here.
+        let app = XCUIApplication(); application = app
+        app.resetAuthorizationStatus(for: .microphone)
+        openReader(app)
+        let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
+        let frame = page.frame
+        app.buttons["reader.study"].tap()
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let alert = system.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 15), "First microphone permission must be an actual OS dialog")
+        let text = alert.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ").lowercased()
+        guard text.contains("microphone") || text.contains("ميكروفون") else {
+            XCTFail("Unexpected system dialog; do not approve another permission: \(text)"); return
+        }
+        let allow = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "OK", "السماح", "سماح", "موافق"])).firstMatch
+        XCTAssertTrue(allow.isHittable); allow.tap()
+        let elapsed = app.staticTexts["study.elapsed"]
+        XCTAssertTrue(elapsed.waitForExistence(timeout: 30))
+        let actualFrames = expectation(for: NSPredicate { _, _ in
+            (5...59).contains { elapsed.label.contains(String(format: "0:%02d", $0)) }
+        }, evaluatedWith: elapsed)
+        wait(for: [actualFrames], timeout: 30)
+        XCTAssertEqual(page.frame, frame)
+        XCTAssertTrue(app.buttons["study.pause"].isHittable)
+        XCTAssertFalse(app.buttons["recitation.scope.start"].exists)
+        capture(app, "first-system-microphone-allow-without-second-tap")
+        app.buttons["study.finish"].tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30))
+    }
     func testInlinePageVisibilitySurvivesPauseButNewLaunchHasNoRecordingHistory() {
         let app = XCUIApplication(); application = app
         openReader(app, page: 604)
