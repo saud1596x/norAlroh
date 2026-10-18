@@ -67,8 +67,9 @@ public struct QuranInputGuidance: Sendable {
             return
         }
         healthyBlocks = 0
-        if issue == reading { issueBlocks += 1 }
-        else { issue = reading; issueBlocks = 1 }
+        let bucket: QuranInputQuality.Reading = reading == .noSignal ? .weak : reading
+        if issue == bucket { issueBlocks += 1 }
+        else { issue = bucket; issueBlocks = 1 }
         switch reading {
         case .invalidSignal:
             message = "إشارة الميكروفون غير سليمة؛ أوقف التسميع ثم أعد تشغيله."

@@ -20,6 +20,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--onnx',type=Path)
     parser.add_argument('--max-minutes',type=int,default=30)
     parser.add_argument('--surahs',default='all')
     args=parser.parse_args()
@@ -35,8 +36,15 @@ def main():
     cache=args.output/'temporary-public-audio';cache.mkdir(exist_ok=True)
     deadline=time.monotonic()+60*args.max_minutes
     aligner=None
+    if args.onnx:
+        from quran_onnx import RUNTIME_ID
+        runtime=RUNTIME_ID
+    else:
+        from quran_ctc import runtime_identity
+        runtime=runtime_identity()
     progress={'scope':'PROFESSIONAL_RECITER_TIMING_ONLY','modelRevision':REVISION,
               'inputFingerprint':inputs,
+              'inferenceRuntime':runtime,
               'canonicalScriptSHA256':canonical_sha,'requestedSurahs':order,'reciterIDs':ids,
               'productionWordTrackingComplete':False,'productionReview':'NOT_RUN',
               'records':{},'failures':{}}
@@ -47,11 +55,12 @@ def main():
         report=args.output/f'{surah:03}'/'report.json'
         if report.exists():
             previous=json.loads(report.read_text(encoding='utf-8'))
-            if complete_report(previous,inputs,surah,catalog):
+            if complete_report(previous,inputs,surah,catalog,runtime):
                 progress['records'][str(surah)]={'observed':20,'candidates':previous.get('measuredCandidates',0),'resumed':True}
                 save();continue
         sys.argv=['verify_catalog.py','--quran-model','--ayah-windows','--stream-cache',
                   '--surah',str(surah),'--model',str(args.model),'--output',str(report.parent),'--audio-cache',str(cache)]
+        if args.onnx:sys.argv+=['--onnx',str(args.onnx)]
         try:
             aligner=verify_catalog.main(aligner,stop_at=deadline)
             observed=json.loads(report.read_text(encoding='utf-8'))

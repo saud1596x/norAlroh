@@ -16,6 +16,9 @@ import os
     @Published private(set) var permissionDenied = false
     @Published private(set) var microphonePeak: Float?
     @Published private(set) var inputGuidance: String?
+    @Published private(set) var trackingFeedback: QuranTrackingFeedback?
+    @Published private(set) var trackingUncertainty = QuranTrackingUncertainty.none
+    private var trackingFeedbackID: UUID?
     private var microphoneGuidance = QuranInputGuidance()
     @Published var message: String?
     enum GuidedPhase: Equatable { case inactive, reference, clearance, ready, attempt, feedback }
@@ -202,6 +205,8 @@ import os
                microphonePeak * Float(QuranRecognitionAudio.maximumInferenceGain) < Float(AudioEvidenceGate.minimumRMS) {
                 return "الصوت ضعيف جدًا · قرّب الميكروفون"
             }
+            if let activity = trackingFeedback?.message(now: ProcessInfo.processInfo.systemUptime) { return activity }
+            if let explanation = trackingUncertainty.message { return explanation }
             if revealed.isEmpty { return uncertain ? "أستمع · لم أتعرف على الموضع بعد" : "أستمع · أنتظر بداية التلاوة" }
             return uncertain ? "أستمع · أنتظر وضوح الموضع" : "أستمع إليك"
         case .paused: return "متوقف مؤقتًا"
@@ -381,6 +386,7 @@ import os
             })
             microphonePeak = nil
             inputGuidance = nil; microphoneGuidance = QuranInputGuidance()
+            trackingFeedback = nil; trackingFeedbackID = nil; trackingUncertainty = .none
             microphone.observeQuality { [weak self] reading in
                 Task { @MainActor in
                     guard let self, self.revision == token, self.capturing else { return }
@@ -436,6 +442,11 @@ import os
             }
             guard var next = record, let takeIndex = next.takes.firstIndex(where: { $0.id == take }) else { return }
             let span = OSSignpostID(log: Self.performanceLog)
+            let feedbackID = UUID()
+            trackingFeedbackID = feedbackID
+            defer {
+                if trackingFeedbackID == feedbackID { trackingFeedback = nil; trackingFeedbackID = nil }
+            }
             os_signpost(.begin, log: Self.performanceLog, name: "Recitation window processing", signpostID: span)
             defer { os_signpost(.end, log: Self.performanceLog, name: "Recitation window processing", signpostID: span) }
             next.takes[takeIndex].frames = max(next.takes[takeIndex].frames, window.endFrame)
@@ -454,10 +465,12 @@ import os
                     // Cold model loading has its own bounded deadline, after
                     // capture is already writing PCM. Do not charge model
                     // startup against the shorter per-window decode deadline.
+                    trackingFeedback = .init(activity: .preparingModel, startedAt: ProcessInfo.processInfo.systemUptime)
                     try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
                     guard revision == token, !Task.isCancelled else { return }
                     prepared = true
                 }
+                trackingFeedback = .init(activity: .recognizing, startedAt: ProcessInfo.processInfo.systemUptime)
                 recognized = try await NoorOperationDeadline.run(seconds: recognitionTimeout) {
                     try await self.recognizeWindow(window)
                 }
@@ -480,6 +493,7 @@ import os
             }
             guard revision == token, !Task.isCancelled, var current = record, let inputTracker = tracker else { return }
             do {
+                trackingFeedback = .init(activity: .locatingPassage, startedAt: ProcessInfo.processInfo.systemUptime)
                 // Full-Quran candidate matching and ambiguity resolution must
                 // not run on MainActor for every audio window. Work on a value
                 // copy; only this still-current take may publish its result.
@@ -550,6 +564,13 @@ import os
                 revealed = Set(current.evidence.map(\.nativeID))
                 currentVerse = current.evidence.last?.verse ?? (current.automaticScope == true ? nil : current.keys.first)
                 uncertain = additions.isEmpty || recognized.hasUnresolvedSpeech
+                let matchedThisWindow = updatedTracker.evidence.contains {
+                    $0.takeID == take && $0.start >= window.offset && $0.end <= Double(window.endFrame) / 16_000
+                }
+                if recognized.runs.isEmpty {
+                    trackingUncertainty = recognized.hasUnresolvedSpeech ? .unreliableWords : .noSpeech
+                } else if !matchedThisWindow { trackingUncertainty = .passageUnclear }
+                else { trackingUncertainty = recognized.hasUnresolvedSpeech ? .unreliableWords : .none }
             } catch is CancellationError { return }
             catch { guard revision == token else { return }; stopForJournalFailure(); return }
 

@@ -2,6 +2,17 @@ import XCTest
 @testable import Athar
 
 final class QuranRecognitionAudioTests: XCTestCase {
+    func testTrackingFeedbackUsesActualPhaseWithGraceAndNeverCallsUncertaintyAnError() {
+        let feedback = QuranTrackingFeedback(activity: .preparingModel, startedAt: 10)
+        XCTAssertNil(feedback.message(now: 10.6), "A fast window must not flicker a work message")
+        XCTAssertEqual(feedback.message(now: 11), "أستمع · تجهيز التتبع")
+        XCTAssertNil(feedback.message(now: 9))
+        XCTAssertNil(feedback.message(now: .nan))
+        XCTAssertEqual(QuranTrackingFeedback(activity: .recognizing, startedAt: 10).message(now: 11),
+                       "أستمع · معالجة التلاوة")
+        XCTAssertEqual(QuranTrackingUncertainty.passageUnclear.message, "أستمع · أكمل التلاوة ليتضح الموضع")
+        XCTAssertNil(QuranTrackingUncertainty.none.message)
+    }
     func testQuietInferenceGainPreservesOriginalSamplesAndSilence() throws {
         let input = (0..<16000).map { Float(sin(Double($0) * 0.1) * 0.005) }
         let original = input

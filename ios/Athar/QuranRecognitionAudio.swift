@@ -1,5 +1,33 @@
 import Foundation
 
+/// Actual worker activity, not a decorative listening animation or progress.
+/// Use a monotonic clock and a brief grace period to avoid a per-window flicker.
+struct QuranTrackingFeedback: Sendable {
+    enum Activity: Sendable { case preparingModel, recognizing, locatingPassage }
+    let activity: Activity
+    let startedAt: Double
+    func message(now: Double) -> String? {
+        guard startedAt.isFinite, now.isFinite, now >= startedAt, now - startedAt >= 0.7 else { return nil }
+        switch activity {
+        case .preparingModel: return "أستمع · تجهيز التتبع"
+        case .recognizing: return "أستمع · معالجة التلاوة"
+        case .locatingPassage: return "أستمع · تحديد موضع التلاوة"
+        }
+    }
+}
+
+enum QuranTrackingUncertainty: Sendable {
+    case none, noSpeech, unreliableWords, passageUnclear
+    var message: String? {
+        switch self {
+        case .none: return nil
+        case .noSpeech: return "الميكروفون مفتوح · أنتظر التلاوة"
+        case .unreliableWords: return "أستمع · لم يتضح الكلام بعد"
+        case .passageUnclear: return "أستمع · أكمل التلاوة ليتضح الموضع"
+        }
+    }
+}
+
 /// Condition only the inference copy. The recorder retains the original PCM.
 /// Bounded gain is not speech detection: silence, word timing, model confidence
 /// and exact Quran anchoring still have to pass their independent checks.

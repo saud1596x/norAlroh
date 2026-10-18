@@ -63,6 +63,8 @@ final class QuranObservedSpeechTests: XCTestCase {
         guidance.consume(.present); XCTAssertNil(guidance.message)
         guidance.consume(.invalidSignal); XCTAssertNotNil(guidance.message)
         guidance = QuranInputGuidance(); XCTAssertNil(guidance.message, "A resumed take starts with fresh signal guidance")
+        for _ in 0..<3 { guidance.consume(.noSignal); guidance.consume(.weak) }
+        XCTAssertNotNil(guidance.message, "Alternating silence and weak input still form one sustained low-input condition")
     }
     func testWordTimingConfidenceAndRepeatedOccurrencesSurviveJournalRoundTrip() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

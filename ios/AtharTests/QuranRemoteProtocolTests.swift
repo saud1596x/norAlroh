@@ -84,7 +84,7 @@ final class QuranRemoteProtocolTests: XCTestCase {
         let start = Double(29-2) / 16000
         let source = QuranRemoteWordEvidence.Observation(occurrence_index: 0, run_index: 0, text: "قل",
             start: start, end: start+0.2, confidence: 0.99, recognition_state: "accepted")
-        let window = QuranAudioWindow(samples: Array(repeating: 0.06, count: 16_000), startFrame: 29, endFrame: 16_029)
+        let window = QuranAudioWindow(samples: policySignal(count: 16_000), startFrame: 29, endFrame: 16_029)
         let result = try QuranRemoteWordEvidence.resolve(words: accepted([source]), observations: [source],
             window: window, baseFrame: 2, unresolved: false)
         XCTAssertEqual(result.runs.first?.first?.start, 0)
@@ -101,6 +101,11 @@ final class QuranRemoteProtocolTests: XCTestCase {
             return value
         }
     }
+    private func policySignal(count: Int) -> [Float] {
+        // Synthetic balanced gate fixture, not a microphone/ASR test. A
+        // positive constant is DC corruption and must not stand in for speech.
+        (0..<count).map { Float(sin(Double($0) * 2 * .pi * 800 / 16000) * 0.06) }
+    }
     private func accepted(_ observations: [QuranRemoteWordEvidence.Observation]) -> [QuranRemoteWordEvidence.Word] {
         observations.filter { $0.recognition_state == "accepted" }.map {
             .init(text: $0.text, start: $0.start!, end: $0.end!, confidence: $0.confidence!, run_index: $0.run_index)
@@ -109,7 +114,7 @@ final class QuranRemoteProtocolTests: XCTestCase {
     func testUncertainRemoteWordSeparatesRunsAndPreservesSourceInsteadOfFillingReference() throws {
         let observations = source(["قل", "هو", "سيارة", "الله", "أحد"], rejected: [2])
         // Policy-only PCM fixture, not microphone or acoustic accuracy evidence.
-        let window = QuranAudioWindow(samples: Array(repeating: 0.06, count: 64_000), startFrame: 32_000, endFrame: 96_000)
+        let window = QuranAudioWindow(samples: policySignal(count: 64_000), startFrame: 32_000, endFrame: 96_000)
         let result = try QuranRemoteWordEvidence.resolve(words: accepted(observations), observations: observations,
             window: window, baseFrame: 16_000, unresolved: true)
         XCTAssertEqual(result.runs.map { $0.map(\.text) }, [["قل", "هو"], ["الله", "أحد"]])
@@ -136,6 +141,18 @@ final class QuranRemoteProtocolTests: XCTestCase {
         XCTAssertTrue(result.runs.isEmpty); XCTAssertTrue(result.hasUnresolvedSpeech)
         XCTAssertEqual(result.observations?.count, 4)
         XCTAssertTrue(result.observations?.allSatisfy { $0.recognitionState == "unassessable" } == true)
+    }
+    func testRemoteConfidenceCannotOverrideDCFlatlineOrRepairItsSourceWords() throws {
+        let observations = source(["قل", "هو", "الله", "أحد"])
+        let window = QuranAudioWindow(samples: Array(repeating: 0.15, count: 64_000), startFrame: 0, endFrame: 64_000)
+        let result = try QuranRemoteWordEvidence.resolve(words: accepted(observations), observations: observations,
+            window: window, baseFrame: 0, unresolved: false)
+        XCTAssertTrue(result.runs.isEmpty)
+        XCTAssertTrue(result.hasUnresolvedSpeech)
+        XCTAssertEqual(result.observations?.map(\.observedText), ["قل", "هو", "الله", "أحد"])
+        XCTAssertTrue(result.observations?.allSatisfy { $0.recognitionState == "unassessable" } == true)
+        XCTAssertTrue(result.observations?.allSatisfy { $0.backendConfidence == 0.99 } == true,
+            "Reject the unusable audio without rewriting the source model's observation")
     }
     func testUntimedRejectedRemoteObservationSurvivesWithoutInventedTimestamps() throws {
         let source = QuranRemoteWordEvidence.Observation(occurrence_index: 0, run_index: 0, text: "كلام",

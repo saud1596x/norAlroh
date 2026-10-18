@@ -15,6 +15,7 @@ import numpy as np
 from faster_whisper.audio import decode_audio
 from ctc import Aligner, validate_recording_spans
 from audit import SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record, fingerprint, write_json
+from quran_onnx import InferenceIntervalLimit
 
 
 class LocalDeadline(Exception):
@@ -78,11 +79,32 @@ def align_windows(aligner, pcm, windows, by_ayah, record, save, stop_at=None):
                   status='MEASURED_CANDIDATE_REQUIRES_REVIEW')
 
 
+def align_known_recording(aligner, pcm, windows, by_ayah, record, save, stop_at=None):
+    """Try independent whole-recording CTC for short rejected publisher clocks.
+
+    No clamping, adjusted text or relaxed acoustic threshold. Retain the failed
+    publisher proposal for review. This is never applied to learner recordings.
+    """
+    try:
+        align_windows(aligner, pcm, windows, by_ayah, record, save, stop_at)
+        record['alignmentMethod'] = 'EXACT_PUBLISHER_AYAH_WINDOWS_CTC'
+    except ValueError as error:
+        if len(pcm) > 480_000:
+            raise
+        check_deadline(stop_at)
+        record['publisherProposalFailure'] = str(error)
+        words = [word for group in by_ayah.values() for word in group]
+        result = aligner.align(pcm, words)
+        validate_recording_spans(result['spans'], [word[0] for word in words], len(pcm)/16)
+        record.update(result, alignmentMethod='WHOLE_SHORT_RECORDING_CTC_NO_PUBLISHER_CLOCK')
+
+
 def main(existing_aligner=None, stop_at=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--quran-model',action='store_true')
+    parser.add_argument('--onnx',type=Path,help='Pinned experimental CUDA export; never silently falls back to CPU')
     parser.add_argument('--audio-cache',type=Path)
     parser.add_argument('--reciter',type=int,action='append')
     parser.add_argument('--ayah-windows',action='store_true')
@@ -136,20 +158,26 @@ def main(existing_aligner=None, stop_at=None):
     inputs=fingerprint(root)
     previous_path=args.output/'report.json'
     previous=json.loads(previous_path.read_text(encoding='utf-8')) if previous_path.exists() else {}
-    can_resume=compatible(previous,inputs,args.surah,catalog)
-    previous_records={r['reciterID']:r for r in previous.get('records',[])} if can_resume else {}
     check_deadline(stop_at)
     if existing_aligner is not None:aligner=existing_aligner
+    elif args.onnx:
+        if not args.quran_model:raise ValueError('ONNX requires pinned Quran model')
+        from quran_onnx import QuranONNXAligner
+        aligner=QuranONNXAligner(args.model,args.onnx)
     elif args.quran_model:
         from quran_ctc import QuranAligner
         aligner=QuranAligner(args.model)
     else:aligner=Aligner(args.model)
+    runtime=getattr(aligner,'runtime_identity',None)
+    can_resume=compatible(previous,inputs,args.surah,catalog,runtime)
+    previous_records={r['reciterID']:r for r in previous.get('records',[])} if can_resume else {}
     report={'scope':'SELECTED_CATALOG_RECITERS_REAL_PUBLIC_AUDIO','surah':args.surah,
             'auditSchema':SCHEMA,'inputFingerprint':inputs,
             'canonicalScriptSHA256':hashlib.sha256((root/'content-sources/recitation-word-script.json').read_bytes()).hexdigest(),
             'selectedReciterIDs':[r['id'] for r in catalog],
             'releaseStatus':'CANDIDATES_NOT_SHIPPED; full114/allwords/acoustic-review incomplete',
             'modelRevision':getattr(aligner,'revision',None),
+            'inferenceRuntime':runtime,
             'ayahWindowPolicy':AYAH_POLICY if args.ayah_windows else None,
             'records':[],'controls':[]}
     if can_resume and controls_passed(previous):report['controls']=previous['controls']
@@ -186,7 +214,7 @@ def main(existing_aligner=None, stop_at=None):
         if control_pcm is None:
             # A bounded excerpt of the actual recording also permits negative
             # controls for long surahs; never substitute generated acceptance.
-            control_pcm=pcm[:1_920_000].copy()
+            control_pcm=pcm[:480_000 if args.onnx else 1_920_000].copy()
         if old is not None and old.get('status') in ('MEASURED_CANDIDATE_REQUIRES_REVIEW','REJECTED'):
             if args.stream_cache:path.unlink()
             continue
@@ -201,12 +229,15 @@ def main(existing_aligner=None, stop_at=None):
         try:
             timing=published.get(reciter['server']) if args.ayah_windows else None
             if timing and timing['recordingID']==reciter['recordingID'] and timing['reciterID']==reciter['id'] and str(args.surah) in timing['surahs']:
-                align_windows(aligner,pcm,timing['surahs'][str(args.surah)],by_ayah,record,save_records,stop_at)
+                align_known_recording(aligner,pcm,timing['surahs'][str(args.surah)],by_ayah,record,save_records,stop_at)
             else:
                 check_deadline(stop_at)
+                if len(pcm)>1_920_000:
+                    raise InferenceIntervalLimit('Long whole recording needs separately evidenced ayah intervals')
                 record.update(aligner.align(pcm,words))
             validate_recording_spans(record['spans'],[w[0] for w in words],len(pcm)/16)
         except LocalDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
+        except InferenceIntervalLimit as error:record.update(status='RESOURCE_LIMIT_NOT_ASSESSED',reason=str(error))
         except ValueError as error:record.update(status='REJECTED',reason=str(error))
         record['diagnostics']=getattr(aligner,'diagnostics',None)
         record['alignmentSeconds']=round(time.monotonic()-start,3)

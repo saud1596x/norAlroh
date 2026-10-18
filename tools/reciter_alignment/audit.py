@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
-SCHEMA = 2
+SCHEMA = 3
 CONTROL_NAMES = {'silence', 'noise', 'wrong-known-text'}
 AYAH_POLICY = 'Exact publisher recording boundaries with400ms acoustic context; no interpolation'
 
@@ -14,7 +14,7 @@ def fingerprint(root):
         'ios/Athar/quran.json', 'ios/Athar/haramain-reciters.json',
         'ios/Athar/surah-ayah-timings.json',
         *[f'tools/reciter_alignment/{name}.py' for name in
-          ('ctc', 'quran_ctc', 'verify_catalog', 'run_library', 'audit')],
+          ('ctc', 'quran_ctc', 'quran_onnx', 'verify_catalog', 'run_library', 'audit')],
     ]
     hashes = {name: hashlib.sha256((Path(root)/name).read_bytes()).hexdigest() for name in paths}
     digest = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
@@ -27,12 +27,14 @@ def controls_passed(report):
             and all(c.get('rejected') is True for c in controls))
 
 
-def compatible(report, inputs, surah, catalog):
+def compatible(report, inputs, surah, catalog, runtime=None):
     from quran_ctc import REVISION
     return (report.get('auditSchema') == SCHEMA
             and report.get('inputFingerprint') == inputs
             and report.get('modelRevision') == REVISION
             and report.get('ayahWindowPolicy') == AYAH_POLICY
+            and isinstance(report.get('inferenceRuntime'), str) and bool(report['inferenceRuntime'])
+            and (runtime is None or report['inferenceRuntime'] == runtime)
             and report.get('surah') == surah
             and report.get('selectedReciterIDs') == [r['id'] for r in catalog])
 
@@ -45,9 +47,9 @@ def exact_record(record, reciter, surah):
             and len(record['audioSHA256']) == 64)
 
 
-def complete_report(report, inputs, surah, catalog):
+def complete_report(report, inputs, surah, catalog, runtime=None):
     records = report.get('records', [])
-    return (compatible(report, inputs, surah, catalog) and controls_passed(report)
+    return (compatible(report, inputs, surah, catalog, runtime) and controls_passed(report)
             and len(records) == len(catalog)
             and all(exact_record(record, reciter, surah)
                     and record.get('status') in ('MEASURED_CANDIDATE_REQUIRES_REVIEW', 'REJECTED')
@@ -83,6 +85,7 @@ def library_coverage(root, directories):
                 value = {'status': record.get('status', 'NOT_ASSESSED'),
                          'currentPolicy': current_policy,
                          'controlsPassed': controls_passed(report),
+                         'inferenceRuntime': report.get('inferenceRuntime'),
                          'audioSHA256': record['audioSHA256'], 'report': str(path),
                          'reportSHA256': hashlib.sha256(path.read_bytes()).hexdigest()}
                 previous = reports.get(key)

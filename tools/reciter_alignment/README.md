@@ -50,3 +50,25 @@ call can still finish after that deadline; the next call cannot start.
 `full-library-coverage.json` enumerates all2280 expected recordings, including
 missing tracks. Old-policy candidates remain distinct from current-policy
 results. Neither a candidate nor a passed silence control is acoustic approval.
+
+## Optional local CUDA experiment
+
+`export_onnx.py` exports the pinned local weights with an explicit precision and
+oneGBdisk reserve. The evaluated FP16export has a code-pinned SHA256; an editable
+receipt cannot replace it. `evaluate_onnx.py` compared22actual public/control
+cases to original non-quantized FP32CPU output: same greedy word strings,
+including empty silence/noise controls, but maximum frame posterior difference
+0.2568. Actual execution profiling confirms CUDA nodes; the31mswarmmedian on a
+localRTX5060 is not iPhone/cloud speed or improved learner accuracy. Cold
+inference/shape planning was slow and emitted cuDNN warnings. No model is shipped.
+
+Pass`--onnx ONNX_DIRECTORY`to`run_library.py`for the bounded CUDA candidate
+audit. Code/precision/runtime/export hashes are part of resume identity;
+CPUcheckpoints cannot silently become GPUproof. A30second inference interval
+limit is recorded as`RESOURCE_LIMIT_NOT_ASSESSED`, never acoustic rejection.
+On a short known professional recording, an invalid/rejected publisher ayah
+clock may be replaced only by a complete independent whole-recording CTC path,
+using exactly the same acoustic thresholds and native-ID/duration checks. The
+failed publisher proposal remains in the receipt. No clamped clock, interpolated
+word or learner-reference forcing. Candidates remain unavailable in the app
+until separately reviewed and integrated.

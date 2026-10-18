@@ -48,8 +48,8 @@ professional forced alignment must never adjudicate a learner.
 | 30 | Support slower recitation without losing the current position | Real slow recordings, bounded context/memory | P |
 | 31 | Support faster recitation without dropping leading words | Real fast recordings and explicit overload behavior | P |
 | 32 | Pause location uncertainty without resetting listening | Same inline UI, preserved genuine source evidence | P |
-| 33 | Show a concise reason for tracking uncertainty | Distinguish signal, recognition disagreement and ambiguous location | P |
-| 34 | Show pending recognition separately from captured input | Actual capture/worker state; no decorative success pulse | P |
+| 33 | Show a concise reason for tracking uncertainty | Distinguish no speech, unresolved words and unlocated passage; model disagreement remains pending | I |
+| 34 | Show pending recognition separately from captured input | Actual capture/worker state; no decorative success pulse | I |
 | 35 | Prevent stale advice on resume or route change | New take/route invalidates prior diagnostic state | P |
 | 36 | Give a single actionable inline signal hint | No extra screen or stacked diagnostic cards | P |
 | 37 | Delay discrepancy indication until later independent context | Evidence revision test and bounded pending state | P |
@@ -75,8 +75,8 @@ promoted merely by writing this ledger.
 
 ## First implementation batch
 
-Five additional behaviors are integrated above; their current native tests have
-not run. Existing per-take guidance reset/inline placement is preserved and is
+Seven additional behaviors are integrated above; native verification is not
+complete. Existing per-take guidance reset/inline placement is preserved and is
 not counted again. Local Python tests:14passed, including actual pinned112:1
 audio at3%gain with an injected0.15DC fault, compared against the same unaltered
 clip. The input array/frame count stays unchanged and constantDC produces no
@@ -91,3 +91,13 @@ fallback. Maximum frame posterior difference was0.2568 despite identical word
 strings. Thus conversion parity is **not posterior calibration, production
 acceptance, iPhone speed or accuracy improvement**. It is not wired into the
 shipping provider, nor may its forced alignment mode assess a learner.
+
+Native run`6ad4e1467550aed8108fdbed`on`c0060b9`completed41selectedRelease
+cases with2failures/exit65. Both failing remote-clock/source policy fixtures
+used constant positive0.06PCM, now correctly removed as DC. Their assertions
+are preserved; the fixture is now a balanced800Hz synthetic gate signal, and
+a separate regression requires DCflatline to preserve raw observations while
+revealing no words. No synthetic gate signal is acoustic acceptance. The other
+39cases passed, including actualDC-fault reference audio. The corrected source
+and new delayed inline worker/uncertainty feedback still need a matching native
+run. No fullRelease/physicalmicrophone/learner/Tajweed acceptance is implied.

@@ -15,6 +15,13 @@ FILES={
 }
 
 
+def runtime_identity():
+    import torch
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    precision = 'float32' if device == 'cuda' else 'dynamic-int8'
+    return f'pytorch{torch.__version__}/{device}/{precision}'
+
+
 def verify_assets(model_dir):
     # Pins are code-reviewed, not accepted from an editable download receipt.
     model_dir=Path(model_dir)
@@ -46,6 +53,7 @@ class QuranAligner(Aligner):
             self.model=torch.ao.quantization.quantize_dynamic(self.model,{torch.nn.Linear},
                                                             dtype=torch.qint8,inplace=True)
         self.revision=REVISION
+        self.runtime_identity=runtime_identity()
 
     def normalizer(self,text):
         text=unicodedata.normalize('NFC',text)

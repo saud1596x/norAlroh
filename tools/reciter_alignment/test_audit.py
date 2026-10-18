@@ -9,7 +9,8 @@ import numpy as np
 
 from audit import SCHEMA, AYAH_POLICY, complete_report, fingerprint, library_coverage, write_json
 from quran_ctc import REVISION
-from verify_catalog import LocalDeadline, align_windows, validate_ayah_windows
+from verify_catalog import LocalDeadline, align_windows, align_known_recording, validate_ayah_windows
+from quran_onnx import InferenceIntervalLimit
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -22,6 +23,7 @@ class AuditTests(unittest.TestCase):
     def report(self):
         return {'auditSchema': SCHEMA, 'inputFingerprint': self.inputs, 'surah': 1,
                 'modelRevision': REVISION, 'ayahWindowPolicy': AYAH_POLICY,
+                'inferenceRuntime': 'POLICY-FIXTURE-NOT-ACOUSTIC-INFERENCE',
                 'selectedReciterIDs': [r['id'] for r in self.catalog],
                 'records': [{'reciterID': r['id'], 'recordingID': r['recordingID'],
                     'audioURL': r['server']+'001.mp3', 'audioSHA256': 'a'*64, 'status': 'REJECTED'}
@@ -38,6 +40,13 @@ class AuditTests(unittest.TestCase):
             altered = copy.deepcopy(report); altered[field] = value
             self.assertFalse(complete_report(altered, self.inputs, 1, self.catalog))
         report['records'][0]['recordingID'] += 1
+        self.assertFalse(complete_report(report, self.inputs, 1, self.catalog))
+
+    def test_runtime_precision_cannot_silently_reuse_other_backend_checkpoints(self):
+        report = self.report()
+        self.assertTrue(complete_report(report, self.inputs, 1, self.catalog, report['inferenceRuntime']))
+        self.assertFalse(complete_report(report, self.inputs, 1, self.catalog, 'another-runtime'))
+        report.pop('inferenceRuntime')
         self.assertFalse(complete_report(report, self.inputs, 1, self.catalog))
 
     def test_full_scope_lists_every_missing_track_and_never_promotes_candidates(self):
@@ -71,6 +80,32 @@ class AuditTests(unittest.TestCase):
                         [[1,0,250],[2,200,300]], [[1,0,100],[2,200,2100]]):
             with self.subTest(windows=windows), self.assertRaises(ValueError):
                 validate_ayah_windows(windows, {1: [(1,'a')], 2: [(2,'b')]}, 2000)
+
+    def test_short_recording_can_ignore_bad_publisher_clock_only_with_complete_independent_ctc(self):
+        class IndependentPolicyAligner:
+            def align(self, pcm, words):
+                return {'spans': [[1,0,100],[2,100,200]], 'minimumWordPosterior': .8,
+                        'status':'MEASURED_CANDIDATE_REQUIRES_REVIEW'}
+        record = {}
+        align_known_recording(IndependentPolicyAligner(), np.zeros(16000), [[1,0,2000]],
+                              {1:[(1,'a'),(2,'b')]}, record, lambda: None)
+        self.assertEqual(record['alignmentMethod'], 'WHOLE_SHORT_RECORDING_CTC_NO_PUBLISHER_CLOCK')
+        self.assertIn('Publisher', record['publisherProposalFailure'])
+        self.assertEqual(record['spans'], [[1,0,100],[2,100,200]])
+        class IncompletePolicyAligner:
+            def align(self, pcm, words):
+                return {'spans': [[1,0,100]], 'minimumWordPosterior': .8}
+        with self.assertRaises(ValueError):
+            align_known_recording(IncompletePolicyAligner(), np.zeros(16000), [[1,0,2000]],
+                                  {1:[(1,'a'),(2,'b')]}, {}, lambda: None)
+        class ResourceLimitedPolicyAligner:
+            def align(self, pcm, words):
+                raise InferenceIntervalLimit('Policy fixture, not acoustic rejection')
+        limited = {}
+        with self.assertRaises(InferenceIntervalLimit):
+            align_windows(ResourceLimitedPolicyAligner(), np.zeros(16000), [[1,0,1000]],
+                          {1:[(1,'a'),(2,'b')]}, limited, lambda: None)
+        self.assertFalse(any(v.get('status') == 'REJECTED' for v in limited['ayahResults'].values()))
 
     def test_deadline_checkpoint_resumes_exact_ayah_without_repeating_or_claiming_complete(self):
         class PolicyAligner:

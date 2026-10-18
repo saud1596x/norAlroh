@@ -12,6 +12,11 @@ import numpy as np
 from quran_ctc import QuranAligner, REVISION, verify_assets
 
 EXPORT_SHA256 = 'a1dbb6be2a521c233cbb35f7a00c5016539b14e2750bb5708b21cec19cd9c333'
+RUNTIME_ID = f'onnxruntime1.26.0/cuda-float16/{EXPORT_SHA256}'
+
+
+class InferenceIntervalLimit(RuntimeError):
+    """A development resource limit, not evidence of bad recitation/alignment."""
 
 
 def collapse_words(logp, vocab, samples):
@@ -95,13 +100,14 @@ class QuranONNXAligner(QuranAligner):
             raise RuntimeError('CUDA unavailable; refusing silent CPU fallback')
         self.device = 'cuda-onnx-float16'
         self.revision = REVISION
-        self.runtime_identity = f'onnxruntime1.26.0/cuda-float16/{EXPORT_SHA256}'
+        self.runtime_identity = RUNTIME_ID
 
     def emissions(self, values):
         values = np.asarray(values, dtype=np.float32)
-        if (values.ndim != 1 or not 400 <= len(values) <= 480_000
-                or not np.isfinite(values).all()):
-            raise ValueError('CUDA evaluation requires a finite400sample..30second interval')
+        if values.ndim == 1 and len(values) > 480_000:
+            raise InferenceIntervalLimit('CUDA evaluation currently limits one interval to30seconds')
+        if (values.ndim != 1 or len(values) < 400 or not np.isfinite(values).all()):
+            raise ValueError('CUDA evaluation requires finite mono PCM with at least400samples')
         logits = self.model.run(['logits'], {'input_values': values[None]})[0][0]
         if not np.isfinite(logits).all():
             raise ValueError('Nonfinite independent acoustic output')
