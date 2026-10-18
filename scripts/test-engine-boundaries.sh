@@ -68,7 +68,7 @@ python3 scripts/run-native-with-deadline.py "${NOOR_NATIVE_TEST_DEADLINE:-600}" 
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testVeryWeakActualSpeechAnchorsButAmplifiedWeakNoiseDoesNot \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualQuietReferenceWithDCFaultStillAnchorsAndFlatlineCannotRevealWords \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualBackendOnReferenceAndEditedOmissionKeepsAssessmentProvisional \
- "${additional_tests[@]}" \
+ ${additional_tests[@]+"${additional_tests[@]}"} \
  -resultBundlePath release/engine-boundaries/actual-tests.xcresult 2>&1 | tee release/engine-boundaries/native-test-log.txt || result=$?
 if [[ "$result" != 0 ]]; then
  # Preserve the actual app/XCTest boundary on a startup timeout. A missing

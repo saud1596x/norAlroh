@@ -164,6 +164,17 @@ workflows:
     scripts:
       - name: Validate scope and install project generator
         script: |
+          bash -eu <<'BASH'
+          # macOS Bash3.2 treats an empty array as unset under nounset.
+          # No empty-string argument may reach xcodebuild when UI scope is off.
+          empty=()
+          set -- ${empty[@]+"${empty[@]}"}
+          [[ "$#" -eq 0 ]]
+          present=('one selector' 'second selector')
+          set -- ${present[@]+"${present[@]}"}
+          [[ "$#" -eq 2 && "$1" == 'one selector' && "$2" == 'second selector' ]]
+          printf 'NOOR_SHELL_ARGUMENT_PREFLIGHT_OK\n'
+          BASH
           python3 scripts/check-native-test-selectors.py scripts/test-engine-boundaries.sh
           python3 scripts/run-native-with-deadline.py --check 720
           command -v xcodegen >/dev/null || brew install xcodegen
