@@ -1,4 +1,19 @@
 workflows:
+  independent-coreml-check:
+    name: Noor independent CTC CoreML real-audio conversion parity (not release)
+    instance_type: mac_mini_m2
+    max_build_duration: 12
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ~/.cache/noor-independent-ctc
+        - ~/Library/Caches/pip
+    scripts:
+      - name: Convert and compare independent CTC on original public PCM
+        script: bash scripts/evaluate-independent-coreml.sh
+    artifacts:
+      - release/independent-coreml/**
   reader-ease-check:
     name: Noor spacious reader, playback page lock and evidence regressions
     instance_type: mac_mini_m2
