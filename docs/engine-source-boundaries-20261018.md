@@ -111,6 +111,9 @@ environment passed **39tests in48.73s**, including real continuous overlapping
 windows and admission behavior. Five decoder-boundary cases passed. This is
 not natural unseen learner speech. The new native segment regression still
 requires its own run; the30-test source above predates this last repair.
+The next bounded run also selects three existing actual-audio diagnostics:
+quiet speech/noise, very weak speech/noise and a public-reference omission.
+No expectation was loosened to include them, and their result remains pending.
 
 The known AVAudioPlayer.prepareToPlay/HAL timeout remains unresolved playback
 acceptance. The focused engine workflow does not claim to resolve that timeout,

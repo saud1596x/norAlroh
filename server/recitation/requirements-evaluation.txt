@@ -1,0 +1,5 @@
+# Offline quality tooling only. Never shipped in the app/server runtime image.
+# Install alongside the existing pinned server requirements (which supply click).
+jiwer==4.0.0 --hash=sha256:7efaf0bd336b095d99ddef9dd67e1ee829d75d58aa2a81d9639870b01d6d95ea
+rapidfuzz==3.14.6 --hash=sha256:cfca36e4612208875e08611a779164b6cb8900ab8bbd3d82d4cfdfae9efbfac9
+# The wheel hash above is CPython3.12/Windows x64 used by this evaluator.
