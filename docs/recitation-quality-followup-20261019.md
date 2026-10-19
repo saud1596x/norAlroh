@@ -127,3 +127,17 @@ with ssl.create_default_context. Hostname/chain checks, byte pins and size
 limits stay enforced. Nine local download/container policy cases passed,
 including rejection of untrusted certificates, changed bytes and oversize
 assets. This is build setup verification, not a model or microphone result.
+
+The next999 build6ad563e67550aed8108ff99a successfully downloaded/verified the
+public model, but again rejected source spec3e5aa88.. before native execution.
+Its small original artifact08d203a652c1a311de9316ab12b5b99bb287b37a5eb9c53ed93f485e296f8c42
+contains the unexpected graph and actual pinned Python3.11 environment.
+Binary inspection established the cause: one byte in the auto-generated
+conversion_date changed2026-10-18 to2026-10-19. Replacing that date alone in
+the actual artifact restores exact approveda03be761..; actual weight bytes
+already matchbb4a2ffd.. exactly. Dependency drift was an observation, not
+the established cause of this mismatch. The exporter now retains the original
+reviewed float32 source edition's date, recording actual conversion UTC/date
+separately in its receipt. Model byte pins and all acceptance gates stay intact.
+Native rerun is still required. The queued duplicate6ad5647b7550aed8108ff9b5
+was canceled during cache restoration before compilation/tests.

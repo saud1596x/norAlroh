@@ -6,6 +6,7 @@ approval. The original source and selected converted variant are compared on the
 same actual samples before any package can be considered for app integration.
 """
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -133,6 +134,7 @@ def main():
     if receipt_path.exists():
         raise ValueError('Do not overwrite a previous conversion/evaluation receipt')
     report = {'scope': 'INDEPENDENT_CTC_COREML_CONVERSION_NOT_LEARNER_ACCEPTANCE',
+              'actualConversionStartedAtUtc': datetime.now(timezone.utc).isoformat(),
               'sourceRevision': REVISION, 'sourceFiles': FILES, 'productionApproved': False,
               'audioDecoder': 'Apple afconvert LEF32@16000 mono; no synthesized/padded samples',
               'phoneIntegrated': False, 'expectedTextPrompt': False, 'forcedAlignment': False,
@@ -190,13 +192,28 @@ def main():
     float_path = args.output/f'quran-ctc-{args.precision}.mlpackage'
     converted.save(str(float_path))
     # Protocol-buffer maps may serialize in a different order across processes.
-    # Preserve every graph/metadata field and weight, but canonicalize their
-    # wire encoding. Actual prediction below reloads these very source bytes.
+    # Keep the approved float32 source edition's metadata date stable. CoreML
+    # inserts today's date even when graph/weights are byte-identical. Record
+    # the real build date separately; never represent regeneration as occurring
+    # on the original edition date. All graph fields and weights remain pinned.
+    source_spec = converted.get_spec()
+    date_key = 'com.github.apple.coremltools.conversion_date'
+    actual_date = source_spec.description.metadata.userDefined.get(date_key)
+    report['actualConverterMetadataDate'] = actual_date
+    if args.precision == 'float32':
+        if not actual_date:
+            raise ValueError('Missing converter date; preserve unexpected source for inspection')
+        source_spec.description.metadata.userDefined[date_key] = '2026-10-18'
+        report['frozenSourceEditionDate'] = '2026-10-18'
+        report['sourceDatePolicy'] = 'Original reviewed float32 edition date; actual conversion timestamp above'
+    # Protocol-buffer maps need deterministic wire encoding across processes.
+    # Actual prediction below reloads these very source bytes.
     model_spec=float_path/'Data/com.apple.CoreML/model.mlmodel'
-    model_spec.write_bytes(converted.get_spec().SerializeToString(deterministic=True))
+    model_spec.write_bytes(source_spec.SerializeToString(deterministic=True))
     report['sourceSerialization']='protobuf-deterministic1'
     converted=ct.models.MLModel(str(float_path),compute_units=ct.ComputeUnit.CPU_AND_GPU)
     print('NOOR_CTC_COREML_PACKAGE_READY precision='+args.precision, flush=True)
+    save()
     if args.prepare_only:
         print('NOOR_CTC_SOURCE_GENERATED_NOT_ACOUSTICALLY_TESTED',flush=True)
         return
