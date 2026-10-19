@@ -5,12 +5,19 @@ on:
     paths:
       - .github/workflows/live-recitation-regressions.yml
       - scripts/test-live-recitation.sh
+      - scripts/prepare-independent-ctc.py
+      - scripts/coreml_build_runtime.py
+      - scripts/coreml-build-constraints.txt
+      - tools/reciter_alignment/export_coreml.py
+      - ios/Athar/InteractiveMushafReader.swift
+      - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranLiveRecitationStorage.swift
       - ios/Athar/QuranRecitationController.swift
       - ios/Athar/QuranRecognitionWorker.swift
       - ios/AtharTests/QuranLiveRecitationStorageTests.swift
       - ios/AtharTests/QuranLiveStoragePolicyTests.swift
       - ios/AtharTests/QuranListeningLocationTests.swift
+      - ios/AtharTests/QuranPracticeVisibilityTests.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift
 permissions:
   contents: read
