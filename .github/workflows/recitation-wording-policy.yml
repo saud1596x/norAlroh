@@ -1,0 +1,44 @@
+name: Learner wording and source-evidence regressions
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/recitation-wording-policy.yml
+      - scripts/test-wording-behavior.py
+      - tools/RecitationEngineProbe/Sources/RecitationAlignment/**
+      - tools/RecitationEngineProbe/Sources/RecitationSessions/**
+      - tools/RecitationEngineProbe/Sources/RecitationCapture/QuranInputQuality.swift
+      - ios/Athar/QuranLiveRecitationStorage.swift
+      - ios/AtharTests/QuranWordingAssessmentTests.swift
+      - ios/AtharTests/QuranObservedSpeechTests.swift
+      - ios/AtharTests/QuranListeningLocationTests.swift
+      - ios/AtharTests/QuranLiveStoragePolicyTests.swift
+permissions:
+  contents: read
+concurrency:
+  group: learner-wording-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  production-wording:
+    # Real portable production Swift, without model downloads or app signing.
+    # Does not replace iOS/actual-audio/UI or release acceptance gates.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record actual source and tools
+        run: |
+          mkdir -p release/learner-wording
+          git rev-parse HEAD > release/learner-wording/source.txt
+          swift --version > release/learner-wording/swift.txt
+      - name: Execute production wording and evidence tests
+        run: |
+          set -o pipefail
+          python3 scripts/test-wording-behavior.py 2>&1 | tee release/learner-wording/actual-tests.txt
+      - name: Save original scoped result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learner-wording-${{ github.sha }}
+          path: release/learner-wording/
+          retention-days: 3
