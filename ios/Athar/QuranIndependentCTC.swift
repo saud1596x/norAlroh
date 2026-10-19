@@ -7,6 +7,8 @@ import CryptoKit
 actor QuranIndependentCTC {
     static let shared = QuranIndependentCTC()
     private var model: MLModel?
+    private var loading: Task<Void, Error>?
+    private(set) var modelLoadAttempts = 0
     private var projection: [Int] = []
     private var characters: [String] = []
     static let revision = "b539d5fa66deb820c8e4762171ecb284ace4b52d"
@@ -19,8 +21,18 @@ actor QuranIndependentCTC {
         let convertedWeightsSHA256: String
         let files: [String: String]
     }
-    func prepare() throws {
+    func prepare() async throws {
         guard model == nil else { return }
+        if let loading { try await loading.value; return }
+        // Core ML loading can take seconds on a cold device. Yield this
+        // executor through Apple's asynchronous loader, and share one load
+        // across callers so a resumed take cannot allocate a second model.
+        let task = Task { try await self.loadModel() }
+        loading = task
+        defer { loading = nil }
+        try await task.value
+    }
+    private func loadModel() async throws {
         #if NOOR_ACCEPTANCE_TESTING
         let preparationStarted = Date()
         defer { print("NOOR_INDEPENDENT_PREPARATION seconds=\(Date().timeIntervalSince(preparationStarted))") }
@@ -64,9 +76,9 @@ actor QuranIndependentCTC {
         }
         let letters = Set(source.keys.filter { $0.unicodeScalars.count == 1 && $0 != "|" }
             .map(normalized).filter { !$0.isEmpty }).sorted()
-        characters = ["", " "] + letters
+        let characters = ["", " "] + letters
         let indices = Dictionary(uniqueKeysWithValues: characters.enumerated().map {($0.element,$0.offset)})
-        projection = Array(repeating:0,count:56)
+        var projection = Array(repeating:0,count:56)
         for (character, id) in source {
             projection[id] = character == "|" ? 1 : character.unicodeScalars.count == 1 ? indices[normalized(character)] ?? 0 : 0
         }
@@ -77,19 +89,26 @@ actor QuranIndependentCTC {
         #if NOOR_ACCEPTANCE_TESTING
         preparationStage("model-load-begin")
         #endif
-        model = try MLModel(contentsOf: folder.appendingPathComponent("quran-ctc.mlmodelc"), configuration: settings)
+        modelLoadAttempts += 1
+        let loaded = try await MLModel.load(contentsOf: folder.appendingPathComponent("quran-ctc.mlmodelc"), configuration: settings)
+        // Publish only a complete model/vocabulary pair. Reentrant callers
+        // above await the same task; no half-ready decoding state is visible.
+        self.projection = projection; self.characters = characters; model = loaded
         #if NOOR_ACCEPTANCE_TESTING
         preparationStage("model-load-end")
         #endif
     }
-    func recognize(_ window: QuranAudioWindow) throws -> QuranIndependentObservation {
+    func recognize(_ window: QuranAudioWindow) async throws -> QuranIndependentObservation {
         guard window.startFrame >= 0, window.endFrame >= window.startFrame,
               window.endFrame-window.startFrame == Int64(window.samples.count),
               (400...256_000).contains(window.samples.count), window.samples.allSatisfy({$0.isFinite && abs($0)<=1}) else {
             throw QuranAlignmentFailure.invalidEvidence
         }
         try Task.checkCancellation()
-        try prepare()
+        try await prepare()
+        // A take may be paused/removed while Core ML loads. It must not then
+        // start an expensive prediction for that cancelled source window.
+        try Task.checkCancellation()
         guard let model else { throw CocoaError(.fileReadCorruptFile) }
         let mean = window.samples.reduce(0.0) { $0 + Double($1) } / Double(window.samples.count)
         let variance = window.samples.reduce(0.0) { $0 + pow(Double($1)-mean,2) } / Double(window.samples.count)

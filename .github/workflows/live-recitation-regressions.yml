@@ -11,6 +11,10 @@ on:
       - scripts/coreml-build-constraints.txt
       - tools/reciter_alignment/export_coreml.py
       - ios/Athar/InteractiveMushafReader.swift
+      - ios/Athar/NoorMushafReciter.swift
+      - ios/Athar/NoorRecitersView.swift
+      - ios/Athar/NoorSurahWordTimings.swift
+      - ios/Athar/QuranIndependentCTC.swift
       - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranLiveRecitationStorage.swift
       - ios/Athar/QuranRecitationController.swift
@@ -25,6 +29,9 @@ on:
       - ios/AtharTests/QuranWordingAssessmentTests.swift
       - ios/AtharTests/QuranShortPassageTests.swift
       - ios/AtharTests/NoorReaderCoreRegressionTests.swift
+      - ios/AtharTests/NoorReciterWordTimingTests.swift
+      - ios/AtharUITests/NoorContinuousReaderUITests.swift
+      - ios/AtharUITests/NoorReciterLibraryTests.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranWordingAssessment.swift
       - tools/RecitationEngineProbe/Sources/RecitationAlignment/**

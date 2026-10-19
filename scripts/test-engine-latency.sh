@@ -34,6 +34,7 @@ result=0
 python3 scripts/run-native-with-deadline.py 600 xcodebuild test-without-building "${common[@]}" \
  -test-timeouts-enabled YES -default-test-execution-time-allowance 100 -maximum-test-execution-time-allowance 120 \
  -only-testing:AtharTests/NoorContinuousMushafTests/testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults \
+ -only-testing:AtharTests/QuranIndependentAgreementTests \
  -only-testing:AtharTests/PublishingContentTests \
  -resultBundlePath "$out/actual.xcresult" 2>&1 | tee "$out/tests.txt" || result=$?
 python3 scripts/export-reader-proof.py "$out/actual.xcresult"

@@ -71,4 +71,32 @@ final class QuranIndependentAgreementTests: XCTestCase {
         XCTAssertEqual(full.configuration,QuranIndependentCTC.configuration)
         print("NOOR_ACTUAL_NATIVE_CTC publicPrefixFrames=32000 fullFrames=\(pcm.count) noExpectedText=true")
     }
+    func testActualConcurrentPreparationSharesOneModelAndPreservesRawPrefixEvidence() async throws {
+        // Reuse the production worker instead of retaining two large acoustic
+        // models in one test host. This exercises concurrent calls; whether
+        // this invocation is cold is recorded by the model-stage trace.
+        // Original public PCM checks parity, not natural-learner accuracy.
+        let worker = QuranIndependentCTC.shared
+        async let first: Void = worker.prepare()
+        async let second: Void = worker.prepare()
+        async let third: Void = worker.prepare()
+        _ = try await (first, second, third)
+        let attempts = await worker.modelLoadAttempts
+        XCTAssertEqual(attempts, 1, "Concurrent takes must share one Core ML load")
+        let file = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "002001", withExtension: "mp3"))
+        let pcm = try AudioProcessor.loadAudioAsFloatArray(fromPath: file.path)
+        let prefix = Array(pcm.prefix(32_000))
+        let window = QuranAudioWindow(samples: prefix, startFrame: 16_000, endFrame: 48_000)
+        let actual = try await worker.recognize(window)
+        XCTAssertEqual(actual.words.map(\.text), ["ال"], "Loading cannot complete unheard Quran initials")
+        let source = prefix.withUnsafeBufferPointer {
+            SHA256.hash(data: Data(buffer: $0)).map { String(format: "%02x", $0) }.joined()
+        }
+        XCTAssertEqual(actual.sourceSHA256, source)
+        XCTAssertEqual(actual.startFrame, window.startFrame); XCTAssertEqual(actual.endFrame, window.endFrame)
+        XCTAssertEqual(actual.configuration, QuranIndependentCTC.configuration)
+        XCTAssertTrue(actual.valid(start: 1, end: 3))
+        let finalAttempts = await worker.modelLoadAttempts
+        XCTAssertEqual(finalAttempts, 1, "Ready inference must reuse the verified loaded model")
+    }
 }

@@ -262,3 +262,23 @@ applied to the existing EveryAyah/MP3Quran media. QF's current API requires
 backend credentials; no new credentials/service were created or exposed.
 Apple SpeechAnalyzer and the gated FastConformer candidate remain research
 candidates, not measured Arabic Quran accuracy or implemented replacements.
+
+The next learner-engine change replaces the independent verifier's synchronous
+CoreML constructor with Apple's asynchronous MLModel.load API. One actor-owned
+load task coalesces concurrent callers; the verified model and vocabulary are
+published together. Cancellation is checked again after preparation so a take
+cancelled during loading cannot begin another expensive prediction. Graph,
+weight/vocabulary hashes, FP32 precision, raw-source clock and independent
+agreement thresholds are unchanged. No eager model load is added to opening
+the Mushaf or silent capture. This addresses executor occupancy and duplicate
+loads after introducing async reentrancy; it does not yet prove a cold-start
+speed improvement. The original20s cross-surah assertion remains unchanged.
+The latency scope also runs concurrent preparation and actual public-prefix
+parity, reusing the production worker to avoid two large models in one host.
+Whether preparation is cold is recorded by the actual model-stage log.
+
+Local draft preflight passed13Swift grammar parses,2workflow YAML parses and
+232literal native selector checks. These are not Swift typechecking or native
+execution. The prior69script tests(2skipped) apply to the timed-only changes;
+matching native playback, first-Allow, full-face/colored geometry, library
+handoff, lifecycle, latency and learner quality remain separately unverified.

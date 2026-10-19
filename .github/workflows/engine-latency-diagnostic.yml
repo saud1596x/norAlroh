@@ -5,6 +5,9 @@ on:
     paths:
       - .github/workflows/engine-latency-diagnostic.yml
       - scripts/test-engine-latency.sh
+      - ios/Athar/QuranIndependentCTC.swift
+      - ios/Athar/QuranRecognitionWorker.swift
+      - ios/AtharTests/QuranIndependentAgreementTests.swift
 permissions:
   contents: read
 concurrency:
