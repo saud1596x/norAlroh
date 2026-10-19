@@ -12,7 +12,7 @@ actor QuranIndependentCTC {
     private var projection: [Int] = []
     private var characters: [String] = []
     static let revision = "b539d5fa66deb820c8e4762171ecb284ace4b52d"
-    static let configuration = "coreml-ctc-float32/raw-20ms/no-prompt/paired1"
+    static let configuration = "coreml-ctc-float32/cpu-only/raw-20ms/no-prompt/paired1"
     private struct Descriptor: Decodable {
         let schema: Int
         let revision: String
@@ -83,10 +83,12 @@ actor QuranIndependentCTC {
             projection[id] = character == "|" ? 1 : character.unicodeScalars.count == 1 ? indices[normalized(character)] ?? 0 : 0
         }
         let settings = MLModelConfiguration()
-        // This route is measured separately on the Simulator; no phone/ANE
-        // speed claim follows from the Mac conversion experiment.
-        settings.computeUnits = .all
+        // Candidate execution route for the same pinned FP32 graph. Keep the
+        // exact source/clock/agreement tests: CPU-only latency and raw-word
+        // parity must be measured before this candidate can be published.
+        settings.computeUnits = .cpuOnly
         #if NOOR_ACCEPTANCE_TESTING
+        print("NOOR_CTC_COMPUTE_PROFILE rawValue=\(settings.computeUnits.rawValue) configuration=\(Self.configuration)")
         preparationStage("model-load-begin")
         #endif
         modelLoadAttempts += 1

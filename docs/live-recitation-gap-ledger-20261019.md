@@ -296,3 +296,24 @@ or compiling any model assets. It uses no substitute declarations or weights.
 The latency lane also checks the genuine9cca658worker as a negative control,
 requiring its known async-overload error to be detected. This is a compiler/API
 check only and cannot replace actual ASR, capture, geometry or device tests.
+
+Actual dafe32a latency run39302523504 failed:13cases,3assertion failures in
+the unchanged cross-surah case. The5publishing cases and7independent/parity
+cases passed, including concurrent preparation(6.293s) and unchanged original
+public prefix/whole words(16.736s). Those passes do not override the failed
+response test. Original archiveSHA256501853cef0d7ec239042bd5bb4f56407de820b3da111fb114b735348164705d5
+is preserved outside the repo. Hash verification took9.830s, CTC loading
+began12.198s and ended33.267s, paired preparation34.791s. Actual3s and8s
+windows took8.173s and6.136s respectively. Both requested ayahs arrived late;
+the async API change did not solve startup/throughput. Native type preflight
+and the genuine9cca658negative compiler control both passed. A separate
+e8f2192focus-build succeeded9m17s; it is build evidence, not acoustic quality.
+
+The next unapproved candidate uses CPU-only CoreML execution with the exact
+same pinned FP32 graph/vocabulary. Its source-observation configuration now
+explicitly includes cpu-only so it cannot be mistaken for the prior backend
+profile. No clock, confidence, ambiguity or independent-agreement requirement
+is relaxed, and the original20s cross-surah test and all raw-prefix tests
+remain intact. Compute-profile rawValue is recorded in acceptance logs.
+Its speed, phone behavior and acoustic parity are NOT_YET_VERIFIED; it is not
+a new model, full-engine completion or permission to publish a failing build.
