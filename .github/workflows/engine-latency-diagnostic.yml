@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/engine-latency-diagnostic.yml
       - scripts/test-engine-latency.sh
+      - scripts/typecheck-recitation-core.py
       - ios/Athar/QuranIndependentCTC.swift
       - ios/Athar/QuranRecognitionWorker.swift
       - ios/AtharTests/QuranIndependentAgreementTests.swift
@@ -37,5 +38,6 @@ jobs:
             release/engine-latency/*.json
             release/engine-latency/*.txt
             release/engine-latency/screenshots/*.json
+            release/recitation-core-preflight/*
           if-no-files-found: error
           retention-days: 2

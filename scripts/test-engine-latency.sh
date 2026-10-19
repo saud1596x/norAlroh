@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 out=release/engine-latency
 mkdir -p "$out"
+python3 scripts/typecheck-recitation-core.py --compare-prior 9cca6585b775a78bb8d5bdf18d8d1826897c91f4
 git rev-parse HEAD > "$out/source.txt"
 xcodebuild -version > "$out/xcode.txt"
 xcodegen generate --spec ios/project-accounts.yml --project ios

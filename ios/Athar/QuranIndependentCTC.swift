@@ -116,7 +116,7 @@ actor QuranIndependentCTC {
         let input = try MLMultiArray(shape:[1, NSNumber(value:window.samples.count)],dataType:.float32)
         let pointer = input.dataPointer.assumingMemoryBound(to:Float.self)
         for index in window.samples.indices { pointer[index] = Float((Double(window.samples[index])-mean)/divisor) }
-        let prediction = try model.prediction(from: MLDictionaryFeatureProvider(dictionary:["input_values":input]))
+        let prediction = try predict(input, using: model)
         try Task.checkCancellation()
         guard let logits = prediction.featureValue(for:"logits")?.multiArrayValue,
               logits.shape.map(\.intValue) == [1,(window.samples.count-400)/320+1,56] else {
@@ -164,5 +164,11 @@ actor QuranIndependentCTC {
         }
         return .init(modelRevision:Self.revision,configuration:Self.configuration,sourceSHA256:sourceSHA,
                      startFrame:window.startFrame,endFrame:window.endFrame,words:words)
+    }
+    // Keep inference synchronous on this actor so two resumed windows cannot
+    // predict concurrently on one model. In an async function Swift selects
+    // Core ML's async overload; model loading above is the intended async step.
+    private func predict(_ input: MLMultiArray, using model: MLModel) throws -> MLFeatureProvider {
+        try model.prediction(from: MLDictionaryFeatureProvider(dictionary: ["input_values": input]))
     }
 }

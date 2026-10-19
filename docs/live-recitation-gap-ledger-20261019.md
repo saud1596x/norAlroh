@@ -282,3 +282,17 @@ Local draft preflight passed13Swift grammar parses,2workflow YAML parses and
 execution. The prior69script tests(2skipped) apply to the timed-only changes;
 matching native playback, first-Allow, full-face/colored geometry, library
 handoff, lifecycle, latency and learner quality remain separately unverified.
+
+Native source9cca658 failed compilation in both ios-checks lanes: the async
+recognize method selected CoreML's async prediction overload at line119 while
+the call was still written synchronously. No audio test success follows from
+that run. A synchronous actor-isolated prediction helper now preserves the
+original single-model inference serialization; only loading uses the async
+API. This fix is not yet native-verified.
+
+A new early preflight typechecks the actual worker and four actual portable
+source dependencies against Apple's iOS17 Simulator SDK, before downloading
+or compiling any model assets. It uses no substitute declarations or weights.
+The latency lane also checks the genuine9cca658worker as a negative control,
+requiring its known async-overload error to be detected. This is a compiler/API
+check only and cannot replace actual ASR, capture, geometry or device tests.

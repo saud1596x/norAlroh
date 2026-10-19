@@ -9,6 +9,7 @@ on:
       - scripts/prepare-independent-ctc.py
       - scripts/coreml_build_runtime.py
       - scripts/coreml-build-constraints.txt
+      - scripts/typecheck-recitation-core.py
       - tools/reciter_alignment/export_coreml.py
       - ios/Athar/InteractiveMushafReader.swift
       - ios/Athar/NoorMushafReciter.swift
@@ -69,5 +70,6 @@ jobs:
             release/live-recitation/*.ips
             release/live-recitation/*-screenshots/*.png
             release/live-recitation/*-screenshots/*.json
+            release/recitation-core-preflight/*
           retention-days: 1
           compression-level: 9
