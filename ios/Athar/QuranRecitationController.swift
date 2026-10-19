@@ -481,7 +481,7 @@ import os
             catch {
                 guard var current = record else { return }
                 current.recognitionUnavailable = true; noteExposedPracticeText(&current)
-                record = current; uncertain = true; recognitionAvailable = false
+                record = current; uncertain = true; withdrawUnavailableTracking()
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
                 message = "تأخر التتبع عن صوتك. أوقف التسميع ثم استأنفه لإعادة المحاولة."
@@ -531,7 +531,7 @@ import os
             catch {
                 guard revision == token, var current = record else { return }
                 current.recognitionUnavailable = true; noteExposedPracticeText(&current)
-                record = current; uncertain = true; recognitionAvailable = false
+                record = current; uncertain = true; withdrawUnavailableTracking()
                 do { try save(current) }
                 catch { stopForJournalFailure(); return }
                 if (error as? URLError)?.code == .timedOut {
@@ -644,6 +644,13 @@ import os
             catch { guard revision == token else { return }; stopForJournalFailure(); return }
 
         }
+    }
+    private func withdrawUnavailableTracking() {
+        // Prior accepted words and shown ayahs remain part of this session,
+        // but an unavailable recognizer cannot claim one is being heard now.
+        recognitionAvailable = false
+        listeningLocation.update([], matchingCurrentWindow: false)
+        activeWordID = nil
     }
     private func stopForJournalFailure() {
         message = "تعذّر تحديث التتبع. توقف الميكروفون؛ أعد المحاولة داخل المصحف."

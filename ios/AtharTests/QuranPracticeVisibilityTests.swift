@@ -61,8 +61,45 @@ import WhisperKit
         await restored.finish()
     }
 
+    func testRecognitionFailureWithdrawsCurrentHighlightWithoutErasingShownAyahOrPriorEvidence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "001002", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        let heard = ["الحمد", "لله", "رب", "العالمين"].enumerated().map {
+            QuranHeardWord(text: $0.element, start: 0.1 + Double($0.offset) * 0.4,
+                           end: 0.4 + Double($0.offset) * 0.4, probability: 0.99)
+        }
+        var capture: SteppedCapture?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionProvider: VisibilityFixtureProvider(heard: heard, failAfterFirstWindow: true),
+            makeCapture: { writer, _ in
+                let value = SteppedCapture(writer: writer, initial: Array(samples.prefix(32_000)))
+                capture = value; return value
+            }, setSessionActive: { _ in })
+        await controller.start(keys: ["1:2", "1:3"], page: 1, snapshot: snapshot, corpus: corpus, closedText: true)
+        try await eventually { controller.record?.retainedVisibleVerses == ["1:2"] }
+        let evidence = try XCTUnwrap(controller.record).evidence
+        XCTAssertEqual(evidence.count, 4)
+        XCTAssertNotNil(controller.activeWordID)
+        let shown = Set(evidence.map(\.nativeID))
+        try XCTUnwrap(capture).append(Array(samples[32_000..<48_000]))
+        try await eventually { !controller.recognitionAvailable }
+        XCTAssertEqual(controller.state, .listening, "Recognition failure must not stop independent input")
+        XCTAssertNil(controller.activeWordID, "An old accepted word is not current audio after inference fails")
+        XCTAssertEqual(controller.currentVerse, "1:2")
+        XCTAssertEqual(controller.record?.retainedVisibleVerses, ["1:2"])
+        XCTAssertEqual(controller.record?.evidence, evidence, "Failure cannot erase valid earlier speech")
+        XCTAssertTrue(controller.hiddenIDs.isDisjoint(with: shown), "Failure must not re-hide an already shown ayah")
+        await controller.finish()
+    }
+
     private struct VisibilityFixtureProvider: QuranSpeechRecognitionProvider {
         let heard: [QuranHeardWord]
+        var failAfterFirstWindow = false
         var capabilities: QuranRecognitionCapabilities {
             .init(backendID: "display-policy-fixture", modelID: "injected-words-not-ASR", modelRevision: "1",
                   configuredLanguage: "ar", delivery: .overlappingAudioWindows, processesLocally: true,
@@ -71,7 +108,8 @@ import WhisperKit
         }
         func prepare() async throws {}
         func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
-            .init(runs: window.endFrame == 32_000 && !heard.isEmpty ? [heard] : [], hasUnresolvedSpeech: false)
+            if failAfterFirstWindow && window.endFrame > 32_000 { throw URLError(.timedOut) }
+            return .init(runs: window.endFrame == 32_000 && !heard.isEmpty ? [heard] : [], hasUnresolvedSpeech: false)
         }
     }
     private func eventually(_ condition:() -> Bool) async throws {
