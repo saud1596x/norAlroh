@@ -72,6 +72,7 @@ run_case live-storage \
  -only-testing:AtharTests/QuranListeningLocationTests \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
  -only-testing:AtharTests/QuranWordingAssessmentTests \
+ -only-testing:AtharTests/QuranShortPassageTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationUsesExactNativePageWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \

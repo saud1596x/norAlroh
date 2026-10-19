@@ -50,12 +50,55 @@ import Foundation
         guard QuranWordingAssessment.evaluate([], reference: &prepared).isEmpty, speech == original else {
             throw QuranAlignmentFailure.invalidEvidence
         }
+        // Exercise authentic complete short ayahs in the full installed scope,
+        // outside the CPU timing above. These are explicit injected observations.
+        func strong(_ texts: [String]) -> [QuranHeardWord] {
+            texts.enumerated().map { .init(text: $0.element, start: Double($0.offset),
+                end: Double($0.offset) + 0.8, probability: 0.98) }
+        }
+        var one = QuranRecitationTracker(expected: words)
+        var two = QuranRecitationTracker(expected: words)
+        var ambiguous = QuranRecitationTracker(expected: words)
+        let oneIDs = try one.consume(strong(["مدهامتان"]), takeID: UUID()).map(\.nativeID)
+        let twoIDs = try two.consume(strong(["الله", "الصمد"]), takeID: UUID()).map(\.nativeID)
+        guard oneIDs == words.filter({ $0.verse == "55:64" }).map(\.id), oneIDs.count == 1,
+              twoIDs == words.filter({ $0.verse == "112:2" }).map(\.id), twoIDs.count == 2,
+              try ambiguous.consume(strong(["الرحمن"]), takeID: UUID()).isEmpty,
+              try ambiguous.consume(strong(["الرحمن", "الرحيم"]), takeID: UUID()).isEmpty,
+              try ambiguous.consume(strong(["يس"]), takeID: UUID()).isEmpty else {
+            throw QuranAlignmentFailure.invalidEvidence
+        }
+        let byVerse = Dictionary(grouping: words, by: \.verse)
+        let baseTracker = QuranRecitationTracker(expected: words)
+        var shortFormsChecked = 0, locatedShortForms = 0, unresolvedShortForms = 0
+        for key in input.keys {
+            guard let verse = byVerse[key], (1...2).contains(verse.count),
+                  !verse.contains(where: \.requiresFollowingContext) else { continue }
+            var variants: [[String]] = [[]]
+            for word in verse {
+                variants = variants.flatMap { prefix in word.aliases.map { prefix + $0 } }
+            }
+            for tokens in variants {
+                var tracker = baseTracker
+                let ids = try tracker.consume(strong(tokens), takeID: UUID()).map(\.nativeID)
+                // With no page/ayah prior, abstention is legitimate. Locating
+                // another passage or filling unheard groups is never allowed.
+                guard ids.isEmpty || ids == verse.map(\.id) else { throw QuranAlignmentFailure.invalidEvidence }
+                shortFormsChecked += 1
+                if ids.isEmpty { unresolvedShortForms += 1 } else { locatedShortForms += 1 }
+            }
+        }
         let result: [String: Any] = [
             "scope": "ACTUAL_PRODUCTION_LEXICAL_CPU_ONLY_INJECTED_OBSERVATIONS",
             "nativeWordCount": words.count, "iterations": iterations,
             "uncachedTotalSeconds": uncachedSeconds, "firstIndexSeconds": firstSeconds,
             "cachedTotalSeconds": warmSeconds, "identicalFindings": true,
             "sourceObservationsUnchanged": true, "emptyInputDoesNotReuseFindings": true,
+            "fullNativeShortAyahsAndAmbiguityGuards": true,
+            "shortAyahFormsChecked": shortFormsChecked,
+            "shortAyahFormsLocated": locatedShortForms,
+            "shortAyahFormsUnresolved": unresolvedShortForms,
+            "wrongShortAyahBindings": 0,
             "eventCount": uncached.count, "learnerAccuracy": NSNull(), "phoneLatency": NSNull(),
             "limits": "Uncached versus cached path in this source; no earlier-source speed claim, ASR inference, microphone or acoustic acceptance."
         ]

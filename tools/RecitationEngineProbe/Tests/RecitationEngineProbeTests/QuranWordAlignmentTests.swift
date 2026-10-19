@@ -54,6 +54,23 @@ final class QuranWordAlignmentTests: XCTestCase {
         XCTAssertTrue(bound.filter { $0.verse == "2:1" }[0].requiresFollowingContext)
         XCTAssertTrue(bound.filter { $0.verse == "19:1" }[0].aliases.contains(["كاف", "ها", "يا", "عين", "صاد"]))
         XCTAssertFalse(bound.filter { $0.verse == "36:31" }[0].aliases.contains(["الف", "لام", "ميم"]))
+        XCTAssertEqual(bound.filter { $0.verse == "112:2" }.map(\.positionInVerse), [1, 2])
+        XCTAssertEqual(bound.filter { $0.verse == "112:2" }.map(\.wordsInVerse), [2, 2])
+        // Fresh full-Quran scope, not a selected verse or page-derived prior.
+        func strong(_ text: [String]) -> [QuranHeardWord] {
+            text.enumerated().map { .init(text: $0.element, start: Double($0.offset),
+                end: Double($0.offset) + 0.8, probability: 0.98) }
+        }
+        var oneWord = QuranRecitationTracker(expected: bound)
+        XCTAssertEqual(try oneWord.consume(strong(["مدهامتان"]), takeID: UUID()).map(\.nativeID),
+                       bound.filter { $0.verse == "55:64" }.map(\.id))
+        var twoWords = QuranRecitationTracker(expected: bound)
+        XCTAssertEqual(try twoWords.consume(strong(["الله", "الصمد"]), takeID: UUID()).map(\.nativeID),
+                       bound.filter { $0.verse == "112:2" }.map(\.id))
+        var repeated = QuranRecitationTracker(expected: bound)
+        XCTAssertTrue(try repeated.consume(strong(["الرحمن"]), takeID: UUID()).isEmpty)
+        XCTAssertTrue(try repeated.consume(strong(["الرحمن", "الرحيم"]), takeID: UUID()).isEmpty)
+        XCTAssertTrue(try repeated.consume(strong(["يس"]), takeID: UUID()).isEmpty)
         var damaged = native
         let first = damaged[0]
         damaged[0] = .init(id: first.id, verse: first.verse, position: first.position,

@@ -58,7 +58,8 @@ public struct QuranWordScript: Decodable {
                     throw QuranAlignmentFailure.invalidScript
                 }
                 result.append(.init(id: record.id, verse: key, page: record.page, aliases: aliases,
-                                    requiresFollowingContext: !spoken.isEmpty))
+                                    requiresFollowingContext: !spoken.isEmpty,
+                                    positionInVerse: record.position, wordsInVerse: records.count))
             }
         }
         return result
@@ -127,9 +128,15 @@ public struct QuranAlignedWord: Sendable {
     public let page: Int
     public let aliases: Set<[String]>
     public let requiresFollowingContext: Bool
-    public init(id: Int, verse: String, page: Int, aliases: Set<[String]>, requiresFollowingContext: Bool = false) {
+    /// Exact native verse boundaries. Zero means unavailable, never an inferred
+    /// boundary from the visible page or a caller's truncated practice scope.
+    public let positionInVerse: Int
+    public let wordsInVerse: Int
+    public init(id: Int, verse: String, page: Int, aliases: Set<[String]>, requiresFollowingContext: Bool = false,
+                positionInVerse: Int = 0, wordsInVerse: Int = 0) {
         self.id = id; self.verse = verse; self.page = page; self.aliases = aliases
         self.requiresFollowingContext = requiresFollowingContext
+        self.positionInVerse = positionInVerse; self.wordsInVerse = wordsInVerse
     }
     /// Keep long vowels and consonants. No fuzzy distance or deletion of alif.
     public static func normalize(_ text: String, expandDaggerAlif: Bool = false) -> String {
@@ -282,20 +289,42 @@ public struct QuranRecitationTracker: Sendable {
                 // scope must not turn that memorized output into completion.
                 let singleScope = expected.count == 1 && bounds.count == 1 && !expected[0].requiresFollowingContext
                     && heard[bounds[0].1..<bounds[0].2].allSatisfy { $0.probability >= 0.95 }
+                // The whole-Quran microphone has no selected ayah prior. A
+                // complete native one/two-group ayah must not be permanently
+                // unlocatable merely because it cannot supply three groups.
+                // Require authentic verse boundaries and stronger confidence;
+                // repeated two-group alternatives still compete below. A lone
+                // word also needs a unique corpus start, including occurrences
+                // inside longer verses/compound aliases, not just short ayahs.
+                let completeShortVerse = (1...2).contains(bounds.count)
+                    && expected[first].positionInVerse == 1
+                    && expected[first].wordsInVerse == bounds.count
+                    && bounds.enumerated().allSatisfy { position, binding in
+                        let matched = expected[binding.0]
+                        return matched.verse == expected[first].verse
+                            && matched.positionInVerse == position + 1
+                            && matched.wordsInVerse == bounds.count
+                            && !matched.requiresFollowingContext
+                            && heard[binding.1..<binding.2].allSatisfy { $0.probability >= 0.95 }
+                    }
+                    && (bounds.count > 1 || starts[tokens[heardStart]] == Set([first]))
                 // A nearby different passage is not evidence of continuation.
                 // After112:1, a partial "قل أعوذ" must not select113:1 merely
                 // because it lies within12 words while114:1 is farther away.
                 // Two-group context is allowed only inside the current verse
-                // or the actual next pending verse; other locations still need
-                // the full independent3-group/ambiguity-safe anchor.
+                // or the actual next pending verse; other partial passages
+                // still need the full independent3-group/ambiguity-safe anchor.
                 let nearbyContinuation = (lower..<upper).contains(first)
                     && neighboringVerses.contains(expected[first].verse)
-                let minimumAnchor = singleScope ? 1 : nearbyContinuation ? 2 : 3
+                let minimumAnchor = singleScope ? 1 : completeShortVerse ? bounds.count : nearbyContinuation ? 2 : 3
                 // A short alternative outside the continuation scope still
                 // competes as ambiguity evidence. Excluding it before the
                 // optimal-path comparison would falsely make the nearby copy
-                // of a repeated two-word phrase appear unique.
-                if bounds.count >= 2 || singleScope {
+                // of a repeated two-word phrase appear unique. A multi-token
+                // compound also competes, even when its one native group is
+                // not itself eligible to locate the passage.
+                let multiTokenCompound = bounds.count == 1 && bounds[0].2 - bounds[0].1 >= 2
+                if bounds.count >= 2 || singleScope || completeShortVerse || multiTokenCompound {
                     candidates.append(.init(first: first, bounds: bounds,
                                             eligible: bounds.count >= minimumAnchor))
                 }

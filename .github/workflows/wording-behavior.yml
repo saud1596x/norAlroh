@@ -10,6 +10,7 @@ on:
       - ios/AtharTests/QuranObservedSpeechTests.swift
       - ios/AtharTests/QuranListeningLocationTests.swift
       - ios/AtharTests/QuranLiveStoragePolicyTests.swift
+      - ios/AtharTests/QuranShortPassageTests.swift
       - ios/Athar/QuranLiveRecitationStorage.swift
       - scripts/test-wording-behavior.py
       - scripts/benchmark-wording-reference.py

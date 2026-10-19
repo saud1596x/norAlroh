@@ -20,7 +20,8 @@ SOURCES = [
     "ios/Athar/QuranLiveRecitationStorage.swift",
 ]
 TESTS = ["ios/AtharTests/QuranWordingAssessmentTests.swift", "ios/AtharTests/QuranObservedSpeechTests.swift",
-         "ios/AtharTests/QuranListeningLocationTests.swift", "ios/AtharTests/QuranLiveStoragePolicyTests.swift"]
+         "ios/AtharTests/QuranListeningLocationTests.swift", "ios/AtharTests/QuranLiveStoragePolicyTests.swift",
+         "ios/AtharTests/QuranShortPassageTests.swift"]
 
 with tempfile.TemporaryDirectory(prefix="noor-wording-") as directory:
     package = Path(directory)

@@ -23,9 +23,11 @@ on:
       - ios/AtharTests/QuranMicrophoneInputLifecycleTests.swift
       - ios/AtharTests/QuranRecognitionIntegrationTests.swift
       - ios/AtharTests/QuranWordingAssessmentTests.swift
+      - ios/AtharTests/QuranShortPassageTests.swift
       - ios/AtharTests/NoorReaderCoreRegressionTests.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranWordingAssessment.swift
+      - tools/RecitationEngineProbe/Sources/RecitationAlignment/**
 permissions:
   contents: read
 concurrency:
