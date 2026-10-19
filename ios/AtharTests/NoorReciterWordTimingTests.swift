@@ -2,6 +2,46 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterWordTimingTests: XCTestCase {
+    func testWholeRecordingWordClockTracksActualRepeatsAndGapsWithoutInterpolating() throws {
+        let track = try XCTUnwrap(NoorSurahWordTimingTrack(surah: 112, ayahCount: 4,
+            spans: [[1, 10, 100, 300], [1, 11, 450, 800], [1, 10, 1000, 1200], [2, 12, 1500, 1800]]))
+        XCTAssertEqual(track.position(at: 0.1, duration: 2), NoorSurahWordTimingTrack.Position(verse: "112:1", wordID: 10))
+        XCTAssertNil(track.position(at: 0.3, duration: 2))
+        XCTAssertEqual(track.position(at: 0.45, duration: 2), NoorSurahWordTimingTrack.Position(verse: "112:1", wordID: 11))
+        XCTAssertEqual(track.position(at: 1, duration: 2), NoorSurahWordTimingTrack.Position(verse: "112:1", wordID: 10),
+                       "An explicitly timed repeat follows the reciter back to the prior word")
+        XCTAssertEqual(track.position(at: 1.5, duration: 2), NoorSurahWordTimingTrack.Position(verse: "112:2", wordID: 12))
+        XCTAssertNil(track.position(at: 0.1, duration: 1), "A truncated/different recording cannot use this clock")
+        XCTAssertNil(track.position(at: .nan, duration: 2))
+        XCTAssertNil(NoorSurahWordTimingTrack(surah: 112, ayahCount: 4, spans: [[5, 10, 0, 100]]))
+        XCTAssertNil(NoorSurahWordTimingTrack(surah: 112, ayahCount: 4, spans: [[1, 10, 0, 200], [1, 11, 100, 300]]))
+        XCTAssertNil(NoorSurahWordTimingTrack(surah: 112, ayahCount: 4, spans: [[1, 10, 0, 100], [2, 10, 100, 200]]),
+                     "The same native ID cannot be reassigned to another ayah")
+    }
+    func testPublishedWholeSurahWordsUseTheExactRecordingAndNoGuessedBasmala() async throws {
+        let hudhaify = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 74 })
+        let shuraim = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 31 })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        func firstWord(_ verse: Int) throws -> Int {
+            try XCTUnwrap(snapshot.records.first { $0.record_type == "mushaf_word" && $0.char_type_name == "word"
+                && $0.verse_id == verse && $0.position_in_verse == 1 }).id
+        }
+        let h = await NoorSurahWordTimings.shared.track(reciter: hudhaify, surah: 1, ayahCount: 7)
+        let s = await NoorSurahWordTimings.shared.track(reciter: shuraim, surah: 1, ayahCount: 7)
+        XCTAssertEqual(try XCTUnwrap(h).position(at: 8.3, duration: 65),
+                       NoorSurahWordTimingTrack.Position(verse: "1:1", wordID: try firstWord(1)))
+        XCTAssertEqual(try XCTUnwrap(s).position(at: 5.5, duration: 40),
+                       NoorSurahWordTimingTrack.Position(verse: "1:2", wordID: try firstWord(2)))
+        XCTAssertNil(try XCTUnwrap(s).position(at: 2.5, duration: 40), "The publisher has no word timing for this basmala")
+        let changed = NoorReciter(id: hudhaify.id, name: hudhaify.name, recordingID: hudhaify.recordingID + 1,
+            server: hudhaify.server, surahs: hudhaify.surahs)
+        let wrong = await NoorSurahWordTimings.shared.track(reciter: changed, surah: 1, ayahCount: 7)
+        XCTAssertNil(wrong)
+        let other = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 54 })
+        let untimed = await NoorSurahWordTimings.shared.track(reciter: other, surah: 1, ayahCount: 7)
+        XCTAssertNil(untimed, "Timings cannot transfer to another imam with the same ayah count")
+    }
     func testSurahTimingKeepsPublishedAyahBoundariesAndRejectsNumberingShifts() throws {
         let track = try XCTUnwrap(NoorSurahAyahTimingTrack(surah: 112, ayahCount: 4,
             spans: [[1, 100, 500], [2, 600, 1000], [3, 1000, 1400], [4, 1500, 1900]]))

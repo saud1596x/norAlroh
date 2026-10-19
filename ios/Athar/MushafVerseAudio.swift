@@ -41,6 +41,7 @@ import MediaPlayer
     private var durationTask: Task<Void, Never>?
     private var wordTimingTask: Task<Void, Never>?
     private var wordTiming: NoorReciterTimingTrack?
+    private var surahWordTiming: NoorSurahWordTimingTrack?
     private var ayahTimingTask: Task<Void, Never>?
     private var ayahTiming: NoorSurahAyahTimingTrack?
     private let usesPublishedTimingSource: Bool
@@ -229,7 +230,7 @@ import MediaPlayer
         if let failure { NotificationCenter.default.removeObserver(failure) }; failure = nil
         playing = nil; loadingKey = nil; reportedStart = false
         automaticCacheKey = nil
-        wordTimingTask?.cancel(); wordTimingTask = nil; wordTiming = nil; activeWordID = nil
+        wordTimingTask?.cancel(); wordTimingTask = nil; wordTiming = nil; surahWordTiming = nil; activeWordID = nil
         ayahTimingTask?.cancel(); ayahTimingTask = nil; ayahTiming = nil; activeVerseKey = nil
         isPaused = false
         traceAudio("player.release.end")
@@ -321,11 +322,13 @@ import MediaPlayer
                 guard let self, let playback, self.revision == token, self.player === playback,
                       seconds.isFinite, seconds >= 0 else { return }
                 self.currentSeconds = seconds
+                let position = self.isPaused || playback.timeControlStatus != .playing ? nil
+                    : self.surahWordTiming?.position(at: seconds, duration: self.durationSeconds)
                 let word = self.isPaused || playback.timeControlStatus != .playing ? nil
-                    : self.wordTiming?.word(at: seconds, duration: self.durationSeconds)
+                    : position?.wordID ?? self.wordTiming?.word(at: seconds, duration: self.durationSeconds)
                 if self.activeWordID != word { self.activeWordID = word }
                 if !self.isPaused, playback.timeControlStatus == .playing {
-                    let verse = self.ayahTiming?.verse(at: seconds, duration: self.durationSeconds)
+                    let verse = position?.verse ?? self.ayahTiming?.verse(at: seconds, duration: self.durationSeconds)
                     if self.activeVerseKey != verse { self.activeVerseKey = verse }
                 }
             }
@@ -334,6 +337,12 @@ import MediaPlayer
             if let (reciter, surah) = NoorAudioIntegrity.reciterRecording(key),
                let corpus = QuranResources.corpus, corpus.indices.contains(surah - 1) {
                 let ayahCount = corpus[surah - 1].ayahs.count
+                wordTimingTask = Task { [weak self, weak playback] in
+                    let timing = await NoorSurahWordTimings.shared.track(reciter: reciter, surah: surah, ayahCount: ayahCount)
+                    guard let self, let playback, !Task.isCancelled, self.revision == token,
+                          self.player === playback else { return }
+                    self.surahWordTiming = timing
+                }
                 ayahTimingTask = Task { [weak self, weak playback] in
                     let timing = await NoorSurahAyahTimings.shared.track(reciter: reciter, surah: surah, ayahCount: ayahCount)
                     guard let self, let playback, !Task.isCancelled, self.revision == token,

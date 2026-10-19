@@ -108,6 +108,7 @@ struct InteractiveMushafReader: View {
     @State private var number = 1
     @State private var pageTurnRequest: UUID?
     @State private var pageTurnTask: Task<Void, Never>?
+    @State private var referencePreparation: Task<Void, Never>?
     @State private var selected: String?
     @State private var manualSelection: VerseSelection?
     @State private var practiceSelection: String?
@@ -279,7 +280,7 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { rememberWardPosition(); readerVisible = false; pageTurnRequest = nil; pageTurnTask?.cancel(); pageTurnTask = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
+        .onDisappear { rememberWardPosition(); readerVisible = false; pageTurnRequest = nil; pageTurnTask?.cancel(); pageTurnTask = nil; referencePreparation?.cancel(); referencePreparation = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
         .onChange(of: scenePhase) { _, value in
             if value != .active { microphoneCue.cancel() }
             if value == .background { rememberWardPosition() }
@@ -927,7 +928,8 @@ struct InteractiveMushafReader: View {
             let cache = try MushafReadingResources.cache()
             let entry = try await cache.readingEntry(onDownload: { needsFirstDownload = true })
             needsFirstDownload = false
-            let content = try await MushafReadingPreparation.shared.prepare(entry.snapshot, keys: keys)
+            let referenceKeys = keys
+            let content = try await MushafReadingPreparation.shared.prepare(entry.snapshot, keys: referenceKeys)
             try Task.checkCancellation()
             let data = content.snapshot
             let versePages = content.versePages
@@ -944,6 +946,15 @@ struct InteractiveMushafReader: View {
             // a one-shot start callback can arrive while an ayah sheet closes.
             followPlayback()
             await fonts.load(String(format: "QCF2%03d", number))
+            if !readingOnly, !Task.isCancelled {
+                // Prepare only the validated immutable text/ID index after the
+                // page is ready. The microphone need not start a full-corpus
+                // binding from cold. No acoustic model, audio or network runs.
+                referencePreparation?.cancel()
+                referencePreparation = Task(priority: .utility) {
+                    _ = try? await QuranRecognitionReference.shared.bind(snapshot: data, verseKeys: referenceKeys)
+                }
+            }
         } catch {
             guard !Task.isCancelled else { return }
             self.error = "تعذّر التحقق من موارد المصحف المضمّنة. أعد المحاولة أو أعد تثبيت نسخة موثوقة من التطبيق." }

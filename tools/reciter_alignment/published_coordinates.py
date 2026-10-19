@@ -37,12 +37,13 @@ def map_words(groups, source_words):
     for index, group in enumerate(groups):
         aliases = {normalize(''.join(group[column]), expanded)
                    for column in (2, 3) for expanded in (False, True)} - {''}
-        max_tokens = max(len(group[2]), len(group[3]))
+        max_tokens = max(sum(len(word.split()) for word in group[column]) for column in (2, 3))
         next_states = {}
         for start, paths in states.items():
             for length in range(1, max_tokens + 1):
                 stop = start + length
-                if stop > len(tokens) or ''.join(tokens[start:stop]) not in aliases:
+                source_aliases = {normalize(''.join(source_words[start:stop]), expanded) for expanded in (False, True)}
+                if stop > len(tokens) or source_aliases.isdisjoint(aliases):
                     continue
                 matches = next_states.setdefault(stop, set())
                 for path in paths:

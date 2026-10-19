@@ -1,0 +1,740 @@
+{
+  "source": "https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0",
+  "attribution": "Wider Community",
+  "license": "CC BY 4.0",
+  "publisherVersion": "v3.2.0",
+  "audioSourceIdentityProofSHA256": "188ca482f9927c10cd4477f79fb38f0702f27095531bdb1e756387f58c29b941",
+  "outputSHA256": "60fa8fe85296ba685ca273e1c19f24a0d4b3c9838ecd20f5ece340c700d72cfe",
+  "nativeSnapshotSHA256": "37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1",
+  "status": "PUBLISHED_PLAYBACK_GUIDANCE_PARTIAL_AYAH_COVERAGE_NOT_LEARNER_EVIDENCE",
+  "acousticReview": "NOT_RUN; published timing mapped to exact native IDs and source URLs, not all20reader approval",
+  "changes": "Native word/ayah binding; explicit source repetitions and gaps preserved; unmapped verses excluded; no interpolation",
+  "recordings": {
+    "ali_al_huthaifi_mp3quran": {
+      "reciterID": 74,
+      "recordingID": 74,
+      "server": "https://cdn.mp3quran.net/audio/ali-hudhaifi/r1/",
+      "surahs": 114,
+      "spans": 79230,
+      "excludedOccurrences": [
+        {
+          "verse": "2:26",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:31",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:73",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:258",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:259",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:260",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "3:49",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "3:156",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:15",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:34",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:127",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:34",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:130",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:143",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:161",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:20",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:35",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:127",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:143",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:146",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:158",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:196",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "9:116",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "10:56",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "11:28",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "11:63",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "11:80",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:36",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:38",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:43",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:50",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:100",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:101",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "15:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "16:27",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:52",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:56",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:70",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:96",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:106",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:5",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:30",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:46",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:93",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "21:37",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "21:88",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "22:6",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "23:66",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "23:80",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "23:105",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "24:60",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "25:49",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "26:82",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "28:4",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "28:62",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "28:74",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "30:19",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "30:24",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "30:50",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:4",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:50",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:51",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:53",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "36:12",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "36:78",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "39:57",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "39:59",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "39:69",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "40:68",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "41:39",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "41:44",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "41:47",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "42:9",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "44:8",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "45:31",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "46:33",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "50:43",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "54:25",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "57:2",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "57:17",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "58:2",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "65:4",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "71:6",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "75:40",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "89:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        }
+      ],
+      "publishedPackageSHA256": "69538d785009f547305057b68e0028d91a552c0e118a3cfcb0eac1698a42a294",
+      "boundCandidateSHA256": "04a3e247d50b1e0196b8abbf1d027345543eadbe031bfef32e0a55bcfade1bb7"
+    },
+    "saud_al_shuraim_mp3quran": {
+      "reciterID": 31,
+      "recordingID": 31,
+      "server": "https://cdn.mp3quran.net/audio/saud-shuraim/r1/",
+      "surahs": 114,
+      "spans": 77394,
+      "excludedOccurrences": [
+        {
+          "verse": "2:26",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:31",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:73",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:258",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:259",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "2:260",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "3:49",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "3:156",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:15",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:34",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "4:127",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:34",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:130",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:143",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "6:161",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:20",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:35",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:127",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:143",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:146",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:146",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:158",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "7:196",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "9:116",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "10:56",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "11:28",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "11:63",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "11:80",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:36",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:38",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:43",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:50",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:100",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "12:101",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "15:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "16:27",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:52",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:56",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:70",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:96",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "18:106",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:5",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:30",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:46",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "19:93",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "21:37",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "21:88",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "22:6",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "23:66",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "23:80",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "23:105",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "24:60",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "25:49",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "26:82",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "28:4",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "28:62",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "28:74",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "30:19",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "30:24",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "30:50",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:4",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:50",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:51",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "33:53",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "36:12",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "36:78",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "39:57",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "39:59",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "39:69",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "40:68",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "41:39",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "41:44",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "41:47",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "42:9",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "44:8",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "45:31",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "46:33",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "50:43",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "54:25",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "57:2",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "57:17",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "58:2",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "65:4",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "71:6",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "75:40",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "89:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        },
+        {
+          "verse": "89:23",
+          "reason": "UNRESOLVED_NATIVE_COORDINATE"
+        }
+      ],
+      "publishedPackageSHA256": "0b30f23f92874fc54caf7bb83633f3b62da22f992f95a596c1886a681bd36e56",
+      "boundCandidateSHA256": "7bc72e64b4d379f131025aa7562c89faff7789e409a51df99ce7950a53452ff2"
+    }
+  }
+}

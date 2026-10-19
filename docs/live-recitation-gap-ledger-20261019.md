@@ -170,3 +170,65 @@ publisher-coordinate level. Their exact audio identity relative to the app
 is NOT_VERIFIED, and no timing was integrated/promoted. These numbers do not
 establish all20readers or audio review. The corrected20reader acoustic audit
 is separate and retains measured candidates, exclusions and negative controls.
+
+Follow-up19October: exact expansion of explicit dagger-alif alternatives on
+both sides, and counting whitespace tokens inside an already authored alias,
+maps6149/6236verses;87remain unresolved. It does not add fuzzy spelling rules
+or modify Quran text. All228current chapter URLs for Huthaifi and Shuraim
+were checked against the publisher's redirect destinations: each resolved
+to the exact existing app catalog resource. This is URL/source identity,
+not an independent audible review or a permanent byte-hash guarantee.
+
+The new bundled surah-word-timings.json imports156624exact published spans
+for those two recording identities across114surahs each. Unknown87verse
+coordinates, their repeated occurrences, and Shuraim's untimed Fatiha
+basmala remain absent. Actual timed repeats and gaps remain explicit. The
+runtime follows real player time, pins the resource and native edition,
+rejects changed recording identities/truncated media, and never treats
+reference playback as learner evidence. Metadata attribution and changes
+are retained under CC-BY-4.0, copyright Wider Community. This is partial
+published playback guidance, not all20readers or acoustic certification.
+22resource/payload regressions and38alignment tests plus9subtests passed
+locally. Six modified Swift sources passed grammar parsing only; native
+compilation, resource loading and UI execution remain pending.
+
+Matching47dcd82 live run39286867493 failed its unit invocation(exit65).
+All4separate UI invocations passed, including the original first-Allow
+assertions. The first startup-barrier failure threw before releasing or
+joining its delayed task; later capture cases then failed and the test host
+restarted. The restarted28-case pass summary is not a pass for the complete
+invocation. Cleanup now releases and joins on failure, and the gate latches
+an early release. A storage-only PCM byte-count test now injects a no-op
+preparation provider instead of inadvertently loading acoustic models.
+Neither change proves the original startup cause or fixes acoustic accuracy.
+Acceptance-only numeric startup traces identify the actual next boundary.
+The reader also prepares its immutable validated text/ID index after the
+page/font becomes ready, so it can be reused on microphone entry. No audio,
+acoustic model or network starts in this preparation. Its effect on latency
+is not yet measured.
+
+The user's32-second reference video is Tarteel, not a Noor defect capture.
+It demonstrates interactive page panning, text concealment at fixed ayah
+positions and inline microphone controls. Its premium panel describes
+wrong/missing/extra word detection and feedback; merely displaying that
+panel is not accuracy evidence. No private video/audio was uploaded or
+transcribed. Current-source verification reuses existing all604colored
+canvas geometry tests, full-face page14, immediate reader entry and actual
+normal/colored/selection/page-turn UI captures as separate bounded scopes.
+
+Subsequent5292a20 focused run39290963318 completed55unit cases with0failures,
+including the visible-text test(3.144s). One-tap, privacy and first-Allow
+invocations exited0. Background case body passed87.787s, but xcodebuild had
+not exited before the original180s process limit; preserve exit124 and the
+overall failure. This success/failure pattern does not prove a deterministic
+startup defect or warrant weakening the original live deadlines.
+
+The47dcd82 full compact integration executed396cases,2skipped,8assertion
+failures:3actual-PCM cross-surah deadline/order assertions and5location
+timeout/retry assertions. All604normal rendering, all604colored geometry,
+and13viewport tests passed in that source, not the subsequent timing draft.
+Large also exited65; its exact assertion list has not yet been inspected.
+Native checks39286866668 stopped before native execution because2publishing
+fixtures compared current generated privacy/support text with stale tracked
+pages. Regenerating those offline pages from the existing source policy
+resolves that mismatch without deployment or changing policy requirements.

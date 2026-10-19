@@ -166,6 +166,7 @@ def verify(path):
         tajweed_count = verify_tajweed_resources(ipa, root)
         for resource in ['quran.json', 'quran-basmalas.json', 'haramain-reciters.json', 'mushaf-snapshot.json',
                          'reciter-word-timings.json', 'Reciter-Timings-LICENSE.txt',
+                         'surah-word-timings.json', 'Published-Surah-Word-Timings-SOURCE.txt', 'Published-Surah-Word-Timings-LICENSE.txt',
                          'surah-ayah-timings.json', 'surah-ayah-timing-coverage.json', 'Reciter-Ayah-Timings-SOURCE.txt']:
             if ipa.read(root + resource) != (ROOT / 'ios/Athar' / resource).read_bytes():
                 raise ValueError('Incorrect bundled Quran or reciter resource: ' + resource)

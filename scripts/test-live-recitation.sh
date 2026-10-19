@@ -45,14 +45,22 @@ run_case() {
  local name=$1; shift
  local result=0
  local deadline=180
+ local test_limits=(-test-timeouts-enabled YES -default-test-execution-time-allowance 100 -maximum-test-execution-time-allowance 120)
  # The unit invocation contains multiple cases and a cold XCTest/app installation.
  # On39185242274 its first case began ~175s after the last build timestamp,
  # leaving almost none of the former180s aggregate budget for execution.
  # Bound the whole suite separately; keep each case's100/120s XCTest limits
  # and every assertion unchanged. Single UI invocations retain180s.
- case "$name" in live-storage|startup-policy) deadline=600;; esac
+ case "$name" in live-storage|startup-policy) deadline=600;;
+  reader-geometry)
+   deadline=600
+   # This existing604-page case already declares180s. Live capture/UI cases
+   # retain their original120s maximum and unchanged assertions.
+   test_limits=(-test-timeouts-enabled YES -default-test-execution-time-allowance 100 -maximum-test-execution-time-allowance 180)
+   ;;
+ esac
  python3 scripts/run-native-with-deadline.py "$deadline" xcodebuild test-without-building "${common[@]}" \
-  -test-timeouts-enabled YES -default-test-execution-time-allowance 100 -maximum-test-execution-time-allowance 120 \
+  "${test_limits[@]}" \
   "$@" -resultBundlePath "$out/$name.xcresult" 2>&1 | tee "$out/$name.txt" || result=$?
  python3 scripts/export-reader-proof.py "$out/$name.xcresult"
  if [[ -d "$out/screenshots" ]]; then mv "$out/screenshots" "$out/$name-screenshots"; fi
@@ -86,6 +94,16 @@ xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 run_case one-tap -only-testing:AtharUITests/NoorMushafStudyUITests/testOneTapStartsActualInlineMicrophoneWithoutSetupOrAccount
 run_case background -only-testing:AtharUITests/NoorMushafStudyUITests/testMicCaptureBackgroundResumeStaysInMushafWithoutHistory
 run_case privacy -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExplicitRecitationRemovalAndMicrophoneSettings
+# The user's reference video requires actual full-face/colored/hidden-text
+# geometry and page-turn evidence. Reuse the existing unchanged assertions;
+# these separate invocations survive an unrelated live recognition failure.
+run_case reader-geometry \
+ -only-testing:AtharTests/NoorReciterWordTimingTests \
+ -only-testing:AtharTests/MushafViewportTests \
+ -only-testing:AtharTests/NoorContinuousMushafTests/testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry
+run_case reader-controls -only-testing:AtharUITests/NoorContinuousReaderUITests
+run_case reader-full-face -only-testing:AtharUITests/NoorReaderComfortUITests/testUserReferencePage14IsCenteredAndFullyVisible
+run_case reader-entry -only-testing:AtharUITests/NoorReaderComfortUITests/testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone
 else
  # After changing the hardware-start boundary, verify cancellation/draining
  # and source display policy too. No injected audio counts as hardware proof.

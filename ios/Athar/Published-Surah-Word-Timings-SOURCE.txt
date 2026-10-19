@@ -1,0 +1,14 @@
+Quranic Universal Audio v3.2.0
+Copyright (c) Wider Community
+https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Changes by Noor Alruh: bound exact published word coordinates to the approved
+native Mushaf word IDs and ayah numbers; verified publisher redirects against
+all114 exact application chapter URLs for each imported recording; excluded
+unresolved verse spellings; preserved original source times, gaps and repeats.
+No interpolated or estimated replacement timings. Partial ayah coverage.
+These timestamps guide reference playback only, never assess learner speech.
+Original audio remains on its existing MP3Quran source, not redistributed here.
+Receipt: content-sources/reciter-timings/published-surah-word-receipt.json

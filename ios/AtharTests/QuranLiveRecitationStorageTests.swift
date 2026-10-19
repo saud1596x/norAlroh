@@ -95,8 +95,15 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         let starting = Task { await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus) }
         let deadline = Date().addingTimeInterval(8)
         while !(await gate.waiting) && Date() < deadline { await Task.yield() }
-        let waiting = await gate.waiting; XCTAssertTrue(waiting)
-        let session = try XCTUnwrap(controller.record).id
+        let waiting = await gate.waiting
+        guard waiting, let session = controller.record?.id else {
+            // Even a failing startup assertion must release its delayed task.
+            // Throwing XCTUnwrap here used to leak the capture/focus lease into
+            // later cases and turn one failure into many unrelated failures.
+            await gate.release(); await controller.finish(); await starting.value
+            XCTFail("Injected hardware start did not reach its barrier within the unchanged 8s deadline")
+            return
+        }
         let finishing = Task { await controller.finish() }
         while controller.state != .processing && Date() < deadline { await Task.yield() }
         XCTAssertEqual(controller.state, .processing)
@@ -112,9 +119,21 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
 
     private actor CaptureStartGate {
         private var reply: CheckedContinuation<Void, Never>?
+        private var released = false
         private(set) var waiting = false
-        func wait() async { waiting = true; await withCheckedContinuation { reply = $0 } }
-        func release() { reply?.resume(); reply = nil }
+        func wait() async {
+            waiting = true
+            guard !released else { return }
+            await withCheckedContinuation { reply = $0 }
+        }
+        func release() { released = true; reply?.resume(); reply = nil }
+    }
+    func testHardwareStartGateCanBeReleasedBeforeTheDelayedTaskEntersIt() async throws {
+        let gate = CaptureStartGate()
+        await gate.release()
+        try await NoorOperationDeadline.run(seconds: 2) { await gate.wait() }
+        let entered = await gate.waiting
+        XCTAssertTrue(entered, "Failure cleanup must not lose a release that precedes task startup")
     }
     private final class DelayedCapture: QuranAudioCapture {
         private let writer: QuranPCMWriter
@@ -172,6 +191,7 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         XCTAssertEqual(samples.count, 16_000)
         let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
             recognizeWindow: { _ in .init(runs: [], hasUnresolvedSpeech: false) },
+            recognitionProvider: StorageOnlyProvider(),
             makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
         await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
         XCTAssertEqual(controller.state, .listening)
@@ -211,6 +231,17 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         func start() throws { writer.append(samples) }
         func stop() async -> Result<Int64, Error> {
             await withCheckedContinuation { continuation in writer.finish { continuation.resume(returning: $0) } }
+        }
+    }
+    private struct StorageOnlyProvider: QuranSpeechRecognitionProvider {
+        let capabilities = QuranRecognitionCapabilities(backendID: "storage-only-fixture",
+            modelID: "injected-empty-observations-not-ASR", modelRevision: "1", configuredLanguage: "ar",
+            delivery: .overlappingAudioWindows, processesLocally: true, wordTimestamps: false,
+            wordConfidence: false, phonemeEvidence: false, calibratedWordingAssessment: false,
+            validatedTajweedAssessment: false)
+        func prepare() async throws {}
+        func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+            .init(runs: [], hasUnresolvedSpeech: false)
         }
     }
 }

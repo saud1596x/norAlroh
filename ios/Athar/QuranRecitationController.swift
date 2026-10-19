@@ -242,6 +242,12 @@ import os
     }
     func start(keys: [String], page: Int, snapshot: QCFV2Snapshot, corpus: [Surah], closedText: Bool = false,
                automaticScope: Bool = false) async {
+        #if NOOR_ACCEPTANCE_TESTING
+        let capturePreparationStarted = Date()
+        func capturePreparationStage(_ stage: String) {
+            print("NOOR_CAPTURE_PREPARATION_STAGE stage=\(stage) seconds=\(Date().timeIntervalSince(capturePreparationStarted))")
+        }
+        #endif
         guard guidedPhase != .reference && guidedPhase != .clearance else {
             message = "انتظر انتهاء التلاوة والاستعداد، ثم ابدأ التسميع."; return
         }
@@ -261,16 +267,25 @@ import os
         }
         guard revision == token else { return }
         state = .preparing
+        #if NOOR_ACCEPTANCE_TESTING
+        capturePreparationStage("permission-granted")
+        #endif
         do {
             try await Task.detached(priority: .utility) {
                 try QuranLiveRecitationStorage.removePreviousRecordings()
             }.value
             guard revision == token, state == .preparing else { return }
+            #if NOOR_ACCEPTANCE_TESTING
+            capturePreparationStage("legacy-cleanup-complete")
+            #endif
             guard MushafStudySession(keys: keys, scope: .range, page: page).valid(corpus: corpus), let journal else {
                 throw QuranJournalFailure.invalidRecord
             }
             try await bind(snapshot: snapshot, corpus: corpus)
             guard revision == token, state == .preparing else { return }
+            #if NOOR_ACCEPTANCE_TESTING
+            capturePreparationStage("reference-bound")
+            #endif
             // Capture first: model loading belongs to recognize(), not the
             // microphone permission/start path. PCM is durably recorded while
             // the bundled model warms up, even if recognition later fails.
@@ -287,8 +302,14 @@ import os
             prepared.automaticScope = automaticScope
             prepared.referenceExposure = referenceExposure
             try journal.create(prepared); record = prepared
+            #if NOOR_ACCEPTANCE_TESTING
+            capturePreparationStage("journal-created")
+            #endif
             if referenceExposure != nil { guidedPhase = .attempt }
             try await beginTake(token: token)
+            #if NOOR_ACCEPTANCE_TESTING
+            capturePreparationStage("capture-start-returned")
+            #endif
         } catch {
             guard revision == token else { return }
             if var failed = record, failed.closedTextRequested == true {

@@ -13,11 +13,13 @@ def test_only_existing_authored_aliases_allow_edition_spellings():
     assert map_words([group(['مالك'])], ['ملك']) is None
     assert map_words([group(['كتاب'], ['كِتَٰب'])], ['كِتَاب']) == [0]
     assert normalize('صلى') != normalize('صلي')
+    assert map_words([group(['يا بني'], ['يَٰبَنِىٓ'])], ['يَٰبَنِيٓ']) == [0]
 
 
 def test_compound_native_groups_keep_exact_published_subword_spans_and_gaps():
     mapping = map_words([group(['بعد', 'ما']), group(['سمعه'])], ['بَعْدِ', 'مَا', 'سَمِعَهُ'])
     assert mapping == [0, 0, 1]
+    assert map_words([group(['بعد ما']), group(['سمعه'])], ['بَعْدِ', 'مَا', 'سَمِعَهُ']) == mapping
     row = ['2:181', 100, 900, True, 0, [[1, 100, 200], [2, 400, 500], [3, 600, 800]]]
     assert bind_row(row, [10, 11], mapping) == [[10, 100, 200], [10, 400, 500], [11, 600, 800]]
 
