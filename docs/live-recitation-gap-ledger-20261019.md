@@ -15,6 +15,7 @@ Use GitHub for further repair verification. No App Store release.
 | Page refits when microphone/input hint appears | Separate normal/live control reservations; concise hint uses existing header row. GitHubcb first-Allow passed the original exact frame-equality assertion. | Physical-device/other-size acceptance; never weaken equality to hide a jump. |
 | Slow or inaccurate first recognition | Capture is independent of ASR, bounded mailbox retains original input across cold preparation. Actual old GitHub independent warmup took25.81s; that is not an iPhone latency estimate. | Measure capture-to-first-word latency and error/abstention rate on held-out authorized, labeled learner speech. Cold-start/throughput success alone is insufficient. |
 | Capture timer freezes during model preparation | Timer previously used only frames consumed by inference. A new callback takes the monotonic frame count from already-written original PCM, scoped to the current session/take/revision. A blocked-preparation regression is written; captured time alone cannot reveal words. | New native execution. This fixes capture-state reporting, not model inference speed. |
+| Learner remains on first face of a split ayah | Reader previously observed only currentVerse for live navigation. It now also observes the actual active word and resolves its exact native page within that same verse. Missing/unrelated cursors cannot navigate or leave a daily range. A regression finds a real split lexical ayah in the bundled edition. | New-source native and reader acceptance; this is navigation policy, not acoustic accuracy. |
 | All professional readers follow every word | Audit enumerates20readers ×114surahs =2280recordings with exact source hashes and negative controls. Development candidates remain separate from production. | Complete every recording, review actual word intervals, integrate approved exact recording/clock bindings and test app playback. No all-reader completion claim from partial machine candidates. |
 | Repeatable test/build | Converter TLS roots verified; original float32 graph/weight pins unchanged. Exact one-byte auto conversion-date drift identified from original artifact; original edition date and actual regeneration timestamp now separate. Current672 bundled-asset gate passed. | Matching current native/acoustic/UI results. Normal reviewed-release gates remain unresolved; installed TestFlight24 is old. |
 
@@ -34,6 +35,14 @@ First-Allow43.415s, one-tap45.286s, background/resume71.004s, privacy29.137s.
 Its app/tools/scripts/resources are identical to672; only workflow triggers
 changed. These are simulator capture/lifecycle results, not natural speech
 accuracy. New failure-highlight and capture-clock verification remains pending.
+The focused e09 run39183130158 stopped at the720-second build deadline before
+any unit/UI test executed. Original archiveSHA256
+f5bec6a4cfd5cac7b7e1387802c746d65db2d6763cf5c2b5a31486ed136e3624;
+context results is empty and build.txt ends at AtharTests compilation. This is
+not a passing regression or a demonstrated acoustic failure. Cold Release
+compilation now has a separate bounded1200-second lane restricted to
+`xcodebuild build-for-testing`. Per-test execution deadlines and assertions
+remain unchanged; timeouts still fail. Five local deadline-policy checks passed.
 No new TestFlight upload is claimed. Natural learner accuracy, Tajweed
 assessment, complete all-reader word timings and complete product Release
 acceptance remain unestablished. Further repair verification uses GitHub per

@@ -5,9 +5,9 @@ import subprocess
 import sys
 
 
-def validated_deadline(raw):
+def validated_deadline(raw, *, build=False):
     seconds = float(raw)
-    if not 0 < seconds <= 720:
+    if not 0 < seconds <= (1200 if build else 720):
         raise ValueError("Explicit positive test deadline and command required")
     return seconds
 
@@ -15,16 +15,27 @@ def validated_deadline(raw):
 def main():
     if len(sys.argv) < 3:
         raise ValueError("Explicit positive test deadline and command required")
-    if sys.argv[1] == '--check':
-        validated_deadline(sys.argv[2])
+    args = sys.argv[1:]
+    if args[0] in ('--check', '--check-build'):
+        validated_deadline(args[1], build=args[0] == '--check-build')
         print('NOOR_NATIVE_DEADLINE_VALID')
         return 0
-    seconds = validated_deadline(sys.argv[1])
-    process = subprocess.Popen(sys.argv[2:], start_new_session=(os.name == "posix"))
+    build = args[0] == '--build'
+    if build:
+        args = args[1:]
+    seconds = validated_deadline(args[0], build=build)
+    command = args[1:]
+    # The longer cold-build budget cannot be used to extend a test timeout.
+    # This lane only compiles the original Release test product; it runs none.
+    if build and (len(command) < 2 or os.path.basename(command[0]) != 'xcodebuild'
+                  or command[1] != 'build-for-testing'):
+        raise ValueError('Build deadline requires xcodebuild build-for-testing')
+    process = subprocess.Popen(command, start_new_session=(os.name == "posix"))
     try:
         return process.wait(timeout=seconds)
     except subprocess.TimeoutExpired:
-        print(f"NOOR_NATIVE_TEST_DEADLINE seconds={seconds} exit=124; tests NOT passed", flush=True)
+        stage = 'BUILD' if build else 'TEST'
+        print(f"NOOR_NATIVE_{stage}_DEADLINE seconds={seconds} exit=124; tests NOT passed", flush=True)
         if os.name == "posix":
             os.killpg(process.pid, signal.SIGTERM)
         else:

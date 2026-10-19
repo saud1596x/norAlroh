@@ -164,6 +164,14 @@ struct MushafStudyWordIndex: Sendable {
         guard let target, allowedPages.contains(target) else { return nil }
         return PlaybackLocation(verse: canonical, page: target)
     }
+    /// Live speech can cross a page inside the same ayah. Unlike an explicit
+    /// playback request, no word/verse fallback is evidence of current speech.
+    func listeningLocation(verse: String?, wordID: Int?, allowedPages: ClosedRange<Int>) -> PlaybackLocation? {
+        guard let verse, let wordID, words[verse]?.contains(wordID) == true,
+              let location = locations[wordID], location.verse == verse,
+              allowedPages.contains(location.page) else { return nil }
+        return location
+    }
     func hiddenIDs(session: MushafStudySession) -> Set<Int> {
         var result = Set<Int>()
         for key in session.keys.dropFirst(session.answers.count) {

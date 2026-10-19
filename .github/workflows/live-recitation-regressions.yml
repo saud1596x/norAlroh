@@ -13,11 +13,13 @@ on:
       - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranLiveRecitationStorage.swift
       - ios/Athar/QuranRecitationController.swift
+      - ios/Athar/MushafStudySession.swift
       - ios/Athar/QuranRecognitionWorker.swift
       - ios/AtharTests/QuranLiveRecitationStorageTests.swift
       - ios/AtharTests/QuranLiveStoragePolicyTests.swift
       - ios/AtharTests/QuranListeningLocationTests.swift
       - ios/AtharTests/QuranPracticeVisibilityTests.swift
+      - ios/AtharTests/NoorReaderCoreRegressionTests.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift
 permissions:
   contents: read
@@ -28,7 +30,7 @@ jobs:
   actual-reader:
     # Standard hosted runner, public repository; no paid/larger runner or keys.
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

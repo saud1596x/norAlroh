@@ -219,14 +219,9 @@ struct InteractiveMushafReader: View {
         .onChange(of: recitation.currentVerse) { _, key in
             if let previous = feedbackVerse, key != previous { completedFeedbackVerses.insert(previous) }
             feedbackVerse = key; announceReviewFeedback()
-            guard recitation.state == .listening, let key else { return }
-            // A manual page turn does not disable future Quran-wide lookup.
-            // Only a new accepted verse changes location; stopping/draining
-            // recognition cannot navigate away from the page the user stopped on.
-            selected = key; manualSelection = nil
-            if page?.words.contains(where: { $0.verse == key }) != true,
-               let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) { number = destination; lastPage = destination }
+            followLiveRecitation()
         }
+        .onChange(of: recitation.activeWordID) { _, _ in followLiveRecitation() }
         .onChange(of: recitation.state) { _, state in
             if state == .stopped { tools = true }
         }
@@ -887,6 +882,16 @@ struct InteractiveMushafReader: View {
         guard let key = candidate.flatMap({ key in page.words.contains(where: { $0.verse == key }) ? key : nil }) ?? page.words.first?.verse else { return }
         let verse = VerseSelection(key: key)
         _ = readingJourney.stop(page: number, chapter: verse.chapter, ayah: verse.ayah)
+    }
+    private func followLiveRecitation() {
+        // Ayah identity alone cannot follow a word across its page boundary.
+        // A withdrawn word, paused drain or stale unrelated word cannot move
+        // the visible page. This changes navigation, never speech evidence.
+        guard readerVisible, recitation.state == .listening,
+              let location = studyIndex?.listeningLocation(verse: recitation.currentVerse,
+                  wordID: recitation.activeWordID, allowedPages: allowedPages) else { return }
+        selected = location.verse; manualSelection = nil
+        if number != location.page { lastPage = location.page; number = location.page }
     }
     private func followCurrentAudio() {
         if audio.playing != nil { clearManualSelection(); followPlayback(); return }

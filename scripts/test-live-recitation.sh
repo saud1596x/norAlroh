@@ -36,7 +36,10 @@ common=(-project ios/Athar.xcodeproj -scheme Athar -configuration Release
  -destination "platform=iOS Simulator,id=$device" -derivedDataPath "$derived"
  CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES ONLY_ACTIVE_ARCH=YES -parallel-testing-enabled NO
  'OTHER_SWIFT_FLAGS=$(inherited) -DNOOR_ACCEPTANCE_TESTING')
-python3 scripts/run-native-with-deadline.py 720 xcodebuild build-for-testing "${common[@]}" 2>&1 | tee "$out/build.txt"
+# A cold full Release compile exceeded the former12-minute limit on GitHub
+# before any test ran (39183130158). Keep test execution deadlines unchanged;
+# give compilation its own bounded20-minute lane, never a passing timeout.
+python3 scripts/run-native-with-deadline.py --build 1200 xcodebuild build-for-testing "${common[@]}" 2>&1 | tee "$out/build.txt"
 failed=0
 run_case() {
  local name=$1; shift
@@ -62,6 +65,7 @@ run_case live-storage \
  -only-testing:AtharTests/QuranListeningLocationTests \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
+ -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationCrossesSplitAyahWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation
 xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 # Separate bundles preserve later results even when a CoreAudio test host dies.
@@ -75,6 +79,7 @@ else
   -only-testing:AtharTests/QuranLiveRecitationStorageTests \
   -only-testing:AtharTests/QuranListeningLocationTests \
   -only-testing:AtharTests/QuranPracticeVisibilityTests \
+  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationCrossesSplitAyahWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests
 fi
 # First approval is distinct from capture after an OS pre-grant. The app must

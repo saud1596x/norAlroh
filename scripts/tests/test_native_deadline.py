@@ -27,3 +27,22 @@ class NativeDeadlineTests(unittest.TestCase):
         result = subprocess.run([sys.executable,str(WRAPPER),'721',sys.executable,'-c','print("CHILD_EXECUTED")'],capture_output=True,text=True)
         self.assertNotEqual(result.returncode,0)
         self.assertNotIn('CHILD_EXECUTED',result.stdout)
+
+    def test_cold_build_budget_cannot_extend_test_execution(self):
+        accepted = subprocess.run([sys.executable,str(WRAPPER),'--check-build','1200'],capture_output=True)
+        self.assertEqual(accepted.returncode,0)
+        rejected = subprocess.run([sys.executable,str(WRAPPER),'--check-build','1201'],capture_output=True)
+        self.assertNotEqual(rejected.returncode,0)
+        for command in ([sys.executable,'-c','print("CHILD_EXECUTED")'],
+                        ['xcodebuild','test-without-building'], ['xcodebuild','test']):
+            result = subprocess.run([sys.executable,str(WRAPPER),'--build','1200',*command],
+                                    capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertNotIn('CHILD_EXECUTED',result.stdout)
+
+    def test_live_journey_keeps_original_runtime_and_assertions(self):
+        source = (ROOT/'scripts/test-live-recitation.sh').read_text(encoding='utf-8')
+        self.assertIn('--build 1200 xcodebuild build-for-testing',source)
+        self.assertIn('180 xcodebuild test-without-building',source)
+        self.assertIn('-default-test-execution-time-allowance 100',source)
+        self.assertIn('-maximum-test-execution-time-allowance 120',source)
