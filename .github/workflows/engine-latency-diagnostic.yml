@@ -20,6 +20,10 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch the exact prior compiler regression control
+        # Checkout is shallow. Read this one original source object, rather
+        # than silently omitting the negative control or fetching all history.
+        run: git fetch --no-tags --depth=1 origin 9cca6585b775a78bb8d5bdf18d8d1826897c91f4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
