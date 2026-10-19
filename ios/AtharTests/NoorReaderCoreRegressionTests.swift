@@ -2,29 +2,29 @@ import XCTest
 @testable import Athar
 
 final class NoorReaderCoreRegressionTests: XCTestCase {
-    func testLiveWordLocationCrossesSplitAyahWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor() throws {
+    func testLiveWordLocationUsesExactNativePageWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor() throws {
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
             from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
         let corpus = try XCTUnwrap(QuranResources.corpus)
         let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
         let index = MushafStudyWordIndex(snapshot: snapshot, keys: keys)
-        // Find an actual lexical-word boundary in the bundled edition; an
-        // ayah-end ornament alone is not sufficient to construct the case.
-        let verse = try XCTUnwrap(keys.first { key in
-            Set((index.words[key] ?? []).compactMap { index.locations[$0]?.page }).count > 1
-        })
+        // Actual bundled page4. This edition ends every page at an ayah end;
+        // do not invent a split ayah. A manual turn to page3 during this ayah
+        // still needs the next accepted word to resolve back to its real page.
+        let verse = try XCTUnwrap(keys.first { index.pages[$0]?.first == 4 })
         let words = try XCTUnwrap(index.words[verse])
         let first = try XCTUnwrap(words.first), last = try XCTUnwrap(words.last)
         let start = try XCTUnwrap(index.locations[first]), end = try XCTUnwrap(index.locations[last])
-        XCTAssertNotEqual(start.page, end.page)
+        XCTAssertEqual(start.page, 4)
+        XCTAssertEqual(end.page, 4)
         XCTAssertEqual(index.listeningLocation(verse: verse, wordID: first, allowedPages: 1...604), start)
         XCTAssertEqual(index.listeningLocation(verse: verse, wordID: last, allowedPages: 1...604), end,
-                       "The same ayah must follow its actual word into the next face")
+                       "The next word of the same ayah must still resolve its actual page")
         XCTAssertNil(index.listeningLocation(verse: verse, wordID: nil, allowedPages: 1...604),
                      "Silence or withdrawn recognition cannot navigate using an old verse")
         XCTAssertNil(index.listeningLocation(verse: nil, wordID: last, allowedPages: 1...604))
         XCTAssertNil(index.listeningLocation(verse: verse, wordID: index.words["1:1"]?.first, allowedPages: 1...604))
-        XCTAssertNil(index.listeningLocation(verse: verse, wordID: last, allowedPages: start.page...start.page),
+        XCTAssertNil(index.listeningLocation(verse: verse, wordID: last, allowedPages: 3...3),
                      "Recognized speech cannot leave the reading-only daily range")
     }
     func testShortSharedOpeningDoesNotJumpFromIkhlasToFalaqBeforeDistinctiveWord() throws {

@@ -65,7 +65,7 @@ run_case live-storage \
  -only-testing:AtharTests/QuranListeningLocationTests \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
- -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationCrossesSplitAyahWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
+ -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationUsesExactNativePageWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
  -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation
 xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 # Separate bundles preserve later results even when a CoreAudio test host dies.
@@ -79,7 +79,7 @@ else
   -only-testing:AtharTests/QuranLiveRecitationStorageTests \
   -only-testing:AtharTests/QuranListeningLocationTests \
   -only-testing:AtharTests/QuranPracticeVisibilityTests \
-  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationCrossesSplitAyahWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
+  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationUsesExactNativePageWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests
 fi
 # First approval is distinct from capture after an OS pre-grant. The app must

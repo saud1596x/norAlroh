@@ -164,8 +164,8 @@ struct MushafStudyWordIndex: Sendable {
         guard let target, allowedPages.contains(target) else { return nil }
         return PlaybackLocation(verse: canonical, page: target)
     }
-    /// Live speech can cross a page inside the same ayah. Unlike an explicit
-    /// playback request, no word/verse fallback is evidence of current speech.
+    /// Live word updates can restore the actual page after a manual page turn
+    /// while the ayah stays the same. No word/verse fallback proves speech.
     func listeningLocation(verse: String?, wordID: Int?, allowedPages: ClosedRange<Int>) -> PlaybackLocation? {
         guard let verse, let wordID, words[verse]?.contains(wordID) == true,
               let location = locations[wordID], location.verse == verse,

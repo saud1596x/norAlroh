@@ -884,7 +884,7 @@ struct InteractiveMushafReader: View {
         _ = readingJourney.stop(page: number, chapter: verse.chapter, ayah: verse.ayah)
     }
     private func followLiveRecitation() {
-        // Ayah identity alone cannot follow a word across its page boundary.
+        // Ayah identity alone does not change after a manual page turn.
         // A withdrawn word, paused drain or stale unrelated word cannot move
         // the visible page. This changes navigation, never speech evidence.
         guard readerVisible, recitation.state == .listening,
