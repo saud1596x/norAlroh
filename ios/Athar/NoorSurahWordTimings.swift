@@ -38,6 +38,13 @@ struct NoorSurahWordTimingTrack: Sendable {
 
 actor NoorSurahWordTimings {
     static let shared = NoorSurahWordTimings()
+    static func supports(_ reciter: NoorReciter) -> Bool {
+        switch (reciter.id, reciter.recordingID, reciter.server) {
+        case (74, 74, "https://cdn.mp3quran.net/audio/ali-hudhaifi/r1/"),
+             (31, 31, "https://cdn.mp3quran.net/audio/saud-shuraim/r1/"): return true
+        default: return false
+        }
+    }
     static let digest = "60fa8fe85296ba685ca273e1c19f24a0d4b3c9838ecd20f5ece340c700d72cfe"
     private struct Recording: Decodable {
         let reciterID: Int
@@ -52,6 +59,7 @@ actor NoorSurahWordTimings {
     private var document: Document?
     private var attempted = false
     func track(reciter: NoorReciter, surah: Int, ayahCount: Int) -> NoorSurahWordTimingTrack? {
+        guard Self.supports(reciter) else { return nil }
         if !attempted {
             attempted = true
             if let url = Bundle.main.url(forResource: "surah-word-timings", withExtension: "json"),

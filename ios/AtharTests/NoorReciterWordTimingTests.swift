@@ -38,9 +38,16 @@ final class NoorReciterWordTimingTests: XCTestCase {
             server: hudhaify.server, surahs: hudhaify.surahs)
         let wrong = await NoorSurahWordTimings.shared.track(reciter: changed, surah: 1, ayahCount: 7)
         XCTAssertNil(wrong)
+        XCTAssertFalse(NoorSurahWordTimings.supports(changed))
+        let changedURL = NoorReciter(id: hudhaify.id, name: hudhaify.name, recordingID: hudhaify.recordingID,
+            server: "https://cdn.mp3quran.net/audio/ali-hudhaifi/r2/", surahs: hudhaify.surahs)
+        XCTAssertFalse(NoorSurahWordTimings.supports(changedURL), "A same-named voice cannot reuse another source's timing")
+        XCTAssertTrue(NoorSurahWordTimings.supports(hudhaify))
+        XCTAssertTrue(NoorSurahWordTimings.supports(shuraim))
         let other = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 54 })
         let untimed = await NoorSurahWordTimings.shared.track(reciter: other, surah: 1, ayahCount: 7)
         XCTAssertNil(untimed, "Timings cannot transfer to another imam with the same ayah count")
+        XCTAssertFalse(NoorSurahWordTimings.supports(other))
     }
     func testSurahTimingKeepsPublishedAyahBoundariesAndRejectsNumberingShifts() throws {
         let track = try XCTUnwrap(NoorSurahAyahTimingTrack(surah: 112, ayahCount: 4,

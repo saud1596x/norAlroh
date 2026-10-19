@@ -182,12 +182,14 @@ import WhisperKit
         XCTAssertEqual(saved.practiceTextHidden, false); XCTAssertEqual(saved.textExposureOccurred, true)
     }
 
-    func testEveryCatalogRecordingHasASelectableStableIdentityAndRestorableKeys() throws {
+    func testOnlyWordTimedRecordingsAreSelectableWithStableIdentityAndRestorableKeys() throws {
         let voices = NoorMushafReciter.all
-        XCTAssertEqual(voices.count, NoorVerseReciter.all.count + NoorReciterCatalog.reciters.count)
-        XCTAssertGreaterThan(voices.count, 5)
+        XCTAssertEqual(Set(voices.compactMap(\.verseDirectory)), NoorReciterWordTimings.timedDirectories)
+        XCTAssertEqual(Set(voices.compactMap { $0.recording?.id }), [31, 74])
+        XCTAssertEqual(voices.count, 5)
         XCTAssertEqual(Set(voices.map(\.id)).count, voices.count)
         for voice in voices {
+            XCTAssertTrue(voice.supportsWordTracking)
             XCTAssertEqual(NoorMushafReciter.selected(voice.id)?.id, voice.id)
             let keys = voice.playbackKeys(["2:1", "2:2", "19:16", "19:17"])
             if let recording = voice.recording {
@@ -197,6 +199,20 @@ import WhisperKit
                 XCTAssertTrue(keys.allSatisfy { NoorAudioIntegrity.url($0) != nil })
             } else { XCTAssertEqual(keys, ["2:1", "2:2", "19:16", "19:17"]) }
         }
+        XCTAssertNil(NoorMushafReciter.selected("Hudhaify_64kbps"))
+        XCTAssertNil(NoorMushafReciter.selected("Maher_AlMuaiqly_64kbps"))
+        XCTAssertNil(NoorMushafReciter.selected("surah:54:54"), "Ayah-only timing cannot qualify as word tracking")
+        for legacy in NoorVerseReciter.legacyRecordings {
+            XCTAssertNil(NoorMushafReciter.selected(legacy.id), "An old preference must not reinsert an untimed source")
+        }
+        let directory = "Abdul_Basit_Murattal_64kbps"
+        let timed = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 74 })
+        XCTAssertFalse(NoorMushafReciter(id: "another-recording", name: "", verseDirectory: directory,
+            recording: nil).supportsWordTracking, "A known directory cannot qualify a different saved identity")
+        XCTAssertFalse(NoorMushafReciter(id: directory, name: "", verseDirectory: directory,
+            recording: timed).supportsWordTracking, "A source cannot mix ayah and whole-surah identities")
+        XCTAssertFalse(NoorMushafReciter(id: "surah:54:54", name: "", verseDirectory: nil,
+            recording: timed).supportsWordTracking, "Published timing cannot qualify a different recording identity")
     }
     func testSelectingEveryReciterPreservesRecordingOwnershipAndDoesNotStartPlayback() throws {
         let audio = MushafVerseAudio(), lease = UUID()
@@ -208,6 +224,11 @@ import WhisperKit
             XCTAssertNil(audio.playing); XCTAssertNil(audio.loadingKey)
             XCTAssertFalse(NoorAudioFocus.shared.preparePlayback(UUID()), "Changing preference cannot release the microphone")
         }
+        let previous = audio.selectedCatalogReciter?.id
+        let untimed = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 54 })
+        audio.selectReciter(.init(id: "surah:54:54", name: untimed.name, verseDirectory: nil, recording: untimed))
+        XCTAssertEqual(audio.selectedCatalogReciter?.id, previous, "Direct callers cannot bypass the tracked-only picker")
+        XCTAssertNil(audio.playing); XCTAssertNil(audio.loadingKey)
     }
     func testAll604OriginalPagesRenderWithoutClippingAndCacheMatchesExactSource() async throws {
         executionTimeAllowance = 180

@@ -232,3 +232,33 @@ Native checks39286866668 stopped before native execution because2publishing
 fixtures compared current generated privacy/support text with stale tracked
 pages. Regenerating those offline pages from the existing source policy
 resolves that mismatch without deployment or changing policy requirements.
+
+The user's next direction changes the exposed catalog: keep only recordings
+with actual word-timing resources and remove unsupported choices. The Mushaf
+picker now offers3published EveryAyah identities plus the2exact published
+whole-surah identities(Huthaifi/Shuraim). These5recordings represent4voices;
+they are explicitly labelled partial coverage, not fully reviewed/full-Quran
+word timing.18whole-surah and2EveryAyah untimed options are hidden. Older
+untimed preferences cannot insert themselves back into the picker, and direct
+selection rejects unsupported recordings. Original cache keys/bytes and the
+raw20-recording source catalog remain intact, never relabelled or deleted.
+
+The library exposes only its2whole-surah word-timed sources and opens the
+existing Mushaf with the exact selected identity. It no longer starts an
+independent audio-only player that has no visible word cursor. Opening the
+Mushaf itself does not start audio or microphone capture. Native/UI tests
+now cover removed entries, exact source and bitrate separation, preference
+restoration, and the library-to-reader handoff. Native execution is pending.
+
+Primary-source research19October compared QUL's With-segments resources,
+Quranic Universal Audio v3.2.0 and Quran Foundation's Audio API. All require
+matching timestamps to the exact media and word coordinate family; a voice
+name or available audio link alone is insufficient. QUL116was downloaded as
+data only(archiveSHA653406f2c8f882ed2233b722b712bb4bca6d5faeb6698f86a913b4761e8461cd).
+It has6236rows/78010spans, but a direct Tanzil-coordinate audit found368rows
+with numbering/overlap mismatches. This is not a claim that QUL's own source
+is inaccurate; its coordinate convention differs. It was NOT imported or
+applied to the existing EveryAyah/MP3Quran media. QF's current API requires
+backend credentials; no new credentials/service were created or exposed.
+Apple SpeechAnalyzer and the gated FastConformer candidate remain research
+candidates, not measured Arabic Quran accuracy or implemented replacements.

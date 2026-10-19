@@ -1,7 +1,7 @@
 import XCTest
 
 final class NoorContinuousReaderUITests: XCTestCase {
-    @MainActor func testLastCatalogReciterIsSearchableSelectedAndPersistsWithoutStartingAudio() {
+    @MainActor func testOnlyTrackedRecitersAreSearchableSelectedAndPersistWithoutStartingAudio() {
         executionTimeAllowance = 180
         let app = XCUIApplication(); launchNoorApp(app)
         selectNoorTab("المصحف", in: app)
@@ -95,20 +95,23 @@ final class NoorContinuousReaderUITests: XCTestCase {
         viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.01)).tap()
         XCTAssertTrue(more.waitForExistence(timeout: 5), "A blank margin tap restores the reader tools")
         picker.tap()
+        for removed in ["Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "surah:54:54", "surah:21181:340"] {
+            XCTAssertFalse(app.buttons["reader.reciter.\(removed)"].exists, "Untimed sources must not reappear")
+        }
         let reciterSearch = app.searchFields.firstMatch
         XCTAssertTrue(reciterSearch.waitForExistence(timeout: 10))
-        reciterSearch.tap(); reciterSearch.typeText("برهجي")
-        let voice = app.buttons["reader.reciter.surah:21181:340"]
-        XCTAssertTrue(voice.waitForExistence(timeout: 10), "The last catalog entry is not limited to the first five voices")
+        reciterSearch.tap(); reciterSearch.typeText("الشريم")
+        let voice = app.buttons["reader.reciter.surah:31:31"]
+        XCTAssertTrue(voice.waitForExistence(timeout: 10), "The exact word-timed whole-surah recording is searchable")
         voice.tap()
         XCTAssertTrue(picker.waitForExistence(timeout: 10)); picker.tap()
         let selectedSearch = app.searchFields.firstMatch
         XCTAssertTrue(selectedSearch.waitForExistence(timeout: 10))
-        selectedSearch.tap(); selectedSearch.typeText("برهجي")
+        selectedSearch.tap(); selectedSearch.typeText("الشريم")
         XCTAssertTrue(voice.waitForExistence(timeout: 10))
         XCTAssertEqual(voice.value as? String, "محدد")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "last-reciter-selected-and-searchable"; screenshot.lifetime = .keepAlways; add(screenshot)
+        screenshot.name = "word-timed-reciter-selected-and-searchable"; screenshot.lifetime = .keepAlways; add(screenshot)
         app.buttons["إغلاق"].tap()
         XCTAssertTrue(app.buttons["reader.study"].exists)
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)

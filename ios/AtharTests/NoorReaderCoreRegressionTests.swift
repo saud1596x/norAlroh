@@ -78,12 +78,12 @@ final class NoorReaderCoreRegressionTests: XCTestCase {
         XCTAssertEqual(index.playbackLocation(key: recording, wordID: finalWord, currentPage: 50,
             allowedPages: 1...604)?.verse, "2:1", "An untimed surah has only its known starting position")
     }
-    @MainActor func testExistingReaderPreferencesRestoreTheSameLegacyRecordingAndCacheKey() throws {
+    @MainActor func testRemovedUntimedPreferencesStayHiddenAndTheirCacheIsNeverRelabelled() throws {
         for directory in ["Abdurrahmaan_As-Sudais_64kbps", "Saood_ash-Shuraym_64kbps"] {
-            let saved = try XCTUnwrap(NoorMushafReciter.selected(directory))
-            XCTAssertEqual(saved.verseDirectory, directory); XCTAssertNil(saved.recording)
-            let audio = MushafVerseAudio(); audio.selectReciter(saved)
-            XCTAssertEqual(audio.reciterDirectory, directory)
+            XCTAssertNil(NoorMushafReciter.selected(directory))
+            // Archived bookmark metadata and cached bytes keep their original
+            // identity, without restoring the source to the selectable list.
+            let audio = MushafVerseAudio(recordingIdentity: "everyayah:" + directory)
             XCTAssertEqual(audio.currentRecordingIdentity, "everyayah:" + directory)
             XCTAssertNil(audio.playing, "Restoring a preference never starts playback")
             let rateKey = "noor.audio.bookmark.everyayah:\(directory).rate"
@@ -94,7 +94,7 @@ final class NoorReaderCoreRegressionTests: XCTestCase {
             }
             XCTAssertTrue(audio.setPlaybackRate(1.1))
             XCTAssertEqual(UserDefaults.standard.float(forKey: rateKey), 1.1,
-                           "Existing EveryAyah bookmarks retain the same namespace through the unified picker")
+                           "Old bookmark metadata cannot acquire another bitrate's identity")
             let cache = try XCTUnwrap(NoorVerseReciter.cacheKey(directory: directory, verse: "112:1"))
             XCTAssertEqual(NoorAudioIntegrity.url(cache)?.absoluteString,
                            "https://everyayah.com/data/\(directory)/112001.mp3")

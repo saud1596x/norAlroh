@@ -52,7 +52,7 @@ import MediaPlayer
     private var bookmarkKey: String { "noor.audio.bookmark." + currentRecordingIdentity }
     private(set) var selectedCatalogReciter: NoorMushafReciter?
     func selectReciter(_ reciter: NoorMushafReciter) {
-        guard source == nil else { return }
+        guard source == nil, reciter.supportsWordTracking else { return }
         stop()
         reciterDirectory = reciter.verseDirectory ?? "Abdul_Basit_Murattal_64kbps"
         selectedCatalogReciter = reciter
@@ -176,13 +176,13 @@ import MediaPlayer
         return true
     }
     @discardableResult func switchReciter(to directory: String) -> Bool {
-        let permitted = NoorVerseReciter.directories
+        let permitted = NoorReciterWordTimings.timedDirectories
         guard source == nil, permitted.contains(directory), index < keys.count,
               keys[index].split(separator: ":").count == 2 else { return false }
         let range = keys, position = index, repetitions = count, completed = pass, pause = gap
         selectedCatalogReciter = nil; reciterDirectory = directory
-        // No recording-specific word timing is available here. Start the same
-        // canonical ayah from its own beginning, never copy elapsed seconds.
+        // Start this exact timed recording at the ayah's own beginning;
+        // never copy another recording's elapsed seconds or word cursor.
         play(range, repetitions: repetitions, delaySeconds: pause, startingAt: position, completedPass: completed)
         return error == nil
     }

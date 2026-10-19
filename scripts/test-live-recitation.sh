@@ -99,9 +99,13 @@ run_case privacy -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExp
 # these separate invocations survive an unrelated live recognition failure.
 run_case reader-geometry \
  -only-testing:AtharTests/NoorReciterWordTimingTests \
+ -only-testing:AtharTests/NoorContinuousMushafTests/testOnlyWordTimedRecordingsAreSelectableWithStableIdentityAndRestorableKeys \
+ -only-testing:AtharTests/NoorContinuousMushafTests/testSelectingEveryReciterPreservesRecordingOwnershipAndDoesNotStartPlayback \
+ -only-testing:AtharTests/NoorReaderCoreRegressionTests/testRemovedUntimedPreferencesStayHiddenAndTheirCacheIsNeverRelabelled \
  -only-testing:AtharTests/MushafViewportTests \
  -only-testing:AtharTests/NoorContinuousMushafTests/testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry
 run_case reader-controls -only-testing:AtharUITests/NoorContinuousReaderUITests
+run_case reader-library -only-testing:AtharUITests/NoorReciterLibraryTests
 run_case reader-full-face -only-testing:AtharUITests/NoorReaderComfortUITests/testUserReferencePage14IsCenteredAndFullyVisible
 run_case reader-entry -only-testing:AtharUITests/NoorReaderComfortUITests/testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone
 else

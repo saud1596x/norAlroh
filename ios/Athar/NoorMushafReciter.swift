@@ -10,29 +10,28 @@ struct NoorMushafReciter: Identifiable {
     let recording: NoorReciter?
     var recordingIdentity: String { verseDirectory.map { "everyayah:" + $0 } ?? id }
     var supportsVersePlayback: Bool { verseDirectory != nil }
+    var supportsWordTracking: Bool {
+        if let verseDirectory {
+            return recording == nil && id == verseDirectory
+                && NoorReciterWordTimings.timedDirectories.contains(verseDirectory)
+        }
+        guard let recording, id == "surah:\(recording.id):\(recording.recordingID)" else { return false }
+        return NoorSurahWordTimings.supports(recording)
+    }
     var scopeLabel: String { supportsVersePlayback ? "من الآية المحددة" : "السورة كاملة من بدايتها" }
     var trackingLabel: String {
-        guard let verseDirectory else {
-            return recording.map { NoorSurahAyahTimings.supports($0) } == true
-                ? "السورة من بدايتها · تتبّع الآيات حيث يتوفر التوقيت"
-                : "السورة من بدايتها · دون تتبّع"
-        }
-        return NoorReciterWordTimings.timedDirectories.contains(verseDirectory)
-            ? "من الآية المحددة · تتبّع الكلمات حيث يتوفر التوقيت"
-            : "من الآية المحددة · تتبّع الآيات"
+        scopeLabel + (supportsWordTracking ? " · تتبّع الكلمات، بتغطية جزئية" : " · التتبّع غير متاح")
     }
     static var all: [Self] {
-        NoorVerseReciter.all.map { .init(id: $0.id, name: $0.name, verseDirectory: $0.id, recording: nil) }
+        (NoorVerseReciter.all.map { Self(id: $0.id, name: $0.name, verseDirectory: $0.id, recording: nil) }
         + NoorReciterCatalog.reciters.map {
-            .init(id: "surah:\($0.id):\($0.recordingID)", name: $0.name, verseDirectory: nil, recording: $0)
-        }
+            Self(id: "surah:\($0.id):\($0.recordingID)", name: $0.name, verseDirectory: nil, recording: $0)
+        }).filter(\.supportsWordTracking)
     }
     static func selected(_ id: String) -> Self? {
-        if let current = all.first(where: { $0.id == id }) { return current }
-        // Restore the exact older recording, not another bitrate with a
-        // similar voice name or somebody else's cached/timed media.
-        guard let legacy = NoorVerseReciter.legacyRecordings.first(where: { $0.id == id }) else { return nil }
-        return .init(id: legacy.id, name: legacy.name, verseDirectory: legacy.id, recording: nil)
+        // Old untimed preferences cannot reinsert an unsupported choice.
+        // Cached media retains its exact identity and is never relabelled.
+        all.first(where: { $0.id == id })
     }
     func playbackKeys(_ verses: [String]) -> [String] {
         guard let recording else { return verses }
@@ -56,11 +55,7 @@ struct NoorMushafReciterPicker: View {
     @State private var search = ""
     private var matches: [NoorMushafReciter] {
         let query = ArabicSearch.normalize(search)
-        var choices = NoorMushafReciter.all
-        if let saved = NoorMushafReciter.selected(selectedID), !choices.contains(where: { $0.id == saved.id }) {
-            choices.insert(saved, at: 0)
-        }
-        return choices.filter { query.isEmpty || ArabicSearch.normalize($0.name).contains(query) }
+        return NoorMushafReciter.all.filter { query.isEmpty || ArabicSearch.normalize($0.name).contains(query) }
     }
     var body: some View {
         NavigationStack {

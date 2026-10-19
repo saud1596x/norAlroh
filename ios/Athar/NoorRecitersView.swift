@@ -10,7 +10,7 @@ struct NoorRecitersView: View {
     }
     private var filtered: [NoorReciter] {
         let query = ArabicSearch.normalize(search)
-        return NoorReciterCatalog.reciters.filter {
+        return NoorReciterCatalog.reciters.filter(NoorSurahWordTimings.supports).filter {
             (!favoritesOnly || favoriteIDs.contains($0.id)) &&
             (query.isEmpty || ArabicSearch.normalize($0.name).contains(query))
         }.sorted { left, right in
@@ -22,7 +22,7 @@ struct NoorRecitersView: View {
     var body: some View {
         List {
             Section {
-                Text("مصاحف كاملة لأئمة الحرمين الحاليين والسابقين برواية حفص. تضم كل قائمة السور الـ١١٤.")
+                Text("اختر القارئ ثم افتح السورة داخل المصحف مع تتبّع التلاوة.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Toggle("المفضلة فقط", isOn: $favoritesOnly)
             }.listRowBackground(Theme.panel)
@@ -33,7 +33,7 @@ struct NoorRecitersView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(reciter.name).font(.headline)
-                            Text("المصحف كامل · ١١٤ سورة")
+                            Text("١١٤ سورة · توقيت كلمات بتغطية جزئية")
                                 .font(.subheadline).foregroundStyle(.secondary)
                         }.padding(.vertical, 6)
                     }.accessibilityIdentifier("reciter.\(reciter.id)")
@@ -50,7 +50,7 @@ struct NoorRecitersView: View {
                 }.listRowBackground(Theme.panel)
             }
             if filtered.isEmpty {
-                if NoorReciterCatalog.reciters.isEmpty {
+                if NoorReciterCatalog.reciters.filter(NoorSurahWordTimings.supports).isEmpty {
                     ContentUnavailableView("تعذّر تحميل مكتبة القراء", systemImage: "exclamationmark.triangle",
                         description: Text("بيانات المكتبة غير متاحة في هذه النسخة. أعد فتح التطبيق أو حدّثه إلى آخر نسخة."))
                 } else {
@@ -60,26 +60,17 @@ struct NoorRecitersView: View {
             }
         }
         .scrollContentBackground(.hidden).background(Theme.background)
-        .noorScreenChrome().navigationTitle("أئمة الحرمين")
+        .noorScreenChrome().navigationTitle("القرّاء مع التتبّع")
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث باسم القارئ")
     }
 }
 
 private struct NoorReciterSurahsView: View {
     @EnvironmentObject private var store: AtharStore
+    @AppStorage("noor.mushaf.reciter") private var preferredReciter = "Abdul_Basit_Murattal_64kbps"
     let reciter: NoorReciter
-    @StateObject private var audio: MushafVerseAudio
     @State private var search = ""
-    init(reciter: NoorReciter) {
-        self.reciter = reciter
-        _audio = StateObject(wrappedValue: MushafVerseAudio(source: { key in
-            guard let number = Int(key), key == String(number) else { return nil }
-            return reciter.audioURL(surah: number)
-        }, cacheKey: { key in
-            guard let number = Int(key) else { return nil }
-            return NoorAudioIntegrity.reciterKey(reciter, surah: number)
-        }, recordingIdentity: "mp3quran:\(reciter.recordingID):\(reciter.server)", displayName: reciter.name, keepAlive: true))
-    }
+    @State private var readerSurah: Surah?
     private var surahs: [Surah] {
         let query = ArabicSearch.normalize(search)
         return store.quran.filter {
@@ -87,89 +78,41 @@ private struct NoorReciterSurahsView: View {
                 ArabicSearch.normalize($0.name).contains(query) || ArabicSearch.integer(search) == $0.number)
         }
     }
-    private var activeSurah: Surah? {
-        guard let key = audio.playing ?? audio.loadingKey ?? audio.waitingKey,
-              let number = Int(key) else { return nil }
-        return store.quran.first { $0.number == number }
+    private func open(_ surah: Surah) {
+        let identity = "surah:\(reciter.id):\(reciter.recordingID)"
+        guard NoorMushafReciter.selected(identity) != nil else { return }
+        preferredReciter = identity
+        readerSurah = surah
     }
     var body: some View {
         List {
             Section {
-                Text("حفص عن عاصم · تلاوة السورة كاملة")
+                Text("يُفتح المصحف بالقارئ المختار. ابدأ الاستماع من أدوات الآية.")
                     .font(.subheadline).foregroundStyle(.secondary)
-                Button {
-                    audio.play((1...114).map(String.init))
-                } label: {
-                    Label("تشغيل المصحف من الفاتحة", systemImage: "play.circle.fill")
-                        .frame(minHeight: 44)
-                }.accessibilityIdentifier("reciter.playCompleteQuran")
-                Button("استأنف موضع الاستماع المحفوظ") {
-                    if !audio.restoreBookmark() {
-                        let position = UserDefaults.standard.integer(forKey: "noor.reciters.canonicalSurah")
-                        audio.play([String((1...114).contains(position) ? position : 1)])
-                    }
-                }
-                    .frame(minHeight: 44)
-                if audio.playing != nil || audio.loadingKey != nil || audio.waitingKey != nil {
-                    if audio.playing != nil {
-                        HStack {
-                            Button(audio.isPaused ? "استئناف" : "إيقاف مؤقت") {
-                                if audio.isPaused { audio.resumePlayback() } else { audio.pausePlayback() }
-                            }.frame(minHeight: 44)
-                            Button("احفظ موضع الاستماع") { audio.saveBookmark() }.frame(minHeight: 44)
-                        }
-                        TimelineView(.periodic(from: .now, by: 0.5)) { _ in
-                            if audio.durationSeconds > 0 {
-                                Slider(value: Binding(get: { audio.currentSeconds }, set: { audio.seek(to: $0) }), in: 0...audio.durationSeconds)
-                                    .accessibilityLabel("موضع الاستماع داخل السورة")
-                            }
-                        }
-                        Picker("سرعة التلاوة", selection: Binding(get: { audio.playbackRate }, set: { _ = audio.setPlaybackRate($0) })) {
-                            Text("٠٫٧٥").tag(Float(0.75)); Text("عادية").tag(Float(1)); Text("١٫٢٥").tag(Float(1.25))
-                        }.pickerStyle(.segmented)
-                        Menu("مؤقت النوم") {
-                            Button("٥ دقائق · عند نهاية المقطع") { _ = audio.setSleepTimer(minutes: 5) }
-                            Button("١٥ دقيقة · عند نهاية المقطع") { _ = audio.setSleepTimer(minutes: 15) }
-                            Button("٣٠ دقيقة · عند نهاية المقطع") { _ = audio.setSleepTimer(minutes: 30) }
-                        }.frame(minHeight: 44)
-                        if let status = audio.sleepStatus { Text(status).font(.caption) }
-                    }
-                    if let current = activeSurah {
-                        Label("\(audio.playing != nil ? "تُتلى الآن" : "جارٍ تجهيز") · \(current.name)",
-                              systemImage: audio.playing != nil ? "speaker.wave.2.fill" : "arrow.down.circle")
-                            .font(.subheadline).foregroundStyle(Theme.gold)
-                            .accessibilityIdentifier("reciter.currentSurah")
-                    }
-                    Button { audio.stop() } label: {
-                        Label("إيقاف التلاوة", systemImage: "stop.circle")
+                Text("توقيت الكلمات غير مكتمل لبعض الآيات.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let first = store.quran.first(where: { $0.number == 1 }) {
+                    Button { open(first) } label: {
+                        Label("افتح المصحف من الفاتحة", systemImage: "book")
                             .frame(minHeight: 44)
-                    }
-                }
-                if let error = audio.error {
-                    Text(error).foregroundStyle(.red).accessibilityLabel("خطأ التشغيل: \(error)")
+                    }.accessibilityIdentifier("reciter.openMushaf")
                 }
             }.listRowBackground(Theme.panel)
             ForEach(surahs) { surah in
-                let key = String(surah.number)
-                Button {
-                    if audio.playing == key || audio.loadingKey == key { audio.stop() }
-                    else { audio.play([key]) }
-                } label: {
+                Button { open(surah) } label: {
                     HStack(spacing: 14) {
                         Text("\(surah.number)").monospacedDigit().foregroundStyle(Theme.gold)
                             .frame(minWidth: 32)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(surah.name).font(.headline)
-                            Text(audio.loadingKey == key ? "جارٍ تجهيز التلاوة…" : "\(surah.ayahs.count) آية")
-                                .font(.subheadline).foregroundStyle(.secondary)
+                            Text("\(surah.ayahs.count) آية").font(.subheadline).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if audio.loadingKey == key { ProgressView() }
-                        else { Image(systemName: audio.playing == key ? "stop.fill" : "play.fill") }
+                        Image(systemName: "book")
                     }.padding(.vertical, 8).frame(minHeight: 48)
                 }.buttonStyle(.plain).listRowBackground(Theme.panel)
                     .accessibilityIdentifier("reciter.surah.\(surah.number)")
-                    .accessibilityLabel("\(surah.name)، \(reciter.name)، \(audio.playing == key || audio.loadingKey == key ? "إيقاف" : "تشغيل")")
+                    .accessibilityLabel("\(surah.name)، \(reciter.name)، افتح داخل المصحف")
             }
             if surahs.isEmpty {
                 ContentUnavailableView("لا توجد سورة مطابقة", systemImage: "magnifyingglass")
@@ -177,12 +120,10 @@ private struct NoorReciterSurahsView: View {
         }
         .scrollContentBackground(.hidden).background(Theme.background)
         .noorScreenChrome().navigationTitle(reciter.name).navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث في السور المتاحة")
-        .onAppear {
-            UserDefaults.standard.set(reciter.id, forKey: "noor.reciters.recent")
-            audio.onVerse = { key in
-                if let number = Int(key), (1...114).contains(number) { UserDefaults.standard.set(number, forKey: "noor.reciters.canonicalSurah") }
-            }
+        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث في السور")
+        .fullScreenCover(item: $readerSurah) { surah in
+            InteractiveMushafReader(chapter: surah.number, ayah: 1, initialPage: nil)
         }
+        .onAppear { UserDefaults.standard.set(reciter.id, forKey: "noor.reciters.recent") }
     }
 }

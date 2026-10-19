@@ -259,7 +259,10 @@ struct InteractiveMushafReader: View {
         }
         .onAppear {
             readerVisible = true
-            if let reciter = NoorMushafReciter.selected(preferredReciter) { audio.selectReciter(reciter) }
+            if let reciter = NoorMushafReciter.selected(preferredReciter) ?? NoorMushafReciter.all.first {
+                if preferredReciter != reciter.id { preferredReciter = reciter.id }
+                audio.selectReciter(reciter)
+            }
         }
     }
     private var activeReader: some View {
