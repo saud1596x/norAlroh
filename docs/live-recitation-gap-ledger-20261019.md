@@ -135,3 +135,38 @@ readers now explicitly useUTF-8, invalid canonical setup aborts the audit,
 and library resume fingerprints include actual CUDA/cuDNN package versions.
 27local regressions plus4subtests passed, including the actual non-UTF8 child
 boundary. No professional timing candidate was promoted or shipped.
+
+Matching47dcd82 diagnostic39286866596 succeeded:6Release cases,0failures,
+including the unchanged real-PCM cross-surah deadline and all5publishing
+content cases. iPhone17Pro/iOS26.2, Xcode26.3; artifactSHA256
+a84796dd2bc4f1087e2db95266abf7c3aeda5df8aaf14cac584bf3888adf05b0.
+The first location arrived20.622s after fixture injection, the second6.493s;
+the nominal20s polling test passed under its original loop, but these wall
+times are not an instant-recognition claim. Independent assets hashed2.922s,
+its model loaded between3.292s and14.182s; paired preparation15.774s.
+Paired windows returned in2.189–4.288s. This identifies cold loading and
+inference costs; adding stage diagnostics did not fix them. Whole-product
+and focused UI invocations remain separate from this six-case result.
+
+The user's visible-text request now has a specific controller-to-canvas
+regression: keep every ayah visible, follow the exact accepted word into the
+next ayah, retain the completed ayah when visibility toggles, and preserve
+all original glyph regions/row ink/shaping passes. Public PCM supplies
+capture/VAD, while observations are explicitly injected; it cannot prove
+acoustic recognition accuracy. Native execution of this new case is pending.
+
+Published-coordinate tooling also audits QUD-Technologies' Quranic Universal
+Audio v3.2.0 (https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0).
+The publisher releases code/timing metadata under CC-BY-4.0; source audio
+rights remain with its original providers. Only data was read, no publisher
+helper was executed. Exact package/script hashes are pinned in
+tools/reciter_alignment/published_coordinates.py. This tool accepts only
+Noor's existing authored aliases and exact native IDs, retains source clock
+gaps and explicitly timed reciter repetitions, and leaves mismatched verses
+unmapped.12local regressions passed. On the actual pinned script,6072/6236
+verses mapped uniquely;164remain unresolved. Huthaifi6072occurrences/77796
+timed spans and Shuraim6095occurrences/76031spans cover114surahs each at the
+publisher-coordinate level. Their exact audio identity relative to the app
+is NOT_VERIFIED, and no timing was integrated/promoted. These numbers do not
+establish all20readers or audio review. The corrected20reader acoustic audit
+is separate and retains measured candidates, exclusions and negative controls.

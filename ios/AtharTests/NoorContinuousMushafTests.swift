@@ -68,6 +68,71 @@ import WhisperKit
         await controller.finish()
     }
 
+    func testVisibleTextTracksRecognizedWordsAcrossAyahsWithoutHidingOrReshapingThePage() async throws {
+        // Original public PCM supplies capture/VAD. The timed observations are
+        // injected explicitly: this verifies controller-to-native-canvas wiring,
+        // not recognition accuracy, real microphone latency or human Tajweed.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { s in s.ayahs.map { "\(s.number):\($0.number)" } }
+        let wordIndex = MushafStudyWordIndex(snapshot: snapshot, keys: keys)
+        let firstIDs = try XCTUnwrap(wordIndex.words["112:1"])
+        let secondIDs = try XCTUnwrap(wordIndex.words["112:2"])
+        XCTAssertEqual(firstIDs.count, 4); XCTAssertEqual(secondIDs.count, 2)
+        let reference = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "112001", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: reference.path)
+        XCTAssertGreaterThanOrEqual(samples.count, 32_000)
+        var input: ContinuousReferenceCapture?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionProvider: VisibleTrackingProvider(),
+            makeCapture: { writer, _ in let feed = ContinuousReferenceCapture(writer); input = feed; return feed },
+            setSessionActive: { _ in })
+        await controller.start(keys: ["112:1", "112:2", "112:3"], page: 604,
+            snapshot: snapshot, corpus: corpus, closedText: false)
+        let session = try XCTUnwrap(controller.record?.id)
+        XCTAssertEqual(controller.state, .listening); XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertNil(controller.activeWordID, "Showing the Quran cannot invent a heard word")
+
+        try OriginalMushafCompanion.register()
+        let fonts = MushafFonts(); await fonts.load("QCF2604"); XCTAssertNil(fonts.error)
+        let page = OriginalPageData.page(604, snapshot: snapshot, rows: try OriginalMushafRows.load(), keys: keys)
+        let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
+        canvas.configure(page: page, corpus: corpus)
+        XCTAssertTrue(canvas.renderedSuccessfully)
+        let geometry = canvas.regions.map(\.rect), ink = canvas.rowGeometry.map(\.ink), passes = canvas.shapingPasses
+
+        for (expectedVerse, expectedID) in [("112:1", try XCTUnwrap(firstIDs.last)), ("112:2", try XCTUnwrap(secondIDs.last))] {
+            input?.append(Array(samples.prefix(32_000)))
+            let deadline = Date().addingTimeInterval(8)
+            while controller.activeWordID != expectedID && Date() < deadline {
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+            XCTAssertEqual(controller.currentVerse, expectedVerse)
+            XCTAssertEqual(controller.activeWordID, expectedID)
+            XCTAssertEqual(controller.record?.id, session); XCTAssertEqual(controller.state, .listening)
+            XCTAssertTrue(controller.hiddenIDs.isEmpty, "Open-text recitation must leave every ayah visible")
+            let location = wordIndex.listeningLocation(verse: controller.currentVerse,
+                wordID: controller.activeWordID, allowedPages: 1...604)
+            XCTAssertEqual(location, MushafStudyWordIndex.PlaybackLocation(verse: expectedVerse, page: 604))
+            canvas.selected = controller.currentVerse; canvas.activeWordID = controller.activeWordID
+            canvas.hiddenWordIDs = controller.hiddenIDs
+            XCTAssertNotNil(canvas.selectionPath(for: expectedVerse))
+            XCTAssertNotNil(canvas.activeWordPath(), "The exact recognized word needs a native highlight with text open")
+            XCTAssertEqual(canvas.regions.map(\.rect), geometry); XCTAssertEqual(canvas.rowGeometry.map(\.ink), ink)
+            XCTAssertEqual(canvas.shapingPasses, passes, "Tracking cannot refit or shrink the approved Mushaf")
+        }
+        XCTAssertTrue(controller.record?.retainedVisibleVerses?.contains("112:1") == true)
+        XCTAssertTrue(controller.setPracticeTextHidden(true))
+        XCTAssertTrue(Set(firstIDs).isDisjoint(with: controller.hiddenIDs), "The completed ayah stays visible")
+        XCTAssertFalse(controller.hiddenIDs.isEmpty, "Unrecited text can still be concealed on request")
+        XCTAssertTrue(controller.setPracticeTextHidden(false)); XCTAssertTrue(controller.hiddenIDs.isEmpty)
+        XCTAssertEqual(controller.activeWordID, secondIDs.last, "Changing visibility cannot change recognized position")
+        await controller.finish()
+    }
+
     func testDelayedAnalysisCannotOverwriteVisibilityOrTextAssistance() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -296,6 +361,21 @@ import WhisperKit
         XCTAssertEqual(controller.state, .stopped)
         XCTAssertEqual(controller.currentVerse, position)
         XCTAssertEqual(controller.record?.id, id)
+    }
+}
+
+private struct VisibleTrackingProvider: QuranSpeechRecognitionProvider {
+    let capabilities = QuranRecognitionCapabilities(backendID: "visible-tracking-fixture",
+        modelID: "injected-timed-observations-not-ASR", modelRevision: "1", configuredLanguage: "ar",
+        delivery: .overlappingAudioWindows, processesLocally: true, wordTimestamps: true,
+        wordConfidence: true, phonemeEvidence: false, calibratedWordingAssessment: false, validatedTajweedAssessment: false)
+    func prepare() async throws {}
+    func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+        let tokens = window.endFrame <= 32_000 ? ["قل", "هو", "الله", "أحد"] : ["قل", "هو", "الله", "أحد", "الله", "الصمد"]
+        return .init(runs: [tokens.enumerated().map {
+            QuranHeardWord(text: $0.element, start: Double($0.offset) * 0.35,
+                end: Double($0.offset + 1) * 0.35, probability: 0.99)
+        }], hasUnresolvedSpeech: false)
     }
 }
 
