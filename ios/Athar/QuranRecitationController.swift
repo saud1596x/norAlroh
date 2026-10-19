@@ -409,8 +409,15 @@ import os
         take.textExposureOccurred = next.textExposureOccurred
         if referenceExposure != nil { guidedPhase = .attempt; referenceExposure = nil }
         let mailbox = QuranWindowMailbox()
+        let takeID = take.id, sessionID = next.id
         let writer = try QuranPCMWriter(url: journal.audio(session: next.id, take: take.id), lowLatency: true,
-            onWindow: { mailbox.put($0) }, onFailure: { @Sendable [weak self] _ in
+            onWindow: { [weak self] window in
+                mailbox.put(window)
+                let frames = window.endFrame // Already written original PCM, not a wall-clock estimate.
+                Task { @MainActor in
+                    self?.noteCapturedFrames(frames, session: sessionID, take: takeID, token: token)
+                }
+            }, onFailure: { @Sendable [weak self] _ in
                 Task { @MainActor in
                     guard let self, self.revision == token else { return }
                     self.message = "تعذّرت معالجة بقية الصوت؛ توقف الميكروفون. أعد المحاولة داخل المصحف."
@@ -472,6 +479,15 @@ import os
             catch { message = "تعذّر تحديث حالة التسميع. أعد محاولة الإنهاء." }
             throw error
         }
+    }
+    private func noteCapturedFrames(_ frames: Int64, session: UUID, take: UUID, token: UUID) {
+        guard revision == token, capturing, var current = record, current.id == session,
+              let index = current.takes.firstIndex(where: { $0.id == take }),
+              !current.takes[index].closed, frames > current.takes[index].frames else { return }
+        // Cold ASR preparation/backlog cannot freeze the visible capture time.
+        // Disk closure still takes its authoritative final length from capture.
+        current.takes[index].frames = frames
+        record = current
     }
     private func processWindows(_ mailbox: QuranWindowMailbox, take: UUID, token: UUID) async {
         var prepared = false

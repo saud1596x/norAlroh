@@ -4,6 +4,72 @@ import WhisperKit
 @testable import Athar
 
 final class QuranLiveRecitationStorageTests: XCTestCase {
+    @MainActor func testCapturedTimeUsesWrittenPCMWhileRecognitionPreparationIsBlocked() async throws {
+        // Real bundled PCM, injected capture/preparation barrier: this proves
+        // capture-clock ordering, not real microphone or ASR quality.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "001002", withExtension: "mp3"))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: source.path)
+        XCTAssertGreaterThan(samples.count, 80_000)
+        let gate = CaptureStartGate()
+        var capture: ReferenceCapture?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionProvider: PreparationBarrierProvider(gate: gate),
+            makeCapture: { writer, _ in
+                let value = ReferenceCapture(writer: writer, samples: Array(samples.prefix(32_000)))
+                capture = value; return value
+            }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        await controller.start(keys: ["1:2"], page: 1, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        let openingDeadline = Date().addingTimeInterval(8)
+        while !(await gate.waiting) && Date() < openingDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let waiting = await gate.waiting
+        guard waiting, let capture else {
+            await gate.release(); await controller.finish()
+            XCTFail("Injected recognition preparation did not reach its barrier"); return
+        }
+        for start in stride(from: 32_000, to: samples.count, by: 32_000) {
+            capture.writer.append(Array(samples[start..<min(start + 32_000, samples.count)]))
+        }
+        let captureDeadline = Date().addingTimeInterval(8)
+        while (controller.record?.takes.last?.frames ?? 0) < Int64(samples.count) && Date() < captureDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.record?.takes.last?.frames, Int64(samples.count),
+                       "Cold recognition must not freeze capture time at its first pending window")
+        let capturedSeconds = controller.record?.duration
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(controller.record?.duration, capturedSeconds, "No new PCM means no invented elapsed capture time")
+        XCTAssertTrue(controller.revealed.isEmpty)
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        XCTAssertNil(controller.activeWordID, "Capture duration cannot invent recognized words")
+        await gate.release()
+        await controller.pause()
+        let record = try XCTUnwrap(controller.record), take = try XCTUnwrap(record.takes.last)
+        let file = try AVAudioFile(forReading: QuranRecitationJournal(root: root).audio(session: record.id, take: take.id))
+        XCTAssertEqual(file.length, Int64(samples.count))
+        XCTAssertEqual(take.frames, file.length)
+        await controller.finish()
+    }
+
+    private struct PreparationBarrierProvider: QuranSpeechRecognitionProvider {
+        let gate: CaptureStartGate
+        var capabilities: QuranRecognitionCapabilities {
+            .init(backendID: "capture-clock-fixture", modelID: "no-acoustic-recognition", modelRevision: "1",
+                  configuredLanguage: "ar", delivery: .overlappingAudioWindows, processesLocally: true,
+                  wordTimestamps: false, wordConfidence: false, phonemeEvidence: false,
+                  calibratedWordingAssessment: false, validatedTajweedAssessment: false)
+        }
+        func prepare() async throws { await gate.wait() }
+        func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+            .init(runs: [], hasUnresolvedSpeech: true)
+        }
+    }
+
     @MainActor func testFinishWhileHardwareStartsDrainsWithoutLateListeningOrRecreatedFiles() async throws {
         // Injected startup barrier only: verifies cancellation ordering and UI
         // responsiveness, not a real hardware or acoustic recognition result.
