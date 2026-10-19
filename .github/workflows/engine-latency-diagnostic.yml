@@ -1,0 +1,38 @@
+name: Actual learner engine latency diagnosis
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/engine-latency-diagnostic.yml
+      - scripts/test-engine-latency.sh
+permissions:
+  contents: read
+concurrency:
+  group: engine-latency-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  actual-model:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Select installed Xcode
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Install project generator
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Measure actual model preparation and paired inference
+        run: bash scripts/test-engine-latency.sh
+      - name: Preserve original source, logs and public-fixture evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-latency-${{ github.sha }}
+          path: |
+            release/engine-latency/*.json
+            release/engine-latency/*.txt
+            release/engine-latency/screenshots/*.json
+          if-no-files-found: error
+          retention-days: 2

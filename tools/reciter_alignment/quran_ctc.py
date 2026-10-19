@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import unicodedata
 import numpy as np
-from ctc import Aligner
+from ctc import Aligner, read_vocabulary
 
 REVISION='b539d5fa66deb820c8e4762171ecb284ace4b52d'
 FILES={
@@ -40,7 +40,7 @@ class QuranAligner(Aligner):
         from transformers import Wav2Vec2ForCTC
         model_dir=Path(model_dir)
         verify_assets(model_dir)
-        self.source_vocab=json.loads((model_dir/'vocab.json').read_text())
+        self.source_vocab=read_vocabulary(model_dir/'vocab.json')
         letters=sorted({self.normalizer(c) for c in self.source_vocab
                         if len(c)==1 and self.normalizer(c) and c!='|'})
         self.vocab={'<pad>':0,'|':1,**{c:i+2 for i,c in enumerate(letters)}}

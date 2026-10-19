@@ -63,3 +63,32 @@ def test_resource_limited_ayah_keeps_later_measurement_without_claiming_whole_re
     assert record['ayahResults']['2']['status']=='MEASURED_CANDIDATE_REQUIRES_REVIEW'
     assert record['acceptedNativeWords']==1 and 'spans' not in record
     assert record['sourceFrameCount']==976000
+
+
+def test_streamed_and_whole_transport_deliver_identical_original_public_pcm_and_native_clock():
+    # Transport-only fixture boundaries/outputs, not ayah annotations, inferred
+    # words or an acoustic-accuracy claim. Decode actual public MP3 bytes and
+    # compare every sample supplied to the unchanged per-interval aligner.
+    from verify_catalog import align_windows,align_streamed_recording
+    root=Path(__file__).resolve().parents[2]
+    source=root/'ios/AtharTests/RecitationFixtures/001002.mp3'
+    actual=decode_audio(str(source))
+    windows=[[1,0,1500],[2,1900,3500]]
+    words={1:[(101,'transport-only')],2:[(102,'transport-only')]}
+    class TransportProbe:
+        def __init__(self):self.inputs=[]
+        def align(self,pcm,labels):
+            self.inputs.append((pcm.copy(),labels))
+            return {'spans':[[labels[0][0],10,100]],'minimumWordPosterior':.9}
+    whole,stream=TransportProbe(),TransportProbe()
+    original,streamed={},{}
+    align_windows(whole,actual,windows,words,original,lambda:None)
+    control,state=align_streamed_recording(stream,source,windows,words,streamed,lambda:None)
+    assert len(whole.inputs)==len(stream.inputs)==2
+    for (left,left_ids),(right,right_ids) in zip(whole.inputs,stream.inputs):
+        assert left_ids==right_ids and np.array_equal(left,right)
+    assert state=='MEASURED_CANDIDATE_REQUIRES_REVIEW'
+    assert streamed['spans']==[[101,10,100],[102,1510,1600]]
+    assert streamed['sourceFrameCount']==len(actual)
+    assert np.array_equal(control,actual[:480000])
+    assert streamed['maximumRetainedPCMFrames']<=720000

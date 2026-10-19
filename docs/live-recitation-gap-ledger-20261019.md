@@ -99,3 +99,39 @@ inspected; the low-input hint reflects quiet Simulator input, not learner ASR.
 This verifies the11b controller/index change; the newer short-ayah draft is
 not included. Full native/integration runs39191751250/39191751348 remain
 separate and were still in progress when this result was recorded.
+
+Resumed audit19October: both older11b broad runs were subsequently cancelled.
+Source474375f portable lane39194329570 passed39cases, including8short-ayah
+regressions; all278ordinary short-ayah spelling forms were checked with
+injected accepted observations (251located,27abstained,0wrong bindings).
+These are location-policy checks, not speech-recognition accuracy.
+
+Matching474 focused run39194329538 failed overall. Its54unit cases and all
+four UI case bodies passed, but the background xcodebuild invocation exceeded
+its180s process deadline after the77.880s case body had completed. Preserve
+exit124; do not turn a completed case into a successful invocation. Original
+artifactSHA256e3ae7430ecb9465f09c6d18b149b137d47b91a6c7b04a1b93e4101c75f29b237.
+Full native39194329568 was cancelled at1h5m; separate accounts/extensions
+build passed7m46. Neither is a full-product acceptance pass.
+
+Integration39194329555 compact actually executed396unit cases,2skipped,
+4assertion failures: three assertions in the real-PCM cross-surah session
+and one obsolete privacy-title assertion. The two real reference clips were
+only located after their original20s deadline, leaving the display one clip
+behind; explicit finish later found the final verse. Do not increase that
+deadline or replace the acoustic input. New acceptance-only numeric stage
+traces distinguish pinned asset hashing, CTC model loading, primary loading
+and paired decode completion. They do not change runtime inference behavior.
+A focused Release diagnostic retains the unchanged real-PCM test. Privacy
+tests and accounts policy now describe temporary live audio and automatic
+cleanup instead of the removed recording-library workflow.
+
+The restored local FP32 CUDA export reproduced the pinned d854e74f digest;
+22raw-recognition parity cases passed separately. A subsequent professional
+alignment audit was INVALID: child Python used Windows cp1256 to read the
+UTF-8 vocabulary, making its Arabic alphabet empty. Those rejections and
+negative-control rows are setup errors, not acoustic evidence. All vocabulary
+readers now explicitly useUTF-8, invalid canonical setup aborts the audit,
+and library resume fingerprints include actual CUDA/cuDNN package versions.
+27local regressions plus4subtests passed, including the actual non-UTF8 child
+boundary. No professional timing candidate was promoted or shipped.

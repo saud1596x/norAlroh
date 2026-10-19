@@ -14,6 +14,7 @@ import traceback
 
 import verify_catalog
 from quran_ctc import REVISION
+from ctc import AlignmentSetupError
 from audit import complete_report, fingerprint, library_coverage, write_json
 
 
@@ -74,6 +75,10 @@ def main():
             save();break
         except verify_catalog.LocalSourceUnavailable as error:
             progress['stopReason']='SOURCE_DNS_UNAVAILABLE'
+            progress['resourceReason']=str(error)
+            save();break
+        except AlignmentSetupError as error:
+            progress['stopReason']='CANONICAL_SETUP_INVALID_NOT_ACOUSTIC_FAILURE'
             progress['resourceReason']=str(error)
             save();break
         except Exception as error:

@@ -24,6 +24,10 @@ actor QuranIndependentCTC {
         #if NOOR_ACCEPTANCE_TESTING
         let preparationStarted = Date()
         defer { print("NOOR_INDEPENDENT_PREPARATION seconds=\(Date().timeIntervalSince(preparationStarted))") }
+        func preparationStage(_ name: String) {
+            print("NOOR_CTC_PREPARATION_STAGE stage=\(name) seconds=\(Date().timeIntervalSince(preparationStarted))")
+        }
+        preparationStage("begin")
         #endif
         guard let folder = Bundle.main.url(forResource: "IndependentCTC", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
@@ -45,6 +49,9 @@ actor QuranIndependentCTC {
                 throw CocoaError(.fileReadCorruptFile)
             }
         }
+        #if NOOR_ACCEPTANCE_TESTING
+        preparationStage("asset-hashes-verified")
+        #endif
         let vocabularyData = try Data(contentsOf: folder.appendingPathComponent("vocab.json"))
         guard SHA256.hash(data: vocabularyData).map({String(format:"%02x",$0)}).joined()
             == "60b9e6174798b6e1a92c92fb5935e32522aebaca4cdd1f481fd220346471644c" else { throw CocoaError(.fileReadCorruptFile) }
@@ -67,7 +74,13 @@ actor QuranIndependentCTC {
         // This route is measured separately on the Simulator; no phone/ANE
         // speed claim follows from the Mac conversion experiment.
         settings.computeUnits = .all
+        #if NOOR_ACCEPTANCE_TESTING
+        preparationStage("model-load-begin")
+        #endif
         model = try MLModel(contentsOf: folder.appendingPathComponent("quran-ctc.mlmodelc"), configuration: settings)
+        #if NOOR_ACCEPTANCE_TESTING
+        preparationStage("model-load-end")
+        #endif
     }
     func recognize(_ window: QuranAudioWindow) throws -> QuranIndependentObservation {
         guard window.startFrame >= 0, window.endFrame >= window.startFrame,

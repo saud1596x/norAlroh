@@ -88,6 +88,10 @@ actor QuranRecognitionWorker {
     func prepare() async throws {
         if engine != nil { return }
         if let loading { try await loading.value; return }
+        #if NOOR_ACCEPTANCE_TESTING
+        let preparationStarted = Date()
+        defer { print("NOOR_PRIMARY_PREPARATION stage=paired-ready seconds=\(Date().timeIntervalSince(preparationStarted))") }
+        #endif
         // The independent model has no dependency on Whisper. Warming it
         // first serially delays the first captured utterance unnecessarily.
         // Capture remains immediate, and actual recognition still awaits both
@@ -104,6 +108,9 @@ actor QuranRecognitionWorker {
         loading = task
         defer { loading = nil }
         try await task.value
+        #if NOOR_ACCEPTANCE_TESTING
+        print("NOOR_PRIMARY_PREPARATION stage=primary-loaded seconds=\(Date().timeIntervalSince(preparationStarted))")
+        #endif
         _ = await independentWarmup
     }
     func recognize(_ window: QuranAudioWindow) async throws -> Result {
@@ -128,6 +135,13 @@ actor QuranRecognitionWorker {
         return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
     }
     private func decode(_ window: QuranAudioWindow) async throws -> Result {
+        #if NOOR_ACCEPTANCE_TESTING
+        let decodingStarted = Date()
+        func decodingStage(_ stage: String) {
+            print("NOOR_PAIRED_DECODE stage=\(stage) seconds=\(Date().timeIntervalSince(decodingStarted)) samples=\(window.samples.count)")
+        }
+        decodingStage("begin")
+        #endif
         let inferenceSamples = try QuranRecognitionAudio.conditioned(window.samples)
         if let activity = try? QuranVoiceActivity.scan(inferenceSamples), !activity.hasSpeech {
             return .noSpeechWindow()
@@ -144,6 +158,9 @@ actor QuranRecognitionWorker {
         // The exact agreement gate below remains mandatory and unchanged.
         async let independentDecode = QuranIndependentCTC.shared.recognize(window)
         let output = try await engine.transcribe(audioArray: inferenceSamples, decodeOptions: options)
+        #if NOOR_ACCEPTANCE_TESTING
+        decodingStage("primary-returned")
+        #endif
         var decoded = QuranLocalWordEvidence()
         for segment in output.flatMap(\.segments) {
         guard let words = segment.words, !words.isEmpty else {
@@ -171,6 +188,9 @@ actor QuranRecognitionWorker {
         let independent: QuranIndependentObservation
         do {
             independent = try await independentDecode
+            #if NOOR_ACCEPTANCE_TESTING
+            decodingStage("independent-returned")
+            #endif
         } catch is CancellationError { throw CancellationError() }
         catch {
             // Keep the genuine primary hypothesis, but do not let an absent

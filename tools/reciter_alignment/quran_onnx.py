@@ -6,11 +6,13 @@ inherited align() method is exclusively for known professional recordings.
 """
 import hashlib
 import json
+from importlib import metadata
 from pathlib import Path
 import time
 
 import numpy as np
 from quran_ctc import QuranAligner, REVISION, verify_assets
+from ctc import read_vocabulary
 
 EXPORT_SHA256 = 'a1dbb6be2a521c233cbb35f7a00c5016539b14e2750bb5708b21cec19cd9c333'
 EXPORTS = {
@@ -22,7 +24,20 @@ EXPORTS = {
 def inference_identity(precision, window_mode):
     if precision not in EXPORTS or window_mode not in ('whole', 'experimental-context-stitch1'):
         raise ValueError('Explicit pinned precision and acoustic window mode required')
-    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-5gb1/shrink-gpu0-after-run1'
+    # A restored or upgraded CUDA/cuDNN library can change kernel results even
+    # when the ONNX file and ORT version match. Never resume its acoustic
+    # measurements under the previous library identity. Unpackaged installs
+    # remain explicit; CUDA availability is still checked by the real session.
+    versions = []
+    for package in ('nvidia-cuda-runtime-cu12', 'nvidia-cublas-cu12', 'nvidia-cudnn-cu12',
+                    'nvidia-cufft-cu12', 'nvidia-curand-cu12', 'nvidia-cuda-nvrtc-cu12'):
+        try:
+            value = metadata.version(package)
+        except metadata.PackageNotFoundError:
+            value = 'unpackaged'
+        versions.append(package + '=' + value)
+    libraries = ','.join(versions)
+    return f'onnxruntime1.26.0/cuda-{precision}/{EXPORTS[precision]}/{window_mode}/arena-same-as-requested-5gb1/shrink-gpu0-after-run1/libraries[{libraries}]'
 
 
 class InferenceIntervalLimit(RuntimeError):
@@ -135,7 +150,7 @@ class QuranONNXAligner(QuranAligner):
                 sha.update(part)
         if sha.hexdigest() != EXPORTS[precision]:
             raise ValueError('ONNX export differs from evaluated artifact')
-        self.source_vocab = json.loads((model_dir / 'vocab.json').read_text())
+        self.source_vocab = read_vocabulary(model_dir / 'vocab.json')
         letters = sorted({self.normalizer(c) for c in self.source_vocab
                           if len(c) == 1 and self.normalizer(c) and c != '|'})
         self.vocab = {'<pad>': 0, '|': 1, **{c: i + 2 for i, c in enumerate(letters)}}

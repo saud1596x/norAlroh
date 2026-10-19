@@ -15,7 +15,7 @@ import urllib.request
 
 import numpy as np
 from faster_whisper.audio import decode_audio
-from ctc import Aligner, validate_recording_spans
+from ctc import Aligner, AlignmentSetupError, validate_recording_spans
 from audit import (SCHEMA, AYAH_POLICY, compatible, controls_passed, exact_record,
                    fingerprint, write_json, archive_report, fetch_failure_record)
 from quran_onnx import InferenceIntervalLimit, InferenceWorkDeadline
@@ -82,6 +82,8 @@ def align_windows(aligner, pcm, windows, by_ayah, record, save, stop_at=None):
             results[str(ayah)] = {'status': 'MEASURED_CANDIDATE_REQUIRES_REVIEW',
                 'spans': spans, 'minimumWordPosterior': aligned['minimumWordPosterior'],
                 'diagnostics': getattr(aligner, 'diagnostics', None)}
+        except AlignmentSetupError:
+            raise
         except ValueError as error:
             results[str(ayah)] = {'status': 'REJECTED', 'reason': str(error),
                                  'diagnostics': getattr(aligner, 'diagnostics', None)}
@@ -107,6 +109,8 @@ def align_known_recording(aligner, pcm, windows, by_ayah, record, save, stop_at=
     try:
         align_windows(aligner, pcm, windows, by_ayah, record, save, stop_at)
         record['alignmentMethod'] = 'EXACT_PUBLISHER_AYAH_WINDOWS_CTC'
+    except AlignmentSetupError:
+        raise
     except ValueError as error:
         if len(pcm) > 480_000:
             raise
@@ -144,6 +148,8 @@ def align_streamed_recording(aligner,path,windows,by_ayah,record,save,stop_at=No
                 'diagnostics':getattr(aligner,'diagnostics',None)}
         except InferenceIntervalLimit as error:
             results[str(ayah)]={'status':'RESOURCE_LIMIT_NOT_ASSESSED','reason':str(error)}
+        except AlignmentSetupError:
+            raise
         except ValueError as error:
             results[str(ayah)]={'status':'REJECTED','reason':str(error),'diagnostics':getattr(aligner,'diagnostics',None)}
         save()
@@ -239,6 +245,10 @@ def main(existing_aligner=None, stop_at=None):
         from quran_ctc import QuranAligner
         aligner=QuranAligner(args.model)
     else:aligner=Aligner(args.model)
+    # Validate the actual canonical alphabet before any recording/control can
+    # be labelled rejected. A broken setup must abort, not count as acoustic
+    # evidence against all reciters or a successful noise/wrong-text control.
+    aligner.canonical_labels(words)
     if args.onnx:aligner.deadline=stop_at
     runtime=getattr(aligner,'runtime_identity',None)
     can_resume=compatible(previous,inputs,args.surah,catalog,runtime)
@@ -276,7 +286,11 @@ def main(existing_aligner=None, stop_at=None):
         timing=published.get(reciter['server']) if args.ayah_windows else None
         proposal=(timing['surahs'].get(str(args.surah)) if timing
             and timing['recordingID']==reciter['recordingID'] and timing['reciterID']==reciter['id'] else None)
-        streamed=bool(proposal and proposal[-1][2]>30000 and args.onnx)
+        # Exact publisher windows do not depend on CUDA. The former CPU path
+        # decoded the entire surah first and rejected every recording >120s,
+        # even though its independently bounded ayahs were already available.
+        # Use the same original sequential PCM/window clock on both backends.
+        streamed=bool(proposal and proposal[-1][2]>30000)
         try:
             _,path,url=fetch(reciter)
             audio_hash=file_sha256(path)
@@ -335,6 +349,7 @@ def main(existing_aligner=None, stop_at=None):
         except LocalDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
         except InferenceWorkDeadline as error:record.update(status='LOCAL_TIME_LIMIT',reason=str(error))
         except InferenceIntervalLimit as error:record.update(status='RESOURCE_LIMIT_NOT_ASSESSED',reason=str(error))
+        except AlignmentSetupError:raise
         except ValueError as error:record.update(status='REJECTED',reason=str(error))
         record['diagnostics']=getattr(aligner,'diagnostics',None)
         record['alignmentSeconds']=round(time.monotonic()-start,3)
@@ -357,6 +372,7 @@ def main(existing_aligner=None, stop_at=None):
         if pcm is None:
             completed_controls[name]={'name':name,'status':'NOT_RUN_NO_BOUNDED_CLIP'};continue
         try:aligner.align(pcm,target);completed_controls[name]={'name':name,'rejected':False}
+        except AlignmentSetupError:raise
         except ValueError as error:completed_controls[name]={'name':name,'rejected':True,'reason':str(error)}
     report['controls']=[completed_controls[name] for name,_,_ in controls]
     save_records()

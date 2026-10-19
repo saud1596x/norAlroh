@@ -1,6 +1,8 @@
 """Synthetic path/clock policy tests only, never real-acoustic acceptance."""
 import numpy as np
 import pytest
+from importlib.metadata import PackageNotFoundError
+from unittest.mock import patch
 from quran_onnx import collapse_words, acoustic_windows, acoustic_logits, InferenceWorkDeadline, inference_identity
 
 
@@ -21,6 +23,19 @@ def test_inference_identity_keeps_precision_and_experimental_context_distinct():
         inference_identity('automatic', 'whole')
     with pytest.raises(ValueError):
         inference_identity('float32', 'automatic')
+
+
+def test_restored_cuda_libraries_cannot_silently_reuse_previous_acoustic_measurements():
+    with patch('quran_onnx.metadata.version', return_value='old'):
+        previous = inference_identity('float32', 'whole')
+    with patch('quran_onnx.metadata.version', side_effect=lambda name: 'new' if name == 'nvidia-cudnn-cu12' else 'old'):
+        restored = inference_identity('float32', 'whole')
+    assert previous != restored
+    assert 'nvidia-cudnn-cu12=new' in restored
+    assert 'nvidia-cublas-cu12=old' in restored
+    with patch('quran_onnx.metadata.version', side_effect=PackageNotFoundError):
+        missing = inference_identity('float32', 'whole')
+    assert '=unpackaged' in missing and missing not in (previous, restored)
 
 
 def test_ctc_repeats_and_blank_are_actual_occurrences_not_canonical_words():

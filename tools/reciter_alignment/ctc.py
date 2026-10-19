@@ -17,6 +17,16 @@ MODEL_SHA256 = 'b9829586625dca46c28eaf6654c7e4d6956738eb3b128c77fcb3ef9df31e5b75
 VOCAB_SHA256 = '96a92ff9bd106f825c878f502fe341f9f0488ace92d3c76dc40a6b30296efedd'
 
 
+class AlignmentSetupError(ValueError):
+    """Invalid canonical/model input, never a failed acoustic control."""
+
+
+def read_vocabulary(path):
+    # A subprocess on an Arabic Windows host can default to cp1256 even when
+    # its UTF-8 parent was correct. Model labels are always UTF-8 JSON.
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
 def normalize(text):
     text = unicodedata.normalize('NFC', text.replace('ٱ', 'ا'))
     return ''.join(c for c in text if unicodedata.category(c).startswith('L')
@@ -103,7 +113,7 @@ class Aligner:
         for name, sha in [('model.int8.onnx', MODEL_SHA256), ('vocab.json', VOCAB_SHA256)]:
             if hashlib.sha256((model_dir/name).read_bytes()).hexdigest() != sha:
                 raise ValueError('Pinned alignment model differs')
-        self.vocab = json.loads((model_dir/'vocab.json').read_text())
+        self.vocab = read_vocabulary(model_dir/'vocab.json')
         options = ort.SessionOptions(); options.intra_op_num_threads = threads
         options.inter_op_num_threads = 1
         self.model = ort.InferenceSession(str(model_dir/'model.int8.onnx'),
@@ -112,25 +122,29 @@ class Aligner:
     def emissions(self, values):
         return self.model.run(None, {'input_values': values[None]})[0][0]
 
+    def canonical_labels(self, words):
+        if not words or len({word[0] for word in words}) != len(words):
+            raise AlignmentSetupError('Canonical native IDs must be unique')
+        labels, owners, expected = [], [], []
+        for native_id, text in words:
+            parts = [self.normalizer(w) for w in text.split()]
+            if not parts or any(not p for p in parts): raise AlignmentSetupError('Empty canonical word')
+            for part in parts:
+                if expected: labels.append(self.vocab['|']); owners.append(None)
+                for char in part:
+                    if char not in self.vocab: raise AlignmentSetupError('Unknown canonical character')
+                    labels.append(self.vocab[char]); owners.append(native_id)
+                expected.append(part)
+        return labels, owners, expected
+
     def align(self, pcm, words):
         """words: [(nativeID, canonical text)]. Returns measured candidate only."""
+        self.diagnostics = None
+        labels, owners, expected = self.canonical_labels(words)
         pcm = np.asarray(pcm, dtype=np.float32)
         if (pcm.ndim != 1 or not 400 <= len(pcm) <= 1_920_000
                 or not np.isfinite(pcm).all() or float(np.sqrt(np.mean(pcm**2))) < .002):
             raise ValueError('No usable bounded recording interval')
-        if not words or len({word[0] for word in words}) != len(words):
-            raise ValueError('Canonical native IDs must be unique')
-        labels, owners, expected = [], [], []
-        self.diagnostics = None
-        for native_id, text in words:
-            parts = [self.normalizer(w) for w in text.split()]
-            if not parts or any(not p for p in parts): raise ValueError('Empty canonical word')
-            for part in parts:
-                if expected: labels.append(self.vocab['|']); owners.append(None)
-                for char in part:
-                    if char not in self.vocab: raise ValueError('Unknown canonical character')
-                    labels.append(self.vocab[char]); owners.append(native_id)
-                expected.append(part)
         values = (pcm - pcm.mean()) / np.sqrt(pcm.var() + 1e-7)
         logits = self.emissions(values)
         peak = logits.max(axis=-1, keepdims=True)
