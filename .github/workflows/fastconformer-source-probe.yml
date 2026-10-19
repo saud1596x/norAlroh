@@ -1,0 +1,46 @@
+name: Screen actual public FastConformer source
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/streaming_recitation_probe/**
+      - .github/workflows/fastconformer-source-probe.yml
+permissions:
+  contents: read
+concurrency:
+  group: fastconformer-source-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-ctc:
+    # Standard public runner; no cloud GPU, paid runner, key or service.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_XET: '1'
+      TOKENIZERS_PARALLELISM: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install official CPU runtime
+        run: timeout 600s python -m pip install torch==2.7.0 torchaudio==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install pinned NeMo speech framework
+        run: |
+          mkdir -p release/fastconformer-source-probe
+          timeout 900s python -m pip install 'nemo_toolkit[asr]==2.3.1' 'numpy==1.26.4' 'transformers==4.51.3' 'huggingface-hub==0.36.2' 'av==14.4.0' 2>&1 | tee release/fastconformer-source-probe/install.txt
+          python -m pip freeze > release/fastconformer-source-probe/runtime.txt
+      - name: Decode original public clips with original FP32 CTC head
+        run: timeout 480s python -u tools/streaming_recitation_probe/verify_source.py 2>&1 | tee release/fastconformer-source-probe/process.txt
+      - name: Preserve actual source result without model or private audio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastconformer-source-${{ github.sha }}
+          path: |
+            release/fastconformer-source-probe/*.json
+            release/fastconformer-source-probe/*.txt
+          retention-days: 1
+          if-no-files-found: warn
