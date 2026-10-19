@@ -361,7 +361,10 @@ import os
         guard guidedPhase != .reference && guidedPhase != .clearance else { return }
         guard state == .paused, !closing, record != nil else { return }
         permissionDenied = false; state = .permission
-        let token = revision
+        // A successful pause previously reused the token. A queued route or
+        // meter callback from that closed capture could then stop/overwrite a
+        // newly resumed take. Every explicit resume owns a fresh callback epoch.
+        let token = UUID(); revision = token
         guard await requestPermission() else {
             guard revision == token else { return }
             state = .paused; permissionDenied = true; message = "الميكروفون غير مسموح. يمكنك متابعة القراءة دون الميكروفون."; return

@@ -6,6 +6,59 @@ import WhisperKit
 /// Injected lifecycle notifications and identified reference PCM. These tests
 /// do not connect Bluetooth hardware or claim to exercise an iPhone microphone.
 final class QuranMicrophoneInputLifecycleTests: XCTestCase {
+    @MainActor func testClosedCaptureCallbacksCannotStopOrOverwriteAResumedTakeButItsOwnFailureStillPauses() async throws {
+        // Injected callbacks only: verifies take ownership, not real hardware
+        // or any ability to recognize the user's voice.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var captures: [LateCallbackCapture] = []
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, failure in
+                let value = LateCallbackCapture(writer: writer, failure: failure)
+                captures.append(value); return value
+            }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot,
+                               corpus: try XCTUnwrap(QuranResources.corpus))
+        XCTAssertEqual(captures.count, 1)
+        let old = try XCTUnwrap(captures.first)
+        await controller.pause(); await controller.resume()
+        XCTAssertEqual(captures.count, 2)
+        let current = try XCTUnwrap(captures.last)
+        current.level?(0.7)
+        let deadline = Date().addingTimeInterval(3)
+        while controller.microphonePeak != 0.7 && Date() < deadline { await Task.yield() }
+        XCTAssertEqual(controller.microphonePeak, 0.7)
+        // These callbacks belong to an already closed hardware take, even if
+        // delivered after a new microphone has started successfully.
+        old.level?(0.01); old.failure(QuranAudioInputFailure.configurationChanged)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.microphonePeak, 0.7)
+        XCTAssertNil(controller.message)
+        XCTAssertEqual(controller.record?.takes.last?.closed, false)
+        current.failure(QuranAudioInputFailure.configurationChanged)
+        try await waitForPause(controller)
+        XCTAssertTrue(controller.record?.takes.allSatisfy(\.closed) == true,
+                      "Ignoring a stale callback must never ignore failure of the current input")
+        XCTAssertTrue(controller.revealed.isEmpty)
+        await controller.finish()
+    }
+    private final class LateCallbackCapture: QuranAudioCapture {
+        let writer: QuranPCMWriter
+        let failure: @Sendable (Error) -> Void
+        var level: (@Sendable (Float) -> Void)?
+        init(writer: QuranPCMWriter, failure: @escaping @Sendable (Error) -> Void) {
+            self.writer = writer; self.failure = failure
+        }
+        func start() throws {}
+        func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) { level = observer }
+        func stop() async -> Result<Int64, Error> {
+            await withCheckedContinuation { reply in writer.finish { reply.resume(returning: $0) } }
+        }
+    }
+
     @MainActor func testLiveCaptureRequestsInputOnlyMeasurementWithoutSpeakerPlayback() async throws {
         // Actual AVAudioSession policy, injected empty capture. This does not
         // claim that physical/Simulator hardware opened or recognized speech.
