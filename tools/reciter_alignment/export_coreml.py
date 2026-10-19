@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import platform
+import ssl
 import struct
 import subprocess
 import tempfile
@@ -42,7 +43,12 @@ def download(url, path, expected, limit):
     pending = path.with_suffix(path.suffix + '.pending')
     received = 0
     try:
-        with urllib.request.urlopen(url, timeout=60) as response, pending.open('wb') as stream:
+        # The official macOS Python3.11 interpreter can have no installed root
+        # bundle. Use the pinned certifi public roots, retaining hostname and
+        # chain verification; never retry through an unverified TLS context.
+        import certifi
+        context = ssl.create_default_context(cafile=certifi.where())
+        with urllib.request.urlopen(url, timeout=60, context=context) as response, pending.open('wb') as stream:
             for block in iter(lambda: response.read(1024 * 1024), b''):
                 received += len(block)
                 if received > limit:

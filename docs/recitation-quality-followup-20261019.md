@@ -99,3 +99,31 @@ all20readers/all114surahs production timings, acoustic Tajweed assessment,
 complete Release acceptance and original reviewed publication gates remain
 incomplete. Build24 is still the installed TestFlight build. No new upload is
 claimed by these checks or this note.
+
+Original GitHub389 artifact12155733447 was downloaded and its archiveSHA256
+e2d9eec155125fd3d4f14dd3fd70c606b2e6ec5a5f8cc14971ceb4af8fbd8062
+matches the published digest. Actual first OS approval reached elapsed0:05
+without a second tap, then failed the unchanged viewport equality assertion:
+normal frame(0,106,402,604), live frame(0,120.333,402,633.667).
+Input guidance inserted a new header row while the live footer replaced the
+ordinary footer's reservation. Live/normal measurements are now separate;
+live controls retain at least the ordinary viewport reservations and guidance
+uses the existing44point header row. The original geometry assertion remains.
+One-tap, background/resume and privacy UI each passed on389, but the complete
+job failed. This is actual Simulator capture duration, not speech accuracy or
+physical-device acceptance.
+
+The same archive showed the visibility policy fixture loading the actual
+independent model for25.81s before supplying its injected words, beyond its
+12s wait. It now supplies a no-model fixture provider explicitly, while keeping
+the actual public PCM and all retention/retraction/persistence assertions.
+No real-ASR acceptance test was replaced; the policy case is also added to the
+next first-approval native scope. Its new native result remains pending.
+
+Codemagiceea build6ad562477550aed8108ff94e stopped before conversion/native
+tests: official macOS Python3.11 could not locate trusted root certificates.
+The public pinned-asset downloader now uses the existing pinned certifi roots
+with ssl.create_default_context. Hostname/chain checks, byte pins and size
+limits stay enforced. Nine local download/container policy cases passed,
+including rejection of untrusted certificates, changed bytes and oversize
+assets. This is build setup verification, not a model or microphone result.

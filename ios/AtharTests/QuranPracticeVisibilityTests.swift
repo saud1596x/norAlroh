@@ -21,7 +21,7 @@ import WhisperKit
         }
         var capture: SteppedCapture?
         let controller = QuranRecitationController(requestPermission:{true},archiveRoot:root,
-            recognizeWindow:{ window in .init(runs:window.endFrame == 32_000 ? [heard] : [],hasUnresolvedSpeech:false) },
+            recognitionProvider: VisibilityFixtureProvider(heard: heard),
             makeCapture:{ writer,_ in
                 let value = SteppedCapture(writer:writer,initial:Array(samples.prefix(32_000)))
                 capture=value;return value
@@ -48,7 +48,7 @@ import WhisperKit
         let journal = QuranRecitationJournal(root:root)
         XCTAssertEqual(try AudioProcessor.loadAudioAsFloatArray(fromPath:journal.audio(session:saved.id,take:saved.takes[0].id).path),Array(samples.prefix(48_000)))
         let restored = QuranRecitationController(requestPermission:{true},archiveRoot:root,
-            recognizeWindow:{_ in .init(runs:[],hasUnresolvedSpeech:false)},
+            recognitionProvider: VisibilityFixtureProvider(heard: []),
             makeCapture:{writer,_ in SteppedCapture(writer:writer,initial:[])},setSessionActive:{_ in})
         await restored.restore(id:saved.id,snapshot:snapshot,corpus:corpus)
         XCTAssertEqual(restored.state,.paused)
@@ -61,6 +61,19 @@ import WhisperKit
         await restored.finish()
     }
 
+    private struct VisibilityFixtureProvider: QuranSpeechRecognitionProvider {
+        let heard: [QuranHeardWord]
+        var capabilities: QuranRecognitionCapabilities {
+            .init(backendID: "display-policy-fixture", modelID: "injected-words-not-ASR", modelRevision: "1",
+                  configuredLanguage: "ar", delivery: .overlappingAudioWindows, processesLocally: true,
+                  wordTimestamps: true, wordConfidence: true, phonemeEvidence: false,
+                  calibratedWordingAssessment: false, validatedTajweedAssessment: false)
+        }
+        func prepare() async throws {}
+        func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
+            .init(runs: window.endFrame == 32_000 && !heard.isEmpty ? [heard] : [], hasUnresolvedSpeech: false)
+        }
+    }
     private func eventually(_ condition:() -> Bool) async throws {
         let end=Date().addingTimeInterval(12)
         while !condition(),Date() < end { try await Task.sleep(nanoseconds:20_000_000) }

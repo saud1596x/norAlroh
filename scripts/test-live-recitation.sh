@@ -74,6 +74,7 @@ else
  run_case startup-policy \
   -only-testing:AtharTests/QuranLiveRecitationStorageTests \
   -only-testing:AtharTests/QuranListeningLocationTests \
+  -only-testing:AtharTests/QuranPracticeVisibilityTests \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests
 fi
 # First approval is distinct from capture after an OS pre-grant. The app must

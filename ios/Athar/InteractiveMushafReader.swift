@@ -454,8 +454,8 @@ struct InteractiveMushafReader: View {
                         })
                         // The authored canvas already contains its side margins.
                         // Do not shrink it again with a second horizontal inset.
-                        .padding(.top, MushafReaderInsets.reserved(controlHeights["header"], minimum: 44, visible: tools || studyOpen))
-                        .padding(.bottom, MushafReaderInsets.reserved(controlHeights["footer"], minimum: 60, visible: tools || studyOpen))
+                        .padding(.top, reservedReaderInset("header", minimum: 44))
+                        .padding(.bottom, reservedReaderInset("footer", minimum: 60))
                         .accessibilityAction(named: tools ? "إخفاء أدوات المصحف" : "إظهار أدوات المصحف") {
                             if !studyOpen { tools.toggle() }
                         }
@@ -680,10 +680,6 @@ struct InteractiveMushafReader: View {
     private var recitationControls: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-            if recitation.state == .listening, let guidance = recitation.inputGuidance {
-                Text(guidance).font(.caption).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("study.inputGuidance")
-            }
             HStack {
                 Menu {
                     if !followAudio {
@@ -718,6 +714,10 @@ struct InteractiveMushafReader: View {
                 if showReviewFeedback {
                     Text("موضع غير محسوم · تابع القراءة").font(.caption).frame(minHeight: 44)
                         .accessibilityIdentifier("study.reviewProvisional")
+                } else if recitation.state == .listening, let guidance = recitation.inputGuidance {
+                    Text(guidance).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("study.inputGuidance")
                 } else {
                     Text(recitation.status).font(.subheadline).lineLimit(1)
                         .accessibilityIdentifier("study.status").accessibilityAddTraits(.updatesFrequently)
@@ -728,7 +728,7 @@ struct InteractiveMushafReader: View {
                 }.disabled(recitation.state == .processing || recitation.state == .preparing || recitation.state == .permission)
                     .accessibilityIdentifier("study.finish")
             }
-            }.background { readerControlMeasurement("header") }
+            }.background { readerControlMeasurement("study-header") }
             Spacer(minLength: 0)
             VStack(spacing: 8) {
             HStack(spacing: 12) {
@@ -751,7 +751,7 @@ struct InteractiveMushafReader: View {
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 26))
             .overlay(RoundedRectangle(cornerRadius: 26).stroke(Theme.gold.opacity(0.13), lineWidth: 1))
             if let message = microphoneCue.error { Text(message).font(.caption).foregroundStyle(.secondary) }
-            }.background { readerControlMeasurement("footer") }
+            }.background { readerControlMeasurement("study-footer") }
         }.padding(.horizontal, 10)
     }
     private var studyMicrophoneButton: some View {
@@ -778,6 +778,14 @@ struct InteractiveMushafReader: View {
                 || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
             .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
             .accessibilityIdentifier("study.pause")
+    }
+    private func reservedReaderInset(_ key: String, minimum: CGFloat) -> CGFloat {
+        // Starting capture replaces the controls, not the authored Quran
+        // viewport. Keep the ordinary controls' measured reservation; smaller
+        // live controls and changing input hints cannot stretch/refit the page.
+        let normal = MushafReaderInsets.reserved(controlHeights[key], minimum: minimum)
+        let live = studyOpen ? MushafReaderInsets.reserved(controlHeights["study-" + key], minimum: minimum) : 0
+        return tools || studyOpen ? max(normal, live) : 0
     }
     private func readerControlMeasurement(_ key: String) -> some View {
         GeometryReader { geometry in
