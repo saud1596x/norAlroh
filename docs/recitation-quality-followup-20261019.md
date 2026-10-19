@@ -44,6 +44,14 @@ can establish that this route actually works. That result remains pending.
 The UI predicate also reads its real elapsed label once per poll, preserving
 the same five-second capture requirement and no-second-tap rule.
 
+A separate mixed-precision candidate experiment preserves normalization,
+softmax and their sensitive reductions/division in FP32 while considering
+other operations for FP16. The source weights,26actual public/control cases,
+raw-word equality requirement and negative controls remain the same. The
+production compiler still explicitly requests float32 and validates its
+existing byte pins; no shipping model or pin is changed by adding this manual
+experiment. Candidate speed/size/accuracy are unknown until actual execution.
+
 Code review then found an additional display ambiguity: if older accepted
 words remained in the session, two conflicting latest acoustic bindings could
 leave that older word highlighted. The display frontier now advances even on

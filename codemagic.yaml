@@ -1,4 +1,20 @@
 workflows:
+  mixed-independent-coreml-check:
+    name: Noor mixed precision acoustic parity experiment (not an app update)
+    instance_type: mac_mini_m2
+    max_build_duration: 15
+    environment:
+      xcode: "26.3"
+    cache:
+      cache_paths:
+        - ~/.cache/noor-independent-ctc
+        - ~/Library/Caches/pip
+    scripts:
+      - name: Compare mixed normalization FP32 candidate against actual original PCM
+        script: bash scripts/evaluate-mixed-independent-coreml.sh
+    artifacts:
+      - release/independent-mixed-coreml/*.json
+      - release/independent-mixed-coreml/*.txt
   independent-coreml-check:
     name: Noor independent CTC CoreML real-audio conversion parity (not release)
     instance_type: mac_mini_m2

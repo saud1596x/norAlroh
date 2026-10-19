@@ -117,7 +117,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--precision', choices=('float16','float32'), default='float16')
+    parser.add_argument('--precision', choices=('float16','float32','mixed-normalization'), default='float16')
     parser.add_argument('--prepare-only', action='store_true', help='Generate for a separate byte-pinned build step; not a parity pass')
     args = parser.parse_args()
     if platform.system() != 'Darwin':
@@ -165,10 +165,20 @@ def main():
         traced = torch.jit.trace(wrapper, example, check_trace=False)
     report.update(torchVersion=torch.__version__, coremltoolsVersion=ct.__version__)
     print('NOOR_CTC_COREML_TRACE_READY', flush=True)
+    precision = ct.precision.FLOAT16 if args.precision == 'float16' else ct.precision.FLOAT32
+    if args.precision == 'mixed-normalization':
+        # Experiment only. Preserve numerically sensitive normalization and
+        # attention probabilities in FP32; do not promote unless actual source
+        # words/negative controls survive the unchanged parity checks below.
+        preserved = {'layer_norm', 'softmax', 'reduce_mean', 'reduce_sum',
+                     'reduce_max', 'real_div', 'rsqrt'}
+        precision = ct.transform.FP16ComputePrecision(op_selector=lambda operation: operation.op_type not in preserved)
+        report['mixedPrecisionPolicy'] = {'revision': 'normalization-softmax-fp32-1',
+                                         'preservedFloat32Operations': sorted(preserved)}
     converted = ct.convert(traced, source='pytorch', convert_to='mlprogram',
         inputs=[ct.TensorType(name='input_values', shape=(1, ct.RangeDim(400, 256000, default=32000)), dtype=np.float32)],
         outputs=[ct.TensorType(name='logits', dtype=np.float32)],
-        compute_precision=ct.precision.FLOAT16 if args.precision=='float16' else ct.precision.FLOAT32,
+        compute_precision=precision,
         minimum_deployment_target=ct.target.iOS17,
         compute_units=ct.ComputeUnit.CPU_AND_GPU)
     float_path = args.output/f'quran-ctc-{args.precision}.mlpackage'
