@@ -1,0 +1,31 @@
+# Package versions recorded in the successful595cab2 actual native build.
+# Python3.11 is selected separately. Do not replace the approved model pins.
+torch==2.7.0
+transformers==4.51.3
+coremltools==9.0
+numpy==2.1.3
+safetensors==0.5.3
+networkx==3.6.1
+protobuf==7.36.2
+tokenizers==0.21.4
+huggingface-hub==0.36.2
+attrs==26.1.0
+cattrs==26.2.1
+certifi==2026.10.18
+charset_normalizer==3.5.2
+filelock==4.2.2
+fsspec==2026.9.0
+hf-xet==1.7.0
+idna==3.20
+jinja2==3.1.6
+MarkupSafe==3.0.4
+mpmath==1.3.0
+packaging==26.3
+pyaml==26.7.0
+pyyaml==6.0.3
+regex==2026.9.29
+requests==2.34.2
+sympy==1.14.0
+tqdm==4.70.1
+typing-extensions==4.16.0
+urllib3==2.8.0

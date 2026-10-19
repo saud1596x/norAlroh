@@ -209,6 +209,8 @@ workflows:
         script: NOOR_MIC_FIRST_ALLOW_ONLY=1 bash scripts/test-live-recitation.sh
     artifacts:
       - release/live-recitation/**
+      - release/independent-coreml-build-environment.txt
+      - release/independent-coreml-source-mismatch/**
   beta-critical-journeys-check:
     <<: *device_reported_reader_check
     name: Noor integrated app journeys and real simulator microphone start/resume

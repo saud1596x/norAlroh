@@ -27,7 +27,7 @@ def main():
         or any(row['convertedRawWords'] or row['sourceRawWords'] for row in receipt['cases']
                if row['caseKind']=='generated-negative-control')):
         raise ValueError('Actual public parity must pass before freezing a source package')
-    runtime='/tmp/noor-coreml-runtime/bin/python'
+    runtime='/tmp/noor-coreml-py311-runtime/bin/python'
     environment=dict(os.environ,PYTHONHASHSEED='0')
     with tempfile.TemporaryDirectory(prefix='ctc-repro-',dir=ROOT/'release') as temporary:
         second=Path(temporary)

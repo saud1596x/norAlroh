@@ -52,6 +52,21 @@ production compiler still explicitly requests float32 and validates its
 existing byte pins; no shipping model or pin is changed by adding this manual
 experiment. Candidate speed/size/accuracy are unknown until actual execution.
 
+Mixed candidate build6ad55e9b7550aed8108ff8b4 at08d91e9 completed26actual
+cases but failed the exact-word gate on the first2s of001002: source decoded
+الحمد/لن, candidate الحمد/لل. Both generated negative controls stayed empty.
+The candidate is rejected; it is not bundled or a recognition improvement.
+
+Input-only build6ad55c937550aed8108ff855 at3892d7e did not reach native tests.
+Generation returned source-spec SHA3e5aa88a193808b2c5448466e01c71ee7586f1a3fb7e697faa6ef4f0030f559d,
+different from the approveda03be761fad1c1da230d0c3522ae3be7e20523147603d219751ad2abaaced5d7.
+The existing guard correctly stopped generation. The failed log used
+Python3.12/networkx3.7; the actual matching595 native log used
+Python3.11/networkx3.6.1. Converter setup now requests that tested interpreter
+and recorded package versions. This is an environment-reproduction repair to
+verify, not permission to replace the approved hashes. Unexpected source specs
+and package-version evidence are retained on any further mismatch.
+
 Code review then found an additional display ambiguity: if older accepted
 words remained in the session, two conflicting latest acoustic bindings could
 leave that older word highlighted. The display frontier now advances even on

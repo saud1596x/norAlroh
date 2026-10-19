@@ -80,10 +80,8 @@ def main():
     cache=ROOT/'release/independent-coreml-model-seed0-float32'
     source=cache/'quran-ctc-float32.mlpackage'
     if not source.exists():
-        runtime=Path('/tmp/noor-coreml-runtime')/'bin/python'
-        subprocess.run(['python3','-m','venv','/tmp/noor-coreml-runtime'],check=True)
-        subprocess.run([str(runtime),'-m','pip','install','--disable-pip-version-check',
-            'torch==2.7.0','transformers==4.51.3','coremltools==9.0','numpy==2.1.3','safetensors==0.5.3'],check=True)
+        from coreml_build_runtime import prepare as prepare_converter_runtime
+        runtime=prepare_converter_runtime(ROOT, '/tmp/noor-coreml-py311-runtime')
         cache.parent.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='ctc-build-',dir=cache.parent) as temporary:
             work=Path(temporary)
@@ -91,7 +89,22 @@ def main():
                 '--model',str(Path.home()/'.cache/noor-independent-ctc'),
                 '--output',str(work),'--precision','float32','--prepare-only'],
                 env=dict(os.environ,PYTHONHASHSEED='0'),check=True)
-            verify_source(work/'quran-ctc-float32.mlpackage')
+            try:
+                verify_source(work/'quran-ctc-float32.mlpackage')
+            except ValueError:
+                # Preserve the unexpected graph for diagnosis. A failed pin
+                # never authorizes replacing the reviewed source/compiled model.
+                failed=ROOT/'release/independent-coreml-source-mismatch'
+                failed.mkdir(exist_ok=True)
+                package=work/'quran-ctc-float32.mlpackage'
+                actual={name:digest(package/name) if (package/name).is_file()
+                    and not (package/name).is_symlink() else 'MISSING_OR_LINKED' for name in PINS}
+                graph=package/'Data/com.apple.CoreML/model.mlmodel'
+                if graph.is_file() and not graph.is_symlink():
+                    shutil.copyfile(graph,failed/(actual['Data/com.apple.CoreML/model.mlmodel']+'.mlmodel'))
+                (failed/'actual-source.json').write_text(json.dumps({'expected':PINS,'actual':actual,
+                    'approved':False,'compiler':compiler},indent=2)+'\n',encoding='utf-8')
+                raise
             cache.mkdir(exist_ok=True)
             shutil.copytree(work/'quran-ctc-float32.mlpackage',source)
     verify_source(source)
