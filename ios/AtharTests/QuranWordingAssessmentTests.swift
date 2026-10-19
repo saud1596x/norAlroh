@@ -22,6 +22,37 @@ final class QuranWordingAssessmentTests: XCTestCase {
         XCTAssertTrue(QuranWordingAssessment.evaluate([span(["قل", "هو", "الله", "أحد", "الله", "الصمد"])], expected: reference).isEmpty)
         XCTAssertTrue(QuranWordingAssessment.evaluate([], expected: reference).isEmpty)
     }
+    func testPreparedReferenceSkipsInsufficientSpeechAndDoesNotCacheFindingsOrAnotherScope() {
+        var prepared = QuranWordingAssessment.Reference(expected: reference)
+        let short = span(["قل", "هو", "شيء"])
+        XCTAssertTrue(QuranWordingAssessment.evaluate([], reference: &prepared).isEmpty)
+        XCTAssertTrue(QuranWordingAssessment.evaluate([short], reference: &prepared).isEmpty)
+        XCTAssertEqual(prepared.indexedWordCount, 0, "Insufficient speech must not build the full reference index")
+
+        let wrong = span(["قل", "هو", "شيء", "أحد", "الله", "الصمد"])
+        let source = wrong.wordObservations
+        let first = QuranWordingAssessment.evaluate([wrong], reference: &prepared)
+        XCTAssertEqual(first.map(\.category), ["substitution"])
+        XCTAssertEqual(first.first?.referenceIDs, [3])
+        XCTAssertEqual(first.first?.supportingObservationIDs, [source![2].observationID])
+        XCTAssertEqual(prepared.indexedWordCount, reference.count)
+        XCTAssertEqual(wrong.wordObservations, source)
+
+        // Reusing lexical data cannot reuse the last window's verdict. A new
+        // correct interpretation of the same audio still retracts the finding.
+        let correct = span(["قل", "هو", "الله", "أحد", "الله", "الصمد"])
+        XCTAssertTrue(QuranWordingAssessment.evaluate([correct], reference: &prepared).isEmpty)
+        XCTAssertTrue(QuranWordingAssessment.evaluate([wrong, correct], reference: &prepared).isEmpty)
+        XCTAssertTrue(QuranWordingAssessment.evaluate([], reference: &prepared).isEmpty)
+        XCTAssertEqual(QuranWordingAssessment.evaluate([wrong], reference: &prepared), first)
+
+        let otherScope = reference.map { QuranAlignedWord(id: $0.id + 100, verse: "test:other", page: $0.page, aliases: $0.aliases) }
+        var other = QuranWordingAssessment.Reference(expected: otherScope)
+        let moved = QuranWordingAssessment.evaluate([wrong], reference: &other)
+        XCTAssertEqual(moved.first?.referenceIDs, [103], "A replacement scope cannot reuse earlier native IDs")
+        XCTAssertEqual(moved.first?.supportingObservationIDs, first.first?.supportingObservationIDs)
+        XCTAssertEqual(first.first?.state, "provisional", "An index cache cannot promote acoustic certainty")
+    }
     func testRecognizerWindowRevisionRetractsOnlyItsCoveredTakeEvidence() throws {
         var tracker = QuranRecitationTracker(expected: reference)
         let heard = reference.enumerated().map { index, word in

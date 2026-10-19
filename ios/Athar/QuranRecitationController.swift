@@ -113,6 +113,7 @@ import os
     private var expectedIDs = Set<Int>()
     private var practiceVisibility = QuranPracticeVisibility(expected: [])
     private var words: [QuranAlignedWord] = []
+    private var wordingReference: QuranWordingAssessment.Reference?
     private var revision = UUID()
     private var finishRequest = false
     private var closing = false
@@ -249,7 +250,7 @@ import os
             referenceExposure = nil
         }
         let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
-        record = nil; tracker = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
+        record = nil; tracker = nil; wordingReference = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
         listeningLocation = QuranListeningLocation(); activeWordID = nil
         practiceVisibility = QuranPracticeVisibility(expected: [])
         state = .permission
@@ -342,7 +343,7 @@ import os
             let restoredTracker = try QuranRecitationTracker(expected: words.filter { scope.contains($0.verse) }, restoring: restored.evidence)
             practiceVisibility = QuranPracticeVisibility(expected: restoredTracker.expected)
             try journal.save(restored)
-            record = restored; tracker = restoredTracker; revealed = restoredTracker.revealedIDs
+            record = restored; tracker = restoredTracker; wordingReference = nil; revealed = restoredTracker.revealedIDs
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
             listeningLocation = QuranListeningLocation()
@@ -617,20 +618,26 @@ import os
                 if spans.last != observed { spans.append(observed) }
                 let assessmentInput = Array(spans.suffix(16))
                 let referenceWords = updatedTracker.expected
+                let priorReference = wordingReference
                 let priorEvents = current.wordingEvents ?? []
                 // Assessment must know when previously shown/retracted text
                 // assisted a later attempt; visibility is never mastery.
                 retainShownText(&current,completed:completedVerses,recognizedIDs:recognizedIDs)
                 let sessionTakes = current.takes
-                let events = await Task.detached(priority: .userInitiated) {
-                    let fresh = QuranWordingAssessment.evaluate(assessmentInput, expected: referenceWords)
+                let (events, preparedReference) = await Task.detached(priority: .userInitiated) {
+                    var reference = priorReference ?? QuranWordingAssessment.Reference(expected: referenceWords)
+                    let fresh = QuranWordingAssessment.evaluate(assessmentInput, reference: &reference)
                     let older = priorEvents.filter { prior in
                         prior.state == "provisional" && !assessmentInput.contains(where: { $0.takeID == prior.takeID })
                     }
-                    return QuranWordingAssessment.linkLaterAttempts(fresh + older, spans: assessmentInput,
+                    let events = QuranWordingAssessment.linkLaterAttempts(fresh + older, spans: assessmentInput,
                         takes: sessionTakes, expected: referenceWords)
+                    return (events, reference)
                 }.value
                 guard revision == token, !Task.isCancelled, let latest = record else { return }
+                // A cancelled/replaced take cannot publish its prepared scope.
+                // No source hypothesis or prior finding is cached in this value.
+                wordingReference = preparedReference
                 current = latest
                 current.observedSpeech = spans
                 current.wordingEvents = QuranWordingAssessment.reconcile(previous: current.wordingEvents ?? [],
@@ -762,6 +769,7 @@ import os
         closing = true; defer { closing = false }
         state = .processing
         revision = UUID(); pump?.cancel(); pump = nil; mailbox = nil
+        wordingReference = nil
         if let captureStart { _ = try? await captureStart.value }
         if let capture { _ = await capture.stop(); self.capture = nil }
         capturing = false

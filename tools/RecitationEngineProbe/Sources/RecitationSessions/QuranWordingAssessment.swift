@@ -25,6 +25,34 @@ public struct QuranWordingEvent: Codable, Equatable, Sendable {
 /// This policy has no calibrated acoustic confirmation and never issues a
 /// confirmed learner mistake. Reference text cannot replace source observations.
 public enum QuranWordingAssessment {
+    /// Immutable scope plus a lazily prepared lexical index. Carry this value
+    /// across windows of the same session, never across a replaced scope.
+    /// It caches reference search data only, not speech or assessment results.
+    public struct Reference: Sendable {
+        fileprivate let expected: [QuranAlignedWord]
+        fileprivate var search: Search?
+        public init(expected: [QuranAlignedWord]) { self.expected = expected }
+        // Work evidence for native regression tests, not a quality score.
+        var indexedWordCount: Int { search?.forms.count ?? 0 }
+    }
+    fileprivate struct Search: Sendable {
+        let forms: [Set<[String]>]
+        let anchors: [String: Set<Int>]
+        init(expected: [QuranAlignedWord]) {
+            forms = expected.map { word in Set(word.aliases.map { $0.map { QuranAlignedWord.normalize($0) } }) }
+            var indexed: [String: Set<Int>] = [:]
+            if forms.count > 1 {
+                for j in 0..<(forms.count - 1) {
+                    for left in forms[j] where left.count == 1 {
+                        for right in forms[j + 1] where right.count == 1 {
+                            indexed[left[0] + " " + right[0], default: []].insert(j)
+                        }
+                    }
+                }
+            }
+            anchors = indexed
+        }
+    }
     /// Cross-take retries require a fresh microphone occurrence and a unique
     /// five-word context. Listening exposure remains assisted evidence.
     public static func linkLaterAttempts(_ events: [QuranWordingEvent], spans: [QuranObservedSpeech],
@@ -121,23 +149,27 @@ public enum QuranWordingAssessment {
     private struct Step { let kind: String; let reference: Int; let observed: Int }
     private struct Alignment { let steps: [Step]; let cost: Int }
     public static func evaluate(_ spans: [QuranObservedSpeech], expected: [QuranAlignedWord]) -> [QuranWordingEvent] {
+        var reference = Reference(expected: expected)
+        return evaluate(spans, reference: &reference)
+    }
+    public static func evaluate(_ spans: [QuranObservedSpeech], reference: inout Reference) -> [QuranWordingEvent] {
+        let expected = reference.expected
         guard !expected.isEmpty, expected.count <= 77_429 else { return [] }
-        let forms = expected.map { word in Set(word.aliases.map { $0.map { QuranAlignedWord.normalize($0) } }) }
-        var anchors: [String: Set<Int>] = [:]
-        if forms.count > 1 {
-            for j in 0..<(forms.count - 1) {
-                for left in forms[j] where left.count == 1 {
-                    for right in forms[j + 1] where right.count == 1 {
-                        anchors[left[0] + " " + right[0], default: []].insert(j)
-                    }
-                }
-            }
-        }
-        var events: [QuranWordingEvent] = []
-        for span in reconciledWindows(spans).flatMap({ contiguousAcceptedSpans($0) }) {
+        // First apply the unchanged source/run eligibility rules. Silence,
+        // untimed or rejected speech cannot justify indexing all77,429words.
+        let eligible = reconciledWindows(spans).flatMap({ contiguousAcceptedSpans($0) }).filter { span in
             guard let words = span.wordObservations, (4...160).contains(words.count),
                   words.allSatisfy({ $0.recognitionState == "accepted" && $0.startInTakeSeconds != nil && $0.endInTakeSeconds != nil }),
-                  zip(words, words.dropFirst()).allSatisfy({ $0.startInTakeSeconds! <= $1.startInTakeSeconds! }) else { continue }
+                  zip(words, words.dropFirst()).allSatisfy({ $0.startInTakeSeconds! <= $1.startInTakeSeconds! }) else { return false }
+            return true
+        }
+        guard !eligible.isEmpty else { return [] }
+        if reference.search == nil { reference.search = Search(expected: expected) }
+        guard let search = reference.search else { return [] }
+        let forms = search.forms, anchors = search.anchors
+        var events: [QuranWordingEvent] = []
+        for span in eligible {
+            guard let words = span.wordObservations else { continue }
             let tokens = words.map { QuranAlignedWord.normalize($0.observedText) }
             // A multiword skip needs two individually unique spoken anchors on
             // both sides. A pause, trailing silence or uncertain speech cannot

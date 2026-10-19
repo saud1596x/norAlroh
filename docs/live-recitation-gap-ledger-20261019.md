@@ -16,6 +16,7 @@ Use GitHub for further repair verification. No App Store release.
 | Recognizer failure leaves a stale highlighted word | Both error paths withdraw only the active location, preserving prior evidence and shown ayahs. Actual80f native log: regression passed0.965s and shown-Fatiha retention passed1.301s. | Natural learner/device evaluation; these are original-PCM/injected-word display policies, not accuracy results. |
 | Page refits when microphone/input hint appears | Separate normal/live control reservations; concise hint uses existing header row. GitHubcb first-Allow passed the original exact frame-equality assertion. | Physical-device/other-size acceptance; never weaken equality to hide a jump. |
 | Slow or inaccurate first recognition | Capture is independent of ASR, bounded mailbox retains original input across cold preparation. Actual old GitHub independent warmup took25.81s; that is not an iPhone latency estimate. | Measure capture-to-first-word latency and error/abstention rate on held-out authorized, labeled learner speech. Cold-start/throughput success alone is insufficient. |
+| Repeated lexical work during live tracking | A new draft prepares the exact-scope wording index lazily, reuses only reference data across windows, and clears it on scope replacement/finish. Empty/insufficient observations are checked before a full-Quran index is built. Speech and findings are never cached. | New-source Swift/native execution and exact-edition CPU measurement pending. No measured phone/inference-speed or accuracy claim. |
 | Capture timer freezes during model preparation | Monotonic frame count now comes from already-written original PCM. Actual80f native log: blocked-preparation regression passed1.005s. The239 focused invocation was interrupted by its180s aggregate process deadline after cold host launch; it did not print an assertion failure. | Focused suite recheck with separate bounded aggregate budget and process timestamps; not an inference-speed improvement. |
 | Manual page turn during one live ayah loses following until the next ayah | Reader previously observed only currentVerse for live navigation. It now also observes the actual active word and resolves its exact native page within that same verse. Missing/unrelated cursors cannot navigate or leave a daily range. Regression uses real bundled page4 and a page3 daily-range rejection. | New-source native and reader acceptance; this is navigation policy, not acoustic accuracy. The original split-ayah hypothesis was disproved: all6236verses in this edition have lexical words on one page each. |
 | Live navigation replaces the ayah whose tools are open | Guard live following while the user has a manual ayah selection or sheet open. Exact source policy rejects navigation during that selection and permits it after closure. | New-source native execution. No new screen or layout redesign. |
@@ -67,8 +68,21 @@ invocations retain180s. Timeout still fails. Six local wrapper tests passed,
 including actual termination/failure propagation. Stage-only timestamps were
 added to the fixture; no user audio or transcript is logged.
 
-Source80f native run39185468870 is still being collected at this update.
-The visibly observed native passes above are not a successful complete run:
-the same log contains the four integration failures described in the table.
-Current follow-up changes have no passing native result yet. Installed
-TestFlight24 is unchanged.
+Source80f native run39185468870 was canceled after preserving its four actual
+integration failures; its partial observed passes are not complete acceptance.
+
+Current dfd8db0 focused run39188640033 succeeded on iPhone17Pro/iOS26.2,
+Release/accounts project:30unit/policy cases,4separate actual UI invocations,
+0failures. This includes the four previously failing integration contracts,
+capture-clock2.950s, interruption ownership0.001s, actual reference
+pause/restore/resume/finish29.412s, drain-timeout5.034s and hung-recognition
+late-result rejection0.712s. First OS approval47.253s, one-tap70.912s,
+background/resume79.765s and privacy35.426s are complete UI test durations,
+not microphone startup/recognition latency. Every invocation returned0.
+Original artifactSHA256
+e34c666d569e92f9bb10ec6e3d70615139e3372ecf08833042de6100dc5327d9.
+Original exact viewport equality passed. The new lazy-index draft above is
+not in this tested source and must receive its own execution evidence.
+Whole-product/native integration is still separate; natural learner accuracy
+and physical-device acceptance remain unestablished. InstalledTestFlight24
+is unchanged.

@@ -8,7 +8,12 @@ on:
       - tools/RecitationEngineProbe/Sources/RecitationSessions/**
       - ios/AtharTests/QuranWordingAssessmentTests.swift
       - ios/AtharTests/QuranObservedSpeechTests.swift
+      - ios/AtharTests/QuranListeningLocationTests.swift
+      - ios/AtharTests/QuranLiveStoragePolicyTests.swift
+      - ios/Athar/QuranLiveRecitationStorage.swift
       - scripts/test-wording-behavior.py
+      - scripts/benchmark-wording-reference.py
+      - tools/RecitationEngineProbe/experiments/WordingReferenceBenchmark.swift
       - .github/workflows/wording-behavior.yml
 permissions:
   contents: read
@@ -21,7 +26,23 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Record actual Swift runtime
-        run: swift --version
+      - name: Record actual source and Swift runtime
+        run: |
+          mkdir -p release/learner-wording
+          git rev-parse HEAD > release/learner-wording/source.txt
+          swift --version > release/learner-wording/swift.txt
       - name: Execute unchanged production Swift sources and behavioral tests
-        run: python3 scripts/test-wording-behavior.py
+        run: |
+          set -o pipefail
+          python3 scripts/test-wording-behavior.py 2>&1 | tee release/learner-wording/actual-tests.txt
+      - name: Measure repeated lexical work on the exact installed Quran
+        run: |
+          set -o pipefail
+          python3 scripts/benchmark-wording-reference.py 2>&1 | tee release/learner-wording/actual-cpu-benchmark.txt
+      - name: Save original scoped result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learner-wording-${{ github.sha }}
+          path: release/learner-wording/
+          retention-days: 3
