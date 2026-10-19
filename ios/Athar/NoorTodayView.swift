@@ -166,7 +166,7 @@ struct NoorTodayView: View {
                             .frame(width: 44, height: 44).background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 13))
                         VStack(alignment: .leading, spacing: 7) {
                             Text("رحلتي").font(.headline)
-                            Text("قراءتك وحفظك ومراجعتك").font(.caption).foregroundStyle(.secondary)
+                            Text("قراءتك وختمتك").font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.left").font(.caption).foregroundStyle(Theme.gold).accessibilityHidden(true)

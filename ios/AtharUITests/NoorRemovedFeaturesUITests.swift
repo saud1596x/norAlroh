@@ -21,6 +21,12 @@ final class NoorRemovedFeaturesUITests: XCTestCase {
         journey.tap()
         // This screen uses its own visible heading, rather than a navigation-bar title.
         XCTAssertTrue(app.staticTexts["journey.month"].waitForExistence(timeout: 20))
+        let summary = app.staticTexts["journey.summary"]
+        for _ in 0..<6 where !summary.isHittable { app.swipeUp() }
+        XCTAssertTrue(summary.exists && summary.isHittable)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "الحفظ والمراجعة")).firstMatch.exists,
+                       "Reading history cannot reopen a separate recitation/memorization history")
+        XCTAssertFalse(app.buttons["تسجيلاتي"].exists)
         capture(app, "journey-still-reachable")
         selectNoorTab("المصحف", in: app)
         for _ in 0..<4 { app.swipeUp() }

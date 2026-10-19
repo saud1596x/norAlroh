@@ -2,7 +2,6 @@ import SwiftUI
 
 struct NoorMyJourneyView: View {
     @EnvironmentObject private var store: AtharStore
-    @EnvironmentObject private var memorization: MemorizationStore
     @ObservedObject private var journey = KhatmahStore.shared
     @State private var month = Date.now
     @State private var selectedDay: Date?
@@ -38,10 +37,6 @@ struct NoorMyJourneyView: View {
                     Text("أثر خطواتك").font(.headline)
                     Text(verbatim: "\(index.readingDays.count) أيام قراءة · \(index.newlyCompletedPages) صفحات جديدة في رحلات الختمة")
                         .font(.subheadline).accessibilityIdentifier("journey.summary")
-                    NavigationLink { MemorizationHistoryView() } label: {
-                        Label("الحفظ والمراجعة · \(memorization.history.count) جلسات محفوظة", systemImage: "arrow.clockwise")
-                            .frame(minHeight: 44)
-                    }
                 }
                 completedPlans
                 if let error = journey.error { Text(error).foregroundStyle(.red) }
