@@ -1,4 +1,5 @@
 import pathlib
+import json
 import re
 import subprocess
 import sys
@@ -22,6 +23,20 @@ class NativeDeadlineTests(unittest.TestCase):
     def test_child_failure_is_never_reported_as_success(self):
         result = subprocess.run([sys.executable,str(WRAPPER),'2',sys.executable,'-c','raise SystemExit(7)'],capture_output=True)
         self.assertEqual(result.returncode,7)
+        events = [json.loads(line.partition(' ')[2]) for line in result.stdout.decode().splitlines()
+                  if line.startswith('NOOR_NATIVE_PROCESS ')]
+        self.assertEqual([e['event'] for e in events], ['start','end'])
+        self.assertEqual(events[-1]['exitCode'],7)
+        self.assertGreaterEqual(events[-1]['elapsedSeconds'],events[0]['elapsedSeconds'])
+
+    def test_actual_deadline_kills_child_and_never_reports_success(self):
+        result = subprocess.run([sys.executable,str(WRAPPER),'0.1',sys.executable,
+                                 '-c','import time; time.sleep(20)'],capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,124)
+        self.assertIn('tests NOT passed',result.stdout)
+        events = [json.loads(line.partition(' ')[2]) for line in result.stdout.splitlines()
+                  if line.startswith('NOOR_NATIVE_PROCESS ')]
+        self.assertEqual(events[-1]['exitCode'],124)
 
     def test_over_limit_deadline_rejects_command_without_running_it(self):
         result = subprocess.run([sys.executable,str(WRAPPER),'721',sys.executable,'-c','print("CHILD_EXECUTED")'],capture_output=True,text=True)
@@ -43,6 +58,8 @@ class NativeDeadlineTests(unittest.TestCase):
     def test_live_journey_keeps_original_runtime_and_assertions(self):
         source = (ROOT/'scripts/test-live-recitation.sh').read_text(encoding='utf-8')
         self.assertIn('--build 1200 xcodebuild build-for-testing',source)
-        self.assertIn('180 xcodebuild test-without-building',source)
+        self.assertIn('local deadline=180',source)
+        self.assertIn('live-storage|startup-policy) deadline=600',source)
+        self.assertIn('"$deadline" xcodebuild test-without-building',source)
         self.assertIn('-default-test-execution-time-allowance 100',source)
         self.assertIn('-maximum-test-execution-time-allowance 120',source)

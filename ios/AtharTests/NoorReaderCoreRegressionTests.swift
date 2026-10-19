@@ -26,6 +26,11 @@ final class NoorReaderCoreRegressionTests: XCTestCase {
         XCTAssertNil(index.listeningLocation(verse: verse, wordID: index.words["1:1"]?.first, allowedPages: 1...604))
         XCTAssertNil(index.listeningLocation(verse: verse, wordID: last, allowedPages: 3...3),
                      "Recognized speech cannot leave the reading-only daily range")
+        XCTAssertNil(index.listeningLocation(verse: verse, wordID: last, allowedPages: 1...604,
+                                            userIsSelectingVerse: true),
+                     "A live word cannot replace the ayah whose options the reader opened")
+        XCTAssertEqual(index.listeningLocation(verse: verse, wordID: last, allowedPages: 1...604,
+                                              userIsSelectingVerse: false), end)
     }
     func testShortSharedOpeningDoesNotJumpFromIkhlasToFalaqBeforeDistinctiveWord() throws {
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,

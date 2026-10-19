@@ -44,7 +44,14 @@ failed=0
 run_case() {
  local name=$1; shift
  local result=0
- python3 scripts/run-native-with-deadline.py 180 xcodebuild test-without-building "${common[@]}" \
+ local deadline=180
+ # The unit invocation contains multiple cases and a cold XCTest/app installation.
+ # On39185242274 its first case began ~175s after the last build timestamp,
+ # leaving almost none of the former180s aggregate budget for execution.
+ # Bound the whole suite separately; keep each case's100/120s XCTest limits
+ # and every assertion unchanged. Single UI invocations retain180s.
+ case "$name" in live-storage|startup-policy) deadline=600;; esac
+ python3 scripts/run-native-with-deadline.py "$deadline" xcodebuild test-without-building "${common[@]}" \
   -test-timeouts-enabled YES -default-test-execution-time-allowance 100 -maximum-test-execution-time-allowance 120 \
   "$@" -resultBundlePath "$out/$name.xcresult" 2>&1 | tee "$out/$name.txt" || result=$?
  python3 scripts/export-reader-proof.py "$out/$name.xcresult"
@@ -66,7 +73,11 @@ run_case live-storage \
  -only-testing:AtharTests/QuranPracticeVisibilityTests \
  -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \
  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testLiveWordLocationUsesExactNativePageWithoutVerseChangeAndRejectsMissingOrUnrelatedCursor \
- -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testOpeningAndResumingCaptureDoesNotWaitForModelPreparation \
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testActualRecognitionSessionPausesRestoresResumesAndFinishesWithoutReplacingAudio \
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testInterruptedActualReferenceProgressStaysVisibleThroughEmptyResumeUntilFreshRecognition \
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testDrainTimeoutWithActualPriorEvidenceExposesTextAndRejectsLateDecode \
+ -only-testing:AtharTests/QuranRecognitionIntegrationTests/testHungLiveRecognitionKeepsAudioAndCannotRevealLateWords
 xcrun simctl privacy "$device" grant microphone com.saud1596x.nooralruh
 # Separate bundles preserve later results even when a CoreAudio test host dies.
 run_case one-tap -only-testing:AtharUITests/NoorMushafStudyUITests/testOneTapStartsActualInlineMicrophoneWithoutSetupOrAccount

@@ -1,8 +1,11 @@
 """Bound a native test subprocess without changing its success/failure criteria."""
 import os
+import datetime
+import json
 import signal
 import subprocess
 import sys
+import time
 
 
 def validated_deadline(raw, *, build=False):
@@ -30,11 +33,22 @@ def main():
     if build and (len(command) < 2 or os.path.basename(command[0]) != 'xcodebuild'
                   or command[1] != 'build-for-testing'):
         raise ValueError('Build deadline requires xcodebuild build-for-testing')
+    stage = 'BUILD' if build else 'TEST'
+    started = time.monotonic()
+    def report(event, **details):
+        # No command arguments, audio or app data. Separate cold test-host
+        # launch time from actual XCTest execution in the original CI log.
+        print('NOOR_NATIVE_PROCESS ' + json.dumps(dict(
+            stage=stage, event=event, utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            elapsedSeconds=round(time.monotonic() - started, 3), deadlineSeconds=seconds,
+            **details)), flush=True)
+    report('start')
     process = subprocess.Popen(command, start_new_session=(os.name == "posix"))
     try:
-        return process.wait(timeout=seconds)
+        result = process.wait(timeout=seconds)
+        report('end', exitCode=result)
+        return result
     except subprocess.TimeoutExpired:
-        stage = 'BUILD' if build else 'TEST'
         print(f"NOOR_NATIVE_{stage}_DEADLINE seconds={seconds} exit=124; tests NOT passed", flush=True)
         if os.name == "posix":
             os.killpg(process.pid, signal.SIGTERM)
@@ -48,6 +62,7 @@ def main():
             else:
                 process.kill()
             process.wait()
+        report('end', exitCode=124)
         return 124
 
 

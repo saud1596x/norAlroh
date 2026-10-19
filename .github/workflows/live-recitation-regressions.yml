@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/live-recitation-regressions.yml
       - scripts/test-live-recitation.sh
+      - scripts/run-native-with-deadline.py
       - scripts/prepare-independent-ctc.py
       - scripts/coreml_build_runtime.py
       - scripts/coreml-build-constraints.txt
@@ -19,6 +20,8 @@ on:
       - ios/AtharTests/QuranLiveStoragePolicyTests.swift
       - ios/AtharTests/QuranListeningLocationTests.swift
       - ios/AtharTests/QuranPracticeVisibilityTests.swift
+      - ios/AtharTests/QuranMicrophoneInputLifecycleTests.swift
+      - ios/AtharTests/QuranRecognitionIntegrationTests.swift
       - ios/AtharTests/NoorReaderCoreRegressionTests.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift
 permissions:

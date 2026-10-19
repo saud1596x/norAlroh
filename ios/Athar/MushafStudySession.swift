@@ -166,8 +166,9 @@ struct MushafStudyWordIndex: Sendable {
     }
     /// Live word updates can restore the actual page after a manual page turn
     /// while the ayah stays the same. No word/verse fallback proves speech.
-    func listeningLocation(verse: String?, wordID: Int?, allowedPages: ClosedRange<Int>) -> PlaybackLocation? {
-        guard let verse, let wordID, words[verse]?.contains(wordID) == true,
+    func listeningLocation(verse: String?, wordID: Int?, allowedPages: ClosedRange<Int>,
+                           userIsSelectingVerse: Bool = false) -> PlaybackLocation? {
+        guard !userIsSelectingVerse, let verse, let wordID, words[verse]?.contains(wordID) == true,
               let location = locations[wordID], location.verse == verse,
               allowedPages.contains(location.page) else { return nil }
         return location

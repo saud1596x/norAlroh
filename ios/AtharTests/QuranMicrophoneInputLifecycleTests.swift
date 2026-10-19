@@ -178,6 +178,28 @@ final class QuranMicrophoneInputLifecycleTests: XCTestCase {
         }
     }
 
+    func testInterruptionOnlyStopsArmedInputAndItsEndDoesNotStopANewTake() {
+        let center = NotificationCenter(), engine = NSObject()
+        var failures = 0
+        let events = QuranAudioInputEvents(engine: engine, center: center) { error in
+            XCTAssertTrue(error is QuranAudioInputFailure); failures += 1
+        }
+        func post(_ type: AVAudioSession.InterruptionType) {
+            center.post(name: AVAudioSession.interruptionNotification, object: nil,
+                        userInfo: [AVAudioSessionInterruptionTypeKey: type.rawValue])
+        }
+        post(.began)
+        XCTAssertEqual(failures, 0, "An inactive capture must ignore interruptions")
+        events.arm(); post(.began); post(.began)
+        XCTAssertEqual(failures, 1, "One interruption must request closure only once")
+        events.arm(); post(.ended)
+        XCTAssertEqual(failures, 1, "Ending an earlier interruption cannot pause a resumed take")
+        post(.began)
+        XCTAssertEqual(failures, 2, "The new take must still stop on a genuine new interruption")
+        events.disarm(); post(.began)
+        XCTAssertEqual(failures, 2)
+    }
+
     @MainActor func testConfigurationEventDuringStartPausesActualReferenceAudioAndRouteChangeOnResumePreservesBothTakes() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

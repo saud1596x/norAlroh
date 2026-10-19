@@ -225,11 +225,9 @@ struct InteractiveMushafReader: View {
         .onChange(of: recitation.state) { _, state in
             if state == .stopped { tools = true }
         }
-        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { event in
-            if (event.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue {
-                Task { await recitation.pause() }
-            }
-        }
+        // Live input owns route/interruption handling in QuranAudioInputEvents.
+        // An extra unscoped UI pause could arrive after a different take has
+        // resumed, defeating the controller's old-callback epoch protection.
         .alert(audio.error == nil ? "التسميع" : "التلاوة", isPresented: Binding(
             get: { audio.error != nil || recitation.message != nil },
             set: { if !$0 { audio.error = nil; recitation.message = nil } })) {
@@ -288,7 +286,7 @@ struct InteractiveMushafReader: View {
             if value == .background || (value == .inactive && recitation.state != .permission) { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
         .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { event in
-            if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { recitation.cancelGuided(); Task { await recitation.pause() } }
+            if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { recitation.cancelGuided() }
         }
         .onChange(of: number) { _, value in
             guard allowedPages.contains(value) else { number = min(allowedPages.upperBound, max(allowedPages.lowerBound, value)); return }
@@ -889,8 +887,9 @@ struct InteractiveMushafReader: View {
         // the visible page. This changes navigation, never speech evidence.
         guard readerVisible, recitation.state == .listening,
               let location = studyIndex?.listeningLocation(verse: recitation.currentVerse,
-                  wordID: recitation.activeWordID, allowedPages: allowedPages) else { return }
-        selected = location.verse; manualSelection = nil
+                  wordID: recitation.activeWordID, allowedPages: allowedPages,
+                  userIsSelectingVerse: manualSelection != nil || sheetVerse != nil) else { return }
+        selected = location.verse
         if number != location.page { lastPage = location.page; number = location.page }
     }
     private func followCurrentAudio() {
@@ -1013,7 +1012,7 @@ private struct VerseTools: View {
                 } }
                 if initialAction == .details {
                 Section("الحفظ والمشاركة") {
-                    if !readingOnly { Button("بدء الحفظ أو المراجعة من هنا", systemImage: "sparkles") { onStudy(selection.key); dismiss() } }
+                    if !readingOnly { Button("تسميع هذه الآية", systemImage: "mic") { onStudy(selection.key); dismiss() } }
                     Button("نسخ نص الآية", systemImage: "doc.on.doc") { UIPasteboard.general.string = copyText; notice = "نُسخ نص الآية مع اسم السورة ورقمها." }.accessibilityIdentifier("verse.copy")
                     ShareLink(item: copyText) { Label("مشاركة الآية", systemImage: "square.and.arrow.up") }
                 }

@@ -279,7 +279,10 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
             makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
         // Full surah scope leaves later words to hide; a complete one-verse
         // fixture alone could make an empty hidden set pass vacuously.
-        await original.start(keys: ["112:1", "112:2", "112:3", "112:4"], page: 604, snapshot: snapshot, corpus: corpus)
+        // Hiding is an explicit reader action, never the default microphone
+        // behavior. Preserve the hidden/unread assertions in this opt-in mode.
+        await original.start(keys: ["112:1", "112:2", "112:3", "112:4"], page: 604, snapshot: snapshot, corpus: corpus,
+                             closedText: true)
         await original.pause()
         XCTAssertGreaterThanOrEqual(original.record?.evidence.count ?? 0, 2)
         XCTAssertTrue(original.record?.evidence.allSatisfy { $0.verse == "112:1" } == true,
@@ -351,7 +354,10 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
             + Array(repeating: Float(0), count: 32_000)
         let original = QuranRecitationController(requestPermission: { true }, archiveRoot: root, drainTimeout: 120,
             makeCapture: { writer, _ in ReferenceCapture(writer: writer, samples: samples) }, setSessionActive: { _ in })
-        await original.start(keys: ["112:1", "112:2", "112:3", "112:4"], page: 604, snapshot: snapshot, corpus: corpus)
+        // This fault-recovery case deliberately opts into hidden text. The
+        // ordinary visible-text journey is covered independently above.
+        await original.start(keys: ["112:1", "112:2", "112:3", "112:4"], page: 604, snapshot: snapshot, corpus: corpus,
+                             closedText: true)
         await original.pause()
         let record = try XCTUnwrap(original.record)
         XCTAssertGreaterThanOrEqual(record.evidence.count, 2)
@@ -407,8 +413,8 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
              .init(text: "هو", start: 0.5, end: 1, probability: 1)]
         ], hasUnresolvedSpeech: false))
         await Task.yield()
-        await controller.finish()
-        XCTAssertEqual(controller.state, .stopped)
+        await controller.pause()
+        XCTAssertEqual(controller.state, .paused)
         let record = try XCTUnwrap(controller.record)
         XCTAssertTrue(record.evidence.isEmpty, "Timed-out recognition must not create late progress")
         let journal = QuranRecitationJournal(root: root)
@@ -416,6 +422,11 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         let audio = try AVAudioFile(forReading: journal.audio(session: record.id, take: take.id))
         XCTAssertEqual(audio.length, Int64(samples.count))
         XCTAssertTrue(try journal.load(record.id).evidence.isEmpty)
+        await controller.finish()
+        XCTAssertEqual(controller.state, .stopped)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: journal.folder(record.id).path),
+                       "Explicit finish removes live working audio; there is no recording library")
+        XCTAssertThrowsError(try journal.load(record.id))
     }
     @MainActor func testInterruptedPermissionCannotStartLateSession() async throws {
         let pending = expectation(description: "Permission boundary")
@@ -522,30 +533,34 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         try MushafRecordingArchive.moveAudio(recoverable, toDeleted: false, base: root)
         NSLog("NOOR_SESSION_INTEGRATION resume.begin")
         await reopened.resume(); XCTAssertEqual(reopened.state, .listening)
-        NSLog("NOOR_SESSION_INTEGRATION finish.begin")
-        await reopened.finish();
-        NSLog("NOOR_SESSION_INTEGRATION finish.end")
-        XCTAssertEqual(reopened.state, .stopped)
-        XCTAssertFalse(reopened.hasSession); XCTAssertTrue(reopened.hiddenIDs.isEmpty)
-        let finished = try journal.load(first.id)
-        XCTAssertEqual(finished.phase, .finished); XCTAssertNotNil(finished.finishedAt)
-        XCTAssertEqual(finished.takes.count, 2); XCTAssertTrue(finished.takes.allSatisfy(\.closed))
-        XCTAssertEqual(Set(finished.evidence.map(\.takeID)), Set(finished.takes.map(\.id)))
+        await reopened.pause()
+        XCTAssertEqual(reopened.state, .paused)
+        let resumed = try journal.load(first.id)
+        XCTAssertEqual(resumed.phase, .paused)
+        XCTAssertEqual(resumed.takes.count, 2); XCTAssertTrue(resumed.takes.allSatisfy(\.closed))
+        XCTAssertEqual(Set(resumed.evidence.map(\.takeID)), Set(resumed.takes.map(\.id)))
         XCTAssertEqual(try Data(contentsOf: firstURL), firstAudio)
         let playable = try MushafRecordingArchive.takes(session: first.id, base: root)
         XCTAssertEqual(playable.count, 2)
         for take in playable {
             let file = try AVAudioFile(forReading: take.url)
             XCTAssertEqual(file.length, Int64(samples.count))
-            NSLog("NOOR_SESSION_INTEGRATION audio.prepare.begin")
-            XCTAssertTrue(try AVAudioPlayer(contentsOf: take.url).prepareToPlay())
-            NSLog("NOOR_SESSION_INTEGRATION audio.prepare.end")
         }
-        NSLog("NOOR_SESSION_INTEGRATION reopen.finished")
+        // The user removed own-recording playback/history. Validate original
+        // PCM while paused, then require finish to delete it rather than load
+        // a permanent finished archive or prepare a self-recording player.
+        NSLog("NOOR_SESSION_INTEGRATION finish.begin")
+        await reopened.finish()
+        NSLog("NOOR_SESSION_INTEGRATION finish.end")
+        XCTAssertEqual(reopened.state, .stopped)
+        XCTAssertFalse(reopened.hasSession); XCTAssertTrue(reopened.hiddenIDs.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: journal.folder(first.id).path))
+        XCTAssertThrowsError(try journal.load(first.id))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstURL.path))
         let finishedReopened = controller()
         await finishedReopened.restore(id: first.id, snapshot: snapshot, corpus: corpus)
-        XCTAssertEqual(finishedReopened.state, .stopped)
-        XCTAssertEqual(finishedReopened.record?.evidence.count, finished.evidence.count)
+        XCTAssertEqual(finishedReopened.state, .idle)
+        XCTAssertNil(finishedReopened.record, "An ended live session cannot be reopened as recording history")
     }
     @MainActor func testRecognizedRevealKeepsActualPageAndAccessibleTextStable() async throws {
         let bytes = try XCTUnwrap(QCFV2ContentCache.bundledSnapshot())

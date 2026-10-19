@@ -7,10 +7,15 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
     @MainActor func testCapturedTimeUsesWrittenPCMWhileRecognitionPreparationIsBlocked() async throws {
         // Real bundled PCM, injected capture/preparation barrier: this proves
         // capture-clock ordering, not real microphone or ASR quality.
+        func stage(_ name: String) {
+            NSLog("NOOR_CAPTURE_CLOCK_TEST %@ uptime=%.3f", name, ProcessInfo.processInfo.systemUptime)
+        }
+        stage("pcm.load.begin")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "001002", withExtension: "mp3"))
         let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: source.path)
+        stage("pcm.load.end")
         XCTAssertGreaterThan(samples.count, 80_000)
         let gate = CaptureStartGate()
         var capture: ReferenceCapture?
@@ -22,12 +27,15 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
             }, setSessionActive: { _ in })
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
             from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        stage("capture.start.begin")
         await controller.start(keys: ["1:2"], page: 1, snapshot: snapshot, corpus: try XCTUnwrap(QuranResources.corpus))
+        stage("capture.start.end")
         let openingDeadline = Date().addingTimeInterval(8)
         while !(await gate.waiting) && Date() < openingDeadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         let waiting = await gate.waiting
+        stage(waiting ? "preparation.barrier.entered" : "preparation.barrier.not-entered")
         guard waiting, let capture else {
             await gate.release(); await controller.finish()
             XCTFail("Injected recognition preparation did not reach its barrier"); return
@@ -47,13 +55,17 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         XCTAssertTrue(controller.revealed.isEmpty)
         XCTAssertTrue(controller.record?.evidence.isEmpty == true)
         XCTAssertNil(controller.activeWordID, "Capture duration cannot invent recognized words")
+        stage("captured.frames.checked")
         await gate.release()
+        stage("capture.pause.begin")
         await controller.pause()
+        stage("capture.pause.end")
         let record = try XCTUnwrap(controller.record), take = try XCTUnwrap(record.takes.last)
         let file = try AVAudioFile(forReading: QuranRecitationJournal(root: root).audio(session: record.id, take: take.id))
         XCTAssertEqual(file.length, Int64(samples.count))
         XCTAssertEqual(take.frames, file.length)
         await controller.finish()
+        stage("capture.finish.end")
     }
 
     private struct PreparationBarrierProvider: QuranSpeechRecognitionProvider {
