@@ -91,6 +91,13 @@ def signal_process_group(process, *, force):
         return True
     except ProcessLookupError:
         return False
+    except PermissionError:
+        # Darwin may deny a signal to the old group after its direct root has
+        # exited and an escaped child owns a different session. Do not retry
+        # with broader privileges, claim a kill, or mask the original timeout.
+        print('NOOR_NATIVE_GROUP_SIGNAL_DENIED signal=' + ('KILL' if force else 'TERM'),
+              file=sys.stderr, flush=True)
+        return False
 
 
 def process_group_exists(process):
@@ -110,7 +117,16 @@ def stop_process_group(process, relay):
     # retains stdout. The grace condition concerns the group, not root.wait().
     while time.monotonic() < grace_deadline:
         process.poll()  # Reap a completed direct child before checking its group.
-        if not process_group_exists(process):
+        try:
+            group_exists = process_group_exists(process)
+        except PermissionError:
+            # EPERM is not evidence that the group is absent or terminated.
+            # We cannot observe it safely; still attempt the bounded final KILL
+            # and reap, and retain exit 124 plus the explicit diagnostic.
+            print('NOOR_NATIVE_GROUP_PROBE_DENIED; group termination NOT verified',
+                  file=sys.stderr, flush=True)
+            break
+        if not group_exists:
             break
         relay.forward(min(0.05, max(0, grace_deadline - time.monotonic())))
         if relay.eof:

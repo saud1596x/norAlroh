@@ -33,6 +33,7 @@ GALLERY_SPECIAL_SHOTS = tuple('closure-page-' + page + '-' + mode
                              for page in ('379', '501', '048', '604') for mode in ('normal', 'tajweed'))
 CONTROL_SHOTS = ('closure-tajweed-on', 'closure-tajweed-off',
                  'closure-fullscreen-restored-actions', 'closure-six-ayah-actions')
+READER_LIBRARY_SHOTS = ('closure-reader-library-selected-voice-final-surah',)
 UI_METHODS = {'journey': JOURNEY, 'gallery-openings': GALLERY_OPENINGS,
               'gallery-special': GALLERY_SPECIAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
 UI_SHOTS = {'journey': JOURNEY_SHOTS, 'gallery-openings': GALLERY_OPENING_SHOTS,
@@ -518,8 +519,8 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
         captures = attempt(lane + ' screenshots', lambda lane=lane: attachment_index(folder, lane, image_probe)) or []
         images.extend(captures)
         prefix = ui_prefix(lane)
-        if prefix:
-            required = UI_SHOTS[prefix]
+        required = UI_SHOTS[prefix] if prefix else READER_LIBRARY_SHOTS if lane == 'reader-library' else ()
+        if required:
             for name in required:
                 matches = [row for row in captures if re.search(r'(?:^|/)' + re.escape(name) + r'(?:\b|_)', row['name'])]
                 if len(matches) != 1:

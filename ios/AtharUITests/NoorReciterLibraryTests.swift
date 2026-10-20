@@ -24,5 +24,9 @@ final class NoorReciterLibraryTests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.verse.114:1"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["reader.audio.stop"].exists, "Opening the reader alone cannot start playback")
         XCTAssertFalse(app.buttons["study.finish"].exists)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "closure-reader-library-selected-voice-final-surah"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

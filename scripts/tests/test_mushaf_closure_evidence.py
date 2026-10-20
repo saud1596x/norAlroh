@@ -89,7 +89,7 @@ def fixture(folder, size='small'):
         attachments.mkdir()
         names = (list(closure.UI_SHOTS[closure.ui_prefix(lane)]) if closure.ui_prefix(lane) else
                  ['QCF-V2-shaped-page-%03d' % page for page in range(1, 605)] if lane == 'geometry' else
-                 ['synthetic-library-fixture'])
+                 list(closure.READER_LIBRARY_SHOTS))
         records = []
         for index, name in enumerate(names):
             path = attachments / ('synthetic-%03d.png' % index)
@@ -203,6 +203,24 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.assertNotEqual(self.verify(), 0)
         self.assertIn('journey-dark', self.report['testResults'])
         self.assertNotIn('gallery-special-dark', self.report['testResults'])
+
+    def test_passed_reader_library_with_empty_manifest_still_fails_original_png_gate(self):
+        fixture(self.folder, 'medium')
+        write(self.folder / 'reader-library-attachments/manifest.json', [])
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertEqual(self.report['testResults']['reader-library']['passedTests'], 1)
+        self.assertEqual(self.report['testResults']['reader-library']['failedTests'], 0)
+        self.assertTrue(any('reader-library zero original PNG screenshots' in error for error in self.report['errors']))
+        self.assertTrue(any('closure-reader-library-selected-voice-final-surah' in error for error in self.report['errors']))
+
+    def test_unrelated_reader_library_png_cannot_replace_selected_voice_final_surah(self):
+        fixture(self.folder, 'medium')
+        def unrelated(value):
+            value[0]['attachments'][0]['suggestedHumanReadableName'] = 'unrelated-reader-library-screen_0.png'
+        self.mutate('reader-library-attachments/manifest.json', unrelated)
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('reader-library: missing/repeated mandatory actual screenshot closure-reader-library-selected-voice-final-surah'
+                            in error for error in self.report['errors']))
 
     def test_all_eight_gallery_reference_pages_are_mandatory_in_their_own_lanes(self):
         shots = closure.GALLERY_OPENING_SHOTS + closure.GALLERY_SPECIAL_SHOTS

@@ -94,6 +94,30 @@ class NativeDeadlineTests(unittest.TestCase):
             exists.assert_called_once_with(process)
             relay.drain_until.assert_called_once()
 
+    def test_permission_denial_does_not_mask_timeout_or_claim_group_termination(self):
+        spec = importlib.util.spec_from_file_location('deadline_permission_test',WRAPPER)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        process = Mock(pid=12345)
+        process.poll.return_value = -15
+        relay = Mock(eof=False)
+        fake_os = types.SimpleNamespace(name='posix',killpg=Mock(side_effect=PermissionError(1,'denied')))
+        fake_signals = types.SimpleNamespace(SIGTERM=15,SIGKILL=9)
+        with patch.object(module,'os',fake_os), patch.object(module,'signal',fake_signals), \
+             patch.object(module.sys,'stderr') as diagnostics:
+            self.assertFalse(module.signal_process_group(process,force=False))
+            # A denied probe must remain unknown, rather than masquerade as an
+            # absent process group. The cleanup caller handles this explicitly.
+            with self.assertRaises(PermissionError):
+                module.process_group_exists(process)
+            self.assertTrue(module.stop_process_group(process,relay))
+        self.assertEqual([call.args for call in fake_os.killpg.call_args_list],
+                         [(12345,15),(12345,0),(12345,15),(12345,0),(12345,9)])
+        process.wait.assert_called_once_with(timeout=module.REAP_SECONDS)
+        relay.drain_until.assert_called_once()
+        text=''.join(str(call.args[0]) for call in diagnostics.write.call_args_list if call.args)
+        self.assertIn('SIGNAL_DENIED',text)
+        self.assertIn('group termination NOT verified',text)
+
     @unittest.skipUnless(os.name == 'posix','Actual process-group/EOF regression requires POSIX')
     def test_timeout_kills_term_ignoring_descendant_after_root_exits_and_releases_outer_stdout(self):
         folder = ROOT/'release/native-deadline-tests'
@@ -136,6 +160,9 @@ class NativeDeadlineTests(unittest.TestCase):
                 if pgid_file.exists():
                     try: os.killpg(int(pgid_file.read_text()),signal.SIGKILL)
                     except ProcessLookupError: pass
+                    except PermissionError:
+                        print('NOOR_TEST_GROUP_CLEANUP_DENIED; still attempting the owned child PID',
+                              file=sys.stderr,flush=True)
                 if pid_file.exists():
                     try: os.kill(int(pid_file.read_text()),signal.SIGKILL)
                     except ProcessLookupError: pass
@@ -170,6 +197,9 @@ class NativeDeadlineTests(unittest.TestCase):
                 if pgid_file.exists():
                     try: os.killpg(int(pgid_file.read_text()),signal.SIGKILL)
                     except ProcessLookupError: pass
+                    except PermissionError:
+                        print('NOOR_TEST_GROUP_CLEANUP_DENIED; still attempting the owned child PID',
+                              file=sys.stderr,flush=True)
                 if pid_file.exists():
                     try: os.kill(int(pid_file.read_text()),signal.SIGKILL)
                     except ProcessLookupError: pass
