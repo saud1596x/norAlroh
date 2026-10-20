@@ -223,7 +223,9 @@ class MushafClosureEvidenceTests(unittest.TestCase):
                             in error for error in self.report['errors']))
 
     def test_all_eight_gallery_reference_pages_are_mandatory_in_their_own_lanes(self):
-        shots = closure.GALLERY_OPENING_SHOTS + closure.GALLERY_SPECIAL_SHOTS
+        shots = (closure.GALLERY_OPENING_SHOTS + closure.GALLERY_DENSE_SHOTS
+                 + closure.GALLERY_SPECIAL_SHOTS + closure.GALLERY_FINAL_SHOTS)
+        self.assertEqual(len(shots), 16)
         self.assertEqual(set(shots), {
             'closure-page-%03d-%s' % (number, mode)
             for number in (1, 2, 3, 187, 379, 501, 48, 604) for mode in ('normal', 'tajweed')})
@@ -234,6 +236,28 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.mutate('gallery-special-light-attachments/manifest.json', remove_501)
         self.assertNotEqual(self.verify(), 0)
         self.assertTrue(any('closure-page-501-normal' in error for error in self.report['errors']))
+
+    def test_split_gallery_cannot_omit_dense_or_final_lane(self):
+        fixture(self.folder)
+        (self.folder / 'gallery-dense-dark-summary.json').unlink()
+        (self.folder / 'gallery-final-light-summary.json').unlink()
+        self.assertNotEqual(self.verify(), 0)
+        self.assertNotIn('gallery-dense-dark', self.report['testResults'])
+        self.assertNotIn('gallery-final-light', self.report['testResults'])
+        self.assertIn('gallery-openings-dark', self.report['testResults'])
+
+    def test_dense_gallery_png_in_final_lane_cannot_substitute_original_lane(self):
+        fixture(self.folder)
+        source = self.folder / 'gallery-dense-light-attachments/manifest.json'
+        final = self.folder / 'gallery-final-light-attachments/manifest.json'
+        dense_manifest = json.loads(source.read_text(encoding='utf-8'))
+        final_manifest = json.loads(final.read_text(encoding='utf-8'))
+        final_manifest.extend(dense_manifest)
+        write(final, final_manifest)
+        write(source, [])
+        self.assertNotEqual(self.verify(), 0)
+        self.assertTrue(any('gallery-dense-light: missing/repeated mandatory actual screenshot closure-page-187-tajweed'
+                            in error for error in self.report['errors']))
 
     def test_normal_page_cannot_replace_missing_tajweed_capture(self):
         fixture(self.folder)

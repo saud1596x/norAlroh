@@ -931,9 +931,13 @@ struct InteractiveMushafReader: View {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
             if !readingOnly { verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) } }
-        }.padding(.horizontal, 8)
+        }.scrollTargetLayout().padding(.horizontal, 8)
         }
             .scrollIndicators(.hidden)
+            // At accessibility text sizes a tile nearly fills the lane. Settle
+            // on its edge instead of leaving every action partly clipped
+            // between tiles after an inertial horizontal swipe.
+            .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
             .frame(height: readerDockHeight)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))

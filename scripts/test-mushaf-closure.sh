@@ -81,8 +81,12 @@ for look in light dark; do
  # journey's unchanged 180s process budget or concealing a failed lane.
  run_case "gallery-openings-$look" 180 120 \
   -only-testing:AtharUITests/NoorMushafClosureUITests/testReferenceOpeningAndDensePagesKeepGeometry
+ run_case "gallery-dense-$look" 180 120 \
+  -only-testing:AtharUITests/NoorMushafClosureUITests/testReferenceDenseAndTawbaPagesKeepGeometry
  run_case "gallery-special-$look" 180 120 \
   -only-testing:AtharUITests/NoorMushafClosureUITests/testReferenceSpecialAndFinalPagesKeepGeometry
+ run_case "gallery-final-$look" 180 120 \
+  -only-testing:AtharUITests/NoorMushafClosureUITests/testReferenceDebtAndFinalPagesKeepGeometry
  run_case "controls-$look" 180 120 \
   -only-testing:AtharUITests/NoorMushafClosureUITests/testTajweedFullscreenAndAyahActionsKeepGeometry
  run_case "large-text-$look" 180 120 \

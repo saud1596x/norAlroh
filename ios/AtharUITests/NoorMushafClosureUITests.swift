@@ -87,11 +87,19 @@ final class NoorMushafClosureUITests: XCTestCase {
     }
     @MainActor func testReferenceOpeningAndDensePagesKeepGeometry() throws {
         executionTimeAllowance = 120
-        captureReferencePages([1, 2, 3, 187])
+        captureReferencePages([1, 2])
+    }
+    @MainActor func testReferenceDenseAndTawbaPagesKeepGeometry() throws {
+        executionTimeAllowance = 120
+        captureReferencePages([3, 187])
     }
     @MainActor func testReferenceSpecialAndFinalPagesKeepGeometry() throws {
         executionTimeAllowance = 120
-        captureReferencePages([379, 501, 48, 604])
+        captureReferencePages([379, 501])
+    }
+    @MainActor func testReferenceDebtAndFinalPagesKeepGeometry() throws {
+        executionTimeAllowance = 120
+        captureReferencePages([48, 604])
     }
     @MainActor func testTajweedFullscreenAndAyahActionsKeepGeometry() throws {
         executionTimeAllowance = 120

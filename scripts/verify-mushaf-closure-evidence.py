@@ -21,23 +21,31 @@ DEVICE_TYPES = {'small': 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-ge
 JOURNEY = 'testMeasuredReadingJourneyKeepsGeometryAndSurvivesActualCapture'
 LARGE_TEXT = 'testLargeInterfaceTextKeepsControlsOutsideTheQuran'
 GALLERY_OPENINGS = 'testReferenceOpeningAndDensePagesKeepGeometry'
+GALLERY_DENSE = 'testReferenceDenseAndTawbaPagesKeepGeometry'
 GALLERY_SPECIAL = 'testReferenceSpecialAndFinalPagesKeepGeometry'
+GALLERY_FINAL = 'testReferenceDebtAndFinalPagesKeepGeometry'
 CONTROLS = 'testTajweedFullscreenAndAyahActionsKeepGeometry'
 JOURNEY_SHOTS = ('closure-page-014-normal',
     'closure-tools-hidden-stable', 'closure-ayah-selection-stable',
     'closure-actual-microphone',
     'closure-after-finish-same-page', 'closure-restored-position')
 GALLERY_OPENING_SHOTS = tuple('closure-page-' + page + '-' + mode
-                              for page in ('001', '002', '003', '187') for mode in ('normal', 'tajweed'))
+                              for page in ('001', '002') for mode in ('normal', 'tajweed'))
+GALLERY_DENSE_SHOTS = tuple('closure-page-' + page + '-' + mode
+                            for page in ('003', '187') for mode in ('normal', 'tajweed'))
 GALLERY_SPECIAL_SHOTS = tuple('closure-page-' + page + '-' + mode
-                             for page in ('379', '501', '048', '604') for mode in ('normal', 'tajweed'))
+                             for page in ('379', '501') for mode in ('normal', 'tajweed'))
+GALLERY_FINAL_SHOTS = tuple('closure-page-' + page + '-' + mode
+                           for page in ('048', '604') for mode in ('normal', 'tajweed'))
 CONTROL_SHOTS = ('closure-tajweed-on', 'closure-tajweed-off',
                  'closure-fullscreen-restored-actions', 'closure-six-ayah-actions')
 READER_LIBRARY_SHOTS = ('closure-reader-library-selected-voice-final-surah',)
 UI_METHODS = {'journey': JOURNEY, 'gallery-openings': GALLERY_OPENINGS,
-              'gallery-special': GALLERY_SPECIAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
+              'gallery-dense': GALLERY_DENSE, 'gallery-special': GALLERY_SPECIAL,
+              'gallery-final': GALLERY_FINAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
 UI_SHOTS = {'journey': JOURNEY_SHOTS, 'gallery-openings': GALLERY_OPENING_SHOTS,
-            'gallery-special': GALLERY_SPECIAL_SHOTS, 'controls': CONTROL_SHOTS,
+            'gallery-dense': GALLERY_DENSE_SHOTS, 'gallery-special': GALLERY_SPECIAL_SHOTS,
+            'gallery-final': GALLERY_FINAL_SHOTS, 'controls': CONTROL_SHOTS,
             'large-text': ('closure-large-interface-text',)}
 
 
