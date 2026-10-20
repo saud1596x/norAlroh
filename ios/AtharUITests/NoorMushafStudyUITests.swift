@@ -7,7 +7,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         if let run = testRun, run.failureCount > 0, let application { print("STUDY_FAILURE_HIERARCHY\n" + application.debugDescription) }
         XCUIDevice.shared.orientation = .portrait
     }
-    func testActualRepeatControlsPersistAndGapCancels() {
+    func testActualRepeatControlsPersistAndGapCancels() throws {
         let app = XCUIApplication(); application = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
@@ -16,7 +16,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(jump.waitForExistence(timeout: 5)); jump.tap(); jump.typeText("604"); app.buttons["انتقل"].tap()
         let verse = app.buttons["reader.verse.112:1"]
         XCTAssertTrue(verse.waitForExistence(timeout: 30)); verse.press(forDuration: 0.6)
-        app.buttons["verse.repeat"].tap()
+        try revealNoorVerseAction("verse.repeat", in: app).tap()
         let count = app.steppers["verse.repeat.count"]
         let delay = app.steppers["verse.repeat.delay"]
         XCTAssertTrue(count.waitForExistence(timeout: 10)); XCTAssertTrue(delay.exists)
@@ -35,7 +35,8 @@ final class NoorMushafStudyUITests: XCTestCase {
         wait(for: [cancelled], timeout: 5)
         app.terminate(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20)); app.buttons["home.resume"].tap()
-        XCTAssertTrue(verse.waitForExistence(timeout: 120)); verse.press(forDuration: 0.6); app.buttons["verse.repeat"].tap()
+        XCTAssertTrue(verse.waitForExistence(timeout: 120)); verse.press(forDuration: 0.6)
+        try revealNoorVerseAction("verse.repeat", in: app).tap()
         XCTAssertTrue(count.waitForExistence(timeout: 10))
         XCTAssertTrue(numbers(count.label).contains(4)); XCTAssertTrue(numbers(delay.label).contains(2))
         capture(app, "repeat-options-restored-after-relaunch")
@@ -111,7 +112,7 @@ final class NoorMushafStudyUITests: XCTestCase {
             XCTAssertFalse(action.frame.intersects(first.frame), "Controls must not cover Quran ink")
         }
         capture(app, "37-practice-mushaf-hidden")
-        first.tap()
+        first.press(forDuration: 0.6)
         let oneWord = app.buttons["كشف الكلمة التالية"]
         XCTAssertTrue(oneWord.waitForExistence(timeout: 5)); oneWord.tap()
         let paused = expectation(for: NSPredicate(format: "label CONTAINS %@", "استئناف"), evaluatedWith: app.buttons["study.pause"])
@@ -123,7 +124,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["study.pause"].label.contains("استئناف"))
         XCTAssertTrue(first.label.contains("مخفي"))
         XCTAssertEqual(first.frame, originalFrame)
-        first.tap(); app.buttons["كشف الآية كاملة"].tap()
+        first.press(forDuration: 0.6); app.buttons["كشف الآية كاملة"].tap()
         let exposed = expectation(for: NSPredicate(format: "NOT (label CONTAINS %@)", "مخفي"), evaluatedWith: first)
         wait(for: [exposed], timeout: 10)
         XCTAssertTrue(app.buttons["reader.verse.112:2"].label.contains("مخفي"), "Revealing one ayah cannot reveal the rest of the passage")

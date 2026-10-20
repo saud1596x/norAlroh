@@ -110,6 +110,9 @@ private struct NoorReciterSurahsView: View {
                         Spacer()
                         Image(systemName: "book")
                     }.padding(.vertical, 8).frame(minHeight: 48)
+                        // Plain buttons must include the spacer between the
+                        // title and icon in the row's actual touch target.
+                        .contentShape(.interaction, Rectangle())
                 }.buttonStyle(.plain).listRowBackground(Theme.panel)
                     .accessibilityIdentifier("reciter.surah.\(surah.number)")
                     .accessibilityLabel("\(surah.name)، \(reciter.name)، افتح داخل المصحف")

@@ -243,6 +243,7 @@ struct OriginalPageData: Equatable {
         } else { body = original }
         let rowHeight = Metrics.baselineInterval
         let top = page.number <= 2 ? Metrics.openingTop : Metrics.verticalMargin
+        var referenceRows: [RowGeometry] = []
         for row in page.rows {
             var ranges: [(NSRange, OriginalPageWord)] = []
             var text = ""
@@ -261,7 +262,11 @@ struct OriginalPageData: Equatable {
             guard !text.isEmpty else { fail("Empty authored row \(row.line)"); return }
             let font = header ? companion : body
             let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
-            let attributed = NSMutableAttributedString(string: text, attributes: [.font: font, .foregroundColor: UIColor.label, .writingDirection: [direction]])
+            // Core Text receives a resolved color. A detached drawing context
+            // need not share this view's trait collection (for example a dark
+            // renderer inside a light host or an exported native capture).
+            let attributed = NSMutableAttributedString(string: text, attributes: [.font: font,
+                .foregroundColor: UIColor.label.resolvedColor(with: traitCollection), .writingDirection: [direction]])
             if !header {
                 for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
                     attributed.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
@@ -279,10 +284,10 @@ struct OriginalPageData: Equatable {
             let baseline = row.type == "surah_name"
                 ? rowTop + 30.5 + ink.midY
                 : rowTop + Metrics.baselineOffset
-            // Optical balance requested by the reader: move ayah ink and its hit
-            // geometry together, without changing glyphs or authored line widths.
-            let opticalShift: CGFloat = row.type == "ayah" ? -4.5 : 0
-            let origin = CGPoint(x: (row.centered ? Self.pageSize.width / 2 - ink.midX : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX) + opticalShift, y: baseline)
+            // Every authored row uses the same page axis. Preserve the source's
+            // centered/right-aligned distinction without a body-only offset.
+            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX
+                : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX, y: baseline)
             let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
             guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
                   pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
@@ -292,6 +297,24 @@ struct OriginalPageData: Equatable {
             shapedTexts.append(attributed.copy() as! NSAttributedString)
             lineWordRanges.append(ranges.map { ($0.0, $0.1.id) })
             rowGeometry.append(.init(line: row.line, kind: row.type, ink: pageInk))
+            // Heading anchors belong to the fixed V2 edition, not the currently
+            // painted outline. V4 vowel bounds differ: using their live ink to
+            // lay out a heading moved its title, ornament and basmala whenever
+            // Tajweed was toggled. Measure the unchanged source line instead.
+            var sourceInk = ink
+            if !header, tajweedPage != nil {
+                let source = NSMutableAttributedString(attributedString: attributed)
+                source.addAttribute(.font, value: original, range: NSRange(location: 0, length: source.length))
+                for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
+                    source.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
+                }
+                sourceInk = CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(source as CFAttributedString), .useGlyphPathBounds)
+            }
+            let sourceOriginX = row.centered ? Self.pageSize.width / 2 - sourceInk.midX
+                : Self.pageSize.width - Metrics.horizontalMargin - sourceInk.maxX
+            referenceRows.append(.init(line: row.line, kind: row.type,
+                ink: CGRect(x: sourceOriginX + sourceInk.minX, y: baseline - sourceInk.maxY,
+                            width: sourceInk.width, height: sourceInk.height)))
             var wordRects: [Int: CGRect] = [:]
             var wordPaths: [Int: [CGPath]] = [:]
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
@@ -339,7 +362,7 @@ struct OriginalPageData: Equatable {
                 regions.append(Hit(word: word.id, verse: word.verse, rect: rect, paths: wordPaths[word.id] ?? []))
             }
         }
-        guard arrangeHeadingGroups(top: top) else { return }
+        guard arrangeHeadingGroups(top: top, referenceRows: referenceRows) else { return }
         // Authored FC20 ornament paths remain independent of title text.
         // Matching the target edition and distribution rights are review gates.
         renderedSuccessfully = true
@@ -384,7 +407,7 @@ struct OriginalPageData: Equatable {
     /// A title and its separate basmala share the space between actual body ink.
     /// Body baselines, line breaks and glyph advances are never moved or resized.
     /// The same rule covers every header, including page-edge/opening groups.
-    private func arrangeHeadingGroups(top: CGFloat) -> Bool {
+    private func arrangeHeadingGroups(top: CGFloat, referenceRows: [RowGeometry]) -> Bool {
         let font = CTFontCreateWithName(OriginalMushafCompanion.name as CFString, Metrics.bodyPointSize, nil)
         var scalar: UniChar = 0xFC20; var glyph: CGGlyph = 0
         guard CTFontGetGlyphsForCharacters(font, &scalar, &glyph, 1), glyph != 0,
@@ -398,8 +421,8 @@ struct OriginalPageData: Equatable {
             if rowGeometry[index].kind == "ayah" { index += 1; continue }
             let start = index
             while index < rowGeometry.count && rowGeometry[index].kind != "ayah" { index += 1 }
-            let lower = start == 0 ? top : rowGeometry[start - 1].ink.maxY
-            let upper = index == rowGeometry.count ? Self.pageSize.height - Metrics.verticalMargin : rowGeometry[index].ink.minY
+            let lower = start == 0 ? top : referenceRows[start - 1].ink.maxY
+            let upper = index == rowGeometry.count ? Self.pageSize.height - Metrics.verticalMargin : referenceRows[index].ink.minY
             let titleCount = (start..<index).filter { rowGeometry[$0].kind == "surah_name" }.count
             let otherHeight = (start..<index).filter { rowGeometry[$0].kind != "surah_name" }.reduce(CGFloat.zero) { $0 + rowGeometry[$1].ink.height }
             let freeHeight = upper - lower - otherHeight - Metrics.headingGap * CGFloat(index - start + 1)
@@ -558,7 +581,7 @@ struct OriginalPageData: Equatable {
     func drawInk() {
         guard renderedSuccessfully, let context = UIGraphicsGetCurrentContext() else { return }
         context.saveGState()
-        context.setFillColor(UIColor.secondaryLabel.withAlphaComponent(0.55).cgColor)
+        context.setFillColor(UIColor.secondaryLabel.resolvedColor(with: traitCollection).withAlphaComponent(0.55).cgColor)
         for path in decorationPaths { context.addPath(path); context.fillPath() }
         for (word, path, color) in coloredInk where !hiddenWordIDs.contains(word) {
             context.setFillColor(color.resolvedColor(with: traitCollection).cgColor); context.addPath(path); context.fillPath()
@@ -718,15 +741,13 @@ struct OriginalPageData: Equatable {
         }
     }
     @objc private func tappedOnViewport(_ tap: UITapGestureRecognizer) {
+        handleShortTap()
+    }
+    func handleShortTap() {
         guard !turningPage else { return }
-        if allowsVerseSelection, let key = canvas.verse(at: tap.location(in: canvas)) {
-            canvas.onVerse?(key)
-            return
-        }
-        if let onToggleTools { onToggleTools(); return }
-        // UIKit applies zoom and offset when converting into the fixed canvas.
-        // A margin tap stays blank; it never chooses a nearby verse.
-        canvas.onVerse?(canvas.verse(at: tap.location(in: canvas)))
+        // A short tap has one meaning on both text and margins. Verse tools
+        // belong to the long press or its equivalent accessibility action.
+        onToggleTools?()
     }
     @objc private func selectedOnViewport(_ gesture: UILongPressGestureRecognizer) {
         guard !turningPage, gesture.state == .began,

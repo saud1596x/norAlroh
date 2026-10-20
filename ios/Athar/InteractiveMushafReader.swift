@@ -51,8 +51,11 @@ struct MushafInitialEntry {
 }
 
 enum MushafReaderInsets {
-    static func reserved(_ measured: CGFloat?, minimum: CGFloat, visible: Bool = true) -> CGFloat {
-        guard visible else { return 0 }
+    /// Ordinary chrome visibility never changes the reading coordinate space.
+    /// Only the explicit expanded-reading mode may reclaim the control lanes.
+    static func reserved(_ measured: CGFloat?, minimum: CGFloat, visible: Bool = true,
+                         fullScreen: Bool = false) -> CGFloat {
+        guard !fullScreen else { return 0 }
         guard let measured, measured.isFinite, measured > 0 else { return minimum }
         return max(minimum, measured)
     }
@@ -70,7 +73,6 @@ struct InteractiveMushafReader: View {
     @EnvironmentObject private var memorization: MemorizationStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduced
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var fonts = MushafFonts()
     @StateObject private var audio: MushafVerseAudio = {
         #if DEBUG || NOOR_ACCEPTANCE_TESTING
@@ -115,6 +117,9 @@ struct InteractiveMushafReader: View {
     @State private var sheetVerse: VerseSelection?
     @State private var sheetAction = VerseToolAction.details
     @State private var tools = true
+    @State private var fullScreenReading = false
+    @ScaledMetric(relativeTo: .caption) private var readerCaptionLineHeight: CGFloat = 16
+    private var readerDockHeight: CGFloat { max(86, 22 + 8 + 2 * readerCaptionLineHeight + 16) }
     @State private var readerActionsOpen = false
     @AppStorage("noor.mushaf.tajweedColors") private var tajweedColors = false
     @StateObject private var microphoneCue = NoorMicrophoneCue()
@@ -123,7 +128,7 @@ struct InteractiveMushafReader: View {
     @State private var recitersOpen = false
     @ObservedObject private var audioFocus = NoorAudioFocus.shared
     @AppStorage("noor.mushaf.reciter") private var preferredReciter = "Abdul_Basit_Murattal_64kbps"
-    @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 60]
+    @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 86]
     @State private var khatmah = false
     @State private var khatmahStopMessage: String?
     @State private var picker = false
@@ -359,8 +364,9 @@ struct InteractiveMushafReader: View {
         ZStack {
             Theme.panel.ignoresSafeArea()
             readerPage
-            if studyOpen { recitationControls }
-            else if tools { VStack {
+            // Keep the ordinary lanes measured while hidden or recording. A
+            // status change must not resize the production Quran viewport.
+            VStack {
                 HStack {
                     if manualSelection != nil {
                         Button { clearManualSelection() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
@@ -369,9 +375,7 @@ struct InteractiveMushafReader: View {
                         Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
                     }
                     Spacer()
-                    Text(manualSelection.map { "\(title) · الآية \(ArabicSearch.digits($0.ayah))" } ?? (audio.waitingKey == nil ? title : "مهلة التكرار · \(title)"))
-                        .font(.headline).lineLimit(1).accessibilityIdentifier(manualSelection == nil ? "reader.title" : "verse.tools.title")
-                        .accessibilityValue(manualSelection?.key ?? "")
+                    readerHeaderTitle
                     Spacer()
                     if manualSelection == nil && !readingOnly {
                         Button { recitersOpen = true } label: {
@@ -393,27 +397,47 @@ struct InteractiveMushafReader: View {
                 }.background { readerControlMeasurement("header") }
                 Spacer()
                 VStack(spacing: 0) {
-                    if let selection = manualSelection {
-                        // Float the action panel without refitting Quran ink.
-                        Color.clear.frame(height: 60).overlay(alignment: .bottom) {
-                            verseActions(selection)
-                        }
-                    }
-                    else { VStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         if !readingOnly {
                             readerPracticeDock
-                        }
-                        pageNavigationControls
-                        if recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance || recitation.guidedPhase == .ready {
-                            HStack {
-                                Text(recitation.guidedPhase == .ready ? "جاهز · اضغط الميكروفون وابدأ" : recitation.guidedPhase == .clearance ? "استعد · الميكروفون مغلق" : "استمع · الميكروفون مغلق").font(.caption)
-                                Button("إلغاء") { recitation.cancelGuided() }.frame(minHeight: 44)
-                            }
-                        }
-                    } }
+                        } else { pageNavigationControls }
+                    }
+                    .frame(minHeight: readerDockHeight)
+                    .opacity(manualSelection == nil ? 1 : 0)
+                    .allowsHitTesting(manualSelection == nil)
+                    .accessibilityHidden(manualSelection != nil)
+                    .overlay(alignment: .bottom) {
+                        if let selection = manualSelection { verseActions(selection) }
+                    }
                     wardControls
                 }.background { readerControlMeasurement("footer") }
-            }.padding(.horizontal, 10).transition(.opacity) }
+            }.padding(.horizontal, 10)
+                .opacity(tools && !studyOpen ? 1 : 0)
+                .allowsHitTesting(tools && !studyOpen)
+                .accessibilityHidden(!tools || studyOpen)
+            if studyOpen { recitationControls }
+        }
+    }
+    private var readerHeaderTitle: some View {
+        ZStack {
+            Button { input = ""; picker = true } label: {
+                VStack(spacing: 0) {
+                    Text(audio.waitingKey == nil ? title : "مهلة التكرار · \(title)")
+                        .font(.headline).lineLimit(1).accessibilityIdentifier("reader.title")
+                    Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption).monospacedDigit()
+                }.frame(minHeight: 44).contentShape(Rectangle())
+            }.buttonStyle(.plain)
+                .accessibilityIdentifier("reader.jump")
+                .accessibilityLabel("الصفحة \(ArabicSearch.digits(number)) من ٦٠٤")
+                .disabled(playbackLocksPage || manualSelection != nil)
+                .opacity(manualSelection == nil ? 1 : 0)
+                .accessibilityHidden(manualSelection != nil)
+            if let selection = manualSelection {
+                Text("\(title) · الآية \(ArabicSearch.digits(selection.ayah))")
+                    .font(.headline).lineLimit(1)
+                    .accessibilityIdentifier("verse.tools.title")
+                    .accessibilityValue(selection.key)
+            }
         }
     }
     private var readerPage: some View {
@@ -437,6 +461,7 @@ struct InteractiveMushafReader: View {
                             if studyOpen { practiceSelection = key; return }
                             if let key {
                                 audio.stop()
+                                fullScreenReading = false
                                 selected = key; manualSelection = VerseSelection(key: key)
                                 withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools = true }
                             }
@@ -447,6 +472,7 @@ struct InteractiveMushafReader: View {
                         onToggleTools: {
                             if studyOpen { return }
                             if manualSelection != nil { clearManualSelection() }
+                            else if fullScreenReading { fullScreenReading = false; tools = true }
                             else { withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18)) { tools.toggle() } }
                         })
                         // The authored canvas already contains its side margins.
@@ -454,7 +480,10 @@ struct InteractiveMushafReader: View {
                         .padding(.top, reservedReaderInset("header", minimum: 44))
                         .padding(.bottom, reservedReaderInset("footer", minimum: 60))
                         .accessibilityAction(named: tools ? "إخفاء أدوات المصحف" : "إظهار أدوات المصحف") {
-                            if !studyOpen { tools.toggle() }
+                            if !studyOpen {
+                                if fullScreenReading { fullScreenReading = false; tools = true }
+                                else { tools.toggle() }
+                            }
                         }
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else if let message = error ?? fonts.error {
@@ -562,17 +591,17 @@ struct InteractiveMushafReader: View {
             .accessibilityAction(named: "العودة إلى موضع التلاوة") { followCurrentAudio() }
     }
     private var readerPracticeDock: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 12) {
+        HStack(spacing: 4) {
+                pageTurnButton(1)
                 practiceTextVisibilityButton.frame(maxWidth: .infinity)
                 startRecitationButton
                 readerOptionsButton.frame(maxWidth: .infinity)
-            }
+                pageTurnButton(-1)
+        }
             .padding(.horizontal, 10).padding(.vertical, 8)
+            .frame(minHeight: readerDockHeight)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 26))
             .overlay(RoundedRectangle(cornerRadius: 26).stroke(Theme.gold.opacity(0.13), lineWidth: 1))
-            if let message = microphoneCue.error { Text(message).font(.caption).foregroundStyle(.secondary) }
-        }
     }
     private var readerOptionsButton: some View {
         Button { readerActionsOpen = true } label: {
@@ -582,7 +611,7 @@ struct InteractiveMushafReader: View {
                 let action = pendingReaderAction; pendingReaderAction = nil
                 switch action {
                 case .khatmah: khatmah = true
-                case .fullScreen: tools = false
+                case .fullScreen: fullScreenReading = true; tools = false
                 case nil: break
                 }
             }) {
@@ -642,19 +671,26 @@ struct InteractiveMushafReader: View {
     }
     private var pageNavigationControls: some View {
         HStack(spacing: 12) {
-            Button { turn(1) } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }
-                .disabled(playbackLocksPage || number >= allowedPages.upperBound)
-                .accessibilityLabel("الصفحة التالية").accessibilityIdentifier("reader.next")
+            pageTurnButton(1)
             if playbackLocksPage {
                 Label("مع التلاوة · \(ArabicSearch.digits(number))", systemImage: "lock.fill")
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("reader.playbackPageLock")
                     .accessibilityHint("أوقف التلاوة لتنتقل إلى صفحة أخرى")
-            } else { pageJumpControl }
-            Button { turn(-1) } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
-                .disabled(playbackLocksPage || number <= allowedPages.lowerBound)
-                .accessibilityLabel("الصفحة السابقة").accessibilityIdentifier("reader.previous")
+            } else { Spacer(minLength: 8) }
+            pageTurnButton(-1)
         }.frame(maxWidth: .infinity)
+    }
+    private func pageTurnButton(_ amount: Int) -> some View {
+        Button { turn(amount) } label: {
+            Image(systemName: amount > 0 ? "chevron.right" : "chevron.left")
+                .frame(width: 44, height: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(playbackLocksPage || !allowedPages.contains(number + amount))
+        .accessibilityLabel(amount > 0 ? "الصفحة التالية" : "الصفحة السابقة")
+        .accessibilityIdentifier(amount > 0 ? "reader.next" : "reader.previous")
+        .accessibilityHint(playbackLocksPage ? "أوقف التلاوة لتنتقل إلى صفحة أخرى" : "")
     }
     private var practiceTextVisibilityButton: some View {
         let hidden = recitation.hasSession ? recitation.practiceTextHidden : closedPracticeText
@@ -745,6 +781,7 @@ struct InteractiveMushafReader: View {
                 }.frame(maxWidth: .infinity)
             }
             .padding(.horizontal, 10).padding(.vertical, 8)
+            .frame(minHeight: readerDockHeight)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 26))
             .overlay(RoundedRectangle(cornerRadius: 26).stroke(Theme.gold.opacity(0.13), lineWidth: 1))
             if let message = microphoneCue.error { Text(message).font(.caption).foregroundStyle(.secondary) }
@@ -780,9 +817,9 @@ struct InteractiveMushafReader: View {
         // Starting capture replaces the controls, not the authored Quran
         // viewport. Keep the ordinary controls' measured reservation; smaller
         // live controls and changing input hints cannot stretch/refit the page.
-        let normal = MushafReaderInsets.reserved(controlHeights[key], minimum: minimum)
-        let live = studyOpen ? MushafReaderInsets.reserved(controlHeights["study-" + key], minimum: minimum) : 0
-        return tools || studyOpen ? max(normal, live) : 0
+        let floor = key == "footer" ? max(minimum, readerDockHeight) : minimum
+        return MushafReaderInsets.reserved(controlHeights[key], minimum: floor,
+                                          visible: tools, fullScreen: fullScreenReading)
     }
     private func readerControlMeasurement(_ key: String) -> some View {
         GeometryReader { geometry in
@@ -808,7 +845,10 @@ struct InteractiveMushafReader: View {
         sheetAction = action; sheetVerse = selection
     }
     private func verseActions(_ selection: VerseSelection) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: dynamicTypeSize.isAccessibilitySize ? 2 : 3), spacing: 6) {
+        // One scrollable control lane replaces the microphone lane. Six large
+        // tiles must not expand over the Quran or refit it on selection.
+        ScrollView(.horizontal) {
+        HStack(spacing: 6) {
             verseAction("توقّف هنا للختمة", symbol: "bookmark.circle", identifier: "verse.khatmah.stop") {
                 let journey = KhatmahStore.shared
                 if journey.stop(page: number, chapter: selection.chapter, ayah: selection.ayah) {
@@ -828,20 +868,23 @@ struct InteractiveMushafReader: View {
                 store.toggleBookmark(surah: selection.chapter, ayah: selection.ayah)
             }.accessibilityLabel(bookmarked ? "إزالة العلامة المرجعية" : "إضافة علامة مرجعية")
             if !readingOnly { verseAction("تسميع هذه الآية", symbol: "mic", identifier: "verse.hifz") { showStudySetup(selection.key) } }
-        }.padding(8)
+        }.padding(.horizontal, 8)
+        }
+            .scrollIndicators(.hidden)
+            .frame(height: readerDockHeight)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.gold.opacity(0.3), lineWidth: 1))
-            .padding(.horizontal, 12).padding(.bottom, 8)
             .accessibilityIdentifier("verse.actions.panel")
+            .accessibilityHint("اسحب أفقيًا لإظهار بقية خيارات الآية")
     }
     private func verseAction(_ label: String, symbol: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: symbol).font(.system(size: 22, weight: .semibold))
-                Text(label).font(.subheadline.weight(.semibold))
+                Text(label).font(.caption.weight(.semibold)).lineLimit(2)
             }
-                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 72).padding(.horizontal, 4)
+                .multilineTextAlignment(.center)
+                .frame(width: max(104, 104 * readerCaptionLineHeight / 16), height: readerDockHeight - 16)
                 .foregroundStyle(.primary)
                 .background(Theme.gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.gold.opacity(0.55), lineWidth: 1))

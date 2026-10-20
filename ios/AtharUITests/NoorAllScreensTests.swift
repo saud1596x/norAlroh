@@ -19,7 +19,7 @@ final class NoorAllScreensTests: XCTestCase {
         app.buttons["إغلاق المصحف"].tap()
     }
 
-    func testAllScreensWalkthrough() {
+    func testAllScreensWalkthrough() throws {
         // This real navigation/screenshot journey is longer than the default
         //180s suite limit. Keep its full assertions and a finite five-minute
         // ceiling instead of treating active navigation as a completed pass.
@@ -48,7 +48,7 @@ final class NoorAllScreensTests: XCTestCase {
         XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.press(forDuration: 0.6)
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
         capture(app, "05-interactive-verse-tools")
-        let bookmark = app.buttons["verse.bookmark"]
+        let bookmark = try revealNoorVerseAction("verse.bookmark", in: app)
         XCTAssertTrue(bookmark.waitForExistence(timeout: 10))
         if bookmark.label == "إضافة علامة مرجعية" { bookmark.tap() }
         XCTAssertEqual(bookmark.label, "إزالة العلامة المرجعية")

@@ -4,7 +4,7 @@ import XCTest
 final class NoorMushafPageNavigationUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
-    func testText604NavigationAndToolsDoNotMoveCanvas() {
+    func testText604NavigationAndToolsDoNotMoveCanvas() throws {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         selectNoorTab("المصحف", in: app)
@@ -41,7 +41,7 @@ final class NoorMushafPageNavigationUITests: XCTestCase {
             if number == 48 {
                 let debtVerse = app.buttons["reader.verse.2:282"]
                 XCTAssertTrue(debtVerse.waitForExistence(timeout: 10)); debtVerse.press(forDuration: 0.6)
-                XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 10))
+                _ = try revealNoorVerseAction("verse.tafsir", in: app)
                 let title = app.staticTexts["verse.tools.title"]
                 XCTAssertTrue(title.waitForExistence(timeout: 10))
                 let digits = title.label.compactMap { $0.wholeNumberValue }

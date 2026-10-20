@@ -14,7 +14,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         requireStableReadingLayout(app, page: page, landscape: false)
         let title = app.staticTexts["reader.title"]
         XCTAssertGreaterThan(title.frame.height, 44, "The test must exercise an actually enlarged header")
-        let footer = ["reader.study", "reader.jump", "reader.next", "reader.previous"].map { app.buttons[$0] }
+        let footer = ["reader.study", "reader.more", "reader.next", "reader.previous"].map { app.buttons[$0] }
         XCTAssertTrue(footer.allSatisfy { $0.exists && $0.isHittable })
         XCTAssertFalse(app.buttons["reader.study"].frame.intersects(app.buttons["reader.jump"].frame),
             "The enlarged page counter must not cover the microphone")
@@ -101,7 +101,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         }
         XCUIDevice.shared.orientation = .portrait
     }
-    func testPageToolsGesturesAndRelaunchPreservePosition() {
+    func testPageToolsGesturesAndRelaunchPreservePosition() throws {
         let app = XCUIApplication(); acceptanceApp = app; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
@@ -111,6 +111,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         let verse = app.buttons["reader.verse.114:1"]
         XCTAssertTrue(verse.waitForExistence(timeout: 20))
         let frame = verse.frame
+        let readingFrame = page.frame
         requireTools(true, app: app)
         XCTAssertTrue(app.buttons["reader.study"].isHittable)
         XCTAssertTrue(app.buttons["reader.more"].isHittable)
@@ -125,12 +126,19 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
         XCTAssertEqual(verse.frame, frame, "Closing journey must preserve reader geometry")
         capture(app, "stage1-604-tools-visible")
-        // An ordinary verse tap opens clearly labelled actions.
+        // Short taps on Quran text toggle ordinary tools without selecting it.
         verse.tap()
-        XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["verse.play"].isHittable)
+        requireTools(false, app: app)
+        XCTAssertFalse(app.scrollViews["verse.actions.panel"].exists)
+        XCTAssertFalse(app.buttons["verse.tools.close"].exists)
+        XCTAssertEqual(verse.frame, frame, "A short text tap must retain Quran ink position")
+        verse.tap()
+        requireTools(true, app: app)
+        XCTAssertFalse(app.scrollViews["verse.actions.panel"].exists)
+        verse.press(forDuration: 0.6)
+        _ = try revealNoorVerseAction("verse.play", in: app)
         XCTAssertEqual(verse.frame, frame, "Opening verse actions must preserve Quran ink position")
-        capture(app, "stage1-604-single-tap-actions")
+        capture(app, "stage1-604-long-press-actions")
         app.buttons["verse.tools.close"].tap()
         let margin = page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5))
         margin.tap()
@@ -160,21 +168,25 @@ final class NoorReaderComfortUITests: XCTestCase {
         }
         XCTAssertTrue(verseToolsVisible)
         XCTAssertEqual(verse.frame, frame, "Selection must preserve the exact Quran ink position")
-        for id in ["verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
-            let action = app.buttons[id]
+        let selectedTitle = app.staticTexts["verse.tools.title"]
+        for id in ["verse.khatmah.stop", "verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
+            let action = try revealNoorVerseAction(id, in: app)
             XCTAssertTrue(action.isHittable, id)
             XCTAssertGreaterThanOrEqual(action.frame.width, 44, id)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44, id)
             XCTAssertFalse(action.frame.intersects(verse.frame), "Actions must not cover the selected verse: \(id)")
+            XCTAssertEqual(selectedTitle.value as? String, "114:1", "Scrolling actions must retain the selected ayah")
+            XCTAssertEqual(verse.frame, frame)
+            XCTAssertEqual(page.frame, readingFrame)
         }
         capture(app, "stage2-604-inline-verse-actions")
-        let bookmark = app.buttons["verse.bookmark"]
+        let bookmark = try revealNoorVerseAction("verse.bookmark", in: app)
         let originalBookmark = bookmark.label
         bookmark.tap()
         XCTAssertNotEqual(bookmark.label, originalBookmark)
         bookmark.tap()
         XCTAssertEqual(bookmark.label, originalBookmark, "Keep the user's original bookmark state")
-        app.buttons["verse.repeat"].tap()
+        try revealNoorVerseAction("verse.repeat", in: app).tap()
         XCTAssertTrue(app.buttons["verse.repeat.start"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons.matching(identifier: "verse.sheet.close").count, 1)
         app.buttons["verse.sheet.close"].tap()
@@ -208,9 +220,13 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
         XCTAssertEqual(landscapeVerse.frame, landscapeVerseFrame)
         XCTAssertEqual(page.frame, landscapeFrame)
-        for id in ["verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
-            XCTAssertTrue(app.buttons[id].isHittable, id)
-            XCTAssertFalse(app.buttons[id].frame.intersects(landscapeVerse.frame), id)
+        for id in ["verse.khatmah.stop", "verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
+            let action = try revealNoorVerseAction(id, in: app)
+            XCTAssertTrue(action.isHittable, id)
+            XCTAssertFalse(action.frame.intersects(landscapeVerse.frame), id)
+            XCTAssertEqual(app.staticTexts["verse.tools.title"].value as? String, "7:1")
+            XCTAssertEqual(landscapeVerse.frame, landscapeVerseFrame)
+            XCTAssertEqual(page.frame, landscapeFrame)
         }
         capture(app, "stage2-151-landscape-verse-actions")
         app.buttons["verse.tools.close"].tap()
@@ -237,8 +253,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         guard let point = corners.first(where: { candidate in
             app.frame.contains(candidate) && !ink.contains(where: { $0.contains(candidate) })
         }) else { XCTFail("No visible blank-paper target outside the actual ayah hit regions"); return }
-        // The approved single ayah tap opens its actions. Chrome visibility is
-        // toggled only by paper outside ayah ink, using the real hit geometry.
+        // Blank paper and Quran text have the same short-tap meaning. This
+        // route also verifies that margins never select a nearby verse.
         app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: point.x, dy: point.y)).tap()
     }
     private func requireTools(_ visible: Bool, app: XCUIApplication) {

@@ -15,20 +15,22 @@ import CryptoKit
         var family = ""
         private enum CodingKeys: String, CodingKey { case schema, palettes, layers }
         func paths(glyph: CGGlyph, font: CTFont, dark: Bool) -> [(CGPath, UIColor)] {
+            // The renderer owns the page's appearance. Offscreen drawing may
+            // have a different UITraitCollection.current from the canvas;
+            // resolve both CPAL and foreground colors from the requested style.
+            let traits = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
+            let foreground = UIColor.label.resolvedColor(with: traits)
             guard let parts = layers[String(glyph)] else {
-                return CTFontCreatePathForGlyph(font, glyph, nil).map { [($0, UIColor.label)] } ?? []
+                return CTFontCreatePathForGlyph(font, glyph, nil).map { [($0, foreground)] } ?? []
             }
             return parts.compactMap { part in
                 guard part.count == 2, let shape = CTFontCreatePathForGlyph(font, CGGlyph(part[0]), nil) else { return nil }
                 let color: UIColor
-                if part[1] == 65535 { color = .label }
+                if part[1] == 65535 { color = foreground }
                 else {
-                    let light = palettes[0][part[1]], dark = palettes[1][part[1]]
-                    color = UIColor { traits in
-                        let c = traits.userInterfaceStyle == .dark ? dark : light
-                        return UIColor(red: CGFloat(c[0]) / 255, green: CGFloat(c[1]) / 255,
-                                       blue: CGFloat(c[2]) / 255, alpha: CGFloat(c[3]) / 255)
-                    }
+                    let c = palettes[dark ? 1 : 0][part[1]]
+                    color = UIColor(red: CGFloat(c[0]) / 255, green: CGFloat(c[1]) / 255,
+                                    blue: CGFloat(c[2]) / 255, alpha: CGFloat(c[3]) / 255)
                 }
                 return (shape, color)
             }

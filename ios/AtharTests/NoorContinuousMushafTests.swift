@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import CoreText
 import WhisperKit
 @testable import Athar
 
@@ -290,6 +291,36 @@ import WhisperKit
         }
     }
 
+    func testOriginalTajweedPaletteUsesRequestedCanvasStyleDespiteOppositeAmbientTraits() throws {
+        let page = try MushafTajweedFonts.load(604)
+        let font = CTFontCreateWithName(page.family as CFString, 32, nil)
+        // Use a real layered glyph that contains original CPAL foreground ink.
+        // This deliberately renders against the opposite ambient appearance;
+        // no window or caller's current traits may choose a different palette.
+        let glyphID = try XCTUnwrap(page.layers.keys.sorted().first { key in
+            guard let parts = page.layers[key], parts.contains(where: { $0[1] == 0 }) else { return false }
+            return parts.allSatisfy { CTFontCreatePathForGlyph(font, CGGlyph($0[0]), nil) != nil }
+        })
+        let glyph = CGGlyph(try XCTUnwrap(Int(glyphID)))
+        let layers = try XCTUnwrap(page.layers[glyphID])
+        for dark in [false, true] {
+            let ambient = UITraitCollection(userInterfaceStyle: dark ? .light : .dark)
+            ambient.performAsCurrent {
+                let rendered = page.paths(glyph: glyph, font: font, dark: dark)
+                XCTAssertEqual(rendered.count, layers.count)
+                for (result, layer) in zip(rendered, layers) where layer[1] != 65535 {
+                    let expected = page.palettes[dark ? 1 : 0][layer[1]]
+                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                    XCTAssertTrue(result.1.getRed(&r, green: &g, blue: &b, alpha: &a))
+                    for (actual, component) in zip([r, g, b, a], expected) {
+                        XCTAssertEqual(actual, CGFloat(component) / 255, accuracy: 0.0001,
+                            "Actual font CPAL must use requested canvas style, regardless of ambient traits")
+                    }
+                }
+            }
+        }
+    }
+
     func testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry() async throws {
         executionTimeAllowance = 180
         try OriginalMushafCompanion.register()
@@ -309,6 +340,8 @@ import WhisperKit
             for style in [UIUserInterfaceStyle.light, .dark] {
                 canvas.overrideUserInterfaceStyle = style
                 canvas.configure(page: page, corpus: corpus)
+                XCTAssertEqual(canvas.traitCollection.userInterfaceStyle, style,
+                    "The proof renderer must actually own the requested page appearance")
                 XCTAssertTrue(canvas.renderedSuccessfully, "Tajweed \(number)/\(style.rawValue): \(canvas.failureReason ?? "")")
                 XCTAssertEqual(Set(canvas.regions.map(\.word)), Set(page.words.map(\.id)))
                 XCTAssertTrue(canvas.regions.allSatisfy { canvas.bounds.contains($0.rect) })
@@ -318,14 +351,23 @@ import WhisperKit
                 XCTAssertLessThanOrEqual(coloredWidth, referenceWidth + 0.1)
                 try autoreleasepool {
                     let format = UIGraphicsImageRendererFormat(); format.preferredRange = .standard; format.scale = 1
-                    let image = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
-                        (style == .dark ? UIColor.black : .white).setFill(); context.fill(canvas.bounds)
-                        canvas.layer.render(in: context.cgContext)
+                    var rendered: UIImage?
+                    let traits = UITraitCollection(userInterfaceStyle: style)
+                    traits.performAsCurrent {
+                        rendered = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
+                            (style == .dark ? UIColor.black : .white).setFill(); context.fill(canvas.bounds)
+                            // The same draw method called by OriginalMushafInk
+                            // in production, with explicit page traits above.
+                            canvas.drawInk()
+                        }
                     }
+                    let image = try XCTUnwrap(rendered)
                     let pixels = try XCTUnwrap(image.cgImage?.dataProvider?.data), bytes = try XCTUnwrap(CFDataGetBytePtr(pixels))
                     XCTAssertTrue(stride(from: 0, to: CFDataGetLength(pixels) - 4, by: 4).contains { i in
                         max(max(bytes[i], bytes[i + 1]), bytes[i + 2]) - min(min(bytes[i], bytes[i + 1]), bytes[i + 2]) > 35
                     }, "Original colored layers must actually draw, not a monochrome fallback")
+                    XCTAssertTrue(try hasContrastingBodyInk(image, regions: canvas.regions.map(\.rect), dark: style == .dark),
+                        "Page \(number) must draw visible ordinary Quran ink; colored accents alone cannot pass a black-on-black proof")
                     if [1, 2, 17, 29, 151, 305, 560, 579, 604].contains(number) {
                         let proof = XCTAttachment(image: image); proof.name = "tajweed-\(number)-\(style.rawValue)"; proof.lifetime = .keepAlways; add(proof)
                     }
@@ -341,6 +383,39 @@ import WhisperKit
         await fonts.load("QCF2001")
         canvas.tajweedEnabled = false; canvas.configure(page: page, corpus: corpus)
         XCTAssertTrue(canvas.renderedSuccessfully, "Turning colors off restores the approved original V2 edition")
+    }
+
+    /// Checks pixels inside actual Quran-word ink bounds, excluding ornaments
+    /// and headings. This catches absent base ink; it is not a substitute for
+    /// a complete visual/diacritic or accessibility-contrast review.
+    private func hasContrastingBodyInk(_ image: UIImage, regions: [CGRect], dark: Bool) throws -> Bool {
+        let source = try XCTUnwrap(image.cgImage)
+        let width = source.width, height = source.height
+        var rgba = [UInt8](repeating: 0, count: width * height * 4)
+        let space = try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB))
+        let found = try rgba.withUnsafeMutableBytes { storage -> Bool in
+            let context = try XCTUnwrap(CGContext(data: storage.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: space,
+                bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(source, in: CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height)))
+            let bytes = storage.bindMemory(to: UInt8.self)
+            for region in regions {
+                let minX = max(0, Int(floor(region.minX))), maxX = min(width, Int(ceil(region.maxX)))
+                let minY = max(0, Int(floor(region.minY))), maxY = min(height, Int(ceil(region.maxY)))
+                guard minX < maxX, minY < maxY else { continue }
+                for y in minY..<maxY { for x in minX..<maxX {
+                    let i = (y * width + x) * 4
+                    let channels = [Int(bytes[i]), Int(bytes[i + 1]), Int(bytes[i + 2])]
+                    let lo = channels.min()!, hi = channels.max()!
+                    // CPAL's ordinary foreground is white/black. The light
+                    // palette's pale green verse medallions (216/233/216)
+                    // must not pass a dark proof while the letters are black.
+                    if hi - lo < 8 && (dark ? lo > 240 : hi < 35) { return true }
+                } }
+            }
+            return false
+        }
+        return found
     }
     func testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults() async throws {
         executionTimeAllowance = 120

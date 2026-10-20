@@ -2,7 +2,7 @@ import XCTest
 
 final class NoorInteractiveMushafUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    func testYellowAyahActionsReciterPickerAndPageTurnKeepFullPage() {
+    func testYellowAyahActionsReciterPickerAndPageTurnKeepFullPage() throws {
         let app = XCUIApplication(); launchNoorApp(app)
         selectNoorTab("المصحف", in: app)
         let search = app.searchFields.firstMatch
@@ -13,13 +13,26 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertTrue(page.waitForExistence(timeout: 120), app.debugDescription)
         let frame = page.frame
         let verse = app.buttons["reader.verse.1:2"]
-        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
-        for identifier in ["verse.play", "verse.tafsir", "verse.tools.close"] {
-            let action = app.buttons[identifier]
+        XCTAssertTrue(verse.waitForExistence(timeout: 10))
+        let verseFrame = verse.frame
+        verse.tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForNonExistence(timeout: 5))
+        XCTAssertFalse(app.scrollViews["verse.actions.panel"].exists, "A short tap toggles tools without selecting an ayah")
+        XCTAssertFalse(app.buttons["verse.tools.close"].exists)
+        XCTAssertEqual(page.frame, frame)
+        verse.tap()
+        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
+        verse.press(forDuration: 0.6)
+        for identifier in ["verse.play", "verse.tafsir"] {
+            let action = try revealNoorVerseAction(identifier, in: app)
             XCTAssertTrue(action.waitForExistence(timeout: 5), identifier)
             XCTAssertTrue(action.isHittable, identifier)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44, identifier)
+            XCTAssertEqual(app.staticTexts["verse.tools.title"].value as? String, "1:2")
+            XCTAssertEqual(verse.frame, verseFrame)
+            XCTAssertEqual(page.frame, frame)
         }
+        XCTAssertTrue(app.buttons["verse.tools.close"].isHittable)
         XCTAssertEqual(page.frame, frame)
         capture(app, "mushaf-yellow-ayah-actions")
         app.buttons["verse.tools.close"].tap()
@@ -69,7 +82,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertFalse(app.buttons["settings.recitation.erase"].exists)
         capture(app, "20-recitation-privacy-and-microphone")
     }
-    func test604ActualReaderEveryVerseToolsAndZoom() {
+    func test604ActualReaderEveryVerseToolsAndZoom() throws {
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         selectNoorTab("المصحف", in: app)
@@ -122,7 +135,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
                 XCTAssertEqual(page.frame, originalFrame, "Selection must retain the reading viewport")
                 if key == "114:1" {
                     capture(app, "text-reader-604-highlight-tools")
-                    app.buttons["verse.tafsir"].tap()
+                    try revealNoorVerseAction("verse.tafsir", in: app).tap()
                     XCTAssertTrue(app.staticTexts["verse.tafsir.text"].waitForExistence(timeout: 45))
                     XCTAssertTrue(app.staticTexts["verse.tafsir.ayah"].exists)
                     XCTAssertTrue(app.staticTexts["verse.sheet.title"].label.contains("١") || app.staticTexts["verse.sheet.title"].label.contains("1"))
@@ -144,7 +157,8 @@ final class NoorInteractiveMushafUITests: XCTestCase {
             }
         }
         let verse = app.buttons["reader.verse.114:1"]
-        verse.press(forDuration: 0.6); app.buttons["verse.play"].tap()
+        verse.press(forDuration: 0.6)
+        try revealNoorVerseAction("verse.play", in: app).tap()
         let audioTerminal = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             app.buttons["إيقاف التلاوة"].exists || app.alerts["التلاوة"].exists
         }, object: nil)
@@ -203,7 +217,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         XCTAssertFalse(app.buttons["study.finish"].exists)
         capture(app,"recitation-inline-only-mushaf")
     }
-    func testActualVersePlaybackFailureShowsNoticeAndRestoresReader() {
+    func testActualVersePlaybackFailureShowsNoticeAndRestoresReader() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-NoorAcceptanceUnavailableVerseAudio"]
         launchNoorApp(app)
@@ -214,7 +228,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         let frame = page.frame
         let verse = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reader.verse.")).firstMatch
         XCTAssertTrue(verse.waitForExistence(timeout: 5)); verse.press(forDuration: 0.6)
-        app.buttons["verse.play"].tap()
+        try revealNoorVerseAction("verse.play", in: app).tap()
         let notice = app.alerts["التلاوة"]
         XCTAssertTrue(notice.waitForExistence(timeout: 25), app.debugDescription)
         capture(app, "recitation-reader-actual-audio-failure")

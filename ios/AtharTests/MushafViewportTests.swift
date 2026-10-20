@@ -48,9 +48,11 @@ import UIKit
         assertFitted(viewport)
     }
     func testMeasuredReaderInsetsKeepReferenceDefaultsAndFitLargeControls() {
-        XCTAssertEqual(MushafReaderInsets.reserved(96, minimum: 44, visible: false), 0)
-        XCTAssertEqual(MushafReaderInsets.reserved(120, minimum: 60, visible: false), 0,
-                       "Full-screen reading must reclaim the hidden toolbar space")
+        XCTAssertEqual(MushafReaderInsets.reserved(96, minimum: 44, visible: false), 96)
+        XCTAssertEqual(MushafReaderInsets.reserved(120, minimum: 60, visible: false), 120,
+                       "An ordinary toolbar toggle must preserve the reading frame")
+        XCTAssertEqual(MushafReaderInsets.reserved(96, minimum: 44, visible: false, fullScreen: true), 0,
+                       "Only the explicit full-screen mode changes the reading frame")
         XCTAssertEqual(MushafReaderInsets.reserved(nil, minimum: 44), 44)
         XCTAssertEqual(MushafReaderInsets.reserved(44, minimum: 44), 44)
         XCTAssertEqual(MushafReaderInsets.reserved(60, minimum: 60), 60)
@@ -172,12 +174,11 @@ import UIKit
             XCTAssertEqual(ornaments.count, source.rows.filter { $0.type == "surah_name" }.count)
             for row in canvas.rowGeometry {
                 let authored = try XCTUnwrap(source.rows.first { $0.line == row.line })
-                let opticalShift: CGFloat = row.kind == "ayah" ? -4.5 : 0
                 if authored.centered {
-                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2 + opticalShift,
+                    XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2,
                                    accuracy: 0.01, "Actual ink center: page \(number), row \(row.line)")
                 } else {
-                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15 + opticalShift,
+                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15,
                                    accuracy: 0.01, "Authored right edge: page \(number), row \(row.line)")
                 }
                 if row.kind == "surah_name" {
@@ -197,6 +198,88 @@ import UIKit
                 XCTAssertEqual(canvas.transform.a, canvas.transform.d, accuracy: 0.0001, "No stretching")
                 XCTAssertEqual(canvas.rowGeometry.map(\.ink), authoredInk)
                 XCTAssertEqual(canvas.ornamentBounds, ornaments)
+            }
+        }
+    }
+    func testShortTapOnlyTogglesToolsAndNeverSelectsVerse() {
+        let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+        var toggles = 0
+        viewport.onToggleTools = { toggles += 1 }
+        viewport.canvas.onVerse = { _ in XCTFail("Verse selection belongs to long press or accessibility") }
+        viewport.handleShortTap()
+        XCTAssertEqual(toggles, 1)
+        viewport.allowsVerseSelection = false
+        viewport.handleShortTap()
+        XCTAssertEqual(toggles, 2, "Tools remain available when verse selection is disabled")
+        viewport.onToggleTools = nil
+        viewport.handleShortTap()
+        XCTAssertEqual(toggles, 2, "A missing tools callback must not fall back to selecting a verse")
+        let selection = viewport.gestureRecognizers?.compactMap { $0 as? UILongPressGestureRecognizer }.first
+        XCTAssertEqual(selection?.minimumPressDuration, 0.4)
+        XCTAssertEqual(selection?.allowableMovement, 10)
+    }
+    func testTajweedKeepsSourceHeadingAndBasmalaCoordinates() async throws {
+        try OriginalMushafCompanion.register()
+        let metadata = try OriginalMushafRows.load()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let fonts = MushafFonts()
+        // Opening templates, a surah beginning, and the final multi-surah face.
+        for number in [1, 2, 177, 604] {
+            await fonts.load(String(format: "QCF2%03d", number))
+            let source = OriginalPageData.page(number, snapshot: snapshot, rows: metadata, keys: keys)
+            let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
+            canvas.configure(page: source, corpus: corpus)
+            XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Page \(number)")
+            let original = canvas.rowGeometry.filter { $0.kind != "ayah" }.map(\.ink)
+            let ornaments = canvas.ornamentBounds
+            XCTAssertFalse(original.isEmpty)
+            canvas.tajweedEnabled = true
+            canvas.configure(page: source, corpus: corpus)
+            XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Tajweed page \(number)")
+            XCTAssertEqual(canvas.rowGeometry.filter { $0.kind != "ayah" }.map(\.ink), original,
+                           "Tajweed changes the painted source outlines, never heading anchors")
+            XCTAssertEqual(canvas.ornamentBounds, ornaments)
+            for ornament in canvas.ornamentBounds {
+                XCTAssertTrue(canvas.rowGeometry.filter { $0.kind == "ayah" }.allSatisfy { !$0.ink.intersects(ornament) },
+                              "Fixed source headings must also clear actual Tajweed ink on page \(number)")
+            }
+            canvas.tajweedEnabled = false
+            canvas.configure(page: source, corpus: corpus)
+            XCTAssertEqual(canvas.rowGeometry.filter { $0.kind != "ayah" }.map(\.ink), original)
+        }
+    }
+    func testDarkNativeTitleAndBasmalaUseViewTraitsInsideLightDrawingHost() async throws {
+        try OriginalMushafCompanion.register()
+        let metadata = try OriginalMushafRows.load()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let fonts = MushafFonts()
+        await fonts.load("QCF2604")
+        let source = OriginalPageData.page(604, snapshot: snapshot, rows: metadata, keys: keys)
+        for tajweed in [false, true] {
+            let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
+            canvas.overrideUserInterfaceStyle = .dark
+            canvas.tajweedEnabled = tajweed
+            var captured: UIImage?
+            UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+                canvas.configure(page: source, corpus: corpus)
+                let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+                captured = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
+                    UIColor.black.setFill(); context.fill(canvas.bounds)
+                    canvas.drawInk()
+                }
+            }
+            XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Dark page 604")
+            let image = try XCTUnwrap(captured?.cgImage)
+            let headers = canvas.rowGeometry.filter { $0.kind != "ayah" }
+            XCTAssertEqual(headers.count, 6)
+            for row in headers {
+                let crop = try XCTUnwrap(image.cropping(to: row.ink.integral))
+                XCTAssertGreaterThan(try brightOpaquePixels(crop), 10,
+                                     "Dark \(row.kind) on row \(row.line) must remain visible even with light ambient traits")
             }
         }
     }
@@ -260,5 +343,17 @@ import UIKit
         XCTAssertEqual(viewport.contentInsetAdjustmentBehavior, .never, file: file, line: line)
         XCTAssertEqual(viewport.contentOffset.x, -viewport.contentInset.left, accuracy: 0.5, file: file, line: line)
         XCTAssertEqual(viewport.contentOffset.y, -viewport.contentInset.top, accuracy: 0.5, file: file, line: line)
+    }
+    private func brightOpaquePixels(_ image: CGImage) throws -> Int {
+        var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+        try bytes.withUnsafeMutableBytes { buffer in
+            let bitmap = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: image.width, height: image.height,
+                bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmap))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(image.width), height: CGFloat(image.height)))
+        }
+        return stride(from: 0, to: bytes.count, by: 4).filter {
+            bytes[$0] > 180 && bytes[$0 + 1] > 180 && bytes[$0 + 2] > 180 && bytes[$0 + 3] > 230
+        }.count
     }
 }

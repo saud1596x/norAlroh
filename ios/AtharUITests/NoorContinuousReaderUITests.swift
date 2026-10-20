@@ -68,7 +68,7 @@ final class NoorContinuousReaderUITests: XCTestCase {
                        "The next button returns to604. Actual: \(jump.label.debugDescription)")
         XCTAssertFalse(app.buttons["reader.next"].isEnabled, "Last page cannot overshoot")
         let verse = app.buttons["reader.verse.112:1"]
-        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.tap()
+        XCTAssertTrue(verse.waitForExistence(timeout: 10)); verse.press(forDuration: 0.6)
         let closeVerse = app.buttons["verse.tools.close"]
         XCTAssertTrue(closeVerse.waitForExistence(timeout: 5))
         let selectionProof = XCTAttachment(screenshot: app.screenshot())
@@ -89,11 +89,12 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [hiddenControls], timeout: 5), .completed)
         waitForVisibleReader(viewport, mode: "القراءة العادية")
         XCTAssertGreaterThan(viewport.frame.height, readingHeight + 44,
-                             "Hiding tools must reclaim their actual reading space")
+                             "The explicit full-screen mode must reclaim its reserved reading space")
         let fullScreenProof = XCTAttachment(screenshot: app.screenshot())
         fullScreenProof.name = "full-screen-reclaimed-reading-space"; fullScreenProof.lifetime = .keepAlways; add(fullScreenProof)
         viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.01)).tap()
-        XCTAssertTrue(more.waitForExistence(timeout: 5), "A blank margin tap restores the reader tools")
+        XCTAssertTrue(more.waitForExistence(timeout: 5), "A tap exits the explicit full-screen mode")
+        XCTAssertEqual(viewport.frame.height, readingHeight, "Leaving explicit full screen restores the ordinary fixed reading frame")
         picker.tap()
         for removed in ["Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "surah:54:54", "surah:21181:340"] {
             XCTAssertFalse(app.buttons["reader.reciter.\(removed)"].exists, "Untimed sources must not reappear")

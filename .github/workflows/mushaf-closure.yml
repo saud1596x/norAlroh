@@ -1,0 +1,72 @@
+name: Native Release Mushaf closure evidence
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/mushaf-closure.yml
+      - scripts/test-mushaf-closure.sh
+      - scripts/verify-mushaf-closure-evidence.py
+      - scripts/tests/test_mushaf_closure_evidence.py
+      - ios/Athar/InteractiveMushafReader.swift
+      - ios/Athar/InteractiveMushafCanvas.swift
+      - ios/Athar/MushafTajweedFonts.swift
+      - ios/Athar/NoorRecitersView.swift
+      - ios/AtharTests/InteractiveMushafTests.swift
+      - ios/AtharTests/MushafViewportTests.swift
+      - ios/AtharTests/NoorContinuousMushafTests.swift
+      - ios/AtharUITests/NoorMushafClosureUITests.swift
+      - ios/AtharUITests/NoorVerseActionTestSupport.swift
+      - ios/AtharUITests/NoorReciterLibraryTests.swift
+permissions:
+  contents: read
+concurrency:
+  group: mushaf-closure-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-reader:
+    # Standard public macOS runner. No paid runner, key, signing or publication.
+    runs-on: macos-15
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        size: [small, medium, large]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Select installed Xcode 26 or newer
+        run: |
+          set -euo pipefail
+          python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Install original media inspection and project generator
+        run: |
+          set -euo pipefail
+          command -v xcodegen >/dev/null || brew install xcodegen
+          python3 -m pip install --only-binary=:all: --index-url https://pypi.org/simple 'Pillow==11.3.0' 'av==14.2.0'
+      - name: Reject false-positive evidence before native execution
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s scripts/tests -p test_mushaf_closure_evidence.py -v
+      - name: Capture actual Release reader on the requested size
+        run: bash scripts/test-mushaf-closure.sh '${{ matrix.size }}'
+      - name: Require original complete evidence, including after a failure
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 scripts/verify-mushaf-closure-evidence.py verify --output-dir 'release/mushaf-closure/${{ matrix.size }}' --expected-size '${{ matrix.size }}' --expected-commit "$GITHUB_SHA" --contact-sheets
+      - name: Preserve originals and failures without model or learner audio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mushaf-closure-${{ matrix.size }}-${{ github.sha }}
+          path: |
+            release/mushaf-closure/${{ matrix.size }}/
+            release/recitation-core-preflight/
+          retention-days: 3
+          compression-level: 6
+          if-no-files-found: error
