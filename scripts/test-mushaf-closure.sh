@@ -92,6 +92,13 @@ for look in light dark; do
  run_case "large-text-$look" 180 120 \
   -only-testing:AtharUITests/NoorMushafClosureUITests/testLargeInterfaceTextKeepsControlsOutsideTheQuran
 done
+# These reading journeys do not create a Khatmah plan. Run the one real ward
+# setup last on the medium job's fresh app data; its completed plan must not
+# change the Home assumptions of the ordinary reading journeys above.
+if [[ "$size" == medium ]]; then
+ run_case ward-entry 180 120 \
+  -only-testing:AtharUITests/NoorKhatmahUITests/testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction
+fi
 trap - EXIT
 python3 scripts/verify-mushaf-closure-evidence.py verify --output-dir "$out" --expected-size "$size" --expected-commit "$(git rev-parse HEAD)" --contact-sheets || failed=1
 exit "$failed"

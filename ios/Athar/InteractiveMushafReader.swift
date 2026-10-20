@@ -130,6 +130,7 @@ struct InteractiveMushafReader: View {
     @EnvironmentObject private var memorization: MemorizationStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var fonts = MushafFonts()
     @StateObject private var audio: MushafVerseAudio = {
         #if DEBUG || NOOR_ACCEPTANCE_TESTING
@@ -435,11 +436,12 @@ struct InteractiveMushafReader: View {
                     }
                     }
                     readerHeaderTitle
-                    HStack(spacing: 8) {
+                    readerHeaderSideLayout {
                     if manualSelection == nil && !readingOnly {
                         Button { recitersOpen = true } label: {
                             Label("القارئ", systemImage: "headphones")
-                                .font(.subheadline).lineLimit(1).frame(minHeight: 44)
+                                .labelStyle(.iconOnly).font(.system(size: 22, weight: .medium))
+                                .frame(width: 44, height: 44)
                         }.accessibilityLabel("اختر القارئ").accessibilityIdentifier("reader.reciters")
                             .accessibilityValue(audio.selectedCatalogReciter?.name ?? audio.displayName)
                     }
@@ -454,7 +456,12 @@ struct InteractiveMushafReader: View {
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
                     }
                     }
-                }.background { readerControlMeasurement("header") }
+                }
+                // Two 44-point side actions need 96 points when stacked at
+                // accessibility sizes. Reserve it even without Stop/selection,
+                // so those state changes never refit the Quran underneath.
+                .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 96 : 44)
+                .background { readerControlMeasurement("header") }
                 Spacer()
                 VStack(spacing: 0) {
                     VStack(spacing: 0) {
@@ -478,13 +485,18 @@ struct InteractiveMushafReader: View {
             if studyOpen { recitationControls }
         }
     }
+    private var readerHeaderSideLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+    }
     private var readerHeaderTitle: some View {
         ZStack {
             Button { input = ""; picker = true } label: {
                 VStack(spacing: 0) {
                     Text(audio.waitingKey == nil ? title : "مهلة التكرار · \(title)")
                         .font(.headline).lineLimit(1).accessibilityIdentifier("reader.title")
-                    Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption).monospacedDigit()
+                    Text("\(ArabicSearch.digits(number)) / ٦٠٤").font(.caption).monospacedDigit().lineLimit(1)
                 }.frame(minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain)
                 .accessibilityIdentifier("reader.jump")
@@ -1060,7 +1072,10 @@ struct InteractiveMushafReader: View {
                 number = initialPage.flatMap { (1...604).contains($0) ? $0 : nil }
                     ?? versePages["\(chapter):\(ayah)"] ?? 1
                 number = min(allowedPages.upperBound, max(allowedPages.lowerBound, number))
-                if readingScope != nil, versePages["\(chapter):\(ayah)"] == number { selected = "\(chapter):\(ayah)" }
+                // Explicit surah/bookmark/library entries can share one face
+                // with other surahs. Preserve their target without opening
+                // manual tools; page-only resume must not select a foreign key.
+                if versePages["\(chapter):\(ayah)"] == number { selected = "\(chapter):\(ayah)" }
                 lastPage = number
             }
             // Reconcile observable player state after resources load too:

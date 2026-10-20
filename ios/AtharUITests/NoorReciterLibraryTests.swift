@@ -22,6 +22,10 @@ final class NoorReciterLibraryTests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: 120))
         XCTAssertEqual(picker.value as? String, "علي بن عبدالرحمن الحذيفي")
         XCTAssertTrue(app.buttons["reader.verse.114:1"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["reader.title"].label, "سُورَةُ النَّاسِ",
+                       "Opening surah114 must retain its target on the shared604 face")
+        XCTAssertFalse(app.scrollViews["verse.actions.panel"].exists,
+                       "An entry target highlights the ayah without opening manual tools")
         XCTAssertFalse(app.buttons["reader.audio.stop"].exists, "Opening the reader alone cannot start playback")
         XCTAssertFalse(app.buttons["study.finish"].exists)
         let attachment = XCTAttachment(screenshot: app.screenshot())

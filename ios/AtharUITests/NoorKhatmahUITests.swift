@@ -14,7 +14,10 @@ final class NoorKhatmahUITests: XCTestCase {
         XCTAssertTrue(app.buttons["khatmah.read"].waitForExistence(timeout: 10))
         app.buttons["إغلاق"].tap()
         app.swipeDown(); app.swipeDown()
-        tapVisible(app, app.buttons["home.continueKhatmah"])
+        // Create one real plan, open it from My Journey, then resume from Home.
+        openNoorHomeTools(app)
+        tapVisible(app, app.buttons["home.myJourney"])
+        tapVisible(app, app.buttons["journey.read"])
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
         XCTAssertTrue(app.staticTexts["reader.ward.range"].label.contains("٢٠"))
         XCTAssertFalse(app.buttons["reader.study"].exists, "Daily ward is reading only")
@@ -27,6 +30,11 @@ final class NoorKhatmahUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [end], timeout: 20), .completed)
         capture(app, "twenty-page-ward-boundary")
         app.buttons["إغلاق المصحف"].tap()
+        XCTAssertTrue(app.staticTexts["journey.summary"].label.contains("0 صفحات جديدة"),
+                      "Opening and navigating the ward cannot confirm reading automatically")
+        XCTAssertEqual(app.navigationBars.buttons.count, 1, "My Journey has only its back navigation action")
+        app.navigationBars.buttons.firstMatch.tap()
+        app.swipeDown(); app.swipeDown()
         tapVisible(app, app.buttons["home.continueKhatmah"])
         XCTAssertTrue(app.buttons["reader.next"].waitForExistence(timeout: 120))
         let resumed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"), object: app.buttons["reader.next"])

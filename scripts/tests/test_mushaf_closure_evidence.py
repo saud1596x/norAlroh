@@ -66,7 +66,7 @@ def fixture(folder, size='small'):
         (folder / (lane + '.txt')).write_text(raw_log, encoding='utf-8')
         events = [{'kind': 'native-process', 'observerSeconds': 0,
                    'process': {'event': 'start', 'elapsedSeconds': 0}}]
-        if closure.ui_prefix(lane):
+        if closure.ui_prefix(lane) or lane in ('reader-library', 'ward-entry'):
             events.extend([{'kind': 'test-start', 'observerSeconds': 1},
                            {'kind': 'test-end', 'observerSeconds': 7,
                             'reportedTestSeconds': 6, 'result': 'passed'}])
@@ -89,7 +89,7 @@ def fixture(folder, size='small'):
         attachments.mkdir()
         names = (list(closure.UI_SHOTS[closure.ui_prefix(lane)]) if closure.ui_prefix(lane) else
                  ['QCF-V2-shaped-page-%03d' % page for page in range(1, 605)] if lane == 'geometry' else
-                 list(closure.READER_LIBRARY_SHOTS))
+                 list(closure.WARD_ENTRY_SHOTS) if lane == 'ward-entry' else list(closure.READER_LIBRARY_SHOTS))
         records = []
         for index, name in enumerate(names):
             path = attachments / ('synthetic-%03d.png' % index)
@@ -221,6 +221,24 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.assertNotEqual(self.verify('medium'), 0)
         self.assertTrue(any('reader-library: missing/repeated mandatory actual screenshot closure-reader-library-selected-voice-final-surah'
                             in error for error in self.report['errors']))
+
+    def test_ward_entry_requires_its_own_actual_completion_and_boundary_images(self):
+        fixture(self.folder, 'medium')
+        write(self.folder / 'ward-entry-attachments/manifest.json', [])
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertEqual(self.report['testResults']['ward-entry']['passedTests'], 1)
+        for name in closure.WARD_ENTRY_SHOTS:
+            self.assertTrue(any('ward-entry: missing/repeated mandatory actual screenshot ' + name
+                                in error for error in self.report['errors']))
+
+    def test_ward_or_library_zero_original_ui_timing_observations_cannot_pass(self):
+        fixture(self.folder, 'medium')
+        for lane in ('ward-entry', 'reader-library'):
+            self.mutate(lane + '-observations.json', lambda value: value.update(events=[
+                event for event in value['events'] if event['kind'] == 'native-process']))
+        self.assertNotEqual(self.verify('medium'), 0)
+        for lane in ('ward-entry', 'reader-library'):
+            self.assertTrue(any(error.startswith(lane + ' raw timing:') for error in self.report['errors']))
 
     def test_all_eight_gallery_reference_pages_are_mandatory_in_their_own_lanes(self):
         shots = (closure.GALLERY_OPENING_SHOTS + closure.GALLERY_DENSE_SHOTS

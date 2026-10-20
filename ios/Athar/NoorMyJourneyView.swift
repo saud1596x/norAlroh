@@ -7,6 +7,7 @@ struct NoorMyJourneyView: View {
     @State private var selectedDay: Date?
     @State private var selectedEvent: NoorReadingEvent?
     @State private var readerPage: Int?
+    @State private var readerScope: KhatmahReadingScope?
     @State private var pendingReaderPage: Int?
     private var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.firstWeekday = 1; return c }
     private var index: NoorJourneyIndex { NoorJourneyIndex(archive: journey.archive, calendar: calendar) }
@@ -43,7 +44,9 @@ struct NoorMyJourneyView: View {
             }.padding(20)
         }.background(Theme.background).navigationBarTitleDisplayMode(.inline)
             .sheet(item: $selectedEvent, onDismiss: {
-                if let pending = pendingReaderPage { pendingReaderPage = nil; readerPage = pending }
+                if let pending = pendingReaderPage {
+                    pendingReaderPage = nil; readerScope = nil; readerPage = pending
+                }
             }) { event in
                 NavigationStack {
                     VStack(alignment: .leading, spacing: 20) {
@@ -60,8 +63,14 @@ struct NoorMyJourneyView: View {
                         .toolbar { Button("إغلاق") { selectedEvent = nil } }
                 }.presentationDetents([.medium, .large])
             }
-            .fullScreenCover(isPresented: Binding(get: { readerPage != nil }, set: { if !$0 { readerPage = nil } })) {
-                InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: readerPage)
+            .fullScreenCover(isPresented: Binding(get: { readerPage != nil }, set: {
+                if !$0 { readerPage = nil; readerScope = nil }
+            })) {
+                let stop = readerScope == nil ? nil : journey.active?.stoppedAt
+                let resume = readerScope?.resumePage(stop) ?? readerPage
+                InteractiveMushafReader(chapter: stop?.page == resume ? stop?.chapter ?? 1 : 1,
+                    ayah: stop?.page == resume ? stop?.ayah ?? 1 : 1,
+                    initialPage: resume, readingScope: readerScope)
             }
     }
     private var planCard: some View {
@@ -70,10 +79,12 @@ struct NoorMyJourneyView: View {
                 Text(plan.finished != nil ? (plan.firstPage == 1 ? "اكتملت الختمة" : "اكتملت رحلتك") : plan.paused ? "رحلتك متوقفة مؤقتًا" : "رحلة الختمة").font(.headline)
                 Text(verbatim: "\(plan.completed.count) من \(605 - plan.firstPage) صفحة").font(.title2.bold())
                 NoorProgressBar(value: plan.progress, label: "تقدم الختمة")
-                if let due = plan.due(on: .now) {
+                if let due = plan.readingScope(on: .now) {
                     Text(verbatim: "وردك القادم · \(due.first)–\(due.last)")
                     Text(chapters(due.first...due.last)).font(.subheadline).foregroundStyle(.secondary)
-                    PrimaryButton(title: "ابدأ ورد اليوم", icon: "book") { readerPage = due.first }.accessibilityIdentifier("journey.read")
+                    PrimaryButton(title: "ابدأ ورد اليوم", icon: "book") {
+                        readerScope = due; readerPage = due.resumePage(plan.stoppedAt)
+                    }.accessibilityIdentifier("journey.read")
                 }
                 if let finish = plan.expectedFinish { Text("الإتمام \(dateText(finish, format: "d MMMM yyyy", zone: plan.calendar.timeZone))").font(.subheadline).foregroundStyle(.secondary) }
                 NavigationLink("إدارة رحلة الختمة") { KhatmahJourneyView() }.frame(minHeight: 44)

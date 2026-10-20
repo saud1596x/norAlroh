@@ -40,6 +40,8 @@ GALLERY_FINAL_SHOTS = tuple('closure-page-' + page + '-' + mode
 CONTROL_SHOTS = ('closure-tajweed-on', 'closure-tajweed-off',
                  'closure-fullscreen-restored-actions', 'closure-six-ayah-actions')
 READER_LIBRARY_SHOTS = ('closure-reader-library-selected-voice-final-surah',)
+WARD_ENTRY = 'NoorKhatmahUITests/testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction'
+WARD_ENTRY_SHOTS = ('twenty-page-ward-boundary', 'home-ward-completed')
 UI_METHODS = {'journey': JOURNEY, 'gallery-openings': GALLERY_OPENINGS,
               'gallery-dense': GALLERY_DENSE, 'gallery-special': GALLERY_SPECIAL,
               'gallery-final': GALLERY_FINAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
@@ -71,8 +73,9 @@ def digest(path):
 
 
 def lanes(size):
-    return (['geometry', 'reader-library'] if size == 'medium' else []) + [
+    return ((['geometry', 'reader-library'] if size == 'medium' else []) + [
         prefix + '-' + look for look in ('light', 'dark') for prefix in UI_METHODS]
+        + (['ward-entry'] if size == 'medium' else []))
 
 
 def ui_prefix(lane):
@@ -80,6 +83,8 @@ def ui_prefix(lane):
 
 
 def selectors(lane):
+    if lane == 'ward-entry':
+        return [WARD_ENTRY]
     prefix = ui_prefix(lane)
     if prefix:
         return ['NoorMushafClosureUITests/' + UI_METHODS[prefix]]
@@ -222,7 +227,7 @@ def driver_metrics(folder, lane):
     coverage_errors = []
     if len(native_start) != 1 or len(native_end) != 1:
         coverage_errors.append('Missing actual process clock observations')
-    if ui_prefix(lane) and (len(starts) != 1 or len(ends) != 1):
+    if (ui_prefix(lane) or lane in ('reader-library', 'ward-entry')) and (len(starts) != 1 or len(ends) != 1):
         coverage_errors.append('UI test did not produce one start/end observation')
     for row in events:
         require(type(row.get('observerSeconds')) in (int, float) and math.isfinite(row['observerSeconds'])
@@ -527,7 +532,8 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
         captures = attempt(lane + ' screenshots', lambda lane=lane: attachment_index(folder, lane, image_probe)) or []
         images.extend(captures)
         prefix = ui_prefix(lane)
-        required = UI_SHOTS[prefix] if prefix else READER_LIBRARY_SHOTS if lane == 'reader-library' else ()
+        required = (UI_SHOTS[prefix] if prefix else READER_LIBRARY_SHOTS if lane == 'reader-library'
+                    else WARD_ENTRY_SHOTS if lane == 'ward-entry' else ())
         if required:
             for name in required:
                 matches = [row for row in captures if re.search(r'(?:^|/)' + re.escape(name) + r'(?:\b|_)', row['name'])]

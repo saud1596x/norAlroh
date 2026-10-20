@@ -113,3 +113,35 @@ settle at tile edges. The test still requires the whole action inside the app
 and panel and actually hittable; no coordinates, state injection or relaxed
 containment replace that check. This is a pending usability correction, not a
 verified outcome.
+
+## Entry and accessibility audit in the same reader
+
+An explicit surah or bookmark request on a shared face previously set its
+initial selected key only for a daily reading scope. Selecting surah 114
+therefore opened the correct page 604 while the title fell back to its first
+surah, 112. Preserve a requested key when its source page matches the opened
+face, without opening manual tools. A page-only resume whose default 1:1 key is
+not on that page keeps the ordinary face title. The actual library UI test now
+requires the exact source title for surah 114 and no manual action panel.
+
+The My Journey daily button also used the older due-range route and passed only
+its first page to the general reader. It now uses the same `readingScope(on:)`
+quota as Home, resumes the saved stop and passes that scope to the reader.
+Historical session links remain ordinary page entries and clear the daily
+scope. The existing 90-second Home ward journey now opens from My Journey
+first, checks its 20-page reading-only boundary and absence of automatic credit,
+then resumes the same page 20 from Home and explicitly confirms the ward.
+This avoids a second testcase that depends on an incorrectly assumed empty
+plan after the first case. The selected case runs last on the medium closure
+job and requires its own original boundary/completion images and raw UI events.
+It is not yet a native passed result or part of the prior closure receipt.
+
+At accessibility sizes, equal side slots alone could leave only 44 points for
+the header's counter and make its height depend on selection/Stop. The reciter
+keeps its accessible name and selected-voice value in a 44-point icon button.
+Two side actions are horizontal normally and vertical at accessibility sizes;
+the latter reserve a constant 96-point minimum (44 + 8 + 44) across states.
+The counter and title remain single-line. On a 320-point width with the existing
+20-point outer padding, this leaves 212 points for the accessibility counter.
+This source-based calculation requires the three-phone native frame checks and
+actual visual review. It is not a per-device offset or a Quran font-size change.

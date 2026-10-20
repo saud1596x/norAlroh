@@ -14,12 +14,14 @@ on:
       - ios/Athar/InteractiveMushafCanvas.swift
       - ios/Athar/MushafTajweedFonts.swift
       - ios/Athar/NoorRecitersView.swift
+      - ios/Athar/NoorMyJourneyView.swift
       - ios/AtharTests/InteractiveMushafTests.swift
       - ios/AtharTests/MushafViewportTests.swift
       - ios/AtharTests/NoorContinuousMushafTests.swift
       - ios/AtharUITests/NoorMushafClosureUITests.swift
       - ios/AtharUITests/NoorVerseActionTestSupport.swift
       - ios/AtharUITests/NoorReciterLibraryTests.swift
+      - ios/AtharUITests/NoorKhatmahUITests.swift
 permissions:
   contents: read
 concurrency:
