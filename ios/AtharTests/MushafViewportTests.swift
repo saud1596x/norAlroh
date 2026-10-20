@@ -3,6 +3,42 @@ import UIKit
 @testable import Athar
 
 @MainActor final class MushafViewportTests: XCTestCase {
+    func testLateManualFontCompletionCannotReplaceAcceptedFollowingOrSelection() async {
+        var turns = MushafPageTurnCoordinator()
+        var page = 14
+        let old = turns.begin(from: page, to: 15)
+        // Hold a real asynchronous completion until after following has moved
+        // the position and canceled manual ownership. No speech is fabricated.
+        let lateFont = Task { @MainActor in
+            turns.consume(old, currentPage: page, visible: true, playbackLocked: false)
+        }
+        turns.cancel(); page = 50
+        let lateDestination = await lateFont.value
+        XCTAssertNil(lateDestination)
+        XCTAssertEqual(page, 50)
+        page = 14
+        XCTAssertNil(turns.consume(old, currentPage: page, visible: true, playbackLocked: false),
+                     "Returning to the same page cannot revive an old request")
+
+        let samePage = turns.begin(from: page, to: 13)
+        turns.cancel() // A new accepted word or ayah selection on page14.
+        XCTAssertNil(turns.consume(samePage, currentPage: page, visible: true, playbackLocked: false))
+        let superseded = turns.begin(from: page, to: 15)
+        let newest = turns.begin(from: page, to: 13)
+        XCTAssertNil(turns.consume(superseded, currentPage: page, visible: true, playbackLocked: false))
+        XCTAssertEqual(turns.consume(newest, currentPage: page, visible: true, playbackLocked: false), 13)
+        XCTAssertNil(turns.pending)
+    }
+    func testManualFontCompletionRequiresItsSourcePageVisibleAndUnlocked() {
+        var turns = MushafPageTurnCoordinator()
+        let request = turns.begin(from: 14, to: 15)
+        XCTAssertNil(turns.consume(request, currentPage: 50, visible: true, playbackLocked: false))
+        XCTAssertNil(turns.consume(request, currentPage: 14, visible: false, playbackLocked: false))
+        XCTAssertNil(turns.consume(request, currentPage: 14, visible: true, playbackLocked: true))
+        XCTAssertEqual(turns.consume(request, currentPage: 14, visible: true, playbackLocked: false), 15)
+        XCTAssertNil(turns.consume(request, currentPage: 14, visible: true, playbackLocked: false),
+                     "A completed turn can be consumed only once")
+    }
     func testPlaybackLockCancelsManualDragButAllowsAutomaticPageReplacement() async throws {
         try OriginalMushafCompanion.register()
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
@@ -172,14 +208,15 @@ import UIKit
                 XCTAssertEqual(canvas.ornamentBounds, ornaments)
             }
             XCTAssertEqual(ornaments.count, source.rows.filter { $0.type == "surah_name" }.count)
+            let bodyWidth = canvas.rowGeometry.filter { $0.kind == "ayah" }.map(\.ink.width).max() ?? 0
             for row in canvas.rowGeometry {
                 let authored = try XCTUnwrap(source.rows.first { $0.line == row.line })
-                if authored.centered {
+                if row.kind != "ayah" || authored.centered {
                     XCTAssertEqual(row.ink.midX, OriginalMushafCanvas.pageSize.width / 2,
                                    accuracy: 0.01, "Actual ink center: page \(number), row \(row.line)")
                 } else {
-                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width - 15,
-                                   accuracy: 0.01, "Authored right edge: page \(number), row \(row.line)")
+                    XCTAssertEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width / 2 + bodyWidth / 2,
+                                   accuracy: 0.01, "Shared right edge of centered authored body: page \(number), row \(row.line)")
                 }
                 if row.kind == "surah_name" {
                     let ornament = try XCTUnwrap(ornaments.first { $0.minY <= row.ink.minY && $0.maxY >= row.ink.maxY })

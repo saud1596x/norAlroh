@@ -351,11 +351,21 @@ import WhisperKit
                 XCTAssertEqual(Set(canvas.regions.map(\.word)), Set(page.words.map(\.id)))
                 XCTAssertTrue(canvas.regions.allSatisfy { canvas.bounds.contains($0.rect) })
                 let coloredWidth = canvas.rowGeometry.filter { $0.kind == "ayah" }.map(\.ink.width).max() ?? 0
+                let coloredBody = canvas.rowGeometry.filter { $0.kind == "ayah" }.reduce(CGRect.null) { $0.union($1.ink) }
+                XCTAssertEqual(coloredBody.midX, canvas.bounds.midX, accuracy: 0.15,
+                    "Actual Tajweed ayah block must remain on the page axis: page \(number)")
+                let paintedBody = canvas.regions.reduce(CGRect.null) { $0.union($1.rect) }
+                XCTAssertEqual(paintedBody.midX, canvas.bounds.midX, accuracy: 0.15,
+                    "The drawn COLR glyph-layer paths must be centered independently of CTLine boxes: page \(number)")
                 XCTAssertGreaterThanOrEqual(coloredWidth, referenceWidth * 0.95,
                     "Colors must not shrink the reading extent: page \(number)")
                 XCTAssertLessThanOrEqual(coloredWidth, referenceWidth + 0.1)
                 let context = "page \(number), style \(style.rawValue)"
                 let headings = canvas.rowGeometry.filter { $0.kind != "ayah" }
+                for heading in headings {
+                    XCTAssertEqual(heading.ink.midX, canvas.bounds.midX, accuracy: 0.01,
+                        "Title and basmala must share the page axis: \(context), row \(heading.line)")
+                }
                 XCTAssertEqual(headings.map(\.line), referenceHeadings.map(\.line),
                     "Every source heading row must remain present: \(context)")
                 XCTAssertEqual(headings.map(\.kind), referenceHeadings.map(\.kind),

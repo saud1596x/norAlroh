@@ -241,6 +241,12 @@ final class NoorMushafClosureUITests: XCTestCase {
     }
     @MainActor private func assertControlsOutsidePage(_ app: XCUIApplication, page: XCUIElement) {
         XCTAssertTrue(app.frame.contains(page.frame))
+        XCTAssertEqual(app.buttons["reader.jump"].frame.midX, page.frame.midX, accuracy: 1,
+                       "Unequal side controls must not move the page title away from the Quran axis")
+        XCTAssertLessThan(app.buttons["reader.reciters"].frame.midX, page.frame.midX,
+                          "The reciter remains on the original left side of the Arabic reader")
+        XCTAssertGreaterThan(app.buttons["إغلاق المصحف"].frame.midX, page.frame.midX,
+                             "The Arabic reader's close action remains on the right")
         let controls = ["reader.jump", "reader.study", "reader.more", "reader.textVisibility", "reader.previous", "reader.next"]
         for id in controls {
             let control = app.buttons[id]

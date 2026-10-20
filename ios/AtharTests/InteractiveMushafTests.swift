@@ -55,11 +55,27 @@ import UIKit
                 XCTAssertEqual(canvas.verse(at: CGPoint(x: region.rect.midX, y: region.rect.midY)), region.verse, "Wrong hit page \(number) record \(region.word)")
             }
             XCTAssertTrue(canvas.headerClearances.allSatisfy { $0 >= 3 }, "Heading clearance page \(number)")
+            let body = canvas.rowGeometry.filter { $0.kind == "ayah" }
+            let bodyBounds = body.reduce(CGRect.null) { $0.union($1.ink) }
+            XCTAssertEqual(bodyBounds.midX, canvas.bounds.midX, accuracy: 0.01,
+                           "The complete ayah block must be centered independently of ornaments: page \(number)")
+            let paintedBody = canvas.regions.reduce(CGRect.null) { $0.union($1.rect) }
+            XCTAssertEqual(paintedBody.midX, canvas.bounds.midX, accuracy: 0.01,
+                           "The actual placed glyph paths must be centered, not only CTLine boxes: page \(number)")
+            let bodyRight = canvas.bounds.midX + (body.map(\.ink.width).max() ?? 0) / 2
             for row in canvas.rowGeometry {
                 XCTAssertGreaterThanOrEqual(row.ink.minX, 0)
                 XCTAssertLessThanOrEqual(row.ink.maxX, OriginalMushafCanvas.pageSize.width)
                 XCTAssertGreaterThanOrEqual(row.ink.minY, 0)
                 XCTAssertLessThanOrEqual(row.ink.maxY, OriginalMushafCanvas.pageSize.height)
+                let authored = try XCTUnwrap(page.rows.first { $0.line == row.line })
+                if row.kind != "ayah" || authored.centered {
+                    XCTAssertEqual(row.ink.midX, canvas.bounds.midX, accuracy: 0.01,
+                                   "Title, basmala and authored centered row must share the page axis: page \(number)")
+                } else {
+                    XCTAssertEqual(row.ink.maxX, bodyRight, accuracy: 0.01,
+                                   "Right-aligned ayah rows retain one shared block edge: page \(number)")
+                }
             }
             let titles = canvas.rowGeometry.filter { $0.kind == "surah_name" }
             XCTAssertEqual(titles.count, canvas.ornamentBounds.count, "Every title has its own original ornament")

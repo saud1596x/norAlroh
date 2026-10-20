@@ -28,7 +28,11 @@ struct OriginalMushafRows: Decodable, Sendable {
 
 @MainActor enum OriginalMushafCompanion {
     static let name = "QCF2BSML"
+    private static var registered = false
     static func register() throws {
+        // The bundled bytes cannot change during this process. Reopening a
+        // reader reuses only a font whose hash and identity already succeeded.
+        if registered { return }
         guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { throw CocoaError(.fileNoSuchFile) }
         let data = try Data(contentsOf: url)
         guard SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == "457cd1bf2174e9c10b31eab25bc5eda20c12abbafe5f47bdea473c64036f411e",
@@ -36,6 +40,7 @@ struct OriginalMushafRows: Decodable, Sendable {
               let verifiedName = font.postScriptName, verifiedName as String == name else { throw CocoaError(.fileReadCorruptFile) }
         CTFontManagerRegisterGraphicsFont(font, nil)
         guard UIFont(name: name, size: 32) != nil else { throw CocoaError(.fileReadCorruptFile) }
+        registered = true
     }
     static func title(_ chapter: Int) -> String {
         let value = chapter <= 37 ? 0xFB8C + chapter : 0xFBD3 + chapter - 38
@@ -164,29 +169,29 @@ struct OriginalPageData: Equatable {
         shouldGroupAccessibilityChildren = true
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
+    private func bodyInk(_ text: String, font: UIFont, space: UIFont) -> CGRect {
+        let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
+        let value = NSMutableAttributedString(string: text, attributes: [.font: font, .writingDirection: [direction]])
+        for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
+            value.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
+        }
+        return CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(value as CFAttributedString), .useGlyphPathBounds)
+    }
     /// V2 and V4 have different advances. Match the original page's widest
     /// authored row with one uniform V4 size, rather than shrinking all 604
     /// pages to the worst-case 23pt size. No word/row is squeezed separately.
-    private func tajweedBodyFont(page: OriginalPageData, reference: UIFont,
+    private func tajweedBodyFont(page: OriginalPageData, referenceInk: [Int: CGRect],
                                  colored: UIFont, space: UIFont) -> UIFont? {
         let texts = page.rows.filter { $0.type == "ayah" }.map { row in
             (row.line, page.words.filter { $0.line == row.line }.map(\.code).joined(separator: " "))
         }
-        func bounds(_ text: String, font: UIFont) -> CGRect {
-            let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
-            let value = NSMutableAttributedString(string: text, attributes: [.font: font, .writingDirection: [direction]])
-            for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
-                value.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
-            }
-            return CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(value as CFAttributedString), .useGlyphPathBounds)
-        }
-        let target = texts.map { bounds($0.1, font: reference).width }.max() ?? 0
+        let target = referenceInk.values.map(\.width).max() ?? 0
         guard target.isFinite, target > 0 else { return nil }
         var size: CGFloat = 64
         let top = page.number <= 2 ? Metrics.openingTop : Metrics.verticalMargin
         for (row, text) in texts {
-            let half = bounds(text, font: colored.withSize(16))
-            let full = bounds(text, font: colored.withSize(32))
+            let half = bodyInk(text, font: colored.withSize(16), space: space)
+            let full = bodyInk(text, font: colored.withSize(32), space: space)
             let slope = (full.width - half.width) / 16
             guard slope.isFinite, slope > 0 else { return nil }
             // Blank companion separators retain their original advances. Two
@@ -200,7 +205,7 @@ struct OriginalPageData: Equatable {
         guard size.isFinite, size > 0 else { return nil }
         let result = colored.withSize(size)
         for (row, text) in texts {
-            let ink = bounds(text, font: result)
+            let ink = bodyInk(text, font: result, space: space)
             let baseline = top + CGFloat(row - 1) * Metrics.baselineInterval + Metrics.baselineOffset
             guard !ink.isNull, !ink.isInfinite, ink.width <= target + 0.1,
                   baseline - ink.maxY >= -0.01,
@@ -233,10 +238,24 @@ struct OriginalPageData: Equatable {
         // converted from its 2048-unit em to the body's 2500-unit em.
         // No Qur'anic glyph is permitted to use this separator font.
         let space = companion.withSize(Metrics.bodyPointSize * 2048 / 2500)
+        let sourceBodyInk = Dictionary(uniqueKeysWithValues: page.rows.filter { $0.type == "ayah" }.map { row in
+            let text = page.words.filter { $0.line == row.line }.map(\.code).joined(separator: " ")
+            return (row.line, bodyInk(text, font: original, space: space))
+        })
+        guard let sourceBodyWidth = sourceBodyInk.values.map(\.width).max(),
+              sourceBodyWidth.isFinite, sourceBodyWidth > 0, sourceBodyWidth <= 532 else {
+            fail("Invalid original body block"); return
+        }
+        // Center the complete authored block, not each of its rows. A fixed
+        // right anchor of 545 left a wider blank margin on the left whenever
+        // the original font's rows were narrower than the 530-unit frame.
+        // The page template, font sizes and line alignment remain unchanged.
+        // V4 inherits this V2 anchor, so color toggling cannot shift the block.
+        let bodyRight = Self.pageSize.width / 2 + sourceBodyWidth / 2
         let body: UIFont
         if let tajweedPage {
             guard let colored = UIFont(name: tajweedPage.family, size: Metrics.bodyPointSize),
-                  let fitted = tajweedBodyFont(page: page, reference: original, colored: colored, space: space) else {
+                  let fitted = tajweedBodyFont(page: page, referenceInk: sourceBodyInk, colored: colored, space: space) else {
                 fail("Tajweed page cannot retain the original reading extent"); return
             }
             body = fitted
@@ -284,10 +303,10 @@ struct OriginalPageData: Equatable {
             let baseline = row.type == "surah_name"
                 ? rowTop + 30.5 + ink.midY
                 : rowTop + Metrics.baselineOffset
-            // Every authored row uses the same page axis. Preserve the source's
-            // centered/right-aligned distinction without a body-only offset.
-            let origin = CGPoint(x: row.centered ? Self.pageSize.width / 2 - ink.midX
-                : Self.pageSize.width - Metrics.horizontalMargin - ink.maxX, y: baseline)
+            // Authored centered rows and headers use the page axis. All other
+            // ayah rows retain one common right edge of the centered V2 block.
+            let origin = CGPoint(x: header || row.centered ? Self.pageSize.width / 2 - ink.midX
+                : bodyRight - ink.maxX, y: baseline)
             let pageInk = CGRect(x: origin.x + ink.minX, y: baseline - ink.maxY, width: ink.width, height: ink.height)
             guard pageInk.minX >= 0, pageInk.maxX <= Self.pageSize.width,
                   pageInk.minY >= 0, pageInk.maxY <= Self.pageSize.height else {
@@ -301,17 +320,9 @@ struct OriginalPageData: Equatable {
             // painted outline. V4 vowel bounds differ: using their live ink to
             // lay out a heading moved its title, ornament and basmala whenever
             // Tajweed was toggled. Measure the unchanged source line instead.
-            var sourceInk = ink
-            if !header, tajweedPage != nil {
-                let source = NSMutableAttributedString(attributedString: attributed)
-                source.addAttribute(.font, value: original, range: NSRange(location: 0, length: source.length))
-                for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
-                    source.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
-                }
-                sourceInk = CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(source as CFAttributedString), .useGlyphPathBounds)
-            }
-            let sourceOriginX = row.centered ? Self.pageSize.width / 2 - sourceInk.midX
-                : Self.pageSize.width - Metrics.horizontalMargin - sourceInk.maxX
+            let sourceInk = sourceBodyInk[row.line] ?? ink
+            let sourceOriginX = header || row.centered ? Self.pageSize.width / 2 - sourceInk.midX
+                : bodyRight - sourceInk.maxX
             referenceRows.append(.init(line: row.line, kind: row.type,
                 ink: CGRect(x: sourceOriginX + sourceInk.minX, y: baseline - sourceInk.maxY,
                             width: sourceInk.width, height: sourceInk.height)))

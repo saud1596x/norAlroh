@@ -68,6 +68,63 @@ struct MushafRenderIdentity {
     }
 }
 
+/// A verified font may arrive after live following, selection or a newer turn.
+/// A late manual request never owns that newer reading position, even if the
+/// user has since returned to the same numbered page.
+struct MushafPageTurnCoordinator {
+    struct Request: Equatable {
+        let id = UUID()
+        let source: Int
+        let destination: Int
+    }
+    private(set) var pending: Request?
+    mutating func begin(from source: Int, to destination: Int) -> Request {
+        let value = Request(source: source, destination: destination)
+        pending = value
+        return value
+    }
+    mutating func cancel() { pending = nil }
+    mutating func consume(_ request: Request, currentPage: Int,
+                          visible: Bool, playbackLocked: Bool) -> Int? {
+        guard pending == request, currentPage == request.source,
+              visible, !playbackLocked else { return nil }
+        pending = nil
+        return request.destination
+    }
+}
+
+/// Equal side reservations keep the title on the page axis even when one side
+/// contains both the reciter and Stop. Ordinary HStack spacers center it only
+/// between the unequal buttons, which visibly shifts the title to one side.
+struct MushafCenteredHeader: Layout {
+    private func dimensions(_ proposal: ProposedViewSize, _ subviews: Subviews) -> (CGFloat, CGFloat, CGFloat) {
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified) }
+        let idealWidth = ideal.reduce(CGFloat.zero) { $0 + $1.width }
+        let width = proposal.width.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil } ?? idealWidth
+        let side = min(max(ideal[0].width, ideal[2].width), max(0, (width - 44) / 2))
+        let widths = [side, max(0, width - 2 * side), side]
+        let height = subviews.indices.map {
+            subviews[$0].sizeThatFits(ProposedViewSize(width: widths[$0], height: nil)).height
+        }.max() ?? 44
+        return (width, side, max(44, height))
+    }
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (width, _, height) = dimensions(proposal, subviews)
+        return CGSize(width: width, height: height)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (_, side, _) = dimensions(ProposedViewSize(width: bounds.width, height: bounds.height), subviews)
+        // SwiftUI mirrors custom layout coordinates for RTL. Compute the
+        // logical left-to-right slots once rather than mirroring them twice.
+        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
+                          proposal: ProposedViewSize(width: side, height: bounds.height))
+        subviews[1].place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+                          proposal: ProposedViewSize(width: max(0, bounds.width - 2 * side), height: bounds.height))
+        subviews[2].place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing,
+                          proposal: ProposedViewSize(width: side, height: bounds.height))
+    }
+}
+
 struct InteractiveMushafReader: View {
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var memorization: MemorizationStore
@@ -108,7 +165,7 @@ struct InteractiveMushafReader: View {
     @State private var rows: OriginalMushafRows?
     @State private var pageIndex: [Int: OriginalPageData] = [:]
     @State private var number = 1
-    @State private var pageTurnRequest: UUID?
+    @State private var pageTurns = MushafPageTurnCoordinator()
     @State private var pageTurnTask: Task<Void, Never>?
     @State private var referencePreparation: Task<Void, Never>?
     @State private var selected: String?
@@ -220,7 +277,7 @@ struct InteractiveMushafReader: View {
         }
         .onChange(of: audio.activeVerseKey) { _, _ in followPlayback() }
         .onChange(of: playbackLocksPage) { _, locked in
-            if locked { picker = false; pageInputFocused = false; followAudio = true; followPlayback() }
+            if locked { cancelPageTurn(); picker = false; pageInputFocused = false; followAudio = true; followPlayback() }
         }
         .onChange(of: recitation.currentVerse) { _, key in
             if let previous = feedbackVerse, key != previous { completedFeedbackVerses.insert(previous) }
@@ -288,7 +345,7 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { rememberWardPosition(); readerVisible = false; pageTurnRequest = nil; pageTurnTask?.cancel(); pageTurnTask = nil; referencePreparation?.cancel(); referencePreparation = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
+        .onDisappear { rememberWardPosition(); readerVisible = false; cancelPageTurn(); referencePreparation?.cancel(); referencePreparation = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
         .onChange(of: scenePhase) { _, value in
             if value != .active { microphoneCue.cancel() }
             if value == .background { rememberWardPosition() }
@@ -298,6 +355,7 @@ struct InteractiveMushafReader: View {
             if (event.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) == AVAudioSession.InterruptionType.began.rawValue { recitation.cancelGuided() }
         }
         .onChange(of: number) { _, value in
+            cancelPageTurn()
             guard allowedPages.contains(value) else { number = min(allowedPages.upperBound, max(allowedPages.lowerBound, value)); return }
             renderGeneration = UUID(); lastPage = value; rememberWardPosition()
         }
@@ -367,20 +425,21 @@ struct InteractiveMushafReader: View {
             // Keep the ordinary lanes measured while hidden or recording. A
             // status change must not resize the production Quran viewport.
             VStack {
-                HStack {
+                MushafCenteredHeader {
+                    HStack(spacing: 0) {
                     if manualSelection != nil {
                         Button { clearManualSelection() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
                             .accessibilityLabel("إلغاء تحديد الآية").accessibilityIdentifier("verse.tools.close")
                     } else {
                         Button { dismiss() } label: { Image(systemName: "chevron.right").frame(width: 44, height: 44) }.accessibilityLabel("إغلاق المصحف")
                     }
-                    Spacer()
+                    }
                     readerHeaderTitle
-                    Spacer()
+                    HStack(spacing: 8) {
                     if manualSelection == nil && !readingOnly {
                         Button { recitersOpen = true } label: {
                             Label("القارئ", systemImage: "headphones")
-                                .font(.subheadline).frame(minHeight: 44)
+                                .font(.subheadline).lineLimit(1).frame(minHeight: 44)
                         }.accessibilityLabel("اختر القارئ").accessibilityIdentifier("reader.reciters")
                             .accessibilityValue(audio.selectedCatalogReciter?.name ?? audio.displayName)
                     }
@@ -393,6 +452,7 @@ struct InteractiveMushafReader: View {
                     } else if readingOnly {
                         Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
+                    }
                     }
                 }.background { readerControlMeasurement("header") }
                 Spacer()
@@ -458,6 +518,7 @@ struct InteractiveMushafReader: View {
                         readingMagnification: 1,
                         hiddenTextAccessibilityHint: "نص الآية مخفي للتسميع. اضغط لخيارات المساعدة؛ يُحفظ استخدام التلميح.",
                         onVerse: { key in
+                            cancelPageTurn()
                             if studyOpen { practiceSelection = key; return }
                             if let key {
                                 audio.stop()
@@ -562,6 +623,7 @@ struct InteractiveMushafReader: View {
     }
     private func startRecitation(keys scope: [String], automatic: Bool = false) {
         guard !readingOnly, readerVisible, let snapshot, !recitation.hasSession else { return }
+        cancelPageTurn()
         followAudio = true
         audio.stop(); legacyRecorder.stop(); clearManualSelection()
         tools = true
@@ -574,6 +636,7 @@ struct InteractiveMushafReader: View {
     private var startRecitationButton: some View {
         Button {
             guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
+            cancelPageTurn()
             audio.stop(); legacyRecorder.stop()
             microphoneCue.beginCapture {
                 guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
@@ -899,8 +962,8 @@ struct InteractiveMushafReader: View {
         guard !playbackLocksPage, allowedPages.contains(number + amount) else { return }
         followAudio = false
         let destination = number + amount
-        pageTurnTask?.cancel()
-        let request = UUID(); pageTurnRequest = request
+        cancelPageTurn()
+        let request = pageTurns.begin(from: number, to: destination)
         let family = String(format: "QCF2%03d", destination)
         if fonts.names[family] != nil { commitPageTurn(destination, request: request); return }
         // Keep the current UIKit viewport mounted until its replacement font
@@ -912,9 +975,13 @@ struct InteractiveMushafReader: View {
             commitPageTurn(destination, request: request)
         }
     }
-    private func commitPageTurn(_ destination: Int, request: UUID) {
-        guard readerVisible, pageTurnRequest == request, !playbackLocksPage else { return }
-        pageTurnRequest = nil; pageTurnTask = nil
+    private func cancelPageTurn() {
+        pageTurns.cancel(); pageTurnTask?.cancel(); pageTurnTask = nil
+    }
+    private func commitPageTurn(_ destination: Int, request: MushafPageTurnCoordinator.Request) {
+        guard pageTurns.consume(request, currentPage: number, visible: readerVisible,
+                                playbackLocked: playbackLocksPage) == destination else { return }
+        pageTurnTask = nil
         lastPage = destination
         number = destination; selected = nil; manualSelection = nil
     }
@@ -936,6 +1003,7 @@ struct InteractiveMushafReader: View {
               let location = studyIndex?.listeningLocation(verse: recitation.currentVerse,
                   wordID: recitation.activeWordID, allowedPages: allowedPages,
                   userIsSelectingVerse: manualSelection != nil || sheetVerse != nil) else { return }
+        cancelPageTurn()
         selected = location.verse
         if number != location.page { lastPage = location.page; number = location.page }
     }
@@ -943,6 +1011,7 @@ struct InteractiveMushafReader: View {
         if audio.playing != nil { clearManualSelection(); followPlayback(); return }
         guard let key = recitation.hasSession ? recitation.currentVerse : audio.playing,
               let destination = studyIndex?.pages[key]?.first, allowedPages.contains(destination) else { return }
+        cancelPageTurn()
         followAudio = true; manualSelection = nil; selected = key
         lastPage = destination; number = destination
     }
@@ -961,6 +1030,7 @@ struct InteractiveMushafReader: View {
         let key = audio.activeVerseKey ?? mediaKey
         guard let location = studyIndex?.playbackLocation(key: key, wordID: audio.activeWordID,
                   currentPage: number, allowedPages: allowedPages) else { return }
+        cancelPageTurn()
         followAudio = true
         // Navigating to a surah's known beginning is not evidence that its
         // first ayah is still being read many seconds later.
@@ -968,6 +1038,7 @@ struct InteractiveMushafReader: View {
         if number != location.page { lastPage = location.page; number = location.page }
     }
     private func load() async {
+        cancelPageTurn()
         renderGeneration = UUID(); error = nil; needsFirstDownload = false
         do {
             try OriginalMushafCompanion.register()
