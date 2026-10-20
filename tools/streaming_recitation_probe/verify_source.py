@@ -16,13 +16,11 @@ import tarfile
 import time
 import urllib.request
 
-ROOT = Path(__file__).resolve().parents[2]
+from probe_contract import (ARCHIVE, ARCHIVE_SHA, COMPLETE, CONFIG_SHA, END_MARKER,
+                            EXPECTED_CASE_COUNT, MARKER, MODEL, REVISION, ROOT,
+                            SCOPE, public_sources)
+
 OUT = ROOT/'release/fastconformer-source-probe'
-MODEL = 'mohammed/fastconformer-quran-ar'
-REVISION = '60973918b40c5fcdc0e93310c13a4a4661525142'
-ARCHIVE = 'phase3_full/phase3_full_wer0.0014.nemo'
-ARCHIVE_SHA = 'dc3557eea22b25ab5c7af2d8cf01636efd415c4ed417418156e5895056c705d5'
-CONFIG_SHA = 'ac55ebbb48ae9c69f12ab7f72e8c0678a26d91d06770b3cc5073dfce4ce5a437'
 TARGETS = {
     'nemo.collections.asr.modules.'+name for name in
     ('AudioToMelSpectrogramPreprocessor','SpectrogramAugmentation',
@@ -50,14 +48,17 @@ def check_targets(value):
 def main():
     faulthandler.dump_traceback_later(420, exit=True)
     OUT.mkdir(parents=True, exist_ok=True)
-    report = {'sourceModel':MODEL,'revision':REVISION,'archiveSHA256':ARCHIVE_SHA,
-        'scope':'OFFLINE_FP32_SOURCE_SCREENING_NOT_STREAMING_OR_LEARNER_OR_IPHONE_ACCEPTANCE',
+    source_commit = subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    report = {'schemaVersion':1,'sourceCommit':source_commit,
+        'sourceModel':MODEL,'revision':REVISION,'archiveSHA256':ARCHIVE_SHA,
+        'configurationSHA256':CONFIG_SHA,'scope':SCOPE,
         'appIntegrated':False,'productionApproved':False,'expectedPassageInput':False,
-        'status':'STARTED','cases':[]}
+        'status':'STARTED','expectedCaseCount':EXPECTED_CASE_COUNT,
+        'inferenceCaseCount':0,'inferenceCompleted':False,'cases':[]}
     def save():
         (OUT/'actual-source.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     save()
-    (OUT/'source.txt').write_text(subprocess.check_output(['git','rev-parse','HEAD'],text=True),encoding='utf-8')
+    (OUT/'source.txt').write_text(source_commit+'\n',encoding='utf-8')
     import numpy as np
     import torch
     import yaml
@@ -110,8 +111,7 @@ def main():
         value=np.concatenate(parts).astype(np.float32)
         assert 400 <= len(value) <= 256000 and np.isfinite(value).all()
         return value
-    sources=json.loads((ROOT/'tools/RecitationEngineProbe/fixtures/sources.json').read_text(encoding='utf-8'))
-    sources.append({'file':'002001.mp3','sha256':'48077d6641b2403e04c15585b0ede3b8eb3a3c354ae4d8d6f6a4882dc8106ebb'})
+    sources=public_sources()
     cases=[]
     for entry in sources:
         name=entry['file'];assert len(name)==10 and name[:6].isdigit() and name.endswith('.mp3')
@@ -127,7 +127,7 @@ def main():
         if name in ('001002.mp3','002001.mp3'):cases.append((name,'public-first-two-seconds',original[:32000],entry['sha256']))
     cases.extend([('silence','generated-negative-control',np.zeros(16000,dtype=np.float32),None),
         ('noise','generated-negative-control',np.random.default_rng(14).normal(0,.001,16000).astype(np.float32),None)])
-    assert len(cases)==26
+    assert len(cases)==EXPECTED_CASE_COUNT
     for name,kind,values,pin in cases:
         began=time.monotonic()
         with torch.inference_mode():
@@ -142,10 +142,24 @@ def main():
         raw=model.tokenizer.ids_to_text(ids)
         row={'file':name,'kind':kind,'sourceMP3SHA256':pin,'sourceFrames':len(values),
             'sourceFloatSHA256':hashlib.sha256(values.tobytes()).hexdigest(),'rawTranscript':raw,
-            'rawTokenIDs':ids,'encoderFrames':len(labels),'seconds':time.monotonic()-began}
-        report['cases'].append(row);save();print('ACTUAL_SOURCE_CTC',json.dumps(row,ensure_ascii=False),flush=True)
-    report['status']='COMPLETE_SCREENING_ONLY';save()
-    print('SOURCE_SCREENING_COMPLETE_NOT_MODEL_OR_APP_ACCEPTANCE',flush=True)
+            'rawTokenIDs':ids,'encoderFrames':len(labels),'seconds':time.monotonic()-began,
+            'inferenceCompleted':True}
+        report['cases'].append(row)
+        report['inferenceCaseCount']=len(report['cases'])
+        save();print(MARKER+json.dumps(row,ensure_ascii=False),flush=True)
+    assert len(report['cases'])==EXPECTED_CASE_COUNT
+    report.update(status=COMPLETE,inferenceCompleted=True);save()
+    print(END_MARKER,flush=True)
 
 
-if __name__ == '__main__':main()
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as error:
+        path=OUT/'actual-source.json'
+        if path.is_file():
+            report=json.loads(path.read_text(encoding='utf-8'))
+            report.update(status='FAILED_INFERENCE_NOT_VERIFIED',inferenceCompleted=False,
+                          errorType=type(error).__name__)
+            path.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+        raise

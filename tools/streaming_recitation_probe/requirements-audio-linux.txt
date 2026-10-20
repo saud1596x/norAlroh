@@ -1,0 +1,5 @@
+# PyPI official release metadata, checked 2026-10-20:
+# https://pypi.org/pypi/av/14.2.0/json
+# CPython 3.11 / manylinux_2_17_x86_64 (Ubuntu 24.04 compatible).
+# 14.4.0 has only an sdist; never silently compile against host FFmpeg.
+av==14.2.0 --hash=sha256:e7647d4a8d1855d05fe70784a962b15e103a2d4a0eba1dea7bfbfd95753dedb9
