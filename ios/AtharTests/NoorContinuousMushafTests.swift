@@ -337,6 +337,8 @@ import WhisperKit
             reference.configure(page: page, corpus: corpus)
             XCTAssertTrue(reference.renderedSuccessfully)
             let referenceWidth = reference.rowGeometry.filter { $0.kind == "ayah" }.map(\.ink.width).max() ?? 0
+            let referenceHeadings = reference.rowGeometry.filter { $0.kind != "ayah" }
+            let referenceOrnaments = reference.ornamentBounds
             for style in [UIUserInterfaceStyle.light, .dark] {
                 canvas.overrideUserInterfaceStyle = style
                 canvas.configure(page: page, corpus: corpus)
@@ -349,6 +351,38 @@ import WhisperKit
                 XCTAssertGreaterThanOrEqual(coloredWidth, referenceWidth * 0.95,
                     "Colors must not shrink the reading extent: page \(number)")
                 XCTAssertLessThanOrEqual(coloredWidth, referenceWidth + 0.1)
+                let context = "page \(number), style \(style.rawValue)"
+                let headings = canvas.rowGeometry.filter { $0.kind != "ayah" }
+                XCTAssertEqual(headings.map(\.line), referenceHeadings.map(\.line),
+                    "Every source heading row must remain present: \(context)")
+                XCTAssertEqual(headings.map(\.kind), referenceHeadings.map(\.kind),
+                    "Tajweed cannot replace a title or basmala with a different row kind: \(context)")
+                XCTAssertEqual(headings.map(\.ink), referenceHeadings.map(\.ink),
+                    "All titles and basmalas must retain original V2 source coordinates: \(context)")
+                XCTAssertEqual(canvas.ornamentBounds, referenceOrnaments,
+                    "All ornaments must retain original V2 source coordinates: \(context)")
+                XCTAssertTrue(canvas.rowGeometry.allSatisfy { canvas.bounds.contains($0.ink) },
+                    "Actual body, title and basmala ink must remain inside the page: \(context)")
+                let titles = canvas.rowGeometry.filter { $0.kind == "surah_name" }
+                XCTAssertEqual(titles.count, canvas.ornamentBounds.count,
+                    "Every title must have its own original ornament: \(context)")
+                for (title, ornament) in zip(titles, canvas.ornamentBounds) {
+                    XCTAssertEqual(title.ink.midX, ornament.midX, accuracy: 0.01,
+                        "Title horizontal center: \(context), row \(title.line)")
+                    XCTAssertEqual(title.ink.midY, ornament.midY, accuracy: 0.01,
+                        "Title vertical center: \(context), row \(title.line)")
+                    XCTAssertTrue(ornament.contains(title.ink),
+                        "Full title ink must fit its original frame: \(context), row \(title.line)")
+                    XCTAssertLessThanOrEqual(title.ink.height / ornament.height, 0.6401,
+                        "Original title height fraction: \(context), row \(title.line)")
+                    XCTAssertLessThanOrEqual(title.ink.width / ornament.width, 0.4601,
+                        "Original title width fraction: \(context), row \(title.line)")
+                    XCTAssertTrue(canvas.rowGeometry.filter { $0.kind == "ayah" }.allSatisfy {
+                        !$0.ink.intersects(ornament)
+                    }, "Ornament must not cover any ayah row ink: \(context), row \(title.line)")
+                    XCTAssertTrue(canvas.regions.allSatisfy { !$0.rect.intersects(ornament) },
+                        "Ornament must not cover actual colored word-layer ink: \(context), row \(title.line)")
+                }
                 try autoreleasepool {
                     let format = UIGraphicsImageRendererFormat(); format.preferredRange = .standard; format.scale = 1
                     var rendered: UIImage?

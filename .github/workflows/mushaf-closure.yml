@@ -7,6 +7,7 @@ on:
       - scripts/test-mushaf-closure.sh
       - scripts/verify-mushaf-closure-evidence.py
       - scripts/tests/test_mushaf_closure_evidence.py
+      - scripts/tests/requirements.txt
       - ios/Athar/InteractiveMushafReader.swift
       - ios/Athar/InteractiveMushafCanvas.swift
       - ios/Athar/MushafTajweedFonts.swift
@@ -47,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           command -v xcodegen >/dev/null || brew install xcodegen
-          python3 -m pip install --only-binary=:all: --index-url https://pypi.org/simple 'Pillow==11.3.0' 'av==14.2.0'
+          python3 -m pip install --only-binary=:all: --index-url https://pypi.org/simple -r scripts/tests/requirements.txt 'av==14.2.0'
       - name: Reject false-positive evidence before native execution
         run: |
           set -euo pipefail

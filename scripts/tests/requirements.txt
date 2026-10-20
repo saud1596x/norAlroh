@@ -1,0 +1,3 @@
+# Shared Python build/content helper suite, including original PNG verification.
+# Runtime application/server dependencies remain in their existing manifests.
+Pillow==11.3.0

@@ -18,13 +18,33 @@ git -C "$noor_quality_root/source" fetch --quiet --depth 1 origin "$noor_source_
 git -C "$noor_quality_root/source" checkout --quiet --detach "$noor_source_commit"
 [[ "$(git -C "$noor_quality_root/source" rev-parse HEAD)" == "$noor_source_commit" ]] || exit 2
 cd "$noor_quality_root/source"
+python3 - <<'PY'
+import importlib.metadata
+from pathlib import Path
+
+pins = [line.strip() for line in Path('scripts/tests/requirements.txt').read_text(encoding='utf-8').splitlines()
+        if line.strip() and not line.lstrip().startswith('#')]
+for pin in pins:
+    name, separator, required = pin.partition('==')
+    if not separator or not name or not required:
+        raise SystemExit('Invalid shared helper test dependency declaration; no packages installed.')
+    try:
+        actual = importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        raise SystemExit(f'Missing prerequisite: {pin}. This server check does not install packages.')
+    if actual != required:
+        raise SystemExit(f'Prerequisite mismatch: {name} requires {required}, found {actual}. No packages installed.')
+from PIL import Image
+print('Shared helper test prerequisites are present; no packages installed.')
+PY
 python3 - "$noor_source_commit" "$noor_quality_root" <<'PY'
-import json, platform, subprocess, sys
+import importlib.metadata, json, platform, subprocess, sys
 from pathlib import Path
 Path(sys.argv[2], 'provenance.json').write_text(json.dumps({
     'sourceCommit': sys.argv[1], 'platform': platform.platform(),
     'node': subprocess.check_output(['node', '--version'], text=True).strip(),
     'python': platform.python_version(),
+    'helperTestDependencies': {'Pillow': importlib.metadata.version('Pillow')},
     'scope': 'Linux gateway and content/build helper tests only; not iOS or live microphone acceptance'
 }, indent=2) + '\n')
 PY
