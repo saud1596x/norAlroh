@@ -145,3 +145,53 @@ The counter and title remain single-line. On a 320-point width with the existing
 20-point outer padding, this leaves 212 points for the accessibility counter.
 This source-based calculation requires the three-phone native frame checks and
 actual visual review. It is not a per-device offset or a Quran font-size change.
+
+## Actual all-page colored-path correction
+
+Source `e97348e` built Release successfully in 875.217 seconds on the medium
+phone. Its 23 native geometry tests executed: 22 passed and one failed with
+20 assertions, the same ten pages in light and dark. All 604 ordinary pages
+passed the native glyph-path and row-identity checks. The failure was specific
+to actual painted COLR bounds, not the centered CTLine boxes. The pages were
+42, 55, 66, 139, 140, 243, 385, 409, 481 and 486.
+
+The V4 base glyph and its colored layers have different bounds. On page 139,
+the source U+FC4E base begins at font coordinate 388 but the original layers
+extend to 244. Measuring the base and then painting its layers predicted the
+native body axis 279.1566255969437 exactly. The fit and row-origin calculation
+now measure the same COLR paths and CTRun positions used for painting and hit
+regions. One font size still fits the complete page; the original V2 body edge,
+heading reference geometry and fixed template are unchanged. There is no
+post-layout offset, per-row fit or relaxed tolerance. The all-page native test
+also checks each rendered row against its actual word-path union.
+
+The independent complete font-table audit reproduced the ten native failures
+to within 2.84e-13 reference units. Applying the corrected physical measurement
+to all 604 pages predicts maximum bias 0.05, no canvas overflow and no new
+adjacent row-bound overlap. This is a FontTools calculation, not native success
+after the correction. Its receipt is `colr-center-all604.json` in the task's
+`outputs/mushaf-audit-20261020-geometry/` directory.
+
+The 604 actual ordinary PNGs from `e97348e` have also been independently measured
+with source/image hashes: the body center including antialias pixels is within
+half a pixel on every page, with median zero (previous median +8.5). All 112
+separate basmalas share axis 280; 114 title rasters stay within one pixel. The
+opaque-only threshold is retained separately, including its sensitivity to thin
+strokes. These are actual after-images of V2; they do not verify the pending
+colored-path or header/entry changes. Receipt: `body-center-all604-native-e973.json`.
+
+The live GitHub viewer lagged behind execution. The attempt was canceled after
+an incorrect reading that compilation was still running; the completed original
+log subsequently showed the successful build and real geometry failure. Its
+library, quiet-microphone journey and first two gallery pairs on medium passed,
+but the canceled attempt is incomplete and is not accepted. The actual audio
+capture journey is not recognition-accuracy evidence. New header/entry changes
+and this COLR correction still require matching native results.
+
+A separate local backpressure reproduction found that a blocked outer stdout
+consumer can prevent the test wrapper's main thread from checking its clock.
+An independent fail-closed watchdog now signals only its owned process/group
+at the existing deadline and exits 124 within the existing cleanup allowance
+if output remains blocked. Healthy output and actual exits remain intact. This
+is not claimed as the cause of the `e97348e` run. Local verification passed 14
+cases; the two existing POSIX-only cases still require macOS.

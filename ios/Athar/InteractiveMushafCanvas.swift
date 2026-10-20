@@ -169,19 +169,55 @@ struct OriginalPageData: Equatable {
         shouldGroupAccessibilityChildren = true
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
-    private func bodyInk(_ text: String, font: UIFont, space: UIFont) -> CGRect {
+    /// Core Text reports the base glyph's bounds for a COLR font. Its painted
+    /// layers can extend beyond that base outline. Fit and align the same
+    /// outlines that the renderer and hit regions will actually use.
+    private func paintedInk(_ line: CTLine, font: UIFont,
+                            tajweed: MushafTajweedFonts.Page?) -> CGRect {
+        guard let tajweed else { return CTLineGetBoundsWithOptions(line, .useGlyphPathBounds) }
+        var bounds = CGRect.null
+        for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            guard let value = attributes[kCTFontAttributeName] else { return .null }
+            let runFont = value as! CTFont
+            // The explicit companion separators have advances but no ink;
+            // their glyph IDs must never be interpreted as page-font layers.
+            let family = CTFontCopyPostScriptName(runFont) as String
+            if family == OriginalMushafCompanion.name { continue }
+            guard family == font.fontName else { return .null }
+            let count = CTRunGetGlyphCount(run)
+            var glyphs = [CGGlyph](repeating: 0, count: count)
+            var positions = [CGPoint](repeating: .zero, count: count)
+            CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
+            CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
+            guard !glyphs.contains(0) else { return .null }
+            for index in 0..<count {
+                // Both palettes share their original paths. Color resolution
+                // does not participate in the immutable page geometry.
+                for (path, _) in tajweed.paths(glyph: glyphs[index], font: runFont, dark: false) {
+                    let ink = path.boundingBoxOfPath
+                    if !ink.isEmpty {
+                        bounds = bounds.union(ink.offsetBy(dx: positions[index].x, dy: positions[index].y))
+                    }
+                }
+            }
+        }
+        return bounds
+    }
+    private func bodyInk(_ text: String, font: UIFont, space: UIFont,
+                         tajweed: MushafTajweedFonts.Page? = nil) -> CGRect {
         let direction = NSWritingDirection.rightToLeft.rawValue | NSWritingDirectionFormatType.override.rawValue
         let value = NSMutableAttributedString(string: text, attributes: [.font: font, .writingDirection: [direction]])
         for (offset, scalar) in text.utf16.enumerated() where scalar == 0x20 {
             value.addAttribute(.font, value: space, range: NSRange(location: offset, length: 1))
         }
-        return CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(value as CFAttributedString), .useGlyphPathBounds)
+        return paintedInk(CTLineCreateWithAttributedString(value as CFAttributedString), font: font, tajweed: tajweed)
     }
     /// V2 and V4 have different advances. Match the original page's widest
     /// authored row with one uniform V4 size, rather than shrinking all 604
     /// pages to the worst-case 23pt size. No word/row is squeezed separately.
     private func tajweedBodyFont(page: OriginalPageData, referenceInk: [Int: CGRect],
-                                 colored: UIFont, space: UIFont) -> UIFont? {
+                                 colored: UIFont, space: UIFont, tajweed: MushafTajweedFonts.Page) -> UIFont? {
         let texts = page.rows.filter { $0.type == "ayah" }.map { row in
             (row.line, page.words.filter { $0.line == row.line }.map(\.code).joined(separator: " "))
         }
@@ -190,8 +226,8 @@ struct OriginalPageData: Equatable {
         var size: CGFloat = 64
         let top = page.number <= 2 ? Metrics.openingTop : Metrics.verticalMargin
         for (row, text) in texts {
-            let half = bodyInk(text, font: colored.withSize(16), space: space)
-            let full = bodyInk(text, font: colored.withSize(32), space: space)
+            let half = bodyInk(text, font: colored.withSize(16), space: space, tajweed: tajweed)
+            let full = bodyInk(text, font: colored.withSize(32), space: space, tajweed: tajweed)
             let slope = (full.width - half.width) / 16
             guard slope.isFinite, slope > 0 else { return nil }
             // Blank companion separators retain their original advances. Two
@@ -205,7 +241,7 @@ struct OriginalPageData: Equatable {
         guard size.isFinite, size > 0 else { return nil }
         let result = colored.withSize(size)
         for (row, text) in texts {
-            let ink = bodyInk(text, font: result, space: space)
+            let ink = bodyInk(text, font: result, space: space, tajweed: tajweed)
             let baseline = top + CGFloat(row - 1) * Metrics.baselineInterval + Metrics.baselineOffset
             guard !ink.isNull, !ink.isInfinite, ink.width <= target + 0.1,
                   baseline - ink.maxY >= -0.01,
@@ -255,7 +291,7 @@ struct OriginalPageData: Equatable {
         let body: UIFont
         if let tajweedPage {
             guard let colored = UIFont(name: tajweedPage.family, size: Metrics.bodyPointSize),
-                  let fitted = tajweedBodyFont(page: page, referenceInk: sourceBodyInk, colored: colored, space: space) else {
+                  let fitted = tajweedBodyFont(page: page, referenceInk: sourceBodyInk, colored: colored, space: space, tajweed: tajweedPage) else {
                 fail("Tajweed page cannot retain the original reading extent"); return
             }
             body = fitted
@@ -292,7 +328,7 @@ struct OriginalPageData: Equatable {
                 }
             }
             let line = CTLineCreateWithAttributedString(attributed as CFAttributedString)
-            let ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+            let ink = paintedInk(line, font: font, tajweed: header ? nil : tajweedPage)
             // Original stop and vowel marks may exceed one baseline interval.
             // Validate full-page ink below; never clip or reject them by row height.
             guard !ink.isNull, !ink.isInfinite, ink.width > 0, ink.width <= 532, ink.height > 0 else { fail("Invalid authored row ink \(row.line): \(ink)"); return }

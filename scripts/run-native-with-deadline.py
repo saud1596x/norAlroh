@@ -81,7 +81,7 @@ class OutputRelay:
             self.forward(min(0.05, max(0, deadline - time.monotonic())))
 
 
-def signal_process_group(process, *, force):
+def signal_process_group(process, *, force, diagnostics=True):
     """A group may disappear between poll, TERM, and KILL. That is harmless."""
     try:
         if os.name == 'posix':
@@ -95,8 +95,9 @@ def signal_process_group(process, *, force):
         # Darwin may deny a signal to the old group after its direct root has
         # exited and an escaped child owns a different session. Do not retry
         # with broader privileges, claim a kill, or mask the original timeout.
-        print('NOOR_NATIVE_GROUP_SIGNAL_DENIED signal=' + ('KILL' if force else 'TERM'),
-              file=sys.stderr, flush=True)
+        if diagnostics:
+            print('NOOR_NATIVE_GROUP_SIGNAL_DENIED signal=' + ('KILL' if force else 'TERM'),
+                  file=sys.stderr, flush=True)
         return False
 
 
@@ -142,6 +143,67 @@ def stop_process_group(process, relay):
     return reaped
 
 
+class NativeDeadlineWatchdog:
+    """Enforce the same deadline independently of a blocked outer logger.
+
+    Only the owned native child/group is signaled. This thread never writes to
+    stdout/stderr: either pipe might be the very consumer that has stopped.
+    The ordinary main-thread path retains complete healthy output and its real
+    end receipt. If it cannot finish, exit124 after the existing cleanup budget
+    without manufacturing an end receipt that the evidence verifier could pass.
+    """
+    def __init__(self, process, deadline):
+        self.process = process
+        self.deadline = deadline
+        self.finished = threading.Event()
+        self.expired = threading.Event()
+        self.state_lock = threading.Lock()
+        self.thread = threading.Thread(target=self._run, name='native-deadline-watchdog', daemon=True)
+        self.thread.start()
+
+    def finish(self):
+        # Decide completion atomically with expiration, without holding this
+        # lock across any logger operation. A late footer cannot cancel an
+        # already due guard and make the wrapper return success.
+        with self.state_lock:
+            late = self.expired.is_set() or time.monotonic() >= self.deadline
+            if late:
+                self.expired.set()
+            self.finished.set()
+            return late
+
+    def _signal(self, *, force):
+        try:
+            signal_process_group(self.process, force=force, diagnostics=False)
+        except BaseException:
+            # Failure to signal is not proof of termination. The wrapper still
+            # fails closed; no logging or broader privilege is attempted here.
+            pass
+
+    def _run(self):
+        if self.finished.wait(max(0, self.deadline - time.monotonic())):
+            return
+        with self.state_lock:
+            if self.finished.is_set():
+                return
+            self.expired.set()
+        self._signal(force=False)
+        grace_end = self.deadline + TERMINATION_GRACE_SECONDS
+        if self.finished.wait(max(0, grace_end - time.monotonic())):
+            return
+        self._signal(force=True)
+        hard_end = grace_end + REAP_SECONDS + OUTPUT_DRAIN_SECONDS
+        try:
+            self.process.wait(timeout=max(0, min(REAP_SECONDS, hard_end - time.monotonic())))
+        except BaseException:
+            pass
+        if self.finished.wait(max(0, hard_end - time.monotonic())):
+            return
+        # sys.exit would only exit this daemon; Python's final stdout flush can
+        # also block. No success/end marker is invented for a stuck logger.
+        os._exit(124)
+
+
 def validated_deadline(raw, *, build=False):
     seconds = float(raw)
     if not 0 < seconds <= (1200 if build else 720):
@@ -179,15 +241,21 @@ def main():
     report('start')
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                start_new_session=(os.name == "posix"))
+    deadline = started + seconds
+    watchdog = NativeDeadlineWatchdog(process, deadline)
     try:
         relay = OutputRelay(process.stdout)
-        deadline = started + seconds
         while time.monotonic() < deadline:
             result = process.poll()
-            if result is not None and relay.eof:
+            if result is not None and relay.eof and not watchdog.expired.is_set():
                 relay.separate_record()
+                if watchdog.expired.is_set() or time.monotonic() >= deadline:
+                    break
                 report('end', exitCode=result)
-                return result
+                # The footer itself can encounter output backpressure. Even if
+                # a real child-exit receipt started writing before expiration,
+                # a late completed write must never turn wrapper failure into0.
+                return 124 if watchdog.finish() else result
             relay.forward(min(0.05, max(0, deadline - time.monotonic())))
             if relay.eof and result is None:
                 time.sleep(min(0.01, max(0, deadline - time.monotonic())))
@@ -206,6 +274,10 @@ def main():
         except subprocess.TimeoutExpired:
             pass
         raise
+    finally:
+        # Keep the independent guard armed through all synchronous footer and
+        # cleanup output; a blocked write must not cancel its hard-exit bound.
+        watchdog.finish()
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import types
 import unittest
@@ -61,6 +62,102 @@ class NativeDeadlineTests(unittest.TestCase):
                       if line.startswith('NOOR_NATIVE_PROCESS ')]
             self.assertEqual([e['event'] for e in events],['start','end'])
             self.assertEqual(events[-1]['exitCode'],code)
+
+    @staticmethod
+    def _start_blocked_consumer_probe(folder):
+        ready = pathlib.Path(folder)/'owned-child-ready.pid'
+        alive = pathlib.Path(folder)/'owned-child-alive-after-deadline'
+        # These timers do not depend on the child's blocked stdout thread. A
+        # missing early TERM creates the1.5s marker; the5s timer bounds an orphan
+        # even if a broken wrapper/test prevents ordinary cleanup.
+        child = ('import os,pathlib,sys,threading,time; '
+                 'threading.Timer(1.5,lambda:pathlib.Path(sys.argv[2]).write_text("STILL_ALIVE")).start(); '
+                 'threading.Timer(5,lambda:os._exit(99)).start(); '
+                 'pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); '
+                 'sys.stdout.write("BLOCKED_CONSUMER_CHILD_OUTPUT\\n"+"x"*2000000); '
+                 'sys.stdout.flush(); time.sleep(4)')
+        process = subprocess.Popen([sys.executable,str(WRAPPER),'1',sys.executable,'-u','-c',child,
+                                    str(ready),str(alive)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        return process,ready,alive
+
+    def test_owned_child_deadline_is_enforced_while_outer_consumer_does_not_read(self):
+        folder = ROOT/'release/native-deadline-tests'
+        folder.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='blocked-consumer-',dir=folder) as temporary:
+            process,ready,alive = self._start_blocked_consumer_probe(temporary)
+            started = time.monotonic()
+            try:
+                until = started+2
+                while not ready.exists() and time.monotonic()<until:
+                    time.sleep(0.01)
+                self.assertTrue(ready.exists(),'Owned child must actually start before checking termination')
+                # Never read stdout here: this reproduces real pipe pressure,
+                # unlike capture_output, which continuously drains its pipe.
+                while time.monotonic()<started+2:
+                    time.sleep(0.01)
+                self.assertIsNone(process.poll(),'The main relay must still be blocked on the deliberately paused logger')
+                self.assertFalse(alive.exists(),'The watchdog must terminate the child at1s, before its1.5s heartbeat')
+                stdout,stderr = process.communicate(timeout=11)
+                self.assertEqual(process.returncode,124,stderr.decode(errors='replace'))
+                events=[json.loads(line.partition(b' ')[2]) for line in stdout.splitlines()
+                        if line.startswith(b'NOOR_NATIVE_PROCESS ')]
+                self.assertEqual(events[-1]['exitCode'],124)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                process.communicate(timeout=3)
+
+    def test_permanently_blocked_outer_consumer_hard_exits124_without_forged_end(self):
+        folder = ROOT/'release/native-deadline-tests'
+        folder.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='never-drained-consumer-',dir=folder) as temporary:
+            process,ready,alive = self._start_blocked_consumer_probe(temporary)
+            started = time.monotonic()
+            try:
+                # wait deliberately does not consume either output pipe. The
+                # pre-watchdog implementation waits forever inside stdout.write.
+                process.wait(timeout=12)
+                elapsed=time.monotonic()-started
+                self.assertTrue(ready.exists(),'The noisy owned native child must actually execute')
+                self.assertEqual(process.returncode,124)
+                self.assertLess(elapsed,11.5,'Use the existing1+5+2+1 budget; never extend the native deadline')
+                self.assertFalse(alive.exists(),'A blocked logger cannot postpone owned-child termination')
+                stdout,stderr=process.communicate(timeout=3)
+                events=[json.loads(line.partition(b' ')[2]) for line in stdout.splitlines()
+                        if line.startswith(b'NOOR_NATIVE_PROCESS ')]
+                self.assertEqual([event['event'] for event in events],['start'],
+                                 'Hard exit must leave missing/incomplete evidence, never synthesize an end/pass receipt')
+                self.assertLess(len(stdout),2000000,'This failed undrained log is incomplete and cannot claim healthy output preservation')
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                process.communicate(timeout=3)
+
+    def test_watchdog_permission_denial_never_uses_the_blocked_diagnostic_pipe(self):
+        spec=importlib.util.spec_from_file_location('deadline_quiet_watchdog_test',WRAPPER)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        watchdog=module.NativeDeadlineWatchdog.__new__(module.NativeDeadlineWatchdog)
+        watchdog.process=types.SimpleNamespace(pid=12345)
+        fake_os=types.SimpleNamespace(name='posix',killpg=Mock(side_effect=PermissionError(1,'denied')))
+        fake_signals=types.SimpleNamespace(SIGTERM=15,SIGKILL=9)
+        with patch.object(module,'os',fake_os),patch.object(module,'signal',fake_signals), \
+             patch.object(module.sys,'stderr') as diagnostics:
+            watchdog._signal(force=False);watchdog._signal(force=True)
+        self.assertEqual([call.args for call in fake_os.killpg.call_args_list],[(12345,15),(12345,9)])
+        diagnostics.write.assert_not_called()
+
+    def test_late_footer_completion_cannot_cancel_an_already_due_watchdog_as_success(self):
+        spec=importlib.util.spec_from_file_location('deadline_footer_completion_test',WRAPPER)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        for completed_at,expected_late in ((9,False),(10,True),(11,True)):
+            watchdog=module.NativeDeadlineWatchdog.__new__(module.NativeDeadlineWatchdog)
+            watchdog.deadline=10
+            watchdog.state_lock=threading.Lock()
+            watchdog.finished=threading.Event();watchdog.expired=threading.Event()
+            with patch.object(module.time,'monotonic',return_value=completed_at):
+                self.assertEqual(watchdog.finish(),expected_late)
+            self.assertTrue(watchdog.finished.is_set())
+            self.assertEqual(watchdog.expired.is_set(),expected_late)
 
     def test_group_exit_race_is_harmless_for_term_kill_and_presence(self):
         spec = importlib.util.spec_from_file_location('deadline_race_test',WRAPPER)

@@ -357,6 +357,16 @@ import WhisperKit
                 let paintedBody = canvas.regions.reduce(CGRect.null) { $0.union($1.rect) }
                 XCTAssertEqual(paintedBody.midX, canvas.bounds.midX, accuracy: 0.15,
                     "The drawn COLR glyph-layer paths must be centered independently of CTLine boxes: page \(number)")
+                let wordRows = Dictionary(uniqueKeysWithValues: page.words.map { ($0.id, $0.line) })
+                for row in canvas.rowGeometry where row.kind == "ayah" {
+                    let paintedRow = canvas.regions.filter { wordRows[$0.word] == row.line }
+                        .reduce(CGRect.null) { $0.union($1.rect) }
+                    XCTAssertFalse(paintedRow.isNull, "Missing actual COLR row \(number)/\(row.line)")
+                    let difference = [abs(paintedRow.minX - row.ink.minX), abs(paintedRow.maxX - row.ink.maxX),
+                                      abs(paintedRow.minY - row.ink.minY), abs(paintedRow.maxY - row.ink.maxY)].max() ?? .infinity
+                    XCTAssertLessThanOrEqual(difference, 0.01,
+                        "Layout must measure the same original COLR layers that it draws: page \(number), row \(row.line)")
+                }
                 XCTAssertGreaterThanOrEqual(coloredWidth, referenceWidth * 0.95,
                     "Colors must not shrink the reading extent: page \(number)")
                 XCTAssertLessThanOrEqual(coloredWidth, referenceWidth + 0.1)
