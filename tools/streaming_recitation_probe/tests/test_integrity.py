@@ -209,7 +209,9 @@ class WorkflowIntegrityTests(unittest.TestCase):
     def test_all_workflow_shell_steps_require_pipefail(self):
         workflow = (ROOT / '.github/workflows/fastconformer-source-probe.yml').read_text(encoding='utf-8')
         steps = re.findall(r'^        run: \|\n(.*?)(?=^      -|\Z)', workflow, re.M | re.S)
-        self.assertEqual(len(steps), 5)
+        self.assertGreater(len(steps), 0, 'No workflow shell steps were inspected')
+        self.assertEqual(len(steps), len(re.findall(r'^        run:', workflow, re.M)),
+                         'Every shell step must be inspected; inline scripts are not exempt')
         for step in steps:
             self.assertEqual(step.strip().splitlines()[0].strip(), 'set -euo pipefail')
         self.assertIn('run_probe.py --output-dir', workflow)

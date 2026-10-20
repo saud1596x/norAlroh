@@ -44,14 +44,23 @@ jobs:
       - name: Install pinned NeMo speech framework
         run: |
           set -euo pipefail
-          timeout 900s python -m pip install --index-url https://pypi.org/simple 'nemo_toolkit[asr]==2.3.1' 'numpy==1.26.4' 'transformers==4.51.3' 'huggingface-hub==0.36.2' 'av==14.2.0' 'PyYAML==6.0.2' 2>&1 | tee release/fastconformer-source-probe/install.txt
-          python -m pip check
-          python -c "import av, numpy, torch, yaml; assert av.__version__ == '14.2.0'; from nemo.collections.asr.models import EncDecHybridRNNTCTCBPEModel; print('SOURCE_PROBE_RUNTIME_IMPORTS_OK')"
+          timeout 900s python -m pip install --index-url https://pypi.org/simple --only-binary=numpy,pyarrow,pandas,scipy,scikit-learn,matplotlib -r tools/streaming_recitation_probe/requirements-runtime-linux.txt 2>&1 | tee release/fastconformer-source-probe/install.txt
           python -m pip freeze > release/fastconformer-source-probe/runtime.txt
+      - name: Verify actual CPU runtime imports and NumPy ABI before model work
+        run: |
+          set -euo pipefail
+          timeout 120s python -m pip check 2>&1 | tee release/fastconformer-source-probe/dependency-check.txt
+          timeout 180s python tools/streaming_recitation_probe/verify_runtime.py --output release/fastconformer-source-probe/runtime-check.json 2>&1 | tee release/fastconformer-source-probe/runtime-imports.txt
       - name: Decode original public clips with original FP32 CTC head
         run: |
           set -euo pipefail
           python tools/streaming_recitation_probe/run_probe.py --output-dir release/fastconformer-source-probe --expected-commit "$GITHUB_SHA" -- timeout 480s python -u tools/streaming_recitation_probe/verify_source.py
+      - name: Preserve installed dependency inventory even after failure
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p release/fastconformer-source-probe
+          python -m pip freeze > release/fastconformer-source-probe/runtime.txt
       - name: Preserve actual source result without model or private audio
         if: always()
         uses: actions/upload-artifact@v4
