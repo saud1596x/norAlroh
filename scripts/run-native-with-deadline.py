@@ -2,10 +2,128 @@
 import os
 import datetime
 import json
+import queue
 import signal
 import subprocess
 import sys
+import threading
 import time
+
+TERMINATION_GRACE_SECONDS = 5
+REAP_SECONDS = 2
+OUTPUT_DRAIN_SECONDS = 1
+CHUNK_BYTES = 32 * 1024
+_EOF = object()
+
+
+class OutputRelay:
+    """The child owns only an internal pipe, never the outer CI logger pipe.
+
+    A daemon reads bounded chunks into a bounded queue. Only the calling thread
+    writes stdout. A descendant retaining the internal pipe cannot make the
+    wrapper wait forever for EOF or retain the outer collector's writer.
+    """
+    def __init__(self, stream):
+        self.pending = queue.Queue(maxsize=8)
+        self.eof = False
+        self.last_newline = True
+        # The reader uses a raw duplicate, so closing the Popen file object
+        # cannot wait for a BufferedReader lock held by another thread.
+        read_fd = os.dup(stream.fileno())
+        stream.close()
+
+        def read():
+            try:
+                while True:
+                    chunk = os.read(read_fd, CHUNK_BYTES)
+                    if not chunk:
+                        break
+                    self.pending.put(chunk)
+            except OSError as error:
+                self.pending.put(error)
+            finally:
+                try:
+                    os.close(read_fd)
+                except OSError:
+                    pass
+                self.pending.put(_EOF)
+        self.reader = threading.Thread(target=read, name='native-output-relay', daemon=True)
+        self.reader.start()
+
+    def forward(self, timeout):
+        if self.eof:
+            return
+        try:
+            item = self.pending.get(timeout=max(0, timeout))
+        except queue.Empty:
+            return
+        if item is _EOF:
+            self.eof = True
+        elif isinstance(item, OSError):
+            raise item
+        else:
+            target = getattr(sys.stdout, 'buffer', None)
+            if target is not None:
+                target.write(item)
+                target.flush()
+            else:
+                sys.stdout.write(item.decode('utf-8', errors='replace'))
+                sys.stdout.flush()
+            self.last_newline = item.endswith(b'\n')
+
+    def separate_record(self):
+        if not self.last_newline:
+            print(flush=True)
+            self.last_newline = True
+
+    def drain_until(self, deadline):
+        while not self.eof and time.monotonic() < deadline:
+            self.forward(min(0.05, max(0, deadline - time.monotonic())))
+
+
+def signal_process_group(process, *, force):
+    """A group may disappear between poll, TERM, and KILL. That is harmless."""
+    try:
+        if os.name == 'posix':
+            os.killpg(process.pid, signal.SIGKILL if force else signal.SIGTERM)
+        elif process.poll() is None:
+            process.kill() if force else process.terminate()
+        return True
+    except ProcessLookupError:
+        return False
+
+
+def process_group_exists(process):
+    if os.name != 'posix':
+        return process.poll() is None
+    try:
+        os.killpg(process.pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+def stop_process_group(process, relay):
+    signal_process_group(process, force=False)
+    grace_deadline = time.monotonic() + TERMINATION_GRACE_SECONDS
+    # The direct root can exit on TERM while a descendant ignores it and
+    # retains stdout. The grace condition concerns the group, not root.wait().
+    while time.monotonic() < grace_deadline:
+        process.poll()  # Reap a completed direct child before checking its group.
+        if not process_group_exists(process):
+            break
+        relay.forward(min(0.05, max(0, grace_deadline - time.monotonic())))
+        if relay.eof:
+            time.sleep(min(0.01, max(0, grace_deadline - time.monotonic())))
+    # Always attempt escalation independently of the root's return code.
+    signal_process_group(process, force=True)
+    reaped = True
+    try:
+        process.wait(timeout=REAP_SECONDS)
+    except subprocess.TimeoutExpired:
+        reaped = False
+    relay.drain_until(time.monotonic() + OUTPUT_DRAIN_SECONDS)
+    return reaped
 
 
 def validated_deadline(raw, *, build=False):
@@ -43,27 +161,35 @@ def main():
             elapsedSeconds=round(time.monotonic() - started, 3), deadlineSeconds=seconds,
             **details)), flush=True)
     report('start')
-    process = subprocess.Popen(command, start_new_session=(os.name == "posix"))
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               start_new_session=(os.name == "posix"))
     try:
-        result = process.wait(timeout=seconds)
-        report('end', exitCode=result)
-        return result
-    except subprocess.TimeoutExpired:
+        relay = OutputRelay(process.stdout)
+        deadline = started + seconds
+        while time.monotonic() < deadline:
+            result = process.poll()
+            if result is not None and relay.eof:
+                relay.separate_record()
+                report('end', exitCode=result)
+                return result
+            relay.forward(min(0.05, max(0, deadline - time.monotonic())))
+            if relay.eof and result is None:
+                time.sleep(min(0.01, max(0, deadline - time.monotonic())))
+        relay.separate_record()
         print(f"NOOR_NATIVE_{stage}_DEADLINE seconds={seconds} exit=124; tests NOT passed", flush=True)
-        if os.name == "posix":
-            os.killpg(process.pid, signal.SIGTERM)
-        else:
-            process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            if os.name == "posix":
-                os.killpg(process.pid, signal.SIGKILL)
-            else:
-                process.kill()
-            process.wait()
-        report('end', exitCode=124)
+        reaped = stop_process_group(process, relay)
+        relay.separate_record()
+        report('end', exitCode=124, rootReaped=reaped, outputEOF=relay.eof)
         return 124
+    except BaseException:
+        # A broken logger, Ctrl-C, or other wrapper failure must not strand an
+        # isolated native command. Never replace the original error by success.
+        signal_process_group(process, force=True)
+        try:
+            process.wait(timeout=REAP_SECONDS)
+        except subprocess.TimeoutExpired:
+            pass
+        raise
 
 
 if __name__ == "__main__":

@@ -57,9 +57,25 @@ def fixture(folder, size='small'):
         deadline = 1200 if lane == 'build' else 600 if lane == 'geometry' else 180
         commands[lane] = {'exitCode': 0, 'deadlineSeconds': deadline, 'log': lane + '.txt'}
         stage = 'BUILD' if lane == 'build' else 'TEST'
-        (folder / (lane + '.txt')).write_text(''.join('NOOR_NATIVE_PROCESS ' + json.dumps(
+        raw_log = ''.join('NOOR_NATIVE_PROCESS ' + json.dumps(
             {'stage': stage, 'event': event, 'deadlineSeconds': deadline,
-             **({'exitCode': 0, 'elapsedSeconds': 8} if event == 'end' else {'elapsedSeconds': 0})}) + '\n' for event in ('start', 'end')), encoding='utf-8')
+             **({'exitCode': 0, 'elapsedSeconds': 8} if event == 'end' else {'elapsedSeconds': 0})}) + '\n' for event in ('start', 'end'))
+        if closure.ui_prefix(lane) == 'journey':
+            raw_log += 'MUSHAF_UI_DRIVER_OPEN_SECONDS 0.5\n' + ''.join(
+                'MUSHAF_UI_DRIVER_TURN target=%d seconds=0.25\n' % target for target in (15, 16, 15, 14))
+        (folder / (lane + '.txt')).write_text(raw_log, encoding='utf-8')
+        events = [{'kind': 'native-process', 'observerSeconds': 0,
+                   'process': {'event': 'start', 'elapsedSeconds': 0}}]
+        if closure.ui_prefix(lane):
+            events.extend([{'kind': 'test-start', 'observerSeconds': 1},
+                           {'kind': 'test-end', 'observerSeconds': 7,
+                            'reportedTestSeconds': 6, 'result': 'passed'}])
+        events.append({'kind': 'native-process', 'observerSeconds': 8,
+                       'process': {'event': 'end', 'elapsedSeconds': 8, 'exitCode': 0}})
+        write(folder / (lane + '-observations.json'), {
+            'schemaVersion': 1, 'lane': lane, 'events': events,
+            'sourceLogSHA256': closure.digest(folder / (lane + '.txt')),
+            'scope': 'SYNTHETIC UNIT TEST FIXTURE NOT NATIVE PERFORMANCE'})
         if lane == 'build':
             continue
         methods = closure.selectors(lane)
@@ -71,8 +87,7 @@ def fixture(folder, size='small'):
         collection[lane] = {'summaryExitCode': 0, 'testsExitCode': 0, 'attachmentsExitCode': 0}
         attachments = folder / (lane + '-attachments')
         attachments.mkdir()
-        names = (list(closure.JOURNEY_SHOTS) if lane.startswith('journey-') else
-                 ['closure-large-interface-text'] if lane.startswith('large-text-') else
+        names = (list(closure.UI_SHOTS[closure.ui_prefix(lane)]) if closure.ui_prefix(lane) else
                  ['QCF-V2-shaped-page-%03d' % page for page in range(1, 605)] if lane == 'geometry' else
                  ['synthetic-library-fixture'])
         records = []
@@ -123,7 +138,7 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.assertFalse(self.report['fullReleaseApproval'])
         self.assertEqual(self.report['ASRLatency'], 'NOT_EVALUATED')
         self.assertEqual(self.report['physicalDeviceTesting'], 'NOT_VERIFIED')
-        self.assertEqual(self.report['originalPNGCount'], 30)
+        self.assertEqual(self.report['originalPNGCount'], 54)
 
     def test_medium_requires_all_604_original_baseline_pngs(self):
         fixture(self.folder, 'medium')
@@ -181,6 +196,102 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         fixture(self.folder)
         self.mutate('journey-light-attachments/manifest.json', lambda value: value[0]['attachments'].pop())
         self.assertNotEqual(self.verify(), 0)
+
+    def test_missing_gallery_lane_cannot_be_rescued_by_other_successful_lanes(self):
+        fixture(self.folder)
+        (self.folder / 'gallery-special-dark-summary.json').unlink()
+        self.assertNotEqual(self.verify(), 0)
+        self.assertIn('journey-dark', self.report['testResults'])
+        self.assertNotIn('gallery-special-dark', self.report['testResults'])
+
+    def test_all_eight_gallery_reference_pages_are_mandatory_in_their_own_lanes(self):
+        shots = closure.GALLERY_OPENING_SHOTS + closure.GALLERY_SPECIAL_SHOTS
+        self.assertEqual(set(shots), {
+            'closure-page-%03d-%s' % (number, mode)
+            for number in (1, 2, 3, 187, 379, 501, 48, 604) for mode in ('normal', 'tajweed')})
+        fixture(self.folder)
+        def remove_501(value):
+            value[0]['attachments'] = [row for row in value[0]['attachments']
+                                        if not row['suggestedHumanReadableName'].startswith('closure-page-501-normal')]
+        self.mutate('gallery-special-light-attachments/manifest.json', remove_501)
+        self.assertNotEqual(self.verify(), 0)
+        self.assertTrue(any('closure-page-501-normal' in error for error in self.report['errors']))
+
+    def test_normal_page_cannot_replace_missing_tajweed_capture(self):
+        fixture(self.folder)
+        manifest = self.folder / 'gallery-special-light-attachments/manifest.json'
+        before = json.loads(manifest.read_text(encoding='utf-8'))[0]['attachments']
+        self.assertTrue(any(row['suggestedHumanReadableName'].startswith('closure-page-501-normal') for row in before))
+        self.assertTrue(any(row['suggestedHumanReadableName'].startswith('closure-page-501-tajweed') for row in before))
+        def remove_color(value):
+            value[0]['attachments'] = [row for row in value[0]['attachments']
+                                        if not row['suggestedHumanReadableName'].startswith('closure-page-501-tajweed')]
+        self.mutate('gallery-special-light-attachments/manifest.json', remove_color)
+        self.assertNotEqual(self.verify(), 0)
+        self.assertTrue(any('gallery-special-light: missing/repeated mandatory actual screenshot closure-page-501-tajweed'
+                            in error for error in self.report['errors']))
+        self.assertFalse(any('missing/repeated mandatory actual screenshot closure-page-501-normal'
+                             in error for error in self.report['errors']))
+
+    def test_controls_capture_cannot_be_substituted_by_a_core_journey_capture(self):
+        fixture(self.folder)
+        path = self.folder / 'journey-light-attachments/synthetic-extra.png'
+        synthetic_png(path, (750, 1334))
+        self.mutate('journey-light-attachments/manifest.json', lambda value: value[0]['attachments'].append({
+            'exportedFileName': path.name, 'suggestedHumanReadableName': 'closure-tajweed-on_0.png'}))
+        self.mutate('controls-light-attachments/manifest.json', lambda value: value[0]['attachments'].pop(0))
+        self.assertNotEqual(self.verify(), 0)
+        self.assertTrue(any('controls-light: missing/repeated' in error for error in self.report['errors']))
+
+    def test_raw_driver_metrics_keep_startup_body_post_and_do_not_claim_p95(self):
+        fixture(self.folder)
+        self.assertEqual(self.verify(), 0, self.report['errors'])
+        actual = self.report['uiDriverMetrics']['journey-light']
+        self.assertEqual(actual['rawDriverOpenSeconds'], [0.5])
+        self.assertEqual([row['target'] for row in actual['rawDriverPageTurns']], [15, 16, 15, 14])
+        self.assertEqual(actual['observedStartupSeconds'], 1)
+        self.assertEqual(actual['reportedXCTestBodySeconds'], 6)
+        self.assertEqual(actual['observedPostTestSeconds'], 1)
+        self.assertEqual(actual['p95'], 'NOT_ESTIMATED_FROM_SPARSE_DRIVER_SAMPLES')
+
+    def test_timeout_preserves_partial_raw_metrics_and_original_captures(self):
+        fixture(self.folder)
+        path = self.folder / 'journey-light.txt'
+        path.write_text(path.read_text(encoding='utf-8').replace('"exitCode": 0', '"exitCode": 124'), encoding='utf-8')
+        self.mutate('commands.json', lambda value: value['journey-light'].update(exitCode=124))
+        def partial(value):
+            value['events'] = [row for row in value['events'] if row['kind'] != 'test-end']
+            value['events'][-1]['process']['exitCode'] = 124
+            value['sourceLogSHA256'] = closure.digest(path)
+        self.mutate('journey-light-observations.json', partial)
+        self.assertNotEqual(self.verify(), 0)
+        actual = self.report['uiDriverMetrics']['journey-light']
+        self.assertEqual(actual['processExitCode'], 124)
+        self.assertEqual(actual['rawDriverOpenSeconds'], [0.5])
+        self.assertTrue(actual['coverageErrors'])
+        self.assertEqual(self.report['originalPNGCount'], 54)
+
+    def test_log_recorder_preserves_actual_text_and_records_observed_boundaries(self):
+        raw = ('NOOR_NATIVE_PROCESS {"event":"start","elapsedSeconds":0}\n'
+               "Test Case '-[AtharUITests.NoorMushafClosureUITests " + closure.JOURNEY + "]' started.\n"
+               'MUSHAF_UI_DRIVER_OPEN_SECONDS 0.5\n' + ''.join(
+                   'MUSHAF_UI_DRIVER_TURN target=%d seconds=0.25\n' % target for target in (15, 16, 15, 14)) +
+               "Test Case '-[AtharUITests.NoorMushafClosureUITests " + closure.JOURNEY + "]' passed (6.0 seconds).\n"
+               'NOOR_NATIVE_PROCESS {"event":"end","elapsedSeconds":8,"exitCode":0}\n')
+        result = subprocess.run([sys.executable, str(SCRIPT), 'log', '--output-dir', str(self.folder), '--lane', 'journey-light'],
+                                input=raw, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.folder / 'journey-light.txt').read_text(encoding='utf-8'), raw)
+        actual = closure.driver_metrics(self.folder, 'journey-light')
+        self.assertEqual(actual['coverageErrors'], [])
+        self.assertEqual(actual['reportedXCTestBodySeconds'], 6)
+
+    def test_altered_log_rejects_stale_timing_observations(self):
+        fixture(self.folder)
+        path = self.folder / 'journey-light.txt'
+        path.write_text(path.read_text(encoding='utf-8') + 'CHANGED AFTER CAPTURE\n', encoding='utf-8')
+        self.assertNotEqual(self.verify(), 0)
+        self.assertTrue(any('Timing observations do not match' in error for error in self.report['errors']))
 
     def test_wrong_phone_type_cannot_be_labelled_as_small(self):
         fixture(self.folder)

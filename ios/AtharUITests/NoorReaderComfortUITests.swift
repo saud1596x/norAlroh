@@ -143,9 +143,9 @@ final class NoorReaderComfortUITests: XCTestCase {
         let margin = page.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5))
         margin.tap()
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            // A missing control must be queried by existence. Resolving
-            // isHittable on an unmounted element blocks with XCTest retries.
-            !app.buttons["reader.jump"].exists
+            // Hidden lanes retain their layout. Do not confuse a mounted,
+            // non-interactive control with a visible button.
+            !app.buttons["reader.jump"].exists || !app.buttons["reader.jump"].isHittable
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 5), .completed)
         XCTAssertFalse(app.buttons["verse.tafsir"].exists)
@@ -260,7 +260,7 @@ final class NoorReaderComfortUITests: XCTestCase {
     private func requireTools(_ visible: Bool, app: XCUIApplication) {
         let expected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let control = app.buttons["reader.jump"]
-            return visible ? control.exists && control.isHittable : !control.exists
+            return visible ? control.exists && control.isHittable : !control.exists || !control.isHittable
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 5), .completed)
         if visible {

@@ -201,7 +201,7 @@ import UIKit
             }
         }
     }
-    func testShortTapOnlyTogglesToolsAndNeverSelectsVerse() {
+    func testShortTapOnlyTogglesToolsAndNeverSelectsVerse() throws {
         let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
         var toggles = 0
         viewport.onToggleTools = { toggles += 1 }
@@ -214,9 +214,11 @@ import UIKit
         viewport.onToggleTools = nil
         viewport.handleShortTap()
         XCTAssertEqual(toggles, 2, "A missing tools callback must not fall back to selecting a verse")
-        let selection = viewport.gestureRecognizers?.compactMap { $0 as? UILongPressGestureRecognizer }.first
-        XCTAssertEqual(selection?.minimumPressDuration, 0.4)
-        XCTAssertEqual(selection?.allowableMovement, 10)
+        let namedSelections = (viewport.gestureRecognizers ?? []).filter { $0.name == "noor.mushaf.verse-selection" }
+        XCTAssertEqual(namedSelections.count, 1, "The verse-selection recognizer must have a unique stable name")
+        let selection = try XCTUnwrap(namedSelections.first as? UILongPressGestureRecognizer)
+        XCTAssertEqual(selection.minimumPressDuration, 0.4)
+        XCTAssertEqual(selection.allowableMovement, 10)
     }
     func testTajweedKeepsSourceHeadingAndBasmalaCoordinates() async throws {
         try OriginalMushafCompanion.register()
@@ -262,6 +264,9 @@ import UIKit
         for tajweed in [false, true] {
             let canvas = OriginalMushafCanvas(frame: CGRect(origin: .zero, size: OriginalMushafCanvas.pageSize))
             canvas.overrideUserInterfaceStyle = .dark
+            // A detached view does not receive an automatic layout pass before
+            // this direct configure/draw path. Update its real UIKit traits.
+            canvas.updateTraitsIfNeeded()
             canvas.tajweedEnabled = tajweed
             var captured: UIImage?
             UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
@@ -280,6 +285,61 @@ import UIKit
                 let crop = try XCTUnwrap(image.cropping(to: row.ink.integral))
                 XCTAssertGreaterThan(try brightOpaquePixels(crop), 10,
                                      "Dark \(row.kind) on row \(row.line) must remain visible even with light ambient traits")
+            }
+        }
+    }
+    func testDetachedViewportAppliesRequestedAppearanceBeforeShapingAndRefreshesColors() async throws {
+        try OriginalMushafCompanion.register()
+        let metadata = try OriginalMushafRows.load()
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self, from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let fonts = MushafFonts()
+        await fonts.load("QCF2604")
+        let source = OriginalPageData.page(604, snapshot: snapshot, rows: metadata, keys: keys)
+        for tajweed in [false, true] {
+            let viewport = OriginalMushafViewport(frame: CGRect(x: 0, y: 0, width: 366, height: 656))
+            let canvas = viewport.canvas
+            XCTAssertNil(viewport.window, "Exercise first configuration before window inheritance")
+            viewport.overrideUserInterfaceStyle = .dark
+            canvas.overrideUserInterfaceStyle = .light
+            canvas.tajweedEnabled = tajweed
+            var originalGeometry: [CGRect]?
+            for (index, style) in [UIUserInterfaceStyle.dark, .dark, .light, .dark].enumerated() {
+                let before = canvas.shapingPasses
+                // This exact boundary is called by makeUIView/updateUIView
+                // before reading the coordinator or constructing any CTLine.
+                viewport.applyAppearance(style)
+                XCTAssertNil(viewport.window)
+                XCTAssertEqual(viewport.overrideUserInterfaceStyle, style)
+                XCTAssertEqual(canvas.overrideUserInterfaceStyle, style)
+                XCTAssertEqual(viewport.traitCollection.userInterfaceStyle, style)
+                XCTAssertEqual(canvas.traitCollection.userInterfaceStyle, style)
+                canvas.configure(page: source, corpus: corpus)
+                XCTAssertTrue(canvas.renderedSuccessfully, canvas.failureReason ?? "Detached appearance")
+                XCTAssertEqual(canvas.shapingPasses, before + (index == 1 ? 0 : 1),
+                    "A changed appearance must configure its resolved colors; an unchanged one must reuse its page")
+                let geometry = canvas.rowGeometry.map(\.ink)
+                if let originalGeometry { XCTAssertEqual(geometry, originalGeometry, "Appearance must not change page geometry") }
+                else { originalGeometry = geometry }
+                var captured: UIImage?
+                let opposite = UITraitCollection(userInterfaceStyle: style == .dark ? .light : .dark)
+                opposite.performAsCurrent {
+                    let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+                    captured = UIGraphicsImageRenderer(size: canvas.bounds.size, format: format).image { context in
+                        (style == .dark ? UIColor.black : .white).setFill(); context.fill(canvas.bounds)
+                        canvas.drawInk()
+                    }
+                }
+                let image = try XCTUnwrap(captured?.cgImage)
+                var inkBounds = canvas.rowGeometry.filter { $0.kind != "ayah" }.map(\.ink)
+                let firstVerse = try XCTUnwrap(source.words.first?.verse)
+                inkBounds.append(canvas.regions.filter { $0.verse == firstVerse }.reduce(CGRect.null) { $0.union($1.rect) })
+                for bounds in inkBounds {
+                    let crop = try XCTUnwrap(image.cropping(to: bounds.integral))
+                    XCTAssertGreaterThan(try brightOpaquePixels(crop, foregroundIsDark: style == .light), 10,
+                        "Detached V\(tajweed ? 4 : 2) style \(style.rawValue) must paint contrasting header and ordinary Quran ink")
+                }
             }
         }
     }
@@ -344,7 +404,7 @@ import UIKit
         XCTAssertEqual(viewport.contentOffset.x, -viewport.contentInset.left, accuracy: 0.5, file: file, line: line)
         XCTAssertEqual(viewport.contentOffset.y, -viewport.contentInset.top, accuracy: 0.5, file: file, line: line)
     }
-    private func brightOpaquePixels(_ image: CGImage) throws -> Int {
+    private func brightOpaquePixels(_ image: CGImage, foregroundIsDark: Bool = false) throws -> Int {
         var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
         try bytes.withUnsafeMutableBytes { buffer in
             let bitmap = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
@@ -353,7 +413,10 @@ import UIKit
             context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(image.width), height: CGFloat(image.height)))
         }
         return stride(from: 0, to: bytes.count, by: 4).filter {
-            bytes[$0] > 180 && bytes[$0 + 1] > 180 && bytes[$0 + 2] > 180 && bytes[$0 + 3] > 230
+            let contrasting = foregroundIsDark
+                ? bytes[$0] < 75 && bytes[$0 + 1] < 75 && bytes[$0 + 2] < 75
+                : bytes[$0] > 180 && bytes[$0 + 1] > 180 && bytes[$0 + 2] > 180
+            return contrasting && bytes[$0 + 3] > 230
         }.count
     }
 }

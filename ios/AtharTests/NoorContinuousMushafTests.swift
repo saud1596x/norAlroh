@@ -341,6 +341,9 @@ import WhisperKit
             let referenceOrnaments = reference.ornamentBounds
             for style in [UIUserInterfaceStyle.light, .dark] {
                 canvas.overrideUserInterfaceStyle = style
+                // The off-window proof renderer bypasses UIKit's next layout
+                // pass. Apply the requested traits before resolved-color shaping.
+                canvas.updateTraitsIfNeeded()
                 canvas.configure(page: page, corpus: corpus)
                 XCTAssertEqual(canvas.traitCollection.userInterfaceStyle, style,
                     "The proof renderer must actually own the requested page appearance")

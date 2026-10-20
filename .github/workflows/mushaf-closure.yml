@@ -5,8 +5,10 @@ on:
     paths:
       - .github/workflows/mushaf-closure.yml
       - scripts/test-mushaf-closure.sh
+      - scripts/run-native-with-deadline.py
       - scripts/verify-mushaf-closure-evidence.py
       - scripts/tests/test_mushaf_closure_evidence.py
+      - scripts/tests/test_native_deadline.py
       - scripts/tests/requirements.txt
       - ios/Athar/InteractiveMushafReader.swift
       - ios/Athar/InteractiveMushafCanvas.swift
@@ -52,6 +54,7 @@ jobs:
       - name: Reject false-positive evidence before native execution
         run: |
           set -euo pipefail
+          python3 -m unittest discover -s scripts/tests -p test_native_deadline.py -v
           python3 -m unittest discover -s scripts/tests -p test_mushaf_closure_evidence.py -v
       - name: Capture actual Release reader on the requested size
         run: bash scripts/test-mushaf-closure.sh '${{ matrix.size }}'

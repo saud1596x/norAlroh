@@ -680,6 +680,7 @@ struct OriginalPageData: Equatable {
         contentSize = OriginalMushafCanvas.pageSize
         let tap = UITapGestureRecognizer(target: self, action: #selector(tappedOnViewport(_:)))
         let selection = UILongPressGestureRecognizer(target: self, action: #selector(selectedOnViewport(_:)))
+        selection.name = "noor.mushaf.verse-selection"
         selectionGesture = selection
         selection.minimumPressDuration = 0.4
         selection.allowableMovement = 10
@@ -696,6 +697,18 @@ struct OriginalPageData: Equatable {
         addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError("Programmatic view") }
+    /// SwiftUI supplies the intended appearance before this detached view has
+    /// inherited window traits. Apply it directly to both owners of drawing;
+    /// configuring Core Text must not wait for parent-to-child propagation.
+    func applyAppearance(_ style: UIUserInterfaceStyle) {
+        if overrideUserInterfaceStyle != style { overrideUserInterfaceStyle = style }
+        if canvas.overrideUserInterfaceStyle != style { canvas.overrideUserInterfaceStyle = style }
+        // iOS 17 can defer applying even explicit overrides until layout.
+        // Core Text and CPAL capture resolved colors during configure, so force
+        // this subtree's actual traits to update synchronously beforehand.
+        // https://developer.apple.com/documentation/uikit/uiview/updatetraitsifneeded()
+        updateTraitsIfNeeded()
+    }
     @objc private func dragPage(_ gesture: UIPanGestureRecognizer) {
         let distance = gesture.translation(in: self).x
         let motionAllowed = !canvas.reduceMotion && !UIAccessibility.isReduceMotionEnabled
@@ -844,8 +857,14 @@ struct OriginalMushafDrawing: UIViewRepresentable {
     let onVerse: (String?) -> Void; let onFailure: () -> Void
     var onTurn: ((Int) -> Void)? = nil
     var onToggleTools: (() -> Void)? = nil
-    func makeUIView(context: Context) -> OriginalMushafViewport { OriginalMushafViewport() }
+    func makeUIView(context: Context) -> OriginalMushafViewport {
+        let view = OriginalMushafViewport()
+        view.applyAppearance(context.environment.colorScheme == .dark ? .dark : .light)
+        return view
+    }
     func updateUIView(_ view: OriginalMushafViewport, context: Context) {
+        let appearance: UIUserInterfaceStyle = context.environment.colorScheme == .dark ? .dark : .light
+        view.applyAppearance(appearance)
         view.readingMagnification = readingMagnification
         view.pageRange = pageRange
         view.allowsManualPageTurns = allowsManualPageTurns
@@ -854,12 +873,12 @@ struct OriginalMushafDrawing: UIViewRepresentable {
         view.canvas.onVerse = onVerse; view.canvas.onFailure = onFailure; view.canvas.reduceMotion = reduceMotion
         view.onTurn = onTurn
         view.onToggleTools = onToggleTools
-        if context.coordinator.page != page.number || context.coordinator.tajweed != tajweedEnabled || context.coordinator.style != view.traitCollection.userInterfaceStyle || !view.canvas.renderedSuccessfully {
+        if context.coordinator.page != page.number || context.coordinator.tajweed != tajweedEnabled || context.coordinator.style != appearance || !view.canvas.renderedSuccessfully {
             let animate = context.coordinator.page != nil && context.coordinator.page != page.number
                 && !reduceMotion && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled
             context.coordinator.page = page.number
             context.coordinator.tajweed = tajweedEnabled
-            context.coordinator.style = view.traitCollection.userInterfaceStyle
+            context.coordinator.style = appearance
             let change = {
                 view.canvas.tajweedEnabled = self.tajweedEnabled
                 view.canvas.configure(page: self.page, corpus: self.corpus)

@@ -47,11 +47,12 @@ run_case() {
  python3 scripts/run-native-with-deadline.py "$deadline" xcodebuild test-without-building "${common[@]}" \
   -test-timeouts-enabled YES -default-test-execution-time-allowance 100 \
   -maximum-test-execution-time-allowance "$maximum" \
-  "$@" -resultBundlePath "$out/$name.xcresult" 2>&1 | tee "$out/$name.txt" || result=$?
+  "$@" -resultBundlePath "$out/$name.xcresult" 2>&1 | \
+  python3 scripts/verify-mushaf-closure-evidence.py log --output-dir "$out" --lane "$name" || result=$?
  python3 scripts/verify-mushaf-closure-evidence.py command --output-dir "$out" --lane "$name" --exit-code "$result" --deadline "$deadline"
  # End the continuous journey recording before exporting xcresult. Export
  # work is not part of the user journey and must not consume its video guard.
- if [[ "$name" == journey-* ]]; then stop_video; fi
+ if [[ "$name" == journey-* ]]; then sleep 1; stop_video; fi
  # Collection failure stays a failure; export originals even after failed tests.
  python3 scripts/verify-mushaf-closure-evidence.py collect --output-dir "$out" --lane "$name" || failed=1
  [[ "$result" == 0 ]] || failed=1
@@ -76,8 +77,14 @@ for look in light dark; do
  sleep 1
  run_case "journey-$look" 180 180 \
   -only-testing:AtharUITests/NoorMushafClosureUITests/testMeasuredReadingJourneyKeepsGeometryAndSurvivesActualCapture
- sleep 1
- stop_video
+ # Independent original-UI captures keep coverage without inflating the core
+ # journey's unchanged 180s process budget or concealing a failed lane.
+ run_case "gallery-openings-$look" 180 120 \
+  -only-testing:AtharUITests/NoorMushafClosureUITests/testReferenceOpeningAndDensePagesKeepGeometry
+ run_case "gallery-special-$look" 180 120 \
+  -only-testing:AtharUITests/NoorMushafClosureUITests/testReferenceSpecialAndFinalPagesKeepGeometry
+ run_case "controls-$look" 180 120 \
+  -only-testing:AtharUITests/NoorMushafClosureUITests/testTajweedFullscreenAndAyahActionsKeepGeometry
  run_case "large-text-$look" 180 120 \
   -only-testing:AtharUITests/NoorMushafClosureUITests/testLargeInterfaceTextKeepsControlsOutsideTheQuran
 done

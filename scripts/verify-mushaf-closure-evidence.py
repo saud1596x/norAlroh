@@ -3,6 +3,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -19,11 +20,24 @@ DEVICE_TYPES = {'small': 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-ge
                 'large': 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max'}
 JOURNEY = 'testMeasuredReadingJourneyKeepsGeometryAndSurvivesActualCapture'
 LARGE_TEXT = 'testLargeInterfaceTextKeepsControlsOutsideTheQuran'
-JOURNEY_SHOTS = tuple('closure-page-' + page + '-normal' for page in
-                      ('001', '002', '003', '187', '379', '604', '014')) + (
+GALLERY_OPENINGS = 'testReferenceOpeningAndDensePagesKeepGeometry'
+GALLERY_SPECIAL = 'testReferenceSpecialAndFinalPagesKeepGeometry'
+CONTROLS = 'testTajweedFullscreenAndAyahActionsKeepGeometry'
+JOURNEY_SHOTS = ('closure-page-014-normal',
     'closure-tools-hidden-stable', 'closure-ayah-selection-stable',
-    'closure-tajweed-on', 'closure-tajweed-off', 'closure-actual-microphone',
+    'closure-actual-microphone',
     'closure-after-finish-same-page', 'closure-restored-position')
+GALLERY_OPENING_SHOTS = tuple('closure-page-' + page + '-' + mode
+                              for page in ('001', '002', '003', '187') for mode in ('normal', 'tajweed'))
+GALLERY_SPECIAL_SHOTS = tuple('closure-page-' + page + '-' + mode
+                             for page in ('379', '501', '048', '604') for mode in ('normal', 'tajweed'))
+CONTROL_SHOTS = ('closure-tajweed-on', 'closure-tajweed-off',
+                 'closure-fullscreen-restored-actions', 'closure-six-ayah-actions')
+UI_METHODS = {'journey': JOURNEY, 'gallery-openings': GALLERY_OPENINGS,
+              'gallery-special': GALLERY_SPECIAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
+UI_SHOTS = {'journey': JOURNEY_SHOTS, 'gallery-openings': GALLERY_OPENING_SHOTS,
+            'gallery-special': GALLERY_SPECIAL_SHOTS, 'controls': CONTROL_SHOTS,
+            'large-text': ('closure-large-interface-text',)}
 
 
 def require(condition, message):
@@ -49,14 +63,17 @@ def digest(path):
 
 def lanes(size):
     return (['geometry', 'reader-library'] if size == 'medium' else []) + [
-        prefix + '-' + look for look in ('light', 'dark') for prefix in ('journey', 'large-text')]
+        prefix + '-' + look for look in ('light', 'dark') for prefix in UI_METHODS]
+
+
+def ui_prefix(lane):
+    return next((prefix for prefix in UI_METHODS if lane in (prefix + '-light', prefix + '-dark')), None)
 
 
 def selectors(lane):
-    if lane.startswith('journey-'):
-        return ['NoorMushafClosureUITests/' + JOURNEY]
-    if lane.startswith('large-text-'):
-        return ['NoorMushafClosureUITests/' + LARGE_TEXT]
+    prefix = ui_prefix(lane)
+    if prefix:
+        return ['NoorMushafClosureUITests/' + UI_METHODS[prefix]]
     classes = ('InteractiveMushafTests', 'MushafViewportTests') if lane == 'geometry' else ('NoorReciterLibraryTests',)
     bundle = 'AtharTests' if lane == 'geometry' else 'AtharUITests'
     result = []
@@ -138,6 +155,89 @@ def collect(folder, lane):
     all_receipts[lane] = receipt
     write(path, all_receipts)
     return 0 if all(receipt[key] == 0 for key in ('summaryExitCode', 'testsExitCode', 'attachmentsExitCode')) else 1
+
+
+def capture_log(folder, lane):
+    """Preserve stdout verbatim and timestamp observation, never producer success."""
+    started = time.monotonic()
+    events = []
+    with (folder / (lane + '.txt')).open('w', encoding='utf-8', newline='') as log:
+        for line in sys.stdin:
+            elapsed = time.monotonic() - started
+            log.write(line)
+            log.flush()
+            print(line, end='', flush=True)
+            if line.startswith('NOOR_NATIVE_PROCESS '):
+                events.append({'kind': 'native-process', 'observerSeconds': elapsed,
+                               'process': json.loads(line[len('NOOR_NATIVE_PROCESS '):])})
+            elif re.search(r"Test Case '.+' started\.", line):
+                events.append({'kind': 'test-start', 'observerSeconds': elapsed})
+            else:
+                result = re.search(r"Test Case '.+' (passed|failed) \(([\d.]+) seconds\)\.", line)
+                if result:
+                    events.append({'kind': 'test-end', 'observerSeconds': elapsed,
+                                   'result': result[1], 'reportedTestSeconds': float(result[2])})
+    write(folder / (lane + '-observations.json'), {
+        'schemaVersion': 1, 'lane': lane,
+        'sourceLogSHA256': digest(folder / (lane + '.txt')),
+        'scope': 'CI_STDOUT_RECEIPT_CLOCK_ONLY_NOT_APP_ANIMATION_OR_ASR_OR_PHYSICAL_DEVICE_LATENCY',
+        'events': events})
+    return 0
+
+
+def driver_metrics(folder, lane):
+    lines = (folder / (lane + '.txt')).read_text(encoding='utf-8').splitlines()
+    opens, turns = [], []
+    for line in lines:
+        match = re.search(r'\bMUSHAF_UI_DRIVER_OPEN_SECONDS\s+([^\s]+)', line)
+        if match:
+            value = float(match[1])
+            require(math.isfinite(value) and value >= 0, 'Invalid raw driver opening measurement')
+            opens.append(value)
+        match = re.search(r'\bMUSHAF_UI_DRIVER_TURN\s+target=(\d+)\s+seconds=([^\s]+)', line)
+        if match:
+            value = float(match[2])
+            require(math.isfinite(value) and value >= 0, 'Invalid raw driver turn measurement')
+            turns.append({'target': int(match[1]), 'seconds': value})
+    observations = read(folder / (lane + '-observations.json'))
+    require(observations.get('schemaVersion') == 1 and observations.get('lane') == lane,
+            'Missing or stale command observation record')
+    require(observations.get('sourceLogSHA256') == digest(folder / (lane + '.txt')),
+            'Timing observations do not match the original command log')
+    events = observations.get('events')
+    require(isinstance(events, list), 'Missing command observation events')
+    native_start = [row for row in events if row.get('kind') == 'native-process' and row.get('process', {}).get('event') == 'start']
+    native_end = [row for row in events if row.get('kind') == 'native-process' and row.get('process', {}).get('event') == 'end']
+    starts = [row for row in events if row.get('kind') == 'test-start']
+    ends = [row for row in events if row.get('kind') == 'test-end']
+    coverage_errors = []
+    if len(native_start) != 1 or len(native_end) != 1:
+        coverage_errors.append('Missing actual process clock observations')
+    if ui_prefix(lane) and (len(starts) != 1 or len(ends) != 1):
+        coverage_errors.append('UI test did not produce one start/end observation')
+    for row in events:
+        require(type(row.get('observerSeconds')) in (int, float) and math.isfinite(row['observerSeconds'])
+                and row['observerSeconds'] >= 0, 'Invalid observed process clock')
+    require(all(left['observerSeconds'] <= right['observerSeconds'] for left, right in zip(events, events[1:])),
+            'Observed process clock moved backwards')
+    result = {'scope': observations.get('scope'), 'lane': lane,
+              'nativeProcessSeconds': native_end[0]['process'].get('elapsedSeconds') if len(native_end) == 1 else None,
+              'processExitCode': native_end[0]['process'].get('exitCode') if len(native_end) == 1 else None,
+              'rawDriverOpenSeconds': opens, 'rawDriverPageTurns': turns,
+              'coverageErrors': coverage_errors,
+              'physicalDeviceLatency': 'NOT_MEASURED', 'ASRLatency': 'NOT_MEASURED',
+              'p95': 'NOT_ESTIMATED_FROM_SPARSE_DRIVER_SAMPLES'}
+    if len(starts) == 1 and len(native_start) == 1:
+        result['observedStartupSeconds'] = starts[0]['observerSeconds'] - native_start[0]['observerSeconds']
+    if len(ends) == 1:
+        result['reportedXCTestBodySeconds'] = ends[0].get('reportedTestSeconds')
+        result['reportedXCTestResult'] = ends[0].get('result')
+    if len(ends) == 1 and len(native_end) == 1:
+        result['observedPostTestSeconds'] = native_end[0]['observerSeconds'] - ends[0]['observerSeconds']
+    if ui_prefix(lane) == 'journey':
+        if len(opens) != 1 or [row['target'] for row in turns] != [15, 16, 15, 14]:
+            coverage_errors.append('Core journey did not retain its one opening and four actual page-turn measurements')
+    return result
 
 
 def record_video(folder, look, device):
@@ -362,7 +462,7 @@ def contact_sheets(folder, images):
 
 def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, video_probe=inspect_video):
     folder.mkdir(parents=True, exist_ok=True)
-    errors, images, results, videos = [], [], {}, {}
+    errors, images, results, videos, metrics = [], [], {}, {}, {}
 
     def attempt(label, function):
         try:
@@ -411,10 +511,15 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
         result = attempt(lane + ' xcresult', lambda lane=lane: validate_tests(folder, lane, selectors(lane), collection))
         if result:
             results[lane] = result
+        timing = attempt(lane + ' raw timing', lambda lane=lane: driver_metrics(folder, lane))
+        if timing:
+            metrics[lane] = timing
+            errors.extend(lane + ' raw timing: ' + error for error in timing['coverageErrors'])
         captures = attempt(lane + ' screenshots', lambda lane=lane: attachment_index(folder, lane, image_probe)) or []
         images.extend(captures)
-        if lane.startswith(('journey-', 'large-text-')):
-            required = JOURNEY_SHOTS if lane.startswith('journey-') else ('closure-large-interface-text',)
+        prefix = ui_prefix(lane)
+        if prefix:
+            required = UI_SHOTS[prefix]
             for name in required:
                 matches = [row for row in captures if re.search(r'(?:^|/)' + re.escape(name) + r'(?:\b|_)', row['name'])]
                 if len(matches) != 1:
@@ -442,10 +547,13 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
     write(folder / 'attachment-map.json', {'sourceCommit': commit, 'originalPNGCount': len(images),
                                           'baselinePageCount': len(pages), 'images': images,
                                           'visualApproval': 'PENDING_HUMAN_REVIEW'})
+    write(folder / 'ui-driver-metrics.json', {'sourceCommit': commit, 'lanes': metrics,
+                                             'scope': 'RAW_UI_DRIVER_AND_CI_PROCESS_TIMING_ONLY_NOT_ASR_OR_PHYSICAL_DEVICE_P95'})
     sheets = attempt('contact sheets', lambda: contact_sheets(folder, images)) if make_sheets else []
     report = {'status': 'NATIVE_MUSHAF_EVIDENCE_COMPLETE_REVIEW_PENDING' if not errors else 'FAILED_INCOMPLETE_MUSHAF_EVIDENCE',
               'createdAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'sourceCommit': commit, 'actualContext': context, 'testResults': results,
+              'uiDriverMetrics': metrics,
               'originalPNGCount': len(images), 'baselinePageCount': len(pages), 'videos': videos,
               'contactSheets': sheets or [], 'errors': errors, 'visualReview': 'PENDING_HUMAN_REVIEW',
               'runtimeComparison': ('REFERENCE_IOS26_2_AVAILABLE_COMPARISON_STILL_REQUIRES_REVIEW'
@@ -461,7 +569,7 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('select', 'command', 'collect', 'record', 'verify'))
+    parser.add_argument('operation', choices=('select', 'command', 'collect', 'log', 'record', 'verify'))
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--expected-size', choices=tuple(DEVICES))
     parser.add_argument('--expected-commit')
@@ -481,6 +589,9 @@ def main():
     elif args.operation == 'collect':
         require(args.lane, 'Exact lane required')
         return collect(args.output_dir, args.lane)
+    elif args.operation == 'log':
+        require(args.lane, 'Exact lane required')
+        return capture_log(args.output_dir, args.lane)
     elif args.operation == 'record':
         require(args.look and args.device, 'Appearance and actual device required')
         return record_video(args.output_dir, args.look, args.device)
