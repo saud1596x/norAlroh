@@ -7,11 +7,13 @@ final class NoorHomeFlowUITests: XCTestCase {
     }
     func testFourTabsAndVisibleOptionalAccountSurviveRelaunch() {
         let app = XCUIApplication(); launchNoorApp(app)
-        for title in ["اليوم", "المصحف", "الصلاة", "الأذكار"] {
+        for title in ["اليوم", "المصحف", "رحلتي", "الأذكار"] {
             XCTAssertTrue(app.tabBars.buttons[title].exists, title)
         }
         XCTAssertEqual(app.tabBars.buttons.count, 4)
         XCTAssertFalse(app.tabBars.buttons["الحفظ"].exists)
+        let today = XCTAttachment(screenshot: app.screenshot())
+        today.name = "today-production-najdi"; today.lifetime = .keepAlways; add(today)
         let account = app.buttons["home.account"]
         XCTAssertTrue(account.waitForExistence(timeout: 10)); XCTAssertTrue(account.isHittable)
         XCTAssertGreaterThanOrEqual(account.frame.height, 44)

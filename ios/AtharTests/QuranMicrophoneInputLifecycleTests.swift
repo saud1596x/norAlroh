@@ -1,5 +1,6 @@
 import XCTest
 import AVFoundation
+import Combine
 import WhisperKit
 @testable import Athar
 
@@ -45,17 +46,163 @@ final class QuranMicrophoneInputLifecycleTests: XCTestCase {
         XCTAssertTrue(controller.revealed.isEmpty)
         await controller.finish()
     }
+    @MainActor func testMeterBurstKeepsOnlyNewestLevelWithoutQueuingReaderUpdates() async throws {
+        // Injected level callbacks with no audio: this proves bounded UI
+        // feedback scheduling, never microphone capture or ASR accuracy.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var capture: LateCallbackCapture?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, failure in
+                let value = LateCallbackCapture(writer: writer, failure: failure)
+                capture = value; return value
+            }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot,
+                               corpus: try XCTUnwrap(QuranResources.corpus))
+        guard let input = capture else {
+            await controller.finish()
+            XCTFail("Injected meter capture did not start"); return
+        }
+        var updates: [Float?] = []
+        let observation = controller.$microphonePeak.dropFirst().sink { updates.append($0) }
+        // MainActor cannot consume until this burst finishes. Before the fix,
+        // every callback queued a separate published reader update.
+        for index in 0..<10_000 { input.level?(Float(index) / 20_000) }
+        input.level?(0.7)
+        let deadline = Date().addingTimeInterval(3)
+        while controller.microphonePeak != 0.7 && Date() < deadline { await Task.yield() }
+        XCTAssertEqual(controller.microphonePeak, 0.7)
+        XCTAssertEqual(updates, [0.7], "Intermediate meter samples must not form a UI backlog")
+        XCTAssertTrue(controller.revealed.isEmpty)
+        XCTAssertNil(controller.activeWordID)
+        XCTAssertEqual(controller.record?.takes.last?.frames, 0)
+        withExtendedLifetime(observation) {}
+        await controller.finish()
+    }
+    @MainActor func testFailedOldStartCannotClearSuccessorWhileItsOwnCleanupIsDelayed() async throws {
+        // Injected lifecycle ordering only. The old take's first stop waits;
+        // finish can close it with a second stop, then a successor starts before
+        // the obsolete start caller resumes. No microphone/ASR claim.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let gate = FailedStartCleanupGate()
+        let successorStopped = expectation(description: "Successor keeps its own microphone until pause")
+        var created = 0
+        var successor: LateCallbackCapture?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            makeCapture: { writer, failure in
+                created += 1
+                if created == 1 { return FailedStartCleanupCapture(writer: writer, gate: gate) }
+                let input = LateCallbackCapture(writer: writer, failure: failure)
+                input.onStop = { successorStopped.fulfill() }
+                successor = input; return input
+            }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let oldStart = Task { await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus) }
+        let waitingBy = Date().addingTimeInterval(8)
+        while !(await gate.waiting) && Date() < waitingBy { await Task.yield() }
+        guard await gate.waiting else {
+            await gate.release(); await controller.finish(); await oldStart.value
+            XCTFail("Failed startup did not enter its injected cleanup barrier"); return
+        }
+        await controller.finish()
+        XCTAssertEqual(controller.state, .stopped)
+        await controller.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus)
+        guard let input = successor else {
+            await gate.release(); await oldStart.value; await controller.finish()
+            XCTFail("Successor microphone did not open"); return
+        }
+        let successorID = controller.record?.takes.last?.id
+        await gate.release(); await oldStart.value
+        XCTAssertEqual(controller.state, .listening)
+        XCTAssertEqual(controller.record?.takes.last?.id, successorID)
+        input.level?(0.7)
+        let levelBy = Date().addingTimeInterval(3)
+        while controller.microphonePeak != 0.7 && Date() < levelBy { await Task.yield() }
+        XCTAssertEqual(controller.microphonePeak, 0.7)
+        await controller.pause()
+        await fulfillment(of: [successorStopped], timeout: 3)
+        XCTAssertEqual(controller.record?.takes.last?.closed, true,
+                       "An obsolete cleanup must not clear the successor capture before its actual pause")
+        XCTAssertTrue(controller.revealed.isEmpty)
+        await controller.finish()
+    }
+    @MainActor func testFinishedMeterReleasesControllerWhileOldInputCallbacksRemainRetained() async throws {
+        // Exercise an idle iterator and a consumer throttling immediately after
+        // a published level. Await actual conditions, never a fixed sleep.
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        for sendLevel in [false, true] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            var retainedInput: LateCallbackCapture?
+            var controller: QuranRecitationController? = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+                makeCapture: { writer, failure in
+                    let input = LateCallbackCapture(writer: writer, failure: failure)
+                    retainedInput = input; return input
+                }, setSessionActive: { _ in })
+            weak var releasedController = controller
+            await controller?.start(keys: ["112:1"], page: 604, snapshot: snapshot, corpus: corpus)
+            XCTAssertEqual(controller?.state, .listening)
+            if sendLevel {
+                retainedInput?.level?(0.6)
+                let levelBy = Date().addingTimeInterval(3)
+                while controller?.microphonePeak != 0.6 && Date() < levelBy { await Task.yield() }
+                XCTAssertEqual(controller?.microphonePeak, 0.6)
+            }
+            await controller?.finish()
+            XCTAssertEqual(controller?.state, .stopped)
+            controller = nil
+            let releasedBy = Date().addingTimeInterval(3)
+            while releasedController != nil && Date() < releasedBy { await Task.yield() }
+            XCTAssertNil(releasedController, "A stopped stream cannot retain its controller (sent level: \(sendLevel))")
+            retainedInput?.level?(0.9)
+            retainedInput?.failure(QuranAudioInputFailure.configurationChanged)
+        }
+    }
+    private actor FailedStartCleanupGate {
+        private var reply: CheckedContinuation<Void, Never>?
+        private var stops = 0
+        private var released = false
+        private(set) var waiting = false
+        func beforeStop() async {
+            stops += 1
+            guard stops == 1 else { return }
+            waiting = true
+            guard !released else { return }
+            await withCheckedContinuation { reply = $0 }
+        }
+        func release() { released = true; reply?.resume(); reply = nil }
+    }
+    private final class FailedStartCleanupCapture: QuranAudioCapture {
+        private enum Failure: Error { case startFailed }
+        private let writer: QuranPCMWriter
+        private let gate: FailedStartCleanupGate
+        init(writer: QuranPCMWriter, gate: FailedStartCleanupGate) { self.writer = writer; self.gate = gate }
+        func start() throws { throw Failure.startFailed }
+        func stop() async -> Result<Int64, Error> {
+            await gate.beforeStop()
+            return await withCheckedContinuation { reply in writer.finish { reply.resume(returning: $0) } }
+        }
+    }
     private final class LateCallbackCapture: QuranAudioCapture {
         let writer: QuranPCMWriter
         let failure: @Sendable (Error) -> Void
         var level: (@Sendable (Float) -> Void)?
+        var onStop: (@Sendable () -> Void)?
         init(writer: QuranPCMWriter, failure: @escaping @Sendable (Error) -> Void) {
             self.writer = writer; self.failure = failure
         }
         func start() throws {}
         func observeLevel(_ observer: @escaping @Sendable (Float) -> Void) { level = observer }
         func stop() async -> Result<Int64, Error> {
-            await withCheckedContinuation { reply in writer.finish { reply.resume(returning: $0) } }
+            onStop?()
+            return await withCheckedContinuation { reply in writer.finish { reply.resume(returning: $0) } }
         }
     }
 

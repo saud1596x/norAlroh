@@ -9,9 +9,20 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from account_privacy import ACCOUNT_DATA_TYPES
+from account_privacy import ACCOUNT_DATA_TYPES, configure
 
 class AccountPrivacyTests(unittest.TestCase):
+    def test_actual_timer_and_cache_space_reasons_survive_both_modes(self):
+        manifest = plistlib.loads((ROOT / 'ios/Athar/PrivacyInfo.xcprivacy').read_bytes())
+        for accounts in [False, True]:
+            with self.subTest(accounts=accounts):
+                reasons = {entry['NSPrivacyAccessedAPIType']: entry['NSPrivacyAccessedAPITypeReasons']
+                           for entry in configure(manifest, accounts)['NSPrivacyAccessedAPITypes']}
+                self.assertIn('35F9.1', reasons.get('NSPrivacyAccessedAPICategorySystemBootTime', []))
+                self.assertIn('E174.1', reasons.get('NSPrivacyAccessedAPICategoryDiskSpace', []))
+                self.assertIn('CA92.1', reasons['NSPrivacyAccessedAPICategoryUserDefaults'])
+                self.assertIn('C617.1', reasons['NSPrivacyAccessedAPICategoryFileTimestamp'])
+
     def test_generation_check_and_local_rollback_preserve_api_reasons(self):
         with tempfile.TemporaryDirectory() as folder:
             root = pathlib.Path(folder)

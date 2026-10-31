@@ -4,6 +4,8 @@ import SwiftUI
 struct NoorLegalSection: Decodable, Identifiable {
     let title: String
     let text: String
+    let sourceURL: URL?
+    let sourceLabel: String?
     var id: String { title }
 }
 
@@ -70,6 +72,9 @@ struct NoorLegalDocumentView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(section.title).font(.headline).accessibilityAddTraits(.isHeader)
                             Text(section.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                            if let sourceURL = section.sourceURL, let sourceLabel = section.sourceLabel {
+                                Link(sourceLabel, destination: sourceURL).frame(minHeight: 44)
+                            }
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let url = content.contact.emailURL {

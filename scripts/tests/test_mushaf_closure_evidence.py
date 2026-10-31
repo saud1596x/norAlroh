@@ -3,6 +3,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -54,7 +55,7 @@ def fixture(folder, size='small'):
     synthetic_png(folder / 'actual-display.png', (750, 1334))
     commands, collection = {}, {}
     for lane in ['build'] + expected:
-        deadline = 1200 if lane == 'build' else 600 if lane == 'geometry' else 180
+        deadline = 1200 if lane == 'build' else 600 if lane in ('geometry', 'recitation-contracts', 'service-contracts', 'navigation-contracts') else 180
         commands[lane] = {'exitCode': 0, 'deadlineSeconds': deadline, 'log': lane + '.txt'}
         stage = 'BUILD' if lane == 'build' else 'TEST'
         raw_log = ''.join('NOOR_NATIVE_PROCESS ' + json.dumps(
@@ -66,12 +67,14 @@ def fixture(folder, size='small'):
         (folder / (lane + '.txt')).write_text(raw_log, encoding='utf-8')
         events = [{'kind': 'native-process', 'observerSeconds': 0,
                    'process': {'event': 'start', 'elapsedSeconds': 0}}]
-        if closure.ui_prefix(lane) or lane in ('reader-library', 'ward-entry'):
-            events.extend([{'kind': 'test-start', 'observerSeconds': 1},
+        if closure.ui_prefix(lane) or lane in ('reader-library', 'ward-entry', 'navigation-contracts'):
+            for _ in closure.selectors(lane):
+                events.extend([{'kind': 'test-start', 'observerSeconds': 1},
                            {'kind': 'test-end', 'observerSeconds': 7,
                             'reportedTestSeconds': 6, 'result': 'passed'}])
         events.append({'kind': 'native-process', 'observerSeconds': 8,
                        'process': {'event': 'end', 'elapsedSeconds': 8, 'exitCode': 0}})
+        events.sort(key=lambda row: row['observerSeconds'])
         write(folder / (lane + '-observations.json'), {
             'schemaVersion': 1, 'lane': lane, 'events': events,
             'sourceLogSHA256': closure.digest(folder / (lane + '.txt')),
@@ -87,9 +90,11 @@ def fixture(folder, size='small'):
         collection[lane] = {'summaryExitCode': 0, 'testsExitCode': 0, 'attachmentsExitCode': 0}
         attachments = folder / (lane + '-attachments')
         attachments.mkdir()
-        names = (list(closure.UI_SHOTS[closure.ui_prefix(lane)]) if closure.ui_prefix(lane) else
+        names = ([] if lane in ('recitation-contracts', 'service-contracts') else
+                 list(closure.UI_SHOTS[closure.ui_prefix(lane)]) if closure.ui_prefix(lane) else
                  ['QCF-V2-shaped-page-%03d' % page for page in range(1, 605)] if lane == 'geometry' else
-                 list(closure.WARD_ENTRY_SHOTS) if lane == 'ward-entry' else list(closure.READER_LIBRARY_SHOTS))
+                 list(closure.WARD_ENTRY_SHOTS) if lane == 'ward-entry' else
+                 list(closure.NAVIGATION_SHOTS) if lane == 'navigation-contracts' else list(closure.READER_LIBRARY_SHOTS))
         records = []
         for index, name in enumerate(names):
             path = attachments / ('synthetic-%03d.png' % index)
@@ -98,6 +103,23 @@ def fixture(folder, size='small'):
         write(attachments / 'manifest.json', [{'testName': 'SYNTHETIC VALIDATOR FIXTURE ONLY', 'attachments': records}])
     write(folder / 'commands.json', commands)
     write(folder / 'collection.json', collection)
+    write(folder / 'producer-commands.json', {'build': commands['build']})
+    (folder / 'project-generation.txt').write_text('SYNTHETIC PROJECT GENERATION FIXTURE\n')
+    manifest = {'schemaVersion': 1, 'sourceCommit': COMMIT, 'producerRunID': '42',
+                'configuration': 'Release', 'project': 'project-accounts.yml',
+                'environment': {'xcode': context['xcode'], 'architecture': 'arm64',
+                                'developerDirectory': '/Applications/Xcode_SYNTHETIC.app/Contents/Developer',
+                                'sdkVersion': '26.3', 'sdkBuildVersion': 'SYNTHETIC', 'sdkPath': '/SYNTHETIC/SDK'},
+                'archiveSHA256': 'a' * 64, 'xctestrun': 'Build/Products/SYNTHETIC.xctestrun',
+                'files': {'producer/' + name: {'sha256': closure.digest(folder / local)}
+                          for name, local in [('commands.json', 'producer-commands.json'),
+                                              ('build.txt', 'build.txt'),
+                                              ('project-generation.txt', 'project-generation.txt')]}}
+    manifest['files'][manifest['xctestrun']] = {'sha256': 'f' * 64, 'kind': 'file', 'mode': 0o644, 'size': 1}
+    write(folder / 'manifest.json', manifest)
+    write(folder / 'native-product-binding.json', {'producerRunID': '42',
+          'manifestSHA256': closure.digest(folder / 'manifest.json'), 'archiveSHA256': 'a' * 64,
+          'verifiedBeforeTesting': True, 'verifiedAfterTesting': True})
     for look in ('light', 'dark'):
         (folder / ('appearance-' + look + '.txt')).write_text(look + '\n', encoding='utf-8')
         video = folder / ('journey-' + look + '.mp4')
@@ -120,7 +142,7 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.temporary.cleanup()
 
     def verify(self, size='small'):
-        with contextlib.redirect_stdout(io.StringIO()):
+        with contextlib.redirect_stdout(io.StringIO()), patch.dict(os.environ, {'GITHUB_ACTIONS': 'false'}):
             result = closure.verify(self.folder, size, COMMIT, video_probe=fake_video_probe)
         self.report = json.loads((self.folder / 'report.json').read_text(encoding='utf-8'))
         return result
@@ -140,10 +162,85 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.assertEqual(self.report['physicalDeviceTesting'], 'NOT_VERIFIED')
         self.assertEqual(self.report['originalPNGCount'], 54)
 
+    def test_missing_shared_product_binding_cannot_pass(self):
+        fixture(self.folder)
+        (self.folder / 'native-product-binding.json').unlink()
+        self.assertNotEqual(self.verify(), 0)
+
+    def test_modified_producer_log_cannot_pass(self):
+        fixture(self.folder)
+        with (self.folder / 'build.txt').open('a') as log:
+            log.write('modified after producer\n')
+        self.assertNotEqual(self.verify(), 0)
+        self.assertTrue(any('producer receipt changed' in error for error in self.report['errors']))
+
+    def test_missing_post_test_product_integrity_check_cannot_pass(self):
+        fixture(self.folder)
+        self.mutate('native-product-binding.json', lambda value: value.update(verifiedAfterTesting=False))
+        self.assertNotEqual(self.verify(), 0)
+
+    def test_ci_requires_hashes_from_needs_build_not_only_self_claimed_manifest(self):
+        fixture(self.folder)
+        with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_RUN_ID': '42',
+                                    'NATIVE_MANIFEST_SHA256': '0' * 64,
+                                    'NATIVE_ARCHIVE_SHA256': 'a' * 64}), contextlib.redirect_stdout(io.StringIO()):
+            self.assertNotEqual(closure.verify(self.folder, 'small', COMMIT,
+                                             video_probe=fake_video_probe), 0)
+
     def test_medium_requires_all_604_original_baseline_pngs(self):
         fixture(self.folder, 'medium')
         self.assertEqual(self.verify('medium'), 0, self.report['errors'])
         self.assertEqual(self.report['baselinePageCount'], 604)
+
+    def test_medium_requires_exact_recitation_contracts_and_no_synthetic_ui_images(self):
+        fixture(self.folder, 'medium')
+        self.assertEqual(self.verify('medium'), 0, self.report['errors'])
+        result = self.report['testResults']['recitation-contracts']
+        self.assertEqual(result['passedTests'], len(closure.selectors('recitation-contracts')))
+        self.assertFalse(list((self.folder / 'recitation-contracts-attachments').glob('*.png')))
+        self.mutate('recitation-contracts-tests.json', lambda value: value['testNodes'].pop())
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_missing_recitation_lane_is_not_replaced_by_reader_geometry(self):
+        fixture(self.folder, 'medium')
+        self.mutate('commands.json', lambda value: value.pop('recitation-contracts'))
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_fixed_policy_and_widget_contracts_are_mandatory_without_ui_claims(self):
+        fixture(self.folder, 'medium')
+        self.assertEqual(self.verify('medium'), 0, self.report['errors'])
+        result = self.report['testResults']['service-contracts']
+        self.assertEqual(result['passedTests'], len(closure.selectors('service-contracts')))
+        self.assertFalse(list((self.folder / 'service-contracts-attachments').glob('*.png')))
+        self.mutate('service-contracts-tests.json', lambda value: value['testNodes'].pop())
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_skipped_widget_policy_lane_is_not_success(self):
+        fixture(self.folder, 'medium')
+        self.mutate('service-contracts-summary.json', lambda value: value.update(skippedTests=1))
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_missing_widget_policy_lane_is_not_success(self):
+        fixture(self.folder, 'medium')
+        self.mutate('commands.json', lambda value: value.pop('service-contracts'))
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_navigation_requires_each_actual_test_clock(self):
+        fixture(self.folder, 'medium')
+        self.assertEqual(self.verify('medium'), 0, self.report['errors'])
+        self.assertEqual(self.report['testResults']['navigation-contracts']['passedTests'], 4)
+        self.mutate('navigation-contracts-observations.json', lambda value: value['events'].pop(1))
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_navigation_requires_its_own_actual_screens(self):
+        fixture(self.folder, 'medium')
+        self.mutate('navigation-contracts-attachments/manifest.json', lambda value: value[0]['attachments'].pop())
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_skipped_recitation_contract_is_not_success(self):
+        fixture(self.folder, 'medium')
+        self.mutate('recitation-contracts-summary.json', lambda value: value.update(skippedTests=1))
+        self.assertNotEqual(self.verify('medium'), 0)
 
     def test_missing_baseline_page_is_not_replaced_by_gallery_count(self):
         fixture(self.folder, 'medium')

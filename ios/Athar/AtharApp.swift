@@ -78,6 +78,9 @@ struct AtharApp: App {
                     Task { @MainActor in publishWidgets() }
                 }
                 .onChange(of: widgetPage) { _, page in NoorWidgetBridge.publish(data: store.data, memorization: memorization, page: page, khatmah: khatmah, salawat: salawat); account.captureLocalChanges() }
+        // A second confirmed city can remain `true` while its trust marker and
+        // coordinates change. Republish that transition too; Bridge diffs kinds.
+        .onReceive(notifications.$locationIsTrusted) { _ in publishWidgets() }
                 .tint(Theme.mint)
                 .transaction { if reducedMotion || store.data.lowMotion { $0.disablesAnimations = true } }
                 .onChange(of: store.data.prayerScheduleKey, initial: true) { _, _ in
@@ -168,8 +171,8 @@ struct RootView: View {
             NavigationStack { QuranView().settingsAccess { settings = true } }
                 .tabItem { Label("المصحف", systemImage: "book") }
                 .tag(1)
-            NavigationStack { PrayerView().settingsAccess { settings = true } }
-                .tabItem { Label("الصلاة", systemImage: "sun.horizon") }
+            NavigationStack { NoorMyJourneyView().settingsAccess { settings = true } }
+                .tabItem { Label("رحلتي", systemImage: "book.closed") }
                 .tag(2)
             NavigationStack { AdhkarView().settingsAccess { settings = true } }
                 .tabItem { Label("الأذكار", systemImage: "sun.max") }
@@ -180,11 +183,11 @@ struct RootView: View {
             guard let destination = widgetRouter.destination else { return }
             settings = false
             switch destination.host {
-            case "prayers": selectedTab = 2
+            case "prayers": selectedTab = 0; widgetDestination = destination
             case "dhikr": selectedTab = 3
             case "reading": selectedTab = 1; widgetDestination = destination
-            case "review", "ward": selectedTab = 1; widgetDestination = destination
-            case "khatmah": selectedTab = 0; widgetDestination = destination
+            case "review", "ward": selectedTab = 2; widgetDestination = destination
+            case "khatmah": selectedTab = 2; widgetDestination = destination
             case "salawat", "dua", "morning", "evening": selectedTab = 3; widgetDestination = destination
             default: selectedTab = 1
             }
@@ -194,13 +197,14 @@ struct RootView: View {
             if destination.host == "reading" {
                 InteractiveMushafReader(chapter: 1, ayah: 1, initialPage: destination.page)
             } else if ["review", "ward"].contains(destination.host) {
-                InteractiveMushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from,
-                    initialPage: nil)
+                widgetWard(destination)
             } else {
                 NavigationStack {
                     Group {
-                        if destination.host == "khatmah" { KhatmahJourneyView() }
+                        if destination.host == "prayers" { PrayerView() }
+                        else if destination.host == "khatmah" { KhatmahJourneyView() }
                         else if destination.host == "salawat" { NoorSalawatView() }
+                        else if destination.host == "dua", let id = destination.duaID { NoorWidgetDuaReader(duaID: id) }
                         else if destination.host == "dua" { AdhkarView(initialSearch: "دعاء") }
                         else if ["morning", "evening"].contains(destination.host), let content = AdhkarContent.shared,
                                 let period = DhikrDayPeriod(rawValue: destination.host) {
@@ -222,6 +226,31 @@ struct RootView: View {
             get: { store.error != nil }, set: { if !$0 { store.error = nil } }
         )) { Button("حسنًا") { store.error = nil } } message: {
             Text(store.error ?? "")
+        }
+    }
+    @ViewBuilder private func widgetWard(_ destination: NoorWidgetRouter.Destination) -> some View {
+        if let id = destination.wardID, let planID = NoorWidgetLink.khatmahPlanID(from: id),
+           let plan = KhatmahStore.shared.active, planID == plan.id,
+           let scope = plan.readingScope(on: .now),
+           let requestedPage = destination.page, scope.pages.contains(requestedPage) {
+            let resume = scope.resumePage(plan.stoppedAt)
+            let stop = plan.stoppedAt
+            InteractiveMushafReader(chapter: stop?.page == resume ? stop?.chapter ?? 1 : 1,
+                ayah: stop?.page == resume ? stop?.ayah ?? 1 : 1,
+                initialPage: resume, readingScope: scope)
+        } else if destination.wardID == nil || destination.wardID == "memorization:\(memorization.plan.chapter):\(memorization.plan.from):\(memorization.plan.to)" {
+            InteractiveMushafReader(chapter: memorization.plan.chapter, ayah: memorization.plan.from, initialPage: nil)
+        } else {
+            NavigationStack {
+                ContentUnavailableView {
+                    Label("وردك تغيّر", systemImage: "book.closed")
+                } description: {
+                    Text("افتح رحلتك للاطلاع على وردك الحالي أو ما أنجزته اليوم.")
+                } actions: {
+                    NavigationLink("افتح رحلتك") { NoorMyJourneyView() }
+                }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { widgetDestination = nil } } }
+            }
         }
     }
 }

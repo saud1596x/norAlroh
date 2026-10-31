@@ -132,8 +132,6 @@ struct KhatmahSetupView: View {
     @State private var daily = 20
     @State private var deadline = Calendar.current.date(byAdding: .day, value: 29, to: .now)!
     @State private var weekdays = Set(1...7)
-    @State private var reminder = false
-    @State private var time = Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: .now)!
     @State private var preview: KhatmahPlan?
     @State private var error: String?
     private let names = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
@@ -159,15 +157,6 @@ struct KhatmahSetupView: View {
                 }
                 }
             }
-            Section("تذكير اختياري") {
-                Toggle("ذكّرني بالورد", isOn: $reminder)
-                if reminder {
-                    DatePicker("الوقت", selection: $time, displayedComponents: .hourAndMinute)
-                        .environment(\.locale, Locale(identifier: "en_GB"))
-                        .environment(\.timeZone, existing?.calendar.timeZone ?? .current)
-                }
-                Text("يمكنك القراءة دون حساب أو تذكيرات. يُجدّد التذكير عند فتح التطبيق، ضمن حدود iOS.").font(.caption)
-            }
             if let error { Section { Text(error).foregroundStyle(.red) } }
             Section { Button("معاينة الخطة") { prepare() }.accessibilityIdentifier("khatmah.preview") }
         }.noorScreenChrome().navigationTitle(existing == nil ? "إعداد الختمة" : "تعديل الختمة")
@@ -175,14 +164,11 @@ struct KhatmahSetupView: View {
             .onAppear {
                 guard let existing else { return }
                 weekdays = existing.weekdays; byDate = existing.deadline != nil; deadline = max(.now, existing.deadline ?? .now); daily = existing.dailyPages ?? 20
-                reminder = existing.reminderMinutes != nil
-                if let minutes = existing.reminderMinutes { time = existing.calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: .now) ?? .now }
             }
             .sheet(item: $preview) { plan in
                 NavigationStack {
                     KhatmahPlanPreview(plan: plan) {
                         if journey.adopt(plan) {
-                            if plan.reminderMinutes != nil { Task { await journey.enableReminderPermission() } }
                             preview = nil; dismiss()
                         }
                     }.toolbar { Button("عودة للتعديل") { preview = nil } }
@@ -192,11 +178,11 @@ struct KhatmahSetupView: View {
     private func prepare() {
         do {
             let c = existing?.calendar ?? Calendar.current
-            let minutes = reminder ? c.component(.hour, from: time) * 60 + c.component(.minute, from: time) : nil
             if let existing {
-                preview = try KhatmahCalculator.revised(existing, date: .now, weekdays: weekdays, daily: byDate ? nil : daily, deadline: byDate ? deadline : nil, reminder: minutes)
+                // Preserve the archived preference; v2 fixed policy does not schedule it.
+                preview = try KhatmahCalculator.revised(existing, date: .now, weekdays: weekdays, daily: byDate ? nil : daily, deadline: byDate ? deadline : nil, reminder: existing.reminderMinutes)
             } else {
-                preview = try KhatmahCalculator.make(first: fromCurrent ? max(1, min(604, currentPage)) : 1, date: .now, weekdays: weekdays, daily: byDate ? nil : daily, deadline: byDate ? deadline : nil, reminder: minutes, calendar: c)
+                preview = try KhatmahCalculator.make(first: fromCurrent ? max(1, min(604, currentPage)) : 1, date: .now, weekdays: weekdays, daily: byDate ? nil : daily, deadline: byDate ? deadline : nil, reminder: nil, calendar: c)
             }
             error = nil
         } catch { self.error = error.localizedDescription }

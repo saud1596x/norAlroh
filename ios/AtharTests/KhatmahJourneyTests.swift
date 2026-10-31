@@ -165,6 +165,21 @@ final class KhatmahJourneyTests: XCTestCase {
         XCTAssertFalse(store.adopt(try KhatmahCalculator.make(first: 1, date: start, weekdays: [1], daily: 20, deadline: nil, reminder: nil, calendar: calendar)))
         XCTAssertEqual(try Data(contentsOf: file), bad)
     }
+    @MainActor func testRetiredReminderFacadePreservesArchivedTimeAndReadingProgress() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let store = KhatmahStore(file: file)
+        let plan = try KhatmahCalculator.make(first: 580, date: start, weekdays: Set(1...7),
+            daily: 4, deadline: nil, reminder: 18 * 60 + 35, calendar: calendar)
+        XCTAssertTrue(store.adopt(plan)); XCTAssertTrue(store.confirm(first: 580, last: 581, date: start))
+        let bytes = try XCTUnwrap(store.exportBytes)
+        await store.enableReminderPermission(); await store.refreshReminders()
+        XCTAssertEqual(store.exportBytes, bytes)
+        XCTAssertEqual(store.active?.reminderMinutes, 18 * 60 + 35)
+        XCTAssertEqual(store.active?.completed, [580, 581])
+        XCTAssertFalse(store.notificationStatus.isEmpty)
+        XCTAssertEqual(KhatmahStore(file: file).active?.reminderMinutes, 18 * 60 + 35)
+    }
     @MainActor func testExportPreservesRawArchiveAndExplicitEraseRemovesIt() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
         defer { try? FileManager.default.removeItem(at: file) }

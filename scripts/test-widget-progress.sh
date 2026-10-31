@@ -27,6 +27,7 @@ xcodebuild build-for-testing "${common[@]}"
 xcodebuild test-without-building "${common[@]}" \
   -only-testing:AtharTests/NoorSalawatTests \
   -only-testing:AtharTests/WidgetTests \
+  -only-testing:AtharTests/WidgetTimelineTests \
   -only-testing:AtharTests/KhatmahJourneyTests \
   -resultBundlePath release/widget-progress/data.xcresult
 xcrun simctl io "$noor_widget_device" recordVideo --codec=h264 --force release/widget-progress/actual-ui.mp4 &

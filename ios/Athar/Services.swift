@@ -33,6 +33,7 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
 }
 
 @MainActor protocol PrayerNotificationClient {
+    func authorizationStatus() async -> PrayerAuthorizationState
     func requestAuthorization() async throws -> Bool
     func isAuthorized() async -> Bool
     func pendingIdentifiers() async -> [String]
@@ -42,6 +43,13 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
     func removePending(_ identifiers: [String])
     func removeDelivered(_ identifiers: [String])
 }
+extension PrayerNotificationClient {
+    // Compatibility for existing injected clients. New permission-contract
+    // fixtures override this so denied and undetermined remain distinguishable.
+    func authorizationStatus() async -> PrayerAuthorizationState {
+        await isAuthorized() ? .authorized : .notDetermined
+    }
+}
 @MainActor final class SystemPrayerNotificationClient: PrayerNotificationClient {
     private let center = UNUserNotificationCenter.current()
     private let presenter = PrayerNotificationPresenter()
@@ -50,6 +58,14 @@ private final class PrayerNotificationPresenter: NSObject, UNUserNotificationCen
     func isAuthorized() async -> Bool {
         let status = await center.notificationSettings().authorizationStatus
         return status == .authorized || status == .provisional
+    }
+    func authorizationStatus() async -> PrayerAuthorizationState {
+        switch await center.notificationSettings().authorizationStatus {
+        case .notDetermined: return .notDetermined
+        case .authorized, .provisional, .ephemeral: return .authorized
+        case .denied: return .denied
+        @unknown default: return .unavailable
+        }
     }
     func pendingIdentifiers() async -> [String] { await center.pendingNotificationRequests().map(\.identifier) }
     func pendingRequests() async -> [UNNotificationRequest] { await center.pendingNotificationRequests() }
@@ -70,431 +86,347 @@ final class PrayerNotifications: ObservableObject {
     @Published private(set) var personal = NoorReminderArchive()
     @Published private(set) var personalCounts: [String: Int] = [:]
     @Published private(set) var personalUnreadable = false
-    private let personalKey = "noor.personalReminders.v1"
+    @Published private(set) var requestingPermission = false
+    @Published private(set) var prayerAuthorization: PrayerAuthorizationState = .notDetermined
+    @Published private(set) var notificationAuthorization: PrayerAuthorizationState = .notDetermined
+    @Published private(set) var policyRequested: Bool
+    @Published private(set) var locationIsTrusted = false
+    @Published private(set) var prayerCoverageThrough: Date?
+    @Published private(set) var reminderCoverageThrough: Date?
+    var usesAlarmKit: Bool { alarms.available }
     var personalExport: Data? { defaults.data(forKey: personalKey) }
+    private let personalKey = "noor.personalReminders.v1"
+    private let policyKey = "noor.fixedPrayer.requested.v2"
+    private let recordsKey = "noor.fixedPrayer.alarmRecords.v2"
+    private let consumedKey = "noor.fixedPrayer.delivered.v2"
+    private let floorKey = "noor.fixedPrayer.historyFloor.v2"
     private let client: any PrayerNotificationClient
+    private let alarms: any PrayerAlarmClient
     private let defaults: UserDefaults
     private let now: () -> Date
-    @Published private(set) var requestingPermission = false
-    private var authorizationRevision = 0
-    private let enabledKey = "athar.prayerNotifications"
-    private let preferencesKey = "noor.prayerPreferences.v1"
+    private var records: [String: PrayerAlarmRecord] = [:]
+    private var recordsUnreadable = false
     private var revision = 0
+    private var authorizationRevision = 0
     private var refreshing = false
     private var latestData: DeviceData?
 
-    init(client: (any PrayerNotificationClient)? = nil, defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init) {
+    init(client: (any PrayerNotificationClient)? = nil, alarms: (any PrayerAlarmClient)? = nil,
+         defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init) {
         self.client = client ?? SystemPrayerNotificationClient()
+        self.alarms = alarms ?? SystemPrayerAlarmClient()
         self.defaults = defaults; self.now = now
-        if let bytes = defaults.data(forKey: preferencesKey),
-           let saved = try? JSONDecoder().decode(PrayerNotificationPreferences.self, from: bytes) {
-            preferences = saved
-        }
+        policyRequested = defaults.bool(forKey: "noor.fixedPrayer.requested.v2")
+        // Archives are retained for export/migration, never used as v2 policy inputs.
+        if let bytes = defaults.data(forKey: "noor.prayerPreferences.v1"),
+           let value = try? JSONDecoder().decode(PrayerNotificationPreferences.self, from: bytes) { preferences = value }
         if let bytes = defaults.data(forKey: personalKey) {
-            if let saved = try? JSONDecoder().decode(NoorReminderArchive.self, from: bytes), saved.valid { personal = saved }
+            if let value = try? JSONDecoder().decode(NoorReminderArchive.self, from: bytes), value.valid { personal = value }
             else { personalUnreadable = true }
         }
-        if let bytes = defaults.data(forKey: "noor.salawat.preferences.v1"),
-           let saved = try? JSONDecoder().decode(SalawatPreferences.self, from: bytes), saved.valid { salawat = saved }
+        if let bytes = defaults.data(forKey: recordsKey) {
+            if let value = try? JSONDecoder().decode([String: PrayerAlarmRecord].self, from: bytes),
+               Set(value.values.map(\.id)).count == value.count,
+               value.keys.allSatisfy({ $0.hasPrefix(FixedPrayerPolicy.prefix) }) { records = value }
+            else { recordsUnreadable = true }
+        }
     }
 
-    private var requested: Bool { defaults.bool(forKey: enabledKey) }
-    private func isOwned(_ id: String) -> Bool {
-        id.hasPrefix(PrayerNotificationPlan.prefix) || id.range(of: #"^athar\.[0-9]+\.(fajr|dhuhr|asr|maghrib|isha)$"#, options: .regularExpression) != nil
+    static func hasTrustedLocation(_ data: DeviceData, defaults: UserDefaults = .standard, now: Date = Date()) -> Bool {
+        let city = data.city
+        guard city.latitude.isFinite, city.longitude.isFinite,
+              (-90...90).contains(city.latitude), (-180...180).contains(city.longitude),
+              TimeZone(identifier: city.timeZone) != nil, City.normalized(city) == city else { return false }
+        if defaults.string(forKey: "noor.fixedPrayer.locationConfirmedCity.v2") == city.id { return true }
+        guard city.id.hasPrefix("location."), let updated = data.locationUpdatedAt else { return false }
+        return updated.timeIntervalSince1970 > 0 && updated <= now.addingTimeInterval(300)
     }
-    private func persist() {
-        if let data = try? JSONEncoder().encode(preferences) { defaults.set(data, forKey: preferencesKey) }
+    func confirmLocation(store: AtharStore) async {
+        guard City.normalized(store.data.city) == store.data.city else { return }
+        defaults.set(store.data.city.id, forKey: "noor.fixedPrayer.locationConfirmedCity.v2")
+        await refresh(store: store)
     }
+    /// Read-only permission refresh. The launch path must never surprise a user
+    /// with either OS prompt before the policy has been explained in the UI.
+    func configureFirstUse(store: AtharStore) async { await refresh(store: store) }
 
-    /// First-use only. A saved opt-out, denied prompt or migrated preferences
-    /// must never be silently replaced on another launch.
-    func configureFirstUse(store: AtharStore) async {
-        let key = "noor.notifications.firstUse.v1"
-        guard !defaults.bool(forKey: key), !requestingPermission else { return }
-        defaults.set(true, forKey: key)
-        guard !personalUnreadable,
-              [enabledKey, preferencesKey, personalKey, "noor.salawat.preferences.v1"]
-                .allSatisfy({ defaults.object(forKey: $0) == nil }) else { return }
-        requestingPermission = true
-        let attempt = authorizationRevision
-        defer { requestingPermission = false }
-        do {
-            let allowed = try await client.requestAuthorization()
-            guard allowed, attempt == authorizationRevision, !Task.isCancelled else { return }
-            guard [enabledKey, preferencesKey, personalKey, "noor.salawat.preferences.v1"]
-                .allSatisfy({ defaults.object(forKey: $0) == nil }) else { return }
-            var archive = NoorReminderArchive()
-            for kind in [NoorReminderKind.morning, .evening, .witr, .duha, .salawat] {
-                var value = NoorReminderPreference(kind: kind)
-                value.enabled = true
-                if kind == .salawat {
-                    value.intervalMinutes = 5; value.startMinute = 0; value.endMinute = 1439
-                }
-                archive.values[kind.rawValue] = value
-            }
-            let bytes = try JSONEncoder().encode(archive)
-            defaults.set(bytes, forKey: personalKey)
-            guard defaults.data(forKey: personalKey) == bytes else { return }
-            personal = archive
-            preferences.afterPrayerMinutes = 20
-            persist()
-            defaults.set(true, forKey: enabledKey)
-            await refresh(store: store)
-        } catch { message = "يمكنك تفعيل التنبيهات لاحقًا من الإعدادات." }
-    }
-
-    func reminder(_ kind: NoorReminderKind) -> NoorReminderPreference {
-        if let value = personal.values[kind.rawValue] { return value }
-        var value = NoorReminderPreference(kind: kind)
-        if kind == .salawat {
-            value.enabled = salawat.enabled; value.startMinute = 540; value.endMinute = 1260
-            value.intervalMinutes = salawat.intervalHours * 60
-        }
-        return value
-    }
-    func setReminder(_ kind: NoorReminderKind, preference: NoorReminderPreference, store: AtharStore) async {
-        guard preference.valid, preference.intervalMinutes != 5 || kind == .salawat, !personalUnreadable else {
-            message = "تعذر حفظ التذكير. صدّر الإعدادات المحفوظة قبل إصلاحها."; return
-        }
-        // Every edit invalidates an in-flight permission request, including disabling.
-        authorizationRevision += 1
-        let attempt = authorizationRevision
-        if preference.enabled && !reminder(kind).enabled {
-            guard !requestingPermission else { return }
-            requestingPermission = true
-            defer { requestingPermission = false }
-            do {
-                let allowed = try await client.requestAuthorization()
-                guard attempt == authorizationRevision else { return }
-                guard allowed else { message = "إذن الإشعارات غير متاح. افتح إعدادات iPhone."; return }
-            } catch { message = "تعذر طلب إذن الإشعارات."; return }
-        }
-        guard attempt == authorizationRevision else { return }
-        var next = personal; next.values[kind.rawValue] = preference
-        guard let bytes = try? JSONEncoder().encode(next) else { return }
-        defaults.set(bytes, forKey: personalKey)
-        guard defaults.data(forKey: personalKey) == bytes else { message = "تعذر حفظ إعدادات التذكير."; return }
-        personal = next
-        // Explicitly editing salawat adopts the new independent schedule, preserving
-        // untouched legacy preferences until that action. Never schedule both.
-        if kind == .salawat { salawat.enabled = false; persistSalawat() }
-        await refresh(store: store)
-    }
-
-    func setPrayer(_ id: String, enabled value: Bool, store: AtharStore) async {
-        guard preferences.prayers[id] != nil else { return }
-        preferences.prayers[id] = value
-        persist()
-        await refresh(store: store)
-    }
-    func setAdvance(_ value: Int, store: AtharStore) async {
-        guard [0, 5, 10, 15].contains(value) else { return }
-        preferences.advanceMinutes = value
-        persist()
-        await refresh(store: store)
-    }
-    func setAfterPrayer(_ minutes: Int?, store: AtharStore) async {
-        guard minutes == nil || minutes == 20 else { return }
-        preferences.afterPrayerMinutes = minutes
-        persist(); await refresh(store: store)
-    }
-    func setSound(_ value: Bool, store: AtharStore) async {
-        preferences.soundEnabled = value
-        persist()
-        await refresh(store: store)
-    }
-    func setSoundStyle(_ value: String, store: AtharStore) async {
-        guard ["adhan", "system", "silent"].contains(value) else { return }
-        preferences.soundStyle = value; preferences.soundEnabled = value != "silent"
-        persist(); await refresh(store: store)
-    }
-    private func persistSalawat() {
-        if let bytes = try? JSONEncoder().encode(salawat) { defaults.set(bytes, forKey: "noor.salawat.preferences.v1") }
-    }
-    func setSalawatInterval(_ hours: Int, store: AtharStore) async {
-        guard [2, 4, 6, 12].contains(hours) else { return }
-        salawat.intervalHours = hours; persistSalawat(); await refresh(store: store)
-    }
-    func setSalawatEnabled(_ value: Bool, store: AtharStore) async {
-        if !value {
-            authorizationRevision += 1; salawat.enabled = false; persistSalawat()
-            await refresh(store: store); return
-        }
-        guard !requestingPermission else { return }
-        requestingPermission = true; let attempt = authorizationRevision
-        defer { requestingPermission = false }
-        do {
-            guard try await client.requestAuthorization(), attempt == authorizationRevision else {
-                message = "إذن الإشعارات غير متاح. يمكنك تفعيله من إعدادات iPhone."; return
-            }
-            salawat.enabled = true; persistSalawat(); await refresh(store: store)
-        } catch { message = "تعذر طلب إذن الإشعارات. حاول مجددًا." }
-    }
+    /// Called only by the explicit action next to the policy description.
     func enable(store: AtharStore) async {
         guard !requestingPermission else { return }
         requestingPermission = true
-        let attempt = authorizationRevision
+        policyRequested = true; defaults.set(true, forKey: policyKey)
+        let generation = authorizationRevision
         defer { requestingPermission = false }
-        do {
-            let allowed = try await client.requestAuthorization()
-            guard attempt == authorizationRevision else { return }
-            guard allowed else {
-                enabled = false
-                message = "لم يُمنح إذن التنبيهات. يمكنك تغييره في إعدادات iPhone."
-                return
-            }
-            defaults.set(true, forKey: enabledKey)
-            await refresh(store: store)
-        } catch {
-            guard attempt == authorizationRevision else { return }
-            message = "تعذر تفعيل التنبيهات. حاول مجددًا من الإعدادات."
+        var errors = false
+        if usesAlarmKit && alarms.authorizationStatus() == .notDetermined {
+            do { _ = try await alarms.requestAuthorization() } catch { errors = true }
         }
+        guard generation == authorizationRevision, !Task.isCancelled else { return }
+        let notificationStatus = await client.authorizationStatus()
+        guard generation == authorizationRevision, !Task.isCancelled else { return }
+        if notificationStatus == .notDetermined {
+            do { _ = try await client.requestAuthorization() } catch { errors = true }
+        }
+        guard generation == authorizationRevision, !Task.isCancelled else { return }
+        await refresh(store: store)
+        if errors { message = "تعذر إكمال طلب أحد الإذنين. بقيت الصلاحية الأخرى مستقلة؛ راجع حالة النظام وأعد المحاولة." }
     }
     func disable() {
-        authorizationRevision += 1
-        defaults.set(false, forKey: enabledKey)
-        revision += 1
+        authorizationRevision += 1; revision += 1
+        policyRequested = false; defaults.set(false, forKey: policyKey)
         enabled = false
-        scheduledCount = 0
-        message = nil
-        Task {
-            let pending = await client.pendingIdentifiers()
-            guard !requested else { return }
-            client.removePending(pending.filter(isOwned))
-            let delivered = await client.deliveredIdentifiers()
-            guard !requested else { return }
-            client.removeDelivered(delivered.filter(isOwned))
-        }
+        if latestData == nil { latestData = DeviceData() } // Cleanup only; policy is off.
+        Task { await self.reconcileLatest() }
     }
-
     func erasePreferences() {
         disable()
-        preferences = PrayerNotificationPreferences()
-        defaults.removeObject(forKey: preferencesKey)
-        salawat = SalawatPreferences(); defaults.removeObject(forKey: "noor.salawat.preferences.v1")
-        personal = .init(); personalUnreadable = false; personalCounts = [:]
-        defaults.removeObject(forKey: personalKey)
-        revision += 1
-        Task {
-            let ids = await client.pendingIdentifiers()
-            guard !salawat.enabled && !personal.values.values.contains(where: { $0.enabled }) else { return }
-            client.removePending(ids.filter { $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) })
-            let delivered = await client.deliveredIdentifiers()
-            guard !salawat.enabled && !personal.values.values.contains(where: { $0.enabled }) else { return }
-            client.removeDelivered(delivered.filter { $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) })
+        for key in [personalKey, "noor.prayerPreferences.v1", "noor.salawat.preferences.v1", "athar.prayerNotifications"] {
+            defaults.removeObject(forKey: key)
         }
-        message = nil
+        preferences = .init(); personal = .init(); personalUnreadable = false
+        // Keep failed cancellation identities and observed-removed tombstones.
     }
+    // Compatibility for old internal callers/exported archives only. No v1
+    // frequency/sound/prayer selection can change the fixed production policy.
+    func reminder(_ kind: NoorReminderKind) -> NoorReminderPreference {
+        var value = NoorReminderPreference(kind: kind)
+        value.enabled = policyRequested && [.salawat, .witr, .duha].contains(kind)
+        if kind == .salawat { value.intervalMinutes = 5; value.startMinute = 0; value.endMinute = 1439 }
+        return value
+    }
+    func setReminder(_ kind: NoorReminderKind, preference: NoorReminderPreference, store: AtharStore) async { await refresh(store: store) }
+    func setPrayer(_ id: String, enabled: Bool, store: AtharStore) async { await refresh(store: store) }
+    func setAdvance(_ value: Int, store: AtharStore) async { await refresh(store: store) }
+    func setAfterPrayer(_ minutes: Int?, store: AtharStore) async { await refresh(store: store) }
+    func setSound(_ value: Bool, store: AtharStore) async { await refresh(store: store) }
+    func setSoundStyle(_ value: String, store: AtharStore) async { await refresh(store: store) }
+    func setSalawatInterval(_ hours: Int, store: AtharStore) async { await refresh(store: store) }
+    func setSalawatEnabled(_ value: Bool, store: AtharStore) async { await refresh(store: store) }
 
-    // One reconciliation worker serializes updates; permission/preferences may change while center.add awaits.
     func refresh(store: AtharStore) async {
-        latestData = store.data
-        revision += 1
-        guard !refreshing else { return }
+        latestData = store.data; revision += 1
+        await reconcileLatest()
+    }
+    private func reconcileLatest() async {
+        guard !refreshing, latestData != nil else { return }
         refreshing = true
-        defer { refreshing = false }
-        while let data = latestData {
+        var handledGeneration = revision
+        defer {
+            refreshing = false
+            // A cancelled background task must not strand a newer foreground
+            // disable/location change behind its in-flight scheduling call.
+            if handledGeneration != revision { Task { await self.reconcileLatest() } }
+        }
+        repeat {
             let generation = revision
-            let allowed = await client.isAuthorized()
-            guard generation == revision else { continue }
-            enabled = requested && allowed
-            let oldRequests = await client.pendingRequests()
-            let pending = oldRequests.map(\.identifier)
-            guard generation == revision else { continue }
-            let delivered = Set(await client.deliveredIdentifiers())
-            guard generation == revision else { continue }
-            guard !Task.isCancelled else {
-                enabled = false; message = "توقف تحديث التنبيهات قبل اكتماله. المواعيد السابقة لم تُحذف؛ أعد المحاولة."
+            handledGeneration = generation
+            guard let data = latestData else { return }
+            await reconcile(data: data, generation: generation)
+            if Task.isCancelled {
+                scheduledCount = 0; prayerCoverageThrough = nil; reminderCoverageThrough = nil
+                message = "توقف التحقق من الجداول قبل اكتماله؛ المواعيد السابقة لم تُعتبر تغطية مؤكدة."
                 return
             }
-            let owns: (String) -> Bool = { self.isOwned($0) || $0.hasPrefix(SalawatNotificationPlan.prefix) || $0.hasPrefix(NoorPersonalReminderPlan.prefix) }
-            let previousRequests = oldRequests.filter {
-                owns($0.identifier) && self.isUpcoming($0)
-                    && (self.isRepeating($0) || !delivered.contains($0.identifier))
-            }
-            client.removePending(pending.filter(owns))
-            let personalEnabled = personal.values.values.contains { $0.enabled }
-            let retiredDelivered = delivered.filter { id in
-                if id.hasPrefix(SalawatNotificationPlan.prefix) {
-                    return !salawat.enabled || personal.values[NoorReminderKind.salawat.rawValue] != nil
-                }
-                guard id.hasPrefix(NoorPersonalReminderPlan.prefix) else { return false }
-                return !NoorReminderKind.allCases.contains { kind in
-                    id.hasPrefix(NoorPersonalReminderPlan.prefix + kind.rawValue + ".") && personal.values[kind.rawValue]?.enabled == true
-                }
-            }
-            client.removeDelivered(Array(retiredDelivered))
-            scheduledCount = 0; salawatCount = 0; personalCounts = [:]
-            guard allowed && (requested || salawat.enabled || personalEnabled) else {
-                message = (requested || salawat.enabled || personalEnabled) && !allowed ? "تنبيهات النظام غير مفعلة. افتح إعدادات iPhone لتغيير الإذن." : nil
-                return
-            }
-            let slots = personal.values[NoorReminderKind.salawat.rawValue] == nil ? SalawatNotificationPlan.slots(salawat) : []
-            let continuousSalawat = personal.values[NoorReminderKind.salawat.rawValue]?.continuousFiveMinuteReminder == true
-            let personalEvents = NoorPersonalReminderPlan.make(personal, now: now())
-                .filter { !delivered.contains($0.id) }
-            let foreignCount = pending.filter { !owns($0) }.count
-            let prayerCapacity = max(0, min(PrayerNotificationPlan.maximumRequests, 64 - foreignCount - (continuousSalawat ? 1 : 0)))
-            // Travel or a clock change can move an already delivered prayer
-            // back into the future. Do not alert again for that prayer/day ID.
-            let afterMinutes: Int? = preferences.afterPrayerMinutes == nil ? nil : 20
-            let plan = enabled ? Array(PrayerNotificationPlan.make(data: data, preferences: preferences,
-                now: afterMinutes == nil ? now() : now().addingTimeInterval(-3600))
-                .filter { event in
-                    (!delivered.contains(event.id) && event.fireDate > now()) ||
-                    (afterMinutes != nil && !delivered.contains(event.id + ".adhkar") &&
-                     event.prayer.date.addingTimeInterval(Double((afterMinutes ?? 0) * 60)) > now())
-                }.prefix(afterMinutes == nil ? prayerCapacity : prayerCapacity / 2)) : []
-            var calendar = Calendar(identifier: .gregorian)
-            calendar.timeZone = TimeZone(identifier: data.city.timeZone) ?? .current
-            message = nil
-            do {
-                for event in plan {
-                    try Task.checkCancellation()
-                    guard generation == revision else { break }
-                    // A slow scheduler must not submit an already elapsed prayer.
-                    if let afterMinutes {
-                        let date = event.prayer.date.addingTimeInterval(Double(afterMinutes * 60))
-                        if date > now() && !delivered.contains(event.id + ".adhkar") {
-                            let content = UNMutableNotificationContent()
-                            content.title = "أذكار بعد صلاة \(event.prayer.name)"
-                            content.body = "حان تذكير أذكار ما بعد الصلاة"
-                            content.sound = nil
-                            content.threadIdentifier = "noor.after-prayer"
-                            content.userInfo = ["destination": "dhikr"]
-                            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-                            components.timeZone = calendar.timeZone
-                            try await client.add(.init(identifier: event.id + ".adhkar", content: content,
-                                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
-                            guard generation == revision else { break }
-                            scheduledCount += 1
+            if generation == revision { return }
+        } while true
+    }
+    private func persistRecords() -> Bool {
+        guard !recordsUnreadable, let bytes = try? JSONEncoder().encode(records) else { return false }
+        defaults.set(bytes, forKey: recordsKey)
+        return defaults.data(forKey: recordsKey) == bytes
+    }
+    private func matches(_ actual: UNNotificationRequest, _ wanted: UNNotificationRequest) -> Bool {
+        actual.identifier == wanted.identifier && actual.content == wanted.content && actual.trigger == wanted.trigger
+    }
+    private func coverage(_ events: [FixedPrayerEvent], matching ids: Set<String>) -> Date? {
+        var last: Date?
+        for event in events.sorted(by: { $0.fireDate < $1.fireDate }) {
+            guard ids.contains(event.id) else { break }
+            last = event.fireDate
+        }
+        return last
+    }
+    private func reconcile(data: DeviceData, generation: Int) async {
+        let currentTime = now()
+        locationIsTrusted = Self.hasTrustedLocation(data, defaults: defaults, now: currentTime)
+        notificationAuthorization = await client.authorizationStatus()
+        guard generation == revision, !Task.isCancelled else { return }
+        prayerAuthorization = usesAlarmKit ? alarms.authorizationStatus() : notificationAuthorization
+        enabled = policyRequested && prayerAuthorization == .authorized && locationIsTrusted
+        var errors: [String] = []
+        let savedFloor = defaults.object(forKey: floorKey) as? Date
+        let floorReadable = defaults.object(forKey: floorKey) == nil || savedFloor != nil
+        let floor = FixedPrayerPolicy.historyFloor(previous: savedFloor, now: currentTime)
+        let clockUnsafe = !floorReadable || currentTime < floor
+        if floorReadable { defaults.set(floor, forKey: floorKey) }
+        if clockUnsafe {
+            errors.append("تاريخ الجهاز أقدم من سجل الجدولة الموثوق أو تعذر قراءة حده؛ صحّح التاريخ ثم أعد الفتح. أبقينا التذكير المتكرر ولم ننشئ أحداثاً مؤرخة قد تتكرر.")
+        }
+        let events = policyRequested && locationIsTrusted && !clockUnsafe ? FixedPrayerPolicy.make(data: data, now: currentTime) : []
+        let prayers = Array(events.filter { $0.kind == .prayer }.prefix(FixedPrayerPolicy.prayerBudget))
+        let quiet = events.filter { $0.kind != .prayer }
+        let delivered = Set(await client.deliveredIdentifiers())
+        guard generation == revision, !Task.isCancelled else { return }
+        let oldConsumed = defaults.stringArray(forKey: consumedKey)
+        let decodedConsumed = defaults.data(forKey: consumedKey).flatMap { try? JSONDecoder().decode([String: Date].self, from: $0) }
+        let consumedReadable = defaults.object(forKey: consumedKey) == nil || oldConsumed != nil || decodedConsumed != nil
+        var consumedDates = decodedConsumed ?? Dictionary(uniqueKeysWithValues: Set(oldConsumed ?? []).map {
+            ($0, FixedPrayerPolicy.conservativeEventHistoryDate($0) ?? currentTime)
+        })
+        for id in delivered where id.hasPrefix(FixedPrayerPolicy.prefix) && id != FixedPrayerPolicy.salawatID {
+            if consumedDates[id] == nil { consumedDates[id] = FixedPrayerPolicy.conservativeEventHistoryDate(id) ?? currentTime }
+        }
+        if !clockUnsafe { consumedDates = consumedDates.filter { $0.value >= floor } }
+        let consumed = Set(consumedDates.keys)
+        if consumedReadable, let bytes = try? JSONEncoder().encode(consumedDates) { defaults.set(bytes, forKey: consumedKey) }
+        else { errors.append("تعذر قراءة سجل الإشعارات السابقة؛ احتفظنا به ولم نعد إنشاء أحداث مؤرخة مفقودة.") }
+        let pending = await client.pendingRequests()
+        guard generation == revision, !Task.isCancelled else { return }
+        // Clean only IDs owned by replaced versions; no reading/account data.
+        let retiredPending = pending.map(\.identifier).filter(FixedPrayerPolicy.isLegacyID)
+        if !retiredPending.isEmpty { client.removePending(retiredPending) }
+        let retiredDelivered = delivered.filter(FixedPrayerPolicy.isLegacyID)
+        if !retiredDelivered.isEmpty { client.removeDelivered(Array(retiredDelivered)) }
+        defaults.set(FixedPrayerPolicy.version, forKey: "noor.fixedPrayer.policyVersion")
+
+        var alarmMatches: Set<String> = []
+        if usesAlarmKit {
+            if recordsUnreadable { errors.append("تعذر قراءة سجل المنبهات؛ احتفظنا به ولم ننشئ معرفات بديلة قد تكرر المنبهات.") }
+            else {
+                do {
+                    let actual = try alarms.currentAlarms()
+                    let actualByID = Dictionary(uniqueKeysWithValues: actual.map { ($0.id, $0) })
+                    let desired = prayerAuthorization == .authorized && policyRequested ? prayers : []
+                    let desiredByID = Dictionary(uniqueKeysWithValues: desired.map { ($0.id, $0) })
+                    for key in Array(records.keys) {
+                        guard var record = records[key] else { continue }
+                        if actualByID[record.id] == nil && (record.state == .scheduled || record.state == .pending) {
+                            // Absence proves removal, not whether a person tapped stop.
+                            record.state = .observedRemoved; records[key] = record
+                        }
+                        if actualByID[record.id] == nil && record.state == .retryable && record.fireDate < currentTime {
+                            record.state = .expired; records[key] = record
+                        }
+                        if actualByID[record.id] != nil && desiredByID[key] == nil &&
+                            (!policyRequested || (!clockUnsafe && record.fireDate > currentTime)) {
+                            do { try alarms.cancel(id: record.id); record.state = .cancelled; records[key] = record }
+                            catch { errors.append("تعذر إلغاء منبه سابق؛ احتفظنا بمعرفه لإعادة المحاولة.") }
                         }
                     }
-                    guard event.fireDate > now() && !delivered.contains(event.id) else { continue }
-                    let content = UNMutableNotificationContent()
-                    content.title = event.title
-                    content.body = "حيّ على الصلاة · " + event.cityName
-                    content.threadIdentifier = "noor.prayers"
-                    content.userInfo = ["destination": "prayers", "prayer": event.prayer.id]
-                    content.sound = PrayerAlertSound.sound(preferences: preferences)
-                    var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.fireDate)
-                    components.timeZone = calendar.timeZone
-                    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                    try await client.add(UNNotificationRequest(identifier: event.id, content: content, trigger: trigger))
-                    guard generation == revision else { break }
-                    scheduledCount += 1
-                }
-                if continuousSalawat && foreignCount + scheduledCount < 64 {
-                    try Task.checkCancellation()
-                    guard generation == revision else { continue }
-                    let content = UNMutableNotificationContent()
-                    content.title = "الصلاة على النبي ﷺ"
-                    content.body = "❀ اللهم صلِّ على نبينا محمد ﷺ ❀"
-                    content.sound = nil
-                    content.threadIdentifier = "noor.personal.salawat"
-                    content.userInfo = ["destination": "dhikr"]
-                    try await client.add(.init(identifier: NoorPersonalReminderPlan.prefix + "salawat.every-five-minutes",
-                        content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 300, repeats: true)))
-                    personalCounts[NoorReminderKind.salawat.rawValue] = 1
-                }
-                let remaining = max(0, 64 - foreignCount - scheduledCount - (continuousSalawat ? 1 : 0))
-                for slot in slots.prefix(remaining) {
-                    try Task.checkCancellation()
-                    guard generation == revision else { break }
-                    let content = UNMutableNotificationContent()
-                    content.title = "الصلاة على النبي ﷺ"; content.body = slot.body
-                    content.threadIdentifier = "noor.salawat"; content.sound = nil
-                    content.userInfo = ["destination": "dhikr"]
-                    var components = DateComponents(); components.hour = slot.hour; components.minute = 0
-                    // Keep quiet reminders on the phone's local clock during
-                    // travel, even before the saved prayer location updates.
-                    try await client.add(.init(identifier: slot.id, content: content,
-                        trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)))
-                    guard generation == revision else { break }
-                    salawatCount += 1
-                }
-                let personalCapacity = max(0, 64 - foreignCount - scheduledCount - salawatCount - (continuousSalawat ? 1 : 0))
-                for event in personalEvents.prefix(personalCapacity) {
-                    try Task.checkCancellation()
-                    guard generation == revision else { break }
-                    guard event.date > now() else { continue }
-                    let content = UNMutableNotificationContent()
-                    content.title = event.kind.title
-                    content.body = event.kind == .salawat ? "❀ اللهم صلِّ على نبينا محمد ﷺ ❀" : "موعدك مع " + event.kind.title
-                    content.threadIdentifier = "noor.personal." + event.kind.rawValue
-                    content.userInfo = ["destination": event.kind.destination]
-                    content.sound = event.kind.hasPrayerSound ? PrayerAlertSound.sound(preferences: preferences) : nil
-                    var local = Calendar(identifier: .gregorian); local.timeZone = .current
-                    var components = local.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.date)
-                    components.calendar = local; components.timeZone = local.timeZone
-                    try await client.add(.init(identifier: event.id, content: content,
-                        trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
-                    guard generation == revision else { break }
-                    personalCounts[event.kind.rawValue, default: 0] += 1
-                }
-                try Task.checkCancellation()
-                if generation == revision {
-                    if personalEnabled && personalEvents.isEmpty && !continuousSalawat {
-                        message = "لا يوجد موعد قادم خلال 7 أيام؛ راجع أيام القراءة وأوقات الهدوء."
-                    } else if personalCounts.values.reduce(0, +) < personalEvents.count {
-                        message = "جُدولت أقرب التذكيرات حسب المساحة المتاحة. افتح التطبيق لتجديدها؛ الأولوية لتنبيهات الصلاة."
+                    if !clockUnsafe {
+                        records = FixedPrayerPolicy.retainAlarmHistory(records, floor: floor, activeIDs: Set(actualByID.keys))
                     }
-                    if enabled && plan.isEmpty { message = "لم تتوفر مواقيت صالحة أو مساحة لجدولة الصلاة. حدّث الموقع وراجع التذكيرات." }
-                    else if salawat.enabled && salawatCount < slots.count {
-                        message = "مساحة الإشعارات ممتلئة. قلّل التذكيرات الأخرى ثم أعد المحاولة؛ أعطينا أولوية لتنبيهات الصلاة."
+                    guard persistRecords() else { throw CocoaError(.fileWriteUnknown) }
+                    for event in desired {
+                        guard generation == revision, !Task.isCancelled else { return }
+                        guard event.fireDate > now() else { continue }
+                        if let record = records[event.id], record.state == .observedRemoved || record.state == .expired { continue }
+                        var record = records[event.id] ?? .init(id: UUID(), fireDate: event.fireDate, state: .retryable)
+                        if let actual = actualByID[record.id], actual.fireDate == event.fireDate {
+                            record.state = .scheduled; record.fireDate = event.fireDate; records[event.id] = record
+                            alarmMatches.insert(event.id)
+                            if !persistRecords() { errors.append("تعذر حفظ حالة أحد المنبهات.") }
+                            continue
+                        }
+                        if actualByID[record.id] != nil {
+                            do { try alarms.cancel(id: record.id) }
+                            catch { errors.append("تعذر استبدال منبه سابق؛ لم نضف منبهاً مكرراً."); continue }
+                        }
+                        record.fireDate = event.fireDate; record.state = .pending; records[event.id] = record
+                        guard persistRecords() else { errors.append("تعذر حفظ معرف المنبه قبل جدولتِه."); continue }
+                        do {
+                            try await alarms.schedule(id: record.id, event: event)
+                            record.state = .scheduled; records[event.id] = record
+                            if !persistRecords() { errors.append("تعذر حفظ تأكيد الجدولة؛ نحتاج التحقق عند الفتح التالي.") }
+                            if generation == revision { alarmMatches.insert(event.id) }
+                        } catch {
+                            record.state = error is CancellationError ? .pending : .retryable
+                            records[event.id] = record
+                            _ = persistRecords()
+                            errors.append("لم تكتمل إضافة أحد المنبهات؛ قد تكون سعة النظام غير متاحة.")
+                        }
                     }
-                    return
+                } catch { errors.append("تعذر التحقق من منبهات النظام أو حفظ سجلها. لم نحذف المواعيد السليمة.") }
+            }
+        }
+        guard generation == revision, !Task.isCancelled else { return }
+        let notificationsAllowed = notificationAuthorization == .authorized && policyRequested
+        let fallback = !usesAlarmKit && enabled ? prayers : []
+        var desiredRequests = notificationsAllowed ? fallback.map { FixedPrayerPolicy.notification($0,
+            timeZone: TimeZone(identifier: data.city.timeZone) ?? .current) } : []
+        if notificationsAllowed {
+            desiredRequests.append(FixedPrayerPolicy.salawatRequest())
+            desiredRequests += quiet.map { FixedPrayerPolicy.notification($0,
+                timeZone: TimeZone(identifier: data.city.timeZone) ?? .current) }
+        }
+        desiredRequests = Array(desiredRequests.filter { !consumed.contains($0.identifier) }
+            .prefix(FixedPrayerPolicy.notificationBudget))
+        let desiredIDs = Set(desiredRequests.map(\.identifier))
+        let obsolete = pending.map(\.identifier).filter {
+            $0.hasPrefix(FixedPrayerPolicy.prefix) && !desiredIDs.contains($0) &&
+                (!clockUnsafe || !policyRequested || $0 == FixedPrayerPolicy.salawatID)
+        }
+        if !obsolete.isEmpty { client.removePending(obsolete) }
+        var notificationMatches: Set<String> = []
+        for request in desiredRequests {
+            guard generation == revision, !Task.isCancelled else { return }
+            if let old = pending.first(where: { $0.identifier == request.identifier }), matches(old, request) {
+                notificationMatches.insert(request.identifier); continue
+            }
+            guard consumedReadable || request.identifier == FixedPrayerPolicy.salawatID else { continue }
+            if let event = events.first(where: { $0.id == request.identifier }), event.fireDate <= now() { continue }
+            do {
+                // UN replaces only this identifier; valid repeats and all
+                // unrelated requests survive a failed neighbouring addition.
+                try await client.add(request)
+                if generation == revision { notificationMatches.insert(request.identifier) }
+            } catch { errors.append("لم تكتمل إضافة بعض الإشعارات. بقيت الطلبات السليمة؛ أعد المحاولة لتجديد التغطية.") }
+        }
+        guard generation == revision, !Task.isCancelled else { return }
+        // Accepted API calls are not proof that the entire desired queue
+        // remains registered after a capacity/daemon change. Read it back.
+        let finalPending = await client.pendingRequests()
+        guard generation == revision, !Task.isCancelled else { return }
+        notificationMatches = Set(desiredRequests.filter { wanted in
+            finalPending.contains { matches($0, wanted) }
+        }.map(\.identifier))
+        if notificationMatches.count < desiredRequests.count {
+            errors.append("الطلبات المسجلة فعلياً أقل من الخطة؛ التغطية المعروضة تخص ما أمكن التحقق منه فقط.")
+        }
+        if usesAlarmKit && prayerAuthorization == .authorized && !recordsUnreadable {
+            do {
+                let finalAlarms = try alarms.currentAlarms()
+                alarmMatches = Set(prayers.filter { event in
+                    guard let record = records[event.id], record.state == .scheduled else { return false }
+                    return finalAlarms.contains { $0.id == record.id && $0.fireDate == event.fireDate }
+                }.map(\.id))
+                if enabled && alarmMatches.count < prayers.count {
+                    errors.append("نافذة منبهات الصلاة غير مكتملة؛ التغطية المعروضة تخص المنبهات المسجلة فعلياً فقط.")
                 }
             } catch {
-                if generation != revision {
-                    if Task.isCancelled { Task { await self.refresh(store: store) }; return }
-                    continue
-                }
-                client.removePending(plan.map(\.id) + slots.map(\.id) + personalEvents.map(\.id))
-                // Restore only this feature's still-future requests, preserving
-                // their original content and calendar trigger. A separate task
-                // allows cleanup after the background refresh itself expires.
-                let rollback = Task { @MainActor in
-                    do {
-                        try await NoorOperationDeadline.run(seconds: 5) {
-                            let latestDelivered = Set(await self.client.deliveredIdentifiers())
-                            for request in previousRequests {
-                                try Task.checkCancellation()
-                                guard generation == self.revision else { throw CancellationError() }
-                                guard self.isUpcoming(request),
-                                      self.isRepeating(request) || !latestDelivered.contains(request.identifier) else { continue }
-                                try await self.client.add(request)
-                                if generation != self.revision {
-                                    Task { await self.refresh(store: store) }
-                                    throw CancellationError()
-                                }
-                            }
-                        }
-                        return true
-                    } catch { return false }
-                }
-                let restored = await rollback.value
-                guard generation == revision else {
-                    Task { await self.refresh(store: store) }; return
-                }
-                enabled = false; scheduledCount = 0; salawatCount = 0; personalCounts = [:]
-                message = restored ? "لم يكتمل تحديث التنبيهات. أعدنا المواعيد السابقة التي لم يحن وقتها؛ أعد المحاولة."
-                    : "لم يكتمل تحديث التنبيهات ولا استعادة كل المواعيد السابقة. قد تكون الجدولة ناقصة؛ افتح إعدادات التنبيهات وأعد المحاولة."
-                return
+                alarmMatches = []
+                errors.append("تعذر تأكيد قائمة المنبهات النهائية؛ لم نعتبر الطلبات غير المتحققة تغطية ناجحة.")
             }
         }
-    }
-    private func isUpcoming(_ request: UNNotificationRequest) -> Bool {
-        if let trigger = request.trigger as? UNTimeIntervalNotificationTrigger { return trigger.repeats || trigger.nextTriggerDate().map { $0 > now() } == true }
-        guard let trigger = request.trigger as? UNCalendarNotificationTrigger else { return false }
-        if trigger.repeats { return true }
-        var calendar = trigger.dateComponents.calendar ?? Calendar(identifier: .gregorian)
-        calendar.timeZone = trigger.dateComponents.timeZone ?? .current
-        guard let date = calendar.date(from: trigger.dateComponents) else { return false }
-        return date > now()
-    }
-    private func isRepeating(_ request: UNNotificationRequest) -> Bool {
-        (request.trigger as? UNCalendarNotificationTrigger)?.repeats == true ||
-            (request.trigger as? UNTimeIntervalNotificationTrigger)?.repeats == true
+        let matchedPrayers = usesAlarmKit ? alarmMatches : notificationMatches
+        scheduledCount = prayers.filter { matchedPrayers.contains($0.id) }.count
+        salawatCount = notificationMatches.contains(FixedPrayerPolicy.salawatID) ? 1 : 0
+        salawat.enabled = salawatCount == 1
+        personalCounts = ["witr": quiet.filter { $0.kind == .witr && notificationMatches.contains($0.id) }.count,
+                          "duha": quiet.filter { $0.kind == .duha && notificationMatches.contains($0.id) }.count]
+        prayerCoverageThrough = coverage(prayers, matching: matchedPrayers)
+        reminderCoverageThrough = coverage(quiet.filter { !consumed.contains($0.id) }, matching: notificationMatches)
+        if policyRequested && !locationIsTrusted { errors.append("اختر مدينتك أو أكّد الموقع أولاً؛ لم نجدول مواقيت لمكان افتراضي.") }
+        if policyRequested && prayerAuthorization == .denied { errors.append("إذن منبهات الصلاة غير متاح. يمكنك تغييره من إعدادات iPhone.") }
+        if policyRequested && notificationAuthorization == .denied { errors.append("الإشعارات النصية غير مسموحة؛ إذن منبهات الصلاة مستقل عنها.") }
+        if policyRequested && locationIsTrusted && prayers.isEmpty { errors.append("لم تتوفر مواقيت صالحة ضمن نافذة التغطية؛ لم نخترع موعداً.") }
+        if usesAlarmKit && policyRequested && prayerAuthorization == .authorized && !alarms.fixedSoundAvailable {
+            errors.append("ملف صوت الصلاة غير صالح حالياً؛ يستخدم منبّه النظام صوته الافتراضي بدلاً منه.")
+        }
+        if usesAlarmKit && prayers.contains(where: { records[$0.id]?.state == .observedRemoved }) {
+            errors.append("رصدنا منبهاً أزيل من النظام؛ لن نعيد إنشاء الحدث نفسه تلقائياً.")
+        }
+        var seen: Set<String> = []
+        message = errors.isEmpty ? nil : errors.filter { seen.insert($0).inserted }.joined(separator: " ")
     }
 }

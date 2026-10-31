@@ -42,9 +42,21 @@ escape = html.escape
 navigation = '<nav aria-label="صفحات المساعدة">' + ' · '.join(
     f'<a href="{d["id"]}.html">{escape(d["title"])}</a>' for d in site_legal['documents']) + '</nav>'
 style = 'body{margin:0;background:#f8f2e8;color:#282015;font:18px/1.9 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:28px 20px}a{color:#734414}h1{font-size:30px}h2{font-size:22px;margin-top:30px}nav{padding:14px 0}footer{border-top:1px solid #baab90;margin-top:30px;padding-top:18px}aside{background:#fff3cf;padding:14px;border-radius:12px}a:focus-visible{outline:3px solid #734414;outline-offset:4px}'
+def render_section(section):
+    source_url, source_label = section.get('sourceURL'), section.get('sourceLabel')
+    if bool(source_url) != bool(source_label):
+        raise SystemExit('A content source credit needs both its label and link')
+    link = ''
+    if source_url:
+        parsed = urlparse(source_url)
+        if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
+            raise SystemExit('Content source links must use public HTTPS URLs')
+        link = f'<p><a href="{escape(source_url, quote=True)}">{escape(source_label)}</a></p>'
+    return f'<section><h2>{escape(section["title"])}</h2><p>{escape(section["text"])}</p>{link}</section>'
+
 for document in site_legal['documents']:
     banner = '<aside>مسودة محلية: أكمل بريد الدعم وراجع بيانات الناشر قبل النشر. هذه الملفات لم تُنشر على الإنترنت.</aside>' if draft else ''
-    sections = ''.join(f'<section><h2>{escape(s["title"])}</h2><p>{escape(s["text"])}</p></section>' for s in document['sections'])
+    sections = ''.join(render_section(s) for s in document['sections'])
     support = f'<a href="mailto:{escape(quote(email, safe="@.+-"), quote=True)}">{escape(email)}</a>' if email else 'بريد الدعم لم يُحدد بعد.'
     outputs[f'support-site/{document["id"]}.html'] = f'<!doctype html>\n<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>{escape(document["title"])} — {escape(legal["appName"])}</title><style>{style}</style></head><body><main>{navigation}{banner}<h1>{escape(document["title"])}</h1><p>{escape(legal["appName"])} · الناشر: {escape(legal["publisherName"])}</p><p>آخر تحديث: <time datetime="{escape(site_legal["updatedAt"])}">{escape(site_legal["updatedAt"])}</time></p>{sections}<footer>للتواصل: {support}</footer></main></body></html>\n'
 outputs['support-site/index.html'] = outputs['support-site/support.html']

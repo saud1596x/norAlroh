@@ -60,3 +60,33 @@ class PublishingPolicyModeTests(unittest.TestCase):
         config_file.write_text(json.dumps(config, ensure_ascii=False), encoding='utf-8')
         self.assertNotEqual(self.run_generator().returncode, 0)
         self.assertFalse((self.root/'support-site/privacy.html').exists())
+
+    def test_tanzil_notice_and_clickable_source_survive_both_publishing_modes(self):
+        for flags in [(), ('--accounts',)]:
+            with self.subTest(flags=flags):
+                result = self.run_generator(*flags)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                app = json.loads((self.root/'ios/Athar/app-legal.json').read_text(encoding='utf-8'))
+                terms = next(d for d in app['documents'] if d['id'] == 'terms')
+                notice = next((s for s in terms['sections'] if s.get('sourceURL') == 'https://tanzil.net/'), None)
+                self.assertIsNotNone(notice, 'The bundled Tanzil license requires an accessible source credit and link')
+                self.assertIn('Tanzil Project', notice['text'])
+                self.assertIn('2007–2026', notice['text'])
+                self.assertIn('دون تغيير', notice['text'])
+                self.assertEqual(notice['sourceLabel'], 'Tanzil Project')
+                web = (self.root/'support-site/terms.html').read_text(encoding='utf-8')
+                self.assertIn('href="https://tanzil.net/"', web)
+                self.assertIn('Tanzil Project', web)
+
+    def test_fixed_reminder_policy_replaces_retired_controls_in_both_modes(self):
+        for flags in [(), ('--accounts',)]:
+            with self.subTest(flags=flags):
+                result = self.run_generator(*flags)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                app = json.loads((self.root/'ios/Athar/app-legal.json').read_text(encoding='utf-8'))
+                privacy = next(d for d in app['documents'] if d['id'] == 'privacy')
+                policy = next(s['text'] for s in privacy['sections'] if s['title'] == 'الإشعارات والأذونات')
+                for required in ['AlarmKit', 'iOS 26', 'الصلوات الخمس', 'UserNotifications', 'مستقلان', '300 ثانية', 'الوتر', 'الضحى']:
+                    self.assertIn(required, policy)
+                for retired in ['أذكار الصباح والمساء', 'بعشرين دقيقة', 'إيقاف أي منها', '٢٤ ثانية']:
+                    self.assertNotIn(retired, policy)

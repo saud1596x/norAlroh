@@ -48,11 +48,28 @@ final class PublishingContentTests: XCTestCase {
         XCTAssertTrue(tanzil.contains("Tanzil Project"))
         XCTAssertTrue(tanzil.contains("tanzil.net"))
         XCTAssertTrue(tanzil.contains("CHANGING IT IS NOT ALLOWED"))
+        let content = try XCTUnwrap(NoorLegalContent.current)
+        let terms = try XCTUnwrap(content.documents.first { $0.id == "terms" })
+        let source = try XCTUnwrap(terms.sections.first { $0.sourceURL?.absoluteString == "https://tanzil.net/" })
+        XCTAssertEqual(source.sourceLabel, "Tanzil Project")
+        XCTAssertTrue(source.text.contains("Tanzil Project"))
+        XCTAssertTrue(source.text.contains("دون تغيير"))
         for name in ["WHISPERKIT-LICENSE", "WHISPER-MODEL-LICENSE", "ADHAN-SWIFT-LICENSE"] {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "txt"))
             let notice = try String(contentsOf: url, encoding: .utf8)
             XCTAssertTrue(notice.contains("MIT License"))
             XCTAssertTrue(notice.contains("copyright notice"))
+        }
+    }
+    func testFixedReminderPolicyExplainsIndependentSystemPermissionsAndLocalDua() throws {
+        let content = try XCTUnwrap(NoorLegalContent.current)
+        let privacy = try XCTUnwrap(content.documents.first { $0.id == "privacy" })
+        let policy = try XCTUnwrap(privacy.sections.first { $0.title == "الإشعارات والأذونات" }).text
+        for required in ["AlarmKit", "iOS 26", "الصلوات الخمس", "UserNotifications", "مستقلان", "300 ثانية", "الوتر", "الضحى", "أداة الشاشة"] {
+            XCTAssertTrue(policy.contains(required), required)
+        }
+        for retired in ["أذكار الصباح والمساء", "بعشرين دقيقة", "إيقاف أي منها", "٢٤ ثانية"] {
+            XCTAssertFalse(policy.contains(retired), retired)
         }
     }
     func testIncompleteOrUnknownLegalResourceIsRejected() throws {

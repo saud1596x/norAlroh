@@ -5,6 +5,9 @@ on:
     paths:
       - .github/workflows/mushaf-closure.yml
       - scripts/test-mushaf-closure.sh
+      - scripts/build-mushaf-closure.sh
+      - scripts/native-product-artifact.py
+      - scripts/tests/test_native_product_artifact.py
       - scripts/run-native-with-deadline.py
       - scripts/verify-mushaf-closure-evidence.py
       - scripts/tests/test_mushaf_closure_evidence.py
@@ -15,6 +18,37 @@ on:
       - ios/Athar/MushafTajweedFonts.swift
       - ios/Athar/NoorRecitersView.swift
       - ios/Athar/NoorMyJourneyView.swift
+      - ios/Athar/NoorToday*.swift
+      - ios/Athar/NoorChromeTokens.swift
+      - ios/Athar/AtharApp.swift
+      - ios/Athar/Services.swift
+      - ios/Athar/Prayer*.swift
+      - ios/Athar/FixedPrayerPolicy.swift
+      - ios/Athar/NoorReminderSettings.swift
+      - ios/Athar/NoorWidget*.swift
+      - ios/Athar/NoorLegalContent.swift
+      - ios/Athar/app-legal.json
+      - ios/Athar/PrivacyInfo.xcprivacy
+      - ios/AtharTests/PublishingContentTests.swift
+      - ios/NoorWidgetShared/**
+      - ios/NoorWidgets/**
+      - ios/AtharTests/Widget*.swift
+      - ios/AtharTests/FixedPrayerPolicyTests.swift
+      - ios/AtharTests/NotificationReconciliationTests.swift
+      - ios/AtharTests/NoorPersonalReminderTests.swift
+      - ios/AtharTests/NoorSalawatTests.swift
+      - ios/AtharUITests/NoorHomeFlowUITests.swift
+      - ios/AtharUITests/NoorNavigationTests.swift
+      - ios/AtharUITests/NoorPrayerDisplayUITests.swift
+      - ios/AtharUITests/NoorReminderUITests.swift
+      - ios/Athar/QuranMicrophoneCapture.swift
+      - ios/Athar/QuranRecitationController.swift
+      - ios/Athar/QuranRecognitionWorker.swift
+      - ios/Athar/KhatmahJourney*.swift
+      - ios/AtharTests/QuranMicrophoneInputLifecycleTests.swift
+      - ios/AtharTests/QuranWindowMailboxTests.swift
+      - ios/AtharTests/QuranLiveRecitationStorageTests.swift
+      - ios/AtharTests/QuranRecognitionWorkerLifecycleTests.swift
       - ios/AtharTests/InteractiveMushafTests.swift
       - ios/AtharTests/MushafViewportTests.swift
       - ios/AtharTests/NoorContinuousMushafTests.swift
@@ -28,10 +62,62 @@ concurrency:
   group: mushaf-closure-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  build:
+    # One standard public unsigned build; every display class consumes these bytes.
+    runs-on: macos-15
+    timeout-minutes: 55
+    outputs:
+      manifest-sha256: ${{ steps.product.outputs.manifest-sha256 }}
+      archive-sha256: ${{ steps.product.outputs.archive-sha256 }}
+      producer-run-id: ${{ steps.product.outputs.producer-run-id }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Select installed Xcode 26 or newer
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Install original project generator
+        run: |
+          set -euo pipefail
+          command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Test native artifact integrity and extraction safety
+        run: python3 -m unittest discover -s scripts/tests -p test_native_product_artifact.py -v
+      - name: Build complete unsigned Release test products once
+        id: product
+        run: bash scripts/build-mushaf-closure.sh
+      - name: Preserve the immutable original native product
+        uses: actions/upload-artifact@v4
+        with:
+          name: mushaf-native-products-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            release/mushaf-native-artifact/manifest.json
+            release/mushaf-native-artifact/native-products.tar.gz
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+      - name: Preserve actual build and preflight diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mushaf-native-build-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            release/mushaf-closure-producer/
+            release/recitation-core-preflight/
+          retention-days: 3
+          if-no-files-found: error
   native-reader:
+    needs: build
     # Standard public macOS runner. No paid runner, key, signing or publication.
     runs-on: macos-15
     timeout-minutes: 55
+    env:
+      NATIVE_MANIFEST_SHA256: ${{ needs.build.outputs.manifest-sha256 }}
+      NATIVE_ARCHIVE_SHA256: ${{ needs.build.outputs.archive-sha256 }}
+      NATIVE_PRODUCER_RUN_ID: ${{ needs.build.outputs.producer-run-id }}
     strategy:
       fail-fast: false
       matrix:
@@ -44,14 +130,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Select installed Xcode 26 or newer
+      - name: Download the one producer artifact from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: mushaf-native-products-${{ github.run_id }}-${{ github.sha }}
+          path: release/mushaf-native-artifact
+      - name: Select the exact producer Xcode from its verified manifest
         run: |
           set -euo pipefail
-          python3 scripts/select-xcode.py >> "$GITHUB_ENV"
-      - name: Install original media inspection and project generator
+          test "$NATIVE_PRODUCER_RUN_ID" = "$GITHUB_RUN_ID"
+          python3 scripts/native-product-artifact.py select --artifact release/mushaf-native-artifact >> "$GITHUB_ENV"
+      - name: Install original media inspection
         run: |
           set -euo pipefail
-          command -v xcodegen >/dev/null || brew install xcodegen
           python3 -m pip install --only-binary=:all: --index-url https://pypi.org/simple -r scripts/tests/requirements.txt 'av==14.2.0'
       - name: Reject false-positive evidence before native execution
         run: |

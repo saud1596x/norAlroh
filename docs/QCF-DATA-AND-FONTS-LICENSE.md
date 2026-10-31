@@ -53,10 +53,11 @@ These font files are provided solely for Quranic rendering purposes.
 Redistribution, modification, or commercial use of the font files without
 explicit permission from the original rights holders is not permitted.
 
-## Noor Alruh QCF V2 distribution record — 2026-10-05
+## Historical QCF V2 distribution record — 2026-10-05
 
-The current reader uses QCF V2 page fonts from Quran Foundation's documented
-CDN, not the QCF4 or decorative surah-header fonts discussed above.
+On that date the reader used QCF V2 page fonts from Quran Foundation's
+documented CDN. This historical record is not clearance for subsequently added
+QCF4/Tajweed resources or for prepackaged Quran data.
 
 Source: https://verses.quran.foundation/fonts/quran/hafs/v2/ttf/
 Terms: https://api-docs.quran.foundation/legal/developer-terms/
@@ -71,11 +72,21 @@ The pinned 604-file inventory and SHA-256 hashes are in
 release/qcf-v2-manifest.json. CI retrieves those exact fonts for the app bundle.
 No font archive is distributed in this repository.
 
-Quran glyph data comes from Content Sync at runtime, with complete validation,
-atomic offline storage and refresh attempts after seven days. It is not bundled
-at build time. Text is not modified. Derived page headings preserve verse order.
+Current implementation audit — 2026-10-31: `scripts/prepare-bundled-mushaf.py`
+copies the complete verified glyph snapshot into `ios/Athar/mushaf-snapshot.json`
+at build time. The earlier runtime-only description was incorrect. The reader
+also has runtime synchronization/storage code; that does not establish permission
+for build-time distribution. Text is not modified; page headings preserve order.
 
-Quran Foundation is credited in the application's sources screen. Original
+The primary QF developer terms observed on 2026-10-31 are dated 2026-10-11.
+Section3.1 explicitly distinguishes the Content Sync storage exception from
+authorization to distribute a prepackaged database/build-time bundle. The
+font/image bundling exception cannot by itself be treated as authorization for
+this glyph snapshot. Evidence covering the actual bundled data distribution and
+an active Developer Console account remains unverified. DATA-004 in
+`docs/release-acceptance.json` is release blocking; this document grants no rights.
+
+Quran Foundation is credited in the application's existing legal/rights surface. Original
 Quran calligraphy: Uthman Taha / King Fahd Quran Complex. Flexible text and surah
 headings use the separately licensed Amiri font.
 

@@ -3,6 +3,98 @@ import XCTest
 
 /// Explicitly injected non-cancellable backend; not microphone/ASR evidence.
 final class QuranRecognitionWorkerLifecycleTests: XCTestCase {
+    #if NOOR_ACCEPTANCE_TESTING
+    func testConcurrentResumedPreparationWaitsForIndependentAfterPrimaryLoadsAndSharesOneAttempt() async throws {
+        // Explicit preparation barriers only, not a model or ASR-ready claim.
+        let probe = PreparationProbe()
+        let worker = QuranRecognitionWorker(preparingPrimary: { try await probe.primary() },
+                                            preparingIndependent: { try await probe.independent() })
+        let first = Task { try await worker.prepare() }
+        let startedBy = Date().addingTimeInterval(3)
+        while !(await probe.bothStarted) && Date() < startedBy { await Task.yield() }
+        let started = await probe.bothStarted
+        XCTAssertTrue(started)
+        let resumed = Task { try await worker.prepare() }
+        let concurrent = Task { try await worker.prepare() }
+        let enteredBy = Date().addingTimeInterval(3)
+        while (await worker.preparationCalls) < 3 && Date() < enteredBy { await Task.yield() }
+        let calls = await worker.preparationCalls
+        let completedBeforeRelease = await worker.preparationCompletions
+        let primaryCalls = await probe.primaryCalls, independentCalls = await probe.independentCalls
+        XCTAssertEqual(calls, 3)
+        XCTAssertEqual(completedBeforeRelease, 0, "A cached primary is not the complete in-flight preparation")
+        XCTAssertEqual(primaryCalls, 1); XCTAssertEqual(independentCalls, 1)
+        await probe.release()
+        try await first.value; try await resumed.value; try await concurrent.value
+        try await worker.prepare()
+        let finalPrimaryCalls = await probe.primaryCalls, finalIndependentCalls = await probe.independentCalls
+        XCTAssertEqual(finalPrimaryCalls, 1); XCTAssertEqual(finalIndependentCalls, 1)
+    }
+    func testPrimaryPreparationFailureDrainsIndependentWorkBeforeSharedFailureAndCanRetry() async throws {
+        let probe = PreparationProbe(failFirstPrimary: true)
+        let worker = QuranRecognitionWorker(preparingPrimary: { try await probe.primary() },
+                                            preparingIndependent: { try await probe.independent() })
+        let first = Task { try await worker.prepare() }
+        let startedBy = Date().addingTimeInterval(3)
+        while !(await probe.bothStarted) && Date() < startedBy { await Task.yield() }
+        let resumed = Task { try await worker.prepare() }
+        let enteredBy = Date().addingTimeInterval(3)
+        while (await worker.preparationCalls) < 2 && Date() < enteredBy { await Task.yield() }
+        let calls = await worker.preparationCalls, completions = await worker.preparationCompletions
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(completions, 0, "Primary failure cannot discard the independent preparation wait")
+        await probe.release()
+        for task in [first, resumed] {
+            do { try await task.value; XCTFail("Both callers must receive the same primary failure") }
+            catch PreparationProbe.Failure.primary {}
+            catch { XCTFail("Unexpected preparation error: \(error)") }
+        }
+        let failedPrimaryCalls = await probe.primaryCalls, failedIndependentCalls = await probe.independentCalls
+        XCTAssertEqual(failedPrimaryCalls, 1); XCTAssertEqual(failedIndependentCalls, 1)
+        try await worker.prepare()
+        let retriedPrimaryCalls = await probe.primaryCalls, retriedIndependentCalls = await probe.independentCalls
+        XCTAssertEqual(retriedPrimaryCalls, 2); XCTAssertEqual(retriedIndependentCalls, 2)
+    }
+    func testIndependentPreparationFailureStillPreservesExistingPrimaryOnlyPreparationBehavior() async throws {
+        let probe = PreparationProbe(failIndependent: true)
+        let worker = QuranRecognitionWorker(preparingPrimary: { try await probe.primary() },
+                                            preparingIndependent: { try await probe.independent() })
+        await probe.release()
+        try await worker.prepare(); try await worker.prepare()
+        let primaryCalls = await probe.primaryCalls, independentCalls = await probe.independentCalls
+        XCTAssertEqual(primaryCalls, 1); XCTAssertEqual(independentCalls, 1)
+        // Actual decode still requires independent agreement and retains only
+        // unassessable raw hypotheses if the verifier cannot load. No decode or
+        // recognition evidence is supplied by these preparation-only fixtures.
+    }
+    private actor PreparationProbe {
+        enum Failure: Error { case primary, independent }
+        private let failFirstPrimary: Bool
+        private let failIndependent: Bool
+        private var released = false
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+        private(set) var primaryCalls = 0
+        private(set) var independentCalls = 0
+        var bothStarted: Bool { primaryCalls > 0 && independentCalls > 0 }
+        init(failFirstPrimary: Bool = false, failIndependent: Bool = false) {
+            self.failFirstPrimary = failFirstPrimary; self.failIndependent = failIndependent
+        }
+        func primary() throws {
+            primaryCalls += 1
+            if failFirstPrimary && primaryCalls == 1 { throw Failure.primary }
+        }
+        func independent() async throws {
+            independentCalls += 1
+            if !released { await withCheckedContinuation { waiting.append($0) } }
+            if failIndependent { throw Failure.independent }
+        }
+        func release() {
+            released = true
+            let continuations = waiting; waiting.removeAll()
+            continuations.forEach { $0.resume() }
+        }
+    }
+    #endif
     func testUntimedSegmentCannotDisappearAndJoinNeighboringQuranWords() {
         var gate = QuranLocalWordEvidence()
         let samples = Array(repeating: Float(0.06), count: 64_000)

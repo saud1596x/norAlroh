@@ -1,0 +1,971 @@
+{
+  "schemaVersion": 1,
+  "ownerCharter": {
+    "date": "2026-10-31",
+    "sha256": "d7aadadd4337728eaf63f75d1414c5913a83f9d16e1634dcb7609c77600e6cc6",
+    "attachment": "C:\\Users\\ONLYPC\\.codex\\attachments\\057ed381-345e-4a5d-b0a1-9b9b1c9de202\\نص ملصق.txt",
+    "precedence": "Current owner charter; public App Store publication only after allblocking acceptance gates. Prior TestFlight-only scope superseded."
+  },
+  "baseline": {
+    "head": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008",
+    "branch": "repair/noor-recitation-20261014",
+    "state": "DIRTY_DRAFTS_PRESERVED",
+    "noCurrentReleaseOrAccuracyClaim": true
+  },
+  "acceptanceTargetsNotResults": {
+    "wordErrorPrecision": 0.95,
+    "wordErrorRecall": 0.9,
+    "maxFalseAlarmsPer20CorrectReadingMinutes": 1,
+    "touchResponseMilliseconds": 100,
+    "warmLocalScreenMilliseconds": 300,
+    "mushafP95Seconds": 1,
+    "captureAfterPermissionMilliseconds": 300,
+    "firstDistinctPassageTrackingSeconds": 2,
+    "extendedSessionMinutes": 30,
+    "requiresIndependentSpeakersAndConfidenceIntervals": true
+  },
+  "resume": {
+    "currentFocus": [
+      "REC-001",
+      "REC-005",
+      "QUR-004",
+      "WGT-002",
+      "NTF-005",
+      "REL-001"
+    ],
+    "next": "Commit frozen reviewed native/product/policy batch and push verify/noor-codemagic-fast-20261015; observe one original unsigned Release producer +3 source-bound display consumers. Investigate actual failures, no paid builds/publication or approval claims.",
+    "paidBuildsOrServicesStartedThisCycle": 0,
+    "newFinancialCommitmentAuthorizedByCharter": false,
+    "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
+    "publicRelease": "NOT_SUBMITTED_NOT_PUBLISHED_BY_THIS_CYCLE",
+    "latestLocalChecks": {
+      "nativeArtifact": {
+        "passed": 20,
+        "skipped": 2,
+        "scope": "PYTHON_HELPER_ONLY"
+      },
+      "nativeDeadline": {
+        "passed": 14,
+        "skipped": 2,
+        "scope": "PYTHON_HELPER_ONLY"
+      },
+      "evidenceValidator": {
+        "passed": 49,
+        "skipped": 0,
+        "scope": "SYNTHETIC_VALIDATOR_ONLY_NOT_APP_EXECUTION"
+      },
+      "swiftGrammar": {
+        "files": 42,
+        "errors": 0,
+        "typecheck": false
+      },
+      "quranCopy": {
+        "verses": 6236,
+        "basmalas": 112,
+        "mismatches": 0,
+        "normalization": "NONE"
+      },
+      "publishingPolicyModes": {
+        "passed": 9,
+        "scope": "PYTHON_GENERATOR_CONTRACT_ONLY_NOT_ARCHIVE_OR_APPLE_ACCEPTANCE"
+      }
+    },
+    "externalAcceptanceGaps": [
+      "No independent consented learner ground-truth corpus/qualified labeling with speaker-separated error metrics.",
+      "No physical-device30min microphone/thermal/memory or AlarmKit/Widget delivery evidence.",
+      "Current cold model preparation/decode baseline misses first-distinct-track target; no latency improvement claim.",
+      "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
+      "QF prepackaged glyph snapshot distribution authorization and current active Developer Console account evidence not verified; mandatory resource rights remain release blocking."
+    ],
+    "sourceCommit": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008 (dirty successor under final review; not a native-tested commit)",
+    "selectedNativeMethodsNotResults": {
+      "recitation-contracts": 41,
+      "service-contracts": 75,
+      "geometry": 23,
+      "navigation-contracts": 4
+    },
+    "preservedUnrelatedDrafts": [
+      "docs/live-recitation-gap-ledger-20261019.md",
+      "scripts/test-engine-latency.sh"
+    ]
+  },
+  "items": [
+    {
+      "id": "QUR-001",
+      "requiredBehavior": "سلامة النص والخرائط والموارد لكل الصفحات دون تغيير القرآن",
+      "reproduction": "مقارنة Unicode وhashes وخرائط 604 صفحة بالطبعة المتوافقة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "QUR-002",
+      "requiredBehavior": "هندسة متن وعناوين وبسملة وتجويد متوازنة من المسارات الأصلية",
+      "reproduction": "رندر كل604 وصفحات1و2و560و603و604 والكثيفة على3أحجام والوضعين",
+      "before": {
+        "status": "HISTORICAL_NATIVE_SUBSCOPE_PASSED_FULL_ACCEPTANCE_INCOMPLETE",
+        "sourceCommit": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008",
+        "detail": "23 native geometry cases passed including all604 normal and COLR light/dark; full three-device run ended at55min with UI driver failure and incomplete lanes."
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": [
+          {
+            "commit": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/39499805366",
+            "scope": "GEOMETRY_ONLY_NOT_COMPLETE_VISUAL_OR_PRODUCT_ACCEPTANCE",
+            "localLog": "C:/Users/ONLYPC/.codex/visualizations/2026/10/13/01a1379f-7919-7243-8603-50faedbe329e/mushaf-closure-20261021/8a190fc-medium-original-job-log.txt"
+          }
+        ]
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "QUR-003",
+      "requiredBehavior": "تحديد وتظليل الآية والكلمة من هندسة الرسم نفسها",
+      "reproduction": "لمس الحدود والعلامات وآية متعددة الأسطر وround-trip للتحويلات",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "QUR-004",
+      "requiredBehavior": "ثبات مساحة القرآن مع الأدوات والميكروفون وDynamic Type",
+      "reproduction": "إظهار وإخفاء وتحديد وبدء وإيقاف ثم مقارنةالإطارات وفيديو متصل",
+      "before": {
+        "status": "ACTUAL_NATIVE_DRIVER_FAILURE",
+        "detail": "AX XXL sixth action driver resets4left then4right and cannot reach sixthcard; first5 proven reachable. Existing pending helper fix changes direction from actual frames, retains budgets/containment/hittability."
+      },
+      "cause": "Native AX action driver reset to the wrong physical edge and could not reach sixth action; no demonstrated production glyph placement regression in historical8a geometry evidence.",
+      "changes": [
+        "ios/AtharUITests/NoorVerseActionTestSupport.swift: choose swipe from actual target/container rectangle; unchanged four-per-direction budget and full containment/hittability requirements."
+      ],
+      "verification": {
+        "tests": [
+          "Pending source-bound original three-size Release closure, light/dark and largest interface type."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "QUR-005",
+      "requiredBehavior": "تقليب ثابت وحفظ موضع وتجهيز جيران محدود",
+      "reproduction": "تقليب سريع وإلغاء طلبات قديمة ورجوع من الخلفية ودوراتذاكرة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-001",
+      "requiredBehavior": "التقاط PCM حقيقي وعقد تنسيق وصوت محدود السعة",
+      "reproduction": "إذن وإدخال وضعف وقص وضوضاء وتغيرالمسار دون عينات مزيفة",
+      "before": {
+        "status": "PCM_CAPTURE_PROVEN_QUIET_SIMULATOR_ONLY",
+        "detail": "Large failure hierarchy elapsed0:22 shows realPCM;AX waitblocked and testfailed. QuietPCM doesnotproveASRaccuracy."
+      },
+      "cause": "Unbounded per-callback meter MainActor tasks; cold preparation retained a stale short prefix; old failed-start cleanup could clear successor capture after awaited drain.",
+      "changes": [
+        "Bound latest meter feedback10Hz without dropping writer/mailbox PCM.",
+        "Extend held first window only by verified bit-identical contiguous raw overlap, max8s; retain later pending tail.",
+        "Own input cleanup/start-task by generation across awaited stop; close meter stream at all exits."
+      ],
+      "verification": {
+        "tests": [
+          "41 source-declared capture/mailbox/storage/worker lifecycle cases selected in mandatory recitation-contracts; actual native execution pending.",
+          "Swift grammar only passed; no ASR accuracy, physical input or first-track latency pass claimed."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-002",
+      "requiredBehavior": "نموذج فعلي جاهز وASR مستقل عن النص المتوقع",
+      "reproduction": "صوت مختلف عن النص المفتوح وصمت وكلام غيرقرآني وحمل بارد ودافئ",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "A concurrent/resumed preparation caller could return at primary readiness while independent warmup was still running.",
+      "changes": [
+        "QuranRecognitionWorker coalesces the entire concurrent paired preparation attempt; all waiting callers retain the preparation deadline until it ends; primary failure drains independent work before retry. No model, decoding option, acoustic gate or independent failure policy changed."
+      ],
+      "verification": {
+        "tests": [
+          "Three controlled-barrier lifecycle regressions authored and selected; no real model/cold latency or accuracy pass."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-003",
+      "requiredBehavior": "تحديد موضع وتتبع مستقر في القرآن كاملًا",
+      "reproduction": "بدءمنمنتصفآية وسورةأخرى وعباراتمتشابهة واستعادةالتتبع",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-004",
+      "requiredBehavior": "كشف حذف وإضافة واستبدال مستقر وتصحيح ذاتي",
+      "reproduction": "أخطاءبشريةمأذونة ووسوممراجعة وتأخيرمعلوم دونإدانةمنpartialواحد",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-005",
+      "requiredBehavior": "ملكية جلسة وإلغاء ونتائج متأخرة سليمة",
+      "reproduction": "بدءوإيقافوتكرارومقاطعة ونتيجةجلسةقديمة بعدبدءالجديدة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Unbounded per-callback meter MainActor tasks; cold preparation retained a stale short prefix; old failed-start cleanup could clear successor capture after awaited drain.",
+      "changes": [
+        "Bound latest meter feedback10Hz without dropping writer/mailbox PCM.",
+        "Extend held first window only by verified bit-identical contiguous raw overlap, max8s; retain later pending tail.",
+        "Own input cleanup/start-task by generation across awaited stop; close meter stream at all exits."
+      ],
+      "verification": {
+        "tests": [
+          "41 source-declared capture/mailbox/storage/worker lifecycle cases selected in mandatory recitation-contracts; actual native execution pending.",
+          "Swift grammar only passed; no ASR accuracy, physical input or first-track latency pass claimed."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-006",
+      "requiredBehavior": "تشغيل ممتد بلا إسقاط صوت خفي أو تراكم",
+      "reproduction": "30دقيقةبصوتفعلي معطابوروزمنوذاكرةوحرارة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Unbounded per-callback meter MainActor tasks; cold preparation retained a stale short prefix; old failed-start cleanup could clear successor capture after awaited drain.",
+      "changes": [
+        "Bound latest meter feedback10Hz without dropping writer/mailbox PCM.",
+        "Extend held first window only by verified bit-identical contiguous raw overlap, max8s; retain later pending tail.",
+        "Own input cleanup/start-task by generation across awaited stop; close meter stream at all exits."
+      ],
+      "verification": {
+        "tests": [
+          "41 source-declared capture/mailbox/storage/worker lifecycle cases selected in mandatory recitation-contracts; actual native execution pending.",
+          "Swift grammar only passed; no ASR accuracy, physical input or first-track latency pass claimed."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-007",
+      "requiredBehavior": "تقييم مستقل ممثل وبيانات مأذونة بلا تسرب",
+      "reproduction": "فصلالمتحدثينوالجلسات وWER وprecision/recall وfalsealarms وp95",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REC-008",
+      "requiredBehavior": "تقييم التجويد منفصل عن التعرف وألوان المصحف",
+      "reproduction": "حالاتأحكامصوتيةمعلّمةومراجعةمؤهلة لكلقدرةمدعاة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "WGT-001",
+      "requiredBehavior": "امتداد WidgetKit مضمن وموقع مع الحفاظ على kind IDs",
+      "reproduction": "فحصtarget/archive وظهورأدواتنورالروحفيgallery",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy single dua/snapshot lacked stable hourly content identity and quota/location truth contracts.",
+      "changes": [
+        "53 exact verified Quran dua spans, family-sized pools, local current+48h timeline and immutable duaID route.",
+        "Preserved8 existing kinds, added shortDhikr; atomic versioned compact snapshot and selective reload.",
+        "Bound khatmah daily readingScope parity, current-plan URL validation and explicit prayerTrusted; no navigation credit.",
+        "Real shared linear/editorial/Najdi SwiftUI compositions; Najdi selected and integrated."
+      ],
+      "verification": {
+        "tests": [
+          "node scripts/build-widget-dua-catalog.mjs:53 exact verified spans; no text normalization.",
+          "WidgetTimelineTests + WidgetTests + NoorSalawatTests + KhatmahJourneyTests selected in mandatory service-contracts; native/gallery/time delivery still pending."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "WGT-002",
+      "requiredBehavior": "دعاء محلي حتمي يتغير ساعيًا بجدول48ساعة",
+      "reproduction": "حدودالساعات وDST وإعادةالتشغيل ونسختان وعدم تكرارمتجاور",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy single dua/snapshot lacked stable hourly content identity and quota/location truth contracts.",
+      "changes": [
+        "53 exact verified Quran dua spans, family-sized pools, local current+48h timeline and immutable duaID route.",
+        "Preserved8 existing kinds, added shortDhikr; atomic versioned compact snapshot and selective reload.",
+        "Bound khatmah daily readingScope parity, current-plan URL validation and explicit prayerTrusted; no navigation credit.",
+        "Real shared linear/editorial/Najdi SwiftUI compositions; Najdi selected and integrated."
+      ],
+      "verification": {
+        "tests": [
+          "node scripts/build-widget-dua-catalog.mjs:53 exact verified spans; no text normalization.",
+          "WidgetTimelineTests + WidgetTests + NoorSalawatTests + KhatmahJourneyTests selected in mandatory service-contracts; native/gallery/time delivery still pending."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "WGT-003",
+      "requiredBehavior": "snapshot ذري وروابط موضعية صحيحة",
+      "reproduction": "دعاءبمعرفثابتبعدتغيرالساعة ووردوآخرقراءة باردودافئ دونإنجازوهمي",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy single dua/snapshot lacked stable hourly content identity and quota/location truth contracts.",
+      "changes": [
+        "53 exact verified Quran dua spans, family-sized pools, local current+48h timeline and immutable duaID route.",
+        "Preserved8 existing kinds, added shortDhikr; atomic versioned compact snapshot and selective reload.",
+        "Bound khatmah daily readingScope parity, current-plan URL validation and explicit prayerTrusted; no navigation credit.",
+        "Real shared linear/editorial/Najdi SwiftUI compositions; Najdi selected and integrated."
+      ],
+      "verification": {
+        "tests": [
+          "node scripts/build-widget-dua-catalog.mjs:53 exact verified spans; no text normalization.",
+          "WidgetTimelineTests + WidgetTests + NoorSalawatTests + KhatmahJourneyTests selected in mandatory service-contracts; native/gallery/time delivery still pending."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "WGT-004",
+      "requiredBehavior": "تصميم كل عائلة واضح في أوضاع النظام",
+      "reproduction": "كلالنصوص والأحجام وfullColor/accented/vibrant وRTL والتباين",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy single dua/snapshot lacked stable hourly content identity and quota/location truth contracts.",
+      "changes": [
+        "53 exact verified Quran dua spans, family-sized pools, local current+48h timeline and immutable duaID route.",
+        "Preserved8 existing kinds, added shortDhikr; atomic versioned compact snapshot and selective reload.",
+        "Bound khatmah daily readingScope parity, current-plan URL validation and explicit prayerTrusted; no navigation credit.",
+        "Real shared linear/editorial/Najdi SwiftUI compositions; Najdi selected and integrated."
+      ],
+      "verification": {
+        "tests": [
+          "node scripts/build-widget-dua-catalog.mjs:53 exact verified spans; no text normalization.",
+          "WidgetTimelineTests + WidgetTests + NoorSalawatTests + KhatmahJourneyTests selected in mandatory service-contracts; native/gallery/time delivery still pending."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "WGT-005",
+      "requiredBehavior": "إضافة أدوات رئيسية وقفل وتحديث ساعة فعلي",
+      "reproduction": "جهازحقيقي وتطبيقمغلق وطيران ورفضتنبيهات ونفادtimeline",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "NTF-001",
+      "requiredBehavior": "سياسة موحدة مفهومة بلا تخصيص ملغى",
+      "reproduction": "تثبيتجديد وترقية ووصفقبلالإذن معاستمرارالقراءةعندالرفض",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy customizable schedulers and permissions conflicted with owner fixed policy and could show default-city calculations without location confirmation.",
+      "changes": [
+        "One v2 reconciler, SDK26 AlarmKit dated prayer adapter; iOS17–25 ordinary UN fallback.",
+        "Separate authorization states, explicit policy disclosure before prompt, no repeated denied prompts.",
+        "Single silent300s repeating request preserved if semantically equal; no sound/badge; daily quiet witr/duha computed from prayer windows.",
+        "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
+        "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
+        "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+      ],
+      "verification": {
+        "tests": [
+          "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
+          "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "NTF-002",
+      "requiredBehavior": "منبهات الصلوات الخمس AlarmKit علىiOS26+",
+      "reproduction": "أحداثمؤرخة وصوتثابت وإيقافحقيقي لايعيدالحدث وتوافققديمصادق",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy customizable schedulers and permissions conflicted with owner fixed policy and could show default-city calculations without location confirmation.",
+      "changes": [
+        "One v2 reconciler, SDK26 AlarmKit dated prayer adapter; iOS17–25 ordinary UN fallback.",
+        "Separate authorization states, explicit policy disclosure before prompt, no repeated denied prompts.",
+        "Single silent300s repeating request preserved if semantically equal; no sound/badge; daily quiet witr/duha computed from prayer windows.",
+        "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
+        "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
+        "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+      ],
+      "verification": {
+        "tests": [
+          "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
+          "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "NTF-003",
+      "requiredBehavior": "طلب واحد متكرر للصلاةعلىالنبي كل300ثانية",
+      "reproduction": "10افتتاحات بلاreset للتكرار وبلاصوتأوbadge ودوراتنظامفعلية",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy customizable schedulers and permissions conflicted with owner fixed policy and could show default-city calculations without location confirmation.",
+      "changes": [
+        "One v2 reconciler, SDK26 AlarmKit dated prayer adapter; iOS17–25 ordinary UN fallback.",
+        "Separate authorization states, explicit policy disclosure before prompt, no repeated denied prompts.",
+        "Single silent300s repeating request preserved if semantically equal; no sound/badge; daily quiet witr/duha computed from prayer windows.",
+        "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
+        "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
+        "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+      ],
+      "verification": {
+        "tests": [
+          "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
+          "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "NTF-004",
+      "requiredBehavior": "رسالتا وتر وضحى يوميتان في نافذتين صحيحتين",
+      "reproduction": "ليل قصير وعبورمنتصفالليل ورمضان ونافذةغيرصالحة ولا إشعارمتأخر",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy customizable schedulers and permissions conflicted with owner fixed policy and could show default-city calculations without location confirmation.",
+      "changes": [
+        "One v2 reconciler, SDK26 AlarmKit dated prayer adapter; iOS17–25 ordinary UN fallback.",
+        "Separate authorization states, explicit policy disclosure before prompt, no repeated denied prompts.",
+        "Single silent300s repeating request preserved if semantically equal; no sound/badge; daily quiet witr/duha computed from prayer windows.",
+        "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
+        "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
+        "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+      ],
+      "verification": {
+        "tests": [
+          "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
+          "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "NTF-005",
+      "requiredBehavior": "توفيق الجداول ومعرفاتها وسعتها وفشلها الجزئي",
+      "reproduction": "تغيرمدينةوزمنوتاريخوسحبإذن دونازدواجوبتغطيةمعلومة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy customizable schedulers and permissions conflicted with owner fixed policy and could show default-city calculations without location confirmation.",
+      "changes": [
+        "One v2 reconciler, SDK26 AlarmKit dated prayer adapter; iOS17–25 ordinary UN fallback.",
+        "Separate authorization states, explicit policy disclosure before prompt, no repeated denied prompts.",
+        "Single silent300s repeating request preserved if semantically equal; no sound/badge; daily quiet witr/duha computed from prayer windows.",
+        "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
+        "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
+        "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+      ],
+      "verification": {
+        "tests": [
+          "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
+          "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "NTF-006",
+      "requiredBehavior": "إذنا AlarmKit وUserNotifications مستقلان وترحيل آمن",
+      "reproduction": "أربعحالاتللإذنين ورفضثمإعدادات دونإلحاحأومسحبياناتقراءة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Legacy customizable schedulers and permissions conflicted with owner fixed policy and could show default-city calculations without location confirmation.",
+      "changes": [
+        "One v2 reconciler, SDK26 AlarmKit dated prayer adapter; iOS17–25 ordinary UN fallback.",
+        "Separate authorization states, explicit policy disclosure before prompt, no repeated denied prompts.",
+        "Single silent300s repeating request preserved if semantically equal; no sound/badge; daily quiet witr/duha computed from prayer windows.",
+        "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
+        "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
+        "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+      ],
+      "verification": {
+        "tests": [
+          "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
+          "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "UX-001",
+      "requiredBehavior": "أربعوجهات واضحة ومسارات قراءة مباشرة",
+      "reproduction": "اليوم والمصحف ورحلتي والأذكار وروابطوعودةومنعفتحشاشتين",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Old four-tab design placed prayers as third tab and repeated gold cards; canceled customization remained exposed.",
+      "changes": [
+        "Today/Mushaf/My Journey/Adhkar roots, settings retained.",
+        "Three production-component SwiftUI design directions authored; selected Najdi Today with primary bounded reading action, account, prayer route and editorial dua.",
+        "Scoped inkgreen/ivory app tokens keep approved Mushaf renderer/paper unchanged; semantic fonts and reduced-motion-aware feedback.",
+        "Removed old reminder editors and direct permission requests outside policy explanation; city selection commits explicit trust.",
+        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait."
+      ],
+      "verification": {
+        "tests": [
+          "Current Swift grammar passed42 changed/new files, not typecheck.",
+          "Mandatory navigation-contracts captures real Today, independent permission description/status and city persistence; pending native."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "UX-002",
+      "requiredBehavior": "إعدادات مهمة فقط وحالات خطأ قابلة للتعافي",
+      "reproduction": "فراغ ودونشبكة وإذنمرفوض دونطرقمسدودة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Old four-tab design placed prayers as third tab and repeated gold cards; canceled customization remained exposed.",
+      "changes": [
+        "Today/Mushaf/My Journey/Adhkar roots, settings retained.",
+        "Three production-component SwiftUI design directions authored; selected Najdi Today with primary bounded reading action, account, prayer route and editorial dua.",
+        "Scoped inkgreen/ivory app tokens keep approved Mushaf renderer/paper unchanged; semantic fonts and reduced-motion-aware feedback.",
+        "Removed old reminder editors and direct permission requests outside policy explanation; city selection commits explicit trust.",
+        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait."
+      ],
+      "verification": {
+        "tests": [
+          "Current Swift grammar passed34 changed/new files, not typecheck.",
+          "Mandatory navigation-contracts captures real Today, independent permission description/status and city persistence; pending native."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "UX-003",
+      "requiredBehavior": "أذكار صباح ومساء منفصلة ومريحة وعدادات ثابتة",
+      "reproduction": "نصكاملومقروء وحفظحالةوإعادةفتح ودونفضائلمختلقة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "UX-004",
+      "requiredBehavior": "هوية نجدية هادئة مطبقة من تكوين مختار",
+      "reproduction": "3previews تركيبيةلليوموالدعاء ثممقارنةواختياروتطبيقفعلي",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Old four-tab design placed prayers as third tab and repeated gold cards; canceled customization remained exposed.",
+      "changes": [
+        "Today/Mushaf/My Journey/Adhkar roots, settings retained.",
+        "Three production-component SwiftUI design directions authored; selected Najdi Today with primary bounded reading action, account, prayer route and editorial dua.",
+        "Scoped inkgreen/ivory app tokens keep approved Mushaf renderer/paper unchanged; semantic fonts and reduced-motion-aware feedback.",
+        "Removed old reminder editors and direct permission requests outside policy explanation; city selection commits explicit trust.",
+        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait."
+      ],
+      "verification": {
+        "tests": [
+          "Current Swift grammar passed42 changed/new files, not typecheck.",
+          "Mandatory navigation-contracts captures real Today, independent permission description/status and city persistence; pending native."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "UX-005",
+      "requiredBehavior": "وصول وعربية وحركة وظيفية",
+      "reproduction": "VoiceOver وDynamicType وReduceMotion ووضعان ولمس44نقطة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Old four-tab design placed prayers as third tab and repeated gold cards; canceled customization remained exposed.",
+      "changes": [
+        "Today/Mushaf/My Journey/Adhkar roots, settings retained.",
+        "Three production-component SwiftUI design directions authored; selected Najdi Today with primary bounded reading action, account, prayer route and editorial dua.",
+        "Scoped inkgreen/ivory app tokens keep approved Mushaf renderer/paper unchanged; semantic fonts and reduced-motion-aware feedback.",
+        "Removed old reminder editors and direct permission requests outside policy explanation; city selection commits explicit trust.",
+        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait."
+      ],
+      "verification": {
+        "tests": [
+          "Current Swift grammar passed42 changed/new files, not typecheck.",
+          "Mandatory navigation-contracts captures real Today, independent permission description/status and city persistence; pending native."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "DATA-001",
+      "requiredBehavior": "ترقية تحفظ الموضع والعلامات والختمة والإعدادات",
+      "reproduction": "بياناتنسخةقديمة وفشلحفظوترحيلتنبيهاتمحدد",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "DATA-002",
+      "requiredBehavior": "Apple Sign-In فقط وقراءة بلا حساب ومزامنة وحذف",
+      "reproduction": "حساباتاختباروتعارضجهازينواستعادةوحذفمنالتطبيق",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "DATA-003",
+      "requiredBehavior": "ورد وختمة حقيقيان وتأكيد بلا ازدواج",
+      "reproduction": "20صفحةمعحدودها وموضعمستأنف وأياموقراءةوموعدانتهاء",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "DATA-004",
+      "requiredBehavior": "تراخيص وخصوصية وإفصاحات تصف التنفيذ",
+      "reproduction": "جردالخطوالصوتوالنموذجوالSDK والرفعوالاحتفاظوالحذف",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Mandatory source attribution omission found; current QF prepackaged Content distribution authorization and active account evidence do not match the runtime-only license narrative.",
+      "changes": [
+        "Restore mandatory Tanzil notice and clickable source in existing legal surface, both templates and generated website terms.",
+        "Remote footer now discloses one-hour expiry and best-effort end-session deletion rather than promising immediate deletion despite failed DELETE.",
+        "Added app-owned SystemBootTime35F9.1 and DiskSpaceE174.1 for elapsed processing feedback and capacity-before-write, verified against Apple DocC value table; fixed notification wording in both policy modes.",
+        "Correct existing QCF rights document to disclose actual build-time bundled glyph snapshot; historical font/account record is not clearance for new data distribution."
+      ],
+      "verification": {
+        "tests": [
+          "9 publishing/account-privacy/remote-policy generator contract cases passed; current app/site content --check passed. No signed IPA/store acceptance claim."
+        ],
+        "evidence": [
+          {
+            "url": "https://api-docs.quran.foundation/legal/developer-terms/",
+            "observedTermsUpdated": "2026-10-11",
+            "observedOn": "2026-10-31",
+            "section": "3.1 prepackaged content versus font/image exception",
+            "scope": "Actual23MB glyph snapshot is bundled by prepare-bundled-mushaf.py; written authorization covering that distribution not verified. No legal clearance assumed."
+          }
+        ]
+      },
+      "status": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "DATA-005",
+      "requiredBehavior": "استحقاقات واشتراكات قائمة سليمة إن وجدت",
+      "reproduction": "Sandbox واستعادةومعلقةوانتهاءوشبكةواشتراكاتدونمنتجاتمخترعة",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REL-001",
+      "requiredBehavior": "فحص موثوق لا يخفي failure أو ناقصًا",
+      "reproduction": "pipefail وexit codes ومصدرمطابق ورفضtamper/skip/مفقود",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Three complete builds consumed each55min job window; partial/timeout results cannot stand in for a release candidate.",
+      "changes": [
+        "One unsigned Release producer with original xctestrun and full products; three display consumers verify source/run/XcodeSDK/architecture/archive/file identities before and after tests.",
+        "Retain all original lanes, PNGs, continuous journey videos and deadlines; add mandatory exact recitation, widget/notification and navigation lanes.",
+        "Central39-item acceptance ledger and5 scoped local skills; pinned7 external skill sources, compatibility constraints."
+      ],
+      "verification": {
+        "tests": [
+          "Artifact integrity helper22 cases:20pass+2Windows OS skips; macOS required.",
+          "Native deadline helper16 cases:14pass+2POSIX skips; macOS required.",
+          "Evidence validator49 final cases passed; synthetic false-green rejection only, not native app execution.",
+          "Source-preserving Quran copy check6236 verses+112 basmalas exact; not glyph/specialist approval."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REL-002",
+      "requiredBehavior": "Archive وIPA من المصدر المختبر وموقعة بالموارد",
+      "reproduction": "امتداداتوخطوطنماذجوصوت وBundleIDs واستحقاقاتوملفاتخصوصية",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REL-003",
+      "requiredBehavior": "مرشح متماسك واحد وصور وفيديو تشغيل مطابق",
+      "reproduction": "ربطcommit/config/resources معالمصفوفةالمانعة لا رفعلكلتعديل",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": "Three complete builds consumed each55min job window; partial/timeout results cannot stand in for a release candidate.",
+      "changes": [
+        "One unsigned Release producer with original xctestrun and full products; three display consumers verify source/run/XcodeSDK/architecture/archive/file identities before and after tests.",
+        "Retain all original lanes, PNGs, continuous journey videos and deadlines; add mandatory exact recitation, widget/notification and navigation lanes.",
+        "Central39-item acceptance ledger and5 scoped local skills; pinned7 external skill sources, compatibility constraints."
+      ],
+      "verification": {
+        "tests": [
+          "Artifact integrity helper22 cases:20pass+2Windows OS skips; macOS required.",
+          "Native deadline helper16 cases:14pass+2POSIX skips; macOS required.",
+          "Evidence validator49 final cases passed; synthetic false-green rejection only, not native app execution.",
+          "Source-preserving Quran copy check6236 verses+112 basmalas exact; not glyph/specialist approval."
+        ],
+        "evidence": []
+      },
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REL-004",
+      "requiredBehavior": "بيانات متجر وحقوق ودعم وخصوصية وملاحظات مراجعة",
+      "reproduction": "صورمنالتطبيق وتصنيففعلي وإذنان وتكرارمذكور بلا مفاجآت",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    },
+    {
+      "id": "REL-005",
+      "requiredBehavior": "حالة TestFlight وAppReview والنشر العام متحققة",
+      "reproduction": "رفع ثممعالجة ثمإتاحة ثمرقابة ثمموافقة ونشرحسبالصلاحية",
+      "before": {
+        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+      },
+      "cause": null,
+      "changes": [],
+      "verification": {
+        "tests": [],
+        "evidence": []
+      },
+      "status": "OPEN",
+      "releaseBlocking": true,
+      "finalState": null
+    }
+  ],
+  "skills": {
+    "sourceRegistry": ".agents/skills/skill-sources.json",
+    "externalInstalledSourceEntriesVerified": 7,
+    "localWritten": 5,
+    "catalog": "Next-turn discovery pending; current entry files manually read; source LF/installed CRLF recorded separately where relevant",
+    "effect": "No accuracy/performance claim from skill names or installation"
+  }
+}

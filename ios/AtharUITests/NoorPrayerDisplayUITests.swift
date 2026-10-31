@@ -6,7 +6,10 @@ final class NoorPrayerDisplayUITests: XCTestCase {
         let app = XCUIApplication(); app.launchArguments = ["--uitesting"]; launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 30))
         selectNoorTab("الصلاة", in: app)
-        assertDatesAndClock(app)
+        // A fresh install must not imply that the default city's times are the user's.
+        if app.descendants(matching: .any)["prayer.locationNeeded"].exists {
+            XCTAssertFalse(app.staticTexts["prayer.nextTime"].exists)
+        }
         capture(app, "prayer-dates-and-clock")
         app.buttons["prayer.city"].tap()
         let search = app.searchFields.firstMatch

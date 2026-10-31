@@ -77,6 +77,23 @@ actor QuranRecognitionWorker {
     private var inference: Task<Result, Error>?
     private var inferenceID: UUID?
     private let decodeOverride: ((QuranAudioWindow) async throws -> Result)?
+    #if NOOR_ACCEPTANCE_TESTING
+    private struct PreparationOperations {
+        let primary: @Sendable () async throws -> Void
+        let independent: @Sendable () async throws -> Void
+    }
+    private var preparationOperations: PreparationOperations?
+    private var injectedPrimaryPrepared = false
+    private(set) var preparationCalls = 0
+    private(set) var preparationCompletions = 0
+    // Explicit lifecycle barriers only. This initializer is absent from the
+    // shipping build and never produces speech, models or recognition evidence.
+    init(preparingPrimary: @escaping @Sendable () async throws -> Void,
+         preparingIndependent: @escaping @Sendable () async throws -> Void) {
+        decodeOverride = nil
+        preparationOperations = .init(primary: preparingPrimary, independent: preparingIndependent)
+    }
+    #endif
     init(decodeOverride: ((QuranAudioWindow) async throws -> Result)? = nil) {
         self.decodeOverride = decodeOverride
     }
@@ -86,32 +103,72 @@ actor QuranRecognitionWorker {
         try await QuranRecognitionReference.shared.bind(snapshot: snapshot, verseKeys: verseKeys)
     }
     func prepare() async throws {
-        if engine != nil { return }
+        #if NOOR_ACCEPTANCE_TESTING
+        preparationCalls += 1
+        defer { preparationCompletions += 1 }
+        #endif
+        // The cached primary can exist while its independent partner is still
+        // loading. Every caller must share the entire preparation attempt,
+        // including a resumed take arriving after primary initialization.
         if let loading { try await loading.value; return }
+        if primaryPrepared { return }
         #if NOOR_ACCEPTANCE_TESTING
         let preparationStarted = Date()
-        defer { print("NOOR_PRIMARY_PREPARATION stage=paired-ready seconds=\(Date().timeIntervalSince(preparationStarted))") }
+        // The independent attempt can fail without making the acoustic gate
+        // available. End-of-attempt timing is not a paired-readiness claim.
+        defer { print("NOOR_PRIMARY_PREPARATION stage=attempt-ended seconds=\(Date().timeIntervalSince(preparationStarted))") }
         #endif
         // The independent model has no dependency on Whisper. Warming it
         // first serially delays the first captured utterance unnecessarily.
         // Capture remains immediate, and actual recognition still awaits both
         // models before paired evidence can retain any words.
-        async let independentWarmup: Void? = try? QuranIndependentCTC.shared.prepare()
+        let task = Task {
+            async let independentWarmup: Void? = try? self.prepareIndependent()
+            do {
+                try await self.preparePrimary()
+                #if NOOR_ACCEPTANCE_TESTING
+                print("NOOR_PRIMARY_PREPARATION stage=primary-loaded seconds=\(Date().timeIntervalSince(preparationStarted))")
+                #endif
+                _ = await independentWarmup
+            } catch {
+                // Do not release the attempt while its independent work is
+                // still running, even if primary loading has already failed.
+                _ = await independentWarmup
+                throw error
+            }
+        }
+        loading = task
+        defer { loading = nil }
+        try await task.value
+    }
+    private var primaryPrepared: Bool {
+        #if NOOR_ACCEPTANCE_TESTING
+        if preparationOperations != nil { return injectedPrimaryPrepared }
+        #endif
+        return engine != nil
+    }
+    private func preparePrimary() async throws {
+        #if NOOR_ACCEPTANCE_TESTING
+        if let preparationOperations {
+            try await preparationOperations.primary()
+            injectedPrimaryPrepared = true
+            return
+        }
+        #endif
         guard let root = Bundle.main.url(forResource: "RecitationModel", withExtension: nil) else {
             throw CocoaError(.fileNoSuchFile)
         }
         guard QuranRecognitionModelDescriptor.bundled != nil else { throw CocoaError(.fileReadCorruptFile) }
-        let task = Task { self.engine = try await WhisperKit(WhisperKitConfig(
+        engine = try await WhisperKit(WhisperKitConfig(
             modelFolder: root.appendingPathComponent("model").path,
             tokenizerFolder: root.appendingPathComponent("tokenizer", isDirectory: true),
-            verbose: false, logLevel: .error, prewarm: false, load: true, download: false)) }
-        loading = task
-        defer { loading = nil }
-        try await task.value
+            verbose: false, logLevel: .error, prewarm: false, load: true, download: false))
+    }
+    private func prepareIndependent() async throws {
         #if NOOR_ACCEPTANCE_TESTING
-        print("NOOR_PRIMARY_PREPARATION stage=primary-loaded seconds=\(Date().timeIntervalSince(preparationStarted))")
+        if let preparationOperations { try await preparationOperations.independent(); return }
         #endif
-        _ = await independentWarmup
+        try await QuranIndependentCTC.shared.prepare()
     }
     func recognize(_ window: QuranAudioWindow) async throws -> Result {
         let previous = inference

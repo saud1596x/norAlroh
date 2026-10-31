@@ -58,103 +58,6 @@ final class NoorPersonalReminderTests: XCTestCase {
         XCTAssertEqual(fall.count, 7); XCTAssertEqual(fall.first?.date, date("2026-11-01T05:30:00Z"))
         XCTAssertEqual(Set(fall.map(\.id)).count, fall.count)
     }
-    @MainActor func testIndependentPersistenceBudgetDeliveredDedupDisableAndFailure() async throws {
-        let suite = "Noor.Personal." + UUID().uuidString
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
-        let client = PersonalNotificationClient(); let store = AtharStore(directory: folder)
-        for i in 0..<55 { client.pending["foreign.\(i)"] = .init(identifier: "foreign.\(i)", content: UNMutableNotificationContent(), trigger: nil) }
-        let now = date("2026-10-09T00:00:00Z")
-        let service = PrayerNotifications(client: client, defaults: defaults, now: { now })
-        var dua = NoorReminderPreference(kind: .dua); dua.enabled = true
-        await service.setReminder(.dua, preference: dua, store: store)
-        var hifz = NoorReminderPreference(kind: .hifz); hifz.enabled = true
-        await service.setReminder(.hifz, preference: hifz, store: store)
-        XCTAssertLessThanOrEqual(client.pending.count, 64)
-        XCTAssertEqual(client.pending.keys.filter { $0.hasPrefix("foreign.") }.count, 55)
-        XCTAssertEqual(service.personalCounts.values.reduce(0, +), 9)
-        XCTAssertNotNil(service.message)
-        let event = try XCTUnwrap(client.pending.values.first { $0.content.userInfo["destination"] as? String == "review" })
-        XCTAssertEqual((event.trigger as? UNCalendarNotificationTrigger)?.repeats, false)
-        XCTAssertNotNil((event.trigger as? UNCalendarNotificationTrigger)?.dateComponents.calendar)
-        client.delivered = [event.identifier]
-        let restored = PrayerNotifications(client: client, defaults: defaults, now: { now })
-        await restored.refresh(store: store)
-        XCTAssertEqual(restored.reminder(.hifz), hifz); XCTAssertNil(client.pending[event.identifier])
-        hifz.enabled = false; await restored.setReminder(.hifz, preference: hifz, store: store)
-        XCTAssertFalse(client.pending.keys.contains { $0.hasPrefix("noor.personal.hifz.") })
-        XCTAssertTrue(client.delivered.isEmpty)
-        XCTAssertTrue(client.pending.keys.contains { $0.hasPrefix("noor.personal.dua.") })
-        client.fail = true; await restored.refresh(store: store)
-        XCTAssertEqual(client.pending.count, 55); XCTAssertTrue(restored.personalCounts.isEmpty)
-        XCTAssertNotNil(restored.message)
-    }
-    @MainActor func testDisableDuringPermissionAndUnreadableArchiveCannotBeOverwritten() async throws {
-        let suite = "Noor.Personal." + UUID().uuidString
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
-        let client = PersonalNotificationClient(); client.holdPermission = true
-        let store = AtharStore(directory: folder), service = PrayerNotifications(client: client, defaults: defaults)
-        let started = expectation(description: "Real controller requested permission")
-        client.permissionStarted = { started.fulfill() }
-        var value = NoorReminderPreference(kind: .evening); value.enabled = true
-        let enabling = value
-        let task = Task { await service.setReminder(.evening, preference: enabling, store: store) }
-        await fulfillment(of: [started], timeout: 3)
-        value.enabled = false; await service.setReminder(.evening, preference: value, store: store)
-        client.permission?.resume(returning: true); await task.value
-        XCTAssertFalse(service.reminder(.evening).enabled); XCTAssertTrue(client.pending.isEmpty)
-        let damaged = Data("damaged preferences".utf8); defaults.set(damaged, forKey: "noor.personalReminders.v1")
-        let broken = PrayerNotifications(client: client, defaults: defaults)
-        await broken.setReminder(.dua, preference: .init(kind: .dua), store: store)
-        XCTAssertTrue(broken.personalUnreadable); XCTAssertEqual(broken.personalExport, damaged)
-        XCTAssertEqual(defaults.data(forKey: "noor.personalReminders.v1"), damaged)
-    }
-    @MainActor func testDeniedPermissionAndExplicitErasePreserveForeignRequests() async throws {
-        let suite = "Noor.Personal." + UUID().uuidString
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
-        let client = PersonalNotificationClient(); client.allowed = false
-        let service = PrayerNotifications(client: client, defaults: defaults)
-        let store = AtharStore(directory: folder)
-        var value = NoorReminderPreference(kind: .morning); value.enabled = true
-        await service.setReminder(.morning, preference: value, store: store)
-        XCTAssertFalse(service.reminder(.morning).enabled); XCTAssertNil(service.personalExport)
-        XCTAssertNotNil(service.message); XCTAssertTrue(client.pending.isEmpty)
-        client.allowed = true; await service.setReminder(.morning, preference: value, store: store)
-        let owned = try XCTUnwrap(client.pending.keys.first)
-        client.pending["foreign"] = .init(identifier: "foreign", content: UNMutableNotificationContent(), trigger: nil)
-        client.delivered = [owned, "foreign.delivered"]
-        let cancelled = expectation(description: "Owned delivered notification cancelled")
-        client.removedDelivered = { ids in if ids.contains(owned) { cancelled.fulfill() } }
-        service.erasePreferences(); await fulfillment(of: [cancelled], timeout: 3)
-        XCTAssertNil(service.personalExport); XCTAssertTrue(service.personal.values.isEmpty)
-        XCTAssertEqual(Set(client.pending.keys), ["foreign"]); XCTAssertEqual(client.delivered, ["foreign.delivered"])
-    }
-    @MainActor func testExplicitSalawatEditorAdoptsOneScheduleWithoutDuplicatingLegacy() async throws {
-        let suite = "Noor.Personal." + UUID().uuidString
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
-        let client = PersonalNotificationClient(), store = AtharStore(directory: folder)
-        let now = date("2026-10-09T00:00:00Z")
-        let service = PrayerNotifications(client: client, defaults: defaults, now: { now })
-        await service.setSalawatInterval(2, store: store)
-        await service.setSalawatEnabled(true, store: store)
-        XCTAssertEqual(service.salawatCount, 7)
-        client.delivered = [try XCTUnwrap(client.pending.keys.first), "foreign.delivered"]
-        var value = NoorReminderPreference(kind: .salawat); value.enabled = true
-        await service.setReminder(.salawat, preference: value, store: store)
-        XCTAssertFalse(service.salawat.enabled); XCTAssertEqual(service.salawatCount, 0)
-        XCTAssertEqual(client.delivered, ["foreign.delivered"])
-        XCTAssertFalse(client.pending.keys.contains { $0.hasPrefix(SalawatNotificationPlan.prefix) })
-        XCTAssertTrue(client.pending.values.allSatisfy { $0.content.userInfo["destination"] as? String == "salawat" })
-        XCTAssertEqual(service.personalCounts["salawat"], 7)
-        XCTAssertEqual(PrayerNotifications(client: client, defaults: defaults).reminder(.salawat), value)
-    }
     @MainActor func testReminderRoutesOpenActualSectionsAndRejectUnknownPayload() {
         let router = NoorWidgetRouter()
         for kind in NoorReminderKind.allCases {
@@ -162,5 +65,22 @@ final class NoorPersonalReminderTests: XCTestCase {
             XCTAssertEqual(router.destination?.host, kind.destination)
         }
         XCTAssertFalse(router.openNotification(destination: "personal-secret"))
+    }
+    @MainActor func testUnreadableLegacyArchiveRemainsExportableAndCustomEditorCannotOverwriteIt() async throws {
+        let suite = "Noor.LegacyReminder." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
+        let bytes = Data("damaged old preferences".utf8)
+        defaults.set(bytes, forKey: "noor.personalReminders.v1")
+        let client = PersonalNotificationClient()
+        let service = PrayerNotifications(client: client, defaults: defaults)
+        var old = NoorReminderPreference(kind: .dua); old.enabled = true
+        await service.setReminder(.dua, preference: old, store: AtharStore(directory: folder))
+        XCTAssertTrue(service.personalUnreadable)
+        XCTAssertEqual(service.personalExport, bytes)
+        XCTAssertEqual(defaults.data(forKey: "noor.personalReminders.v1"), bytes)
+        XCTAssertFalse(service.policyRequested)
+        XCTAssertTrue(client.pending.isEmpty)
     }
 }

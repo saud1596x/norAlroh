@@ -53,22 +53,27 @@ final class NoorSalawatTests: XCTestCase {
         let fresh = try JSONDecoder().decode(NoorWidgetSnapshot.self, from: JSONEncoder().encode(updated))
         XCTAssertEqual(fresh.salawat, counts); XCTAssertEqual(fresh.salawatTimeZone, zone.identifier)
     }
-    func testKhatmahWidgetMatchesRealConfirmedAndRescheduledPlan() throws {
+    @MainActor func testKhatmahWidgetMatchesRealConfirmedAndRescheduledPlan() throws {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Riyadh")!
         let now = try XCTUnwrap(c.date(from: .init(year: 2026, month: 10, day: 8, hour: 10)))
         let plan = try KhatmahCalculator.make(first: 580, date: now, weekdays: [6], daily: 4, deadline: nil, reminder: nil, calendar: c)
         func snapshot(_ p: KhatmahPlan) -> NoorKhatmahWidgetState {
-            .init(firstPage: p.firstPage, nextPage: p.nextPage, completed: p.completed.count, paused: p.paused,
-                timeZone: p.timeZone, days: p.days.map { .init(date: $0.date, first: $0.first, last: $0.last) })
+            NoorWidgetBridge.journeySnapshot(p, now: now)
         }
-        XCTAssertEqual(snapshot(plan).wardTitle(at: now), "الورد القادم")
-        XCTAssertEqual(snapshot(plan).ward(at: now)?.first, plan.due(on: now)?.first)
+        // The user-facing widget opens the bounded daily readingScope, rather
+        // than the advisory due() range that can accumulate missed days.
+        XCTAssertEqual(snapshot(plan).wardTitle(at: now), "ورد اليوم")
+        XCTAssertEqual(snapshot(plan).ward(at: now)?.first, plan.readingScope(on: now)?.first)
+        XCTAssertEqual(snapshot(plan).ward(at: now)?.last, plan.readingScope(on: now)?.last)
         let read = try KhatmahCalculator.confirm(plan, first: 580, last: 585, date: now)
         XCTAssertEqual(snapshot(read).completed, 6)
-        XCTAssertEqual(snapshot(read).ward(at: now)?.first, 586)
+        XCTAssertNil(snapshot(read).ward(at: now), "Six confirmed pages already exhaust the four-page daily quota")
+        XCTAssertEqual(read.due(on: now)?.first, 586, "The separate advisory backlog remains unchanged")
         let revised = try KhatmahCalculator.revised(read, date: now, weekdays: Set(1...7), daily: 2, deadline: nil, reminder: nil)
         XCTAssertTrue(snapshot(revised).valid)
-        XCTAssertEqual(snapshot(revised).ward(at: now)?.last, revised.due(on: now)?.last)
+        XCTAssertEqual(snapshot(revised).ward(at: now)?.last, revised.readingScope(on: now)?.last)
+        let tomorrow = try XCTUnwrap(c.date(byAdding: .day, value: 1, to: now))
+        XCTAssertEqual(snapshot(revised).ward(at: tomorrow)?.last, revised.readingScope(on: tomorrow)?.last)
         var paused = revised; paused.paused = true
         XCTAssertNil(snapshot(paused).ward(at: now)); XCTAssertEqual(snapshot(paused).wardTitle(at: now), "الرحلة متوقفة مؤقتًا")
         let finished = try KhatmahCalculator.confirm(revised, first: 586, last: 604, date: now)

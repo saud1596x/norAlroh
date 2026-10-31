@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "directory": ".agents/skills",
+  "directoryDocumentation": "https://developers.openai.com/blog/skills-agents-sdk",
+  "external": [
+    {
+      "name": "swiftui-pro",
+      "repository": "https://github.com/twostraws/SwiftUI-Agent-Skill",
+      "commit": "f2920b63995263f57b3e198674e89a602efba6d2",
+      "skillPath": "swiftui-pro/SKILL.md",
+      "license": "MIT",
+      "licenseSHA256": "b9b479e6df9f27cbc8e7abe91f771b396f3f0fa114d070c7c0b02c820c6b74dc",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "fc62139e262bd364cbbcab9b9f97557cd3fd6d2d4f73c4fab039d562fc324643",
+      "installedBytesSHA256": "fc62139e262bd364cbbcab9b9f97557cd3fd6d2d4f73c4fab039d562fc324643",
+      "transportLineEndings": "UNCHANGED",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\swiftui-pro\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "swift-concurrency",
+      "repository": "https://github.com/AvdLee/Swift-Concurrency-Agent-Skill",
+      "commit": "d5770817d2622e1585b1f7eaebc791a9cb0959c8",
+      "skillPath": "skills/swift-concurrency/SKILL.md",
+      "license": "MIT",
+      "licenseSHA256": "8f5fd8e5cddb015b5627e45e68b256356586144288a4a0a3db87e38bcb0c9155",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "8c667b2ff988251c7c291abe046b77d7b8fcfbe3b5ed36961e25e224b1ead491",
+      "installedBytesSHA256": "8c667b2ff988251c7c291abe046b77d7b8fcfbe3b5ed36961e25e224b1ead491",
+      "transportLineEndings": "UNCHANGED",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\swift-concurrency\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "swift-testing-expert",
+      "repository": "https://github.com/AvdLee/Swift-Testing-Agent-Skill",
+      "commit": "798e9b1a2bcac164d4f0c781908199e754f0bab6",
+      "skillPath": "swift-testing-expert/SKILL.md",
+      "license": "MIT",
+      "licenseSHA256": "8f5fd8e5cddb015b5627e45e68b256356586144288a4a0a3db87e38bcb0c9155",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "d039eb55cfbaa379d308ff42c1e459dea355edb869ec0a4d6f488759d2156aec",
+      "installedBytesSHA256": "d039eb55cfbaa379d308ff42c1e459dea355edb869ec0a4d6f488759d2156aec",
+      "transportLineEndings": "UNCHANGED",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\swift-testing-expert\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "systematic-debugging",
+      "repository": "https://github.com/obra/superpowers",
+      "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
+      "license": "MIT",
+      "licenseSHA256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202",
+      "installedBytesSHA256": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202",
+      "transportLineEndings": "UNCHANGED",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\systematic-debugging\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "verification-before-completion",
+      "repository": "https://github.com/obra/superpowers",
+      "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "skillPath": "skills/verification-before-completion/SKILL.md",
+      "license": "MIT",
+      "licenseSHA256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+      "installedBytesSHA256": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+      "transportLineEndings": "UNCHANGED",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\verification-before-completion\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "test-driven-development",
+      "repository": "https://github.com/obra/superpowers",
+      "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+      "skillPath": "skills/test-driven-development/SKILL.md",
+      "license": "MIT",
+      "licenseSHA256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d",
+      "installedBytesSHA256": "64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d",
+      "transportLineEndings": "UNCHANGED",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\test-driven-development\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "swiftui-performance-audit",
+      "repository": "https://github.com/openai/plugins",
+      "commit": "0722921d5542fc593105c27bd52630babd8b8c2a",
+      "skillPath": "plugins/build-ios-apps/skills/swiftui-performance-audit/SKILL.md",
+      "license": "NOT_DECLARED_IN_INSPECTED_TREE_DEVELOPER_INSTRUCTIONS_ONLY",
+      "licenseSHA256": null,
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "6fc6bd4d49b49ccb2089be706c449f195daa7db2c36d8097d883426488eb4b1a",
+      "installedBytesSHA256": "6df2b3a6da89129507248384e084bc83985626ddd4f70be0e39c6e9c707f366c",
+      "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\swiftui-performance-audit\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
+      "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    }
+  ],
+  "local": [
+    {
+      "name": "noor-quran-geometry",
+      "path": ".agents/skills/noor-quran-geometry/SKILL.md",
+      "authoringDate": "2026-10-31",
+      "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
+      "sourceHeadAtAuthoring": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008"
+    },
+    {
+      "name": "noor-recitation-streaming",
+      "path": ".agents/skills/noor-recitation-streaming/SKILL.md",
+      "authoringDate": "2026-10-31",
+      "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
+      "sourceHeadAtAuthoring": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008"
+    },
+    {
+      "name": "noor-recitation-evaluation",
+      "path": ".agents/skills/noor-recitation-evaluation/SKILL.md",
+      "authoringDate": "2026-10-31",
+      "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
+      "sourceHeadAtAuthoring": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008"
+    },
+    {
+      "name": "noor-widgets-notification-contracts",
+      "path": ".agents/skills/noor-widgets-notification-contracts/SKILL.md",
+      "authoringDate": "2026-10-31",
+      "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
+      "sourceHeadAtAuthoring": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008"
+    },
+    {
+      "name": "noor-release-evidence",
+      "path": ".agents/skills/noor-release-evidence/SKILL.md",
+      "authoringDate": "2026-10-31",
+      "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
+      "sourceHeadAtAuthoring": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008"
+    }
+  ],
+  "optionalNotInstalled": [
+    "ios-debugger-agent",
+    "ios-memgraph-leaks",
+    "swiftui-expert-skill"
+  ],
+  "selectionReason": "Only selected required instructions installed. No XcodeBuildMCP/device profiling capability established; no full plugin or hooks installed."
+}

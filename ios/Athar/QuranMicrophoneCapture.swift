@@ -321,4 +321,43 @@ final class QuranWindowMailbox {
         deliveredEnd = next.endFrame
         return next
     }
+    /// Model preparation can outlast the eight-second rolling window. Extend
+    /// the held prefix only with contiguous original PCM after checking every
+    /// overlapping Float's bytes. Keep its absolute start, bound the result to
+    /// eight seconds, and retain any queued window extending beyond that bound.
+    func refreshCovering(_ held: QuranAudioWindow) throws -> QuranAudioWindow {
+        lock.lock(); defer { lock.unlock() }
+        if let failure { throw failure }
+        guard held.endFrame == deliveredEnd, held.startFrame >= 0,
+              held.endFrame - held.startFrame == Int64(held.samples.count),
+              !held.samples.isEmpty, held.samples.count <= 128_000 else {
+            throw Failure.discontinuousAudio
+        }
+        let (maximumEnd, overflow) = held.startFrame.addingReportingOverflow(128_000)
+        guard !overflow else { throw Failure.discontinuousAudio }
+        var current = held
+        while let next = pending.first, next.endFrame > current.endFrame,
+              current.endFrame < maximumEnd {
+            guard next.startFrame <= current.endFrame else {
+                failure = .discontinuousAudio; pending.removeAll()
+                throw Failure.discontinuousAudio
+            }
+            let overlapStart = max(current.startFrame, next.startFrame)
+            let overlapEnd = current.endFrame
+            let heldOverlap = current.samples[Int(overlapStart - current.startFrame)..<Int(overlapEnd - current.startFrame)]
+            let nextOverlap = next.samples[Int(overlapStart - next.startFrame)..<Int(overlapEnd - next.startFrame)]
+            guard zip(heldOverlap, nextOverlap).allSatisfy({ $0.bitPattern == $1.bitPattern }) else {
+                failure = .discontinuousAudio; pending.removeAll()
+                throw Failure.discontinuousAudio
+            }
+            let extendedEnd = min(next.endFrame, maximumEnd)
+            let suffix = next.samples[Int(current.endFrame - next.startFrame)..<Int(extendedEnd - next.startFrame)]
+            current = .init(samples: current.samples + Array(suffix),
+                            startFrame: held.startFrame, endFrame: extendedEnd)
+            deliveredEnd = current.endFrame
+            if next.endFrame <= extendedEnd { pending.removeFirst() }
+            else { break } // Its unprocessed tail still belongs to this take.
+        }
+        return current
+    }
 }

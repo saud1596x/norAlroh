@@ -26,12 +26,28 @@ extension XCTestCase {
             return action.isHittable
         }
         if ready() { return action }
-        // Search both directions: the app is RTL and previous actions can leave
-        // the strip at either end. Never scroll the surrounding Quran viewport.
-        for swipeLeft in [true, false] {
-            for _ in 0..<4 {
-                if ready() { return action }
-                if swipeLeft { panel.swipeLeft() } else { panel.swipeRight() }
+        // Choose the physical direction from the actual target rectangle.
+        // Blindly resetting four swipes left before searching right returns to
+        // card five, never card six, at accessibility sizes. Retain the same
+        // four-swipes-per-direction bound and all full-containment checks.
+        var leftSwipes = 0, rightSwipes = 0
+        while leftSwipes < 4 || rightSwipes < 4 {
+            if ready() { return action }
+            let bounds = action.frame, visible = panel.frame
+            guard bounds.minX.isFinite, bounds.maxX.isFinite,
+                  bounds.width > 0, bounds.width <= visible.width + 1 else { break }
+            if bounds.minX < visible.minX - 0.5 {
+                guard rightSwipes < 4 else { break }
+                print("MUSHAF_ACTION_DRIVER_SWIPE target=\(identifier) direction=right targetMinX=\(bounds.minX) panelMinX=\(visible.minX)")
+                rightSwipes += 1; panel.swipeRight()
+            } else if bounds.maxX > visible.maxX + 0.5 {
+                guard leftSwipes < 4 else { break }
+                print("MUSHAF_ACTION_DRIVER_SWIPE target=\(identifier) direction=left targetMaxX=\(bounds.maxX) panelMaxX=\(visible.maxX)")
+                leftSwipes += 1; panel.swipeLeft()
+            } else {
+                // A contained but non-hittable action is a real failure. Do
+                // not hide an overlay or force a coordinate tap to bypass it.
+                break
             }
         }
         if ready() { return action }

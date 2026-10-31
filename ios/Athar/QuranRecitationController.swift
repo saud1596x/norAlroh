@@ -105,6 +105,9 @@ import os
     }
     private var capture: (any QuranAudioCapture)?
     private var captureStart: Task<Void, Error>?
+    private var captureStartToken: UUID?
+    private var microphoneLevelUpdates: Task<Void, Never>?
+    private var microphoneLevelContinuation: AsyncStream<Void>.Continuation?
     private var mailbox: QuranWindowMailbox?
     private var pump: Task<Void, Never>?
     private var capturing = false
@@ -450,6 +453,7 @@ import os
                 }
             })
         next.takes.append(take); next.phase = .recording
+        var takeCapture: (any QuranAudioCapture)?
         do {
             try journal.save(next); record = next
             let microphone = try makeCapture(writer, { [weak self] _ in
@@ -459,6 +463,7 @@ import os
                     await self.pause()
                 }
             })
+            takeCapture = microphone
             microphonePeak = nil
             inputGuidance = nil; microphoneGuidance = QuranInputGuidance()
             trackingFeedback = nil; trackingFeedbackID = nil; trackingUncertainty = .none
@@ -466,19 +471,45 @@ import os
                 Task { @MainActor in
                     guard let self, self.revision == token, self.capturing else { return }
                     self.microphoneGuidance.consume(reading)
-                    self.inputGuidance = self.microphoneGuidance.message
+                    let message = self.microphoneGuidance.message
+                    if self.inputGuidance != message { self.inputGuidance = message }
                 }
             }
-            microphone.observeLevel { [weak self] peak in
-                Task { @MainActor in
-                    guard let self, self.revision == token, self.capturing, peak.isFinite else { return }
-                    self.microphonePeak = peak
+            // The tap can arrive faster than the UI can render. Retain only
+            // the latest meter sample and use one consumer per take, rather
+            // than queueing one MainActor task (and reader redraw) per buffer.
+            // This affects feedback only: every original PCM sample still
+            // goes through the independent writer and recognition mailbox.
+            let peakSnapshot = OSAllocatedUnfairLock<Float?>(initialState: nil)
+            let (levels, levelContinuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+            microphone.observeLevel { peak in
+                guard peak.isFinite else { return }
+                peakSnapshot.withLock { $0 = peak }
+                levelContinuation.yield(Void())
+            }
+            stopMicrophoneLevelUpdates()
+            microphoneLevelContinuation = levelContinuation
+            microphoneLevelUpdates = Task { [weak self] in
+                for await _ in levels {
+                    guard !Task.isCancelled else { return }
+                    if let self {
+                        guard self.revision == token, self.capturing else { return }
+                        // A resumed iterator can carry an earlier wakeup.
+                        // Read the actual latest value when MainActor runs.
+                        if let peak = peakSnapshot.withLock({ $0 }), self.microphonePeak != peak {
+                            self.microphonePeak = peak
+                        }
+                    } else { return }
+                    do { try await Task.sleep(nanoseconds: 100_000_000) }
+                    catch { return }
                 }
             }
             capture = microphone; self.mailbox = mailbox; capturing = true
             let opening = Task { try await microphone.start() }
-            captureStart = opening
-            defer { captureStart = nil }
+            captureStart = opening; captureStartToken = token
+            defer {
+                if captureStartToken == token { captureStart = nil; captureStartToken = nil }
+            }
             try await opening.value
             // Closing/pausing while the audio service opens cannot publish a
             // late listening state or recreate a deleted working session.
@@ -490,11 +521,17 @@ import os
             recognitionAvailable = !next.recognitionUnavailable; state = .listening
             pump = Task { [weak self] in await self?.processWindows(mailbox, take: take.id, token: token) }
         } catch {
-            capturing = false
-            if let capture { _ = await capture.stop() }
+            if revision == token {
+                stopMicrophoneLevelUpdates()
+                capturing = false
+            }
+            // A failed start may finish draining after finish() has discarded
+            // this take and a successor has opened. Drain only its local input;
+            // never stop or clear the successor's capture, stream or mailbox.
+            if let takeCapture { _ = await takeCapture.stop() }
             else { _ = await withCheckedContinuation { continuation in writer.finish { continuation.resume(returning: $0) } } }
-            capture = nil; self.mailbox = nil
             guard revision == token else { throw CancellationError() }
+            capture = nil; self.mailbox = nil
             next.takes[next.takes.count - 1].closed = true; next.phase = .paused
             if let saved = try? AVAudioFile(forReading: journal.audio(session: next.id, take: take.id)) {
                 next.takes[next.takes.count - 1].frames = saved.length
@@ -514,6 +551,13 @@ import os
         current.takes[index].frames = frames
         record = current
     }
+    private func stopMicrophoneLevelUpdates() {
+        microphoneLevelUpdates?.cancel(); microphoneLevelUpdates = nil
+        // Cancellation can land in the throttle sleep, before next() resumes.
+        // Explicitly close the producer too so retained old input callbacks
+        // cannot leave an orphaned stream accepting feedback after shutdown.
+        microphoneLevelContinuation?.finish(); microphoneLevelContinuation = nil
+    }
     private func processWindows(_ mailbox: QuranWindowMailbox, take: UUID, token: UUID) async {
         var prepared = false
         while revision == token, !Task.isCancelled {
@@ -528,7 +572,7 @@ import os
                 message = "تأخر التتبع عن صوتك. أوقف التسميع ثم استأنفه لإعادة المحاولة."
                 return
             }
-            guard let window = pendingWindow else {
+            guard var queuedWindow = pendingWindow else {
                 if !capturing { return }
                 do { try await Task.sleep(nanoseconds: 100_000_000) } catch { return }
                 continue
@@ -542,12 +586,13 @@ import os
             }
             os_signpost(.begin, log: Self.performanceLog, name: "Recitation window processing", signpostID: span)
             defer { os_signpost(.end, log: Self.performanceLog, name: "Recitation window processing", signpostID: span) }
-            next.takes[takeIndex].frames = max(next.takes[takeIndex].frames, window.endFrame)
+            next.takes[takeIndex].frames = max(next.takes[takeIndex].frames, queuedWindow.endFrame)
             record = next
             let recognized: QuranRecognitionWorker.Result
             do {
+                let capturedSamples = queuedWindow.samples
                 let activity = await Task.detached(priority: .userInitiated) {
-                    try? QuranVoiceActivity.scan(QuranRecognitionAudio.conditioned(window.samples))
+                    try? QuranVoiceActivity.scan(QuranRecognitionAudio.conditioned(capturedSamples))
                 }.value
                 guard revision == token, !Task.isCancelled else { return }
                 if activity?.hasSpeech == false && worker.capabilities.processesLocally {
@@ -561,10 +606,21 @@ import os
                     try await NoorOperationDeadline.run(seconds: 45) { try await self.worker.prepare() }
                     guard revision == token, !Task.isCancelled else { return }
                     prepared = true
+                    // Do not spend the first inference on a stale two-second
+                    // prefix if preparation has already captured a complete,
+                    // byte-identical longer prefix. The mailbox can extend
+                    // from a verified overlap, retaining the original start
+                    // and every unprocessed tail after its eight-second bound.
+                    queuedWindow = try mailbox.refreshCovering(queuedWindow)
+                    guard var current = record,
+                          let index = current.takes.firstIndex(where: { $0.id == take }) else { return }
+                    current.takes[index].frames = max(current.takes[index].frames, queuedWindow.endFrame)
+                    record = current
                 }
+                let inferenceWindow = queuedWindow
                 trackingFeedback = .init(activity: .recognizing, startedAt: ProcessInfo.processInfo.systemUptime)
                 recognized = try await NoorOperationDeadline.run(seconds: recognitionTimeout) {
-                    try await self.recognizeWindow(window)
+                    try await self.recognizeWindow(inferenceWindow)
                 }
                 }
             }
@@ -583,6 +639,7 @@ import os
                 }
                 continue // Recording remains independent of model failure.
             }
+            let window = queuedWindow
             guard revision == token, !Task.isCancelled, var current = record, let inputTracker = tracker else { return }
             do {
                 trackingFeedback = .init(activity: .locatingPassage, startedAt: ProcessInfo.processInfo.systemUptime)
@@ -709,6 +766,7 @@ import os
         if state == .permission || state == .preparing {
             revision = UUID()
             closing = true; state = .processing
+            stopMicrophoneLevelUpdates()
             defer { closing = false }
             // Hardware startup is asynchronous. Drain its serial lane before
             // closing the take; never leave a late microphone running.
@@ -737,6 +795,7 @@ import os
         }
         guard state == .listening else { return }
         closing = true; state = .processing
+        stopMicrophoneLevelUpdates()
         if let capture {
             let result = await capture.stop()
             if var current = record, !current.takes.isEmpty {
@@ -790,6 +849,7 @@ import os
         closing = true; defer { closing = false }
         state = .processing
         revision = UUID(); pump?.cancel(); pump = nil; mailbox = nil
+        stopMicrophoneLevelUpdates()
         wordingReference = nil
         if let captureStart { _ = try? await captureStart.value }
         if let capture { _ = await capture.stop(); self.capture = nil }
@@ -816,7 +876,8 @@ import os
         catch { message = "تعذّر حفظ مراجعتك. بقي التسجيل والملاحظة محفوظين."; return false }
     }
     deinit {
-        pump?.cancel()
+        pump?.cancel(); microphoneLevelUpdates?.cancel()
+        microphoneLevelContinuation?.finish()
         if let lease = audioFocusLease {
             Task { @MainActor in NoorAudioFocus.shared.releaseRecording(lease) }
         }

@@ -1,116 +1,53 @@
 import XCTest
 
+/// Owner policy v2 replaces the old custom-frequency editors. These tests do not
+/// grant permissions or claim that a simulator delivered a real prayer alarm.
 final class NoorReminderUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    override func tearDownWithError() throws {
-        if let testRun, testRun.failureCount > 0 {
-            print("REMINDER_FAILURE_SCREEN\n" + XCUIApplication().debugDescription)
-        }
-    }
-    func testIndependentEditorsSaveDaysAndQuietSettingsAcrossRelaunch() {
-        let app = XCUIApplication(); launchNoorApp(app)
-        openReminders(app)
-        for kind in ["morning", "evening", "witr", "duha"] {
-            tapVisible(app.buttons["reminders.\(kind)"], app: app)
-            let enabled = app.switches["reminder.enabled"]
-            XCTAssertTrue(enabled.waitForExistence(timeout: 10))
-            // Persist schedules while disabled; no synthetic permission grant or
-            // pretend notification delivery is injected into the application.
-            setSwitch(enabled, to: "0", app: app)
-            let friday = app.switches["reminder.weekday.6"]
-            setSwitch(friday, to: "0", app: app)
-            let quiet = app.switches["reminder.quiet"]
-            setSwitch(quiet, to: "1", app: app)
-            saveAndReturnToHub(app)
-        }
-        app.terminate(); launchNoorApp(app); openReminders(app)
-        for kind in ["morning", "evening", "witr", "duha"] {
-            tapVisible(app.buttons["reminders.\(kind)"], app: app)
-            XCTAssertEqual(app.switches["reminder.enabled"].value as? String, "0")
-            let friday = app.switches["reminder.weekday.6"]
-            requireVisible(friday, app: app)
-            XCTAssertEqual(friday.value as? String, "0")
-            let quiet = app.switches["reminder.quiet"]
-            requireVisible(quiet, app: app)
-            XCTAssertEqual(quiet.value as? String, "1")
-            saveAndReturnToHub(app)
-        }
-    }
-    func testSalawatEditorHasFixedFiveMinuteSilentMessageWithoutTimeFields() {
+    func testFixedPolicyIsExplainedBeforePermissionsWithoutCustomization() {
         let app = XCUIApplication(); launchNoorApp(app); openReminders(app)
-        tapVisible(app.buttons["reminders.salawat"], app: app)
-        XCTAssertTrue(app.switches["reminder.enabled"].waitForExistence(timeout: 10))
+        for id in ["notifications.policy.prayers", "notifications.policy.salawat", "notifications.policy.quiet"] {
+            XCTAssertTrue(app.descendants(matching: .any)[id].exists, id)
+        }
         XCTAssertTrue(app.staticTexts["❀ اللهم صلِّ على نبينا محمد ﷺ ❀"].exists)
-        XCTAssertFalse(app.datePickers["reminder.start"].exists)
-        XCTAssertFalse(app.pickers["reminder.frequency"].exists)
-        XCTAssertFalse(app.switches["reminder.quiet"].exists)
-        setSwitch(app.switches["reminder.enabled"], to: "0", app: app)
-        saveAndReturnToHub(app)
+        XCTAssertFalse(app.datePickers.firstMatch.exists)
+        XCTAssertFalse(app.pickers.firstMatch.exists)
+        XCTAssertFalse(app.switches.firstMatch.exists)
+        XCTAssertFalse(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch.exists,
+                       "Opening the description must not itself request permission")
+        capture(app, "fixed-policy-before-permissions")
+    }
+    func testPolicyAndIndependentPermissionStatusRemainAvailableAfterRelaunch() {
+        let app = XCUIApplication(); launchNoorApp(app); openReminders(app)
         app.terminate(); launchNoorApp(app); openReminders(app)
-        tapVisible(app.buttons["reminders.salawat"], app: app)
-        XCTAssertEqual(app.switches["reminder.enabled"].value as? String, "0")
-        XCTAssertTrue(app.staticTexts["❀ اللهم صلِّ على نبينا محمد ﷺ ❀"].exists)
+        for id in ["notifications.status.prayers", "notifications.status.messages", "notifications.systemSettings"] {
+            let element = app.descendants(matching: .any)[id]
+            for _ in 0..<6 {
+                if element.exists && element.isHittable && app.frame.contains(element.frame) { break }
+                app.swipeUp()
+            }
+            XCTAssertTrue(element.exists && element.isHittable, id)
+        }
+        XCTAssertFalse(app.buttons["reminders.morning"].exists)
+        XCTAssertFalse(app.buttons["reminder.save"].exists)
+        capture(app, "fixed-policy-independent-status")
     }
     private func openReminders(_ app: XCUIApplication) {
         tapVisible(app.buttons["app.settings"], app: app)
         tapVisible(app.buttons["settings.reminders"], app: app)
-        XCTAssertTrue(app.buttons["reminders.morning"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["التنبيهات"].waitForExistence(timeout: 10))
     }
-    private func requireVisible(_ element: XCUIElement, app: XCUIApplication) {
-        // List may not create an off-screen row until the user scrolls.
+    private func tapVisible(_ element: XCUIElement, app: XCUIApplication) {
         for _ in 0..<8 {
-            if isVisible(element, app: app) { break }
+            if element.exists && element.isHittable && app.frame.contains(element.frame) { break }
             app.swipeUp()
         }
-        if !isVisible(element, app: app) {
-            // Returning from an editor may preserve a List offset below the
-            // desired row. Search back toward the top, rather than only down.
-            for _ in 0..<8 {
-                if isVisible(element, app: app) { break }
-                app.swipeDown()
-            }
-        }
-        XCTAssertTrue(element.waitForExistence(timeout: 10))
-        XCTAssertTrue(isVisible(element, app: app), "The complete target must be inside the actual app window")
+        XCTAssertTrue(element.exists && element.isHittable && app.frame.contains(element.frame))
+        XCTAssertGreaterThanOrEqual(element.frame.height, 44 - 0.000001)
+        element.tap()
     }
-    private func isVisible(_ element: XCUIElement, app: XCUIApplication) -> Bool {
-        guard element.exists, element.isHittable else { return false }
-        // Run5 exposed an off-window Save row as hittable on large iPhone.
-        // Require real geometry as well, allowing coordinate rounding only.
-        return app.frame.insetBy(dx: -0.000001, dy: -0.000001).contains(element.frame)
-    }
-    private func setSwitch(_ element: XCUIElement, to expected: String, app: XCUIApplication) {
-        requireVisible(element, app: app)
-        if element.value as? String != expected {
-            // SwiftUI exposes the labelled row as a Switch and nests the
-            // actual UIKit control. Native Run4 confirmed that row-centre taps
-            // do not toggle it; use the observed child control directly.
-            let control = element.switches.firstMatch
-            XCTAssertTrue(control.exists)
-            XCTAssertTrue(control.isHittable)
-            control.tap()
-            let toggled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                element.value as? String == expected
-            }, object: nil)
-            XCTAssertEqual(XCTWaiter.wait(for: [toggled], timeout: 3), .completed)
-        }
-        // Verify the real UI change before Save, as well as after relaunch.
-        XCTAssertEqual(element.value as? String, expected)
-    }
-    private func saveAndReturnToHub(_ app: XCUIApplication) {
-        tapVisible(app.buttons["reminder.save"], app: app)
-        // Do not swipe the next List during the asynchronous Save/dismissal.
-        // A missing return now fails here with the actual failure-screen tree.
-        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            !app.buttons["reminder.save"].exists && app.navigationBars["تذكيراتي"].exists
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 10), .completed)
-    }
-    private func tapVisible(_ button: XCUIElement, app: XCUIApplication) {
-        requireVisible(button, app: app)
-        // XCTest can report 44 points as 43.999999999999986 after
-        // coordinate conversion; allow floating-point error only.
-        XCTAssertGreaterThanOrEqual(button.frame.height, 44 - 0.000001)
-        button.tap()
+    private func capture(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
 }

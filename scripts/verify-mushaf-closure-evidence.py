@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -42,6 +43,12 @@ CONTROL_SHOTS = ('closure-tajweed-on', 'closure-tajweed-off',
 READER_LIBRARY_SHOTS = ('closure-reader-library-selected-voice-final-surah',)
 WARD_ENTRY = 'NoorKhatmahUITests/testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction'
 WARD_ENTRY_SHOTS = ('twenty-page-ward-boundary', 'home-ward-completed')
+NAVIGATION_TESTS = ('NoorHomeFlowUITests/testFourTabsAndVisibleOptionalAccountSurviveRelaunch',
+    'NoorReminderUITests/testFixedPolicyIsExplainedBeforePermissionsWithoutCustomization',
+    'NoorReminderUITests/testPolicyAndIndependentPermissionStatusRemainAvailableAfterRelaunch',
+    'NoorPrayerDisplayUITests/testPrayerDatesClocksAndCityPersistAcrossRestart')
+NAVIGATION_SHOTS = ('today-production-najdi', 'fixed-policy-before-permissions',
+    'fixed-policy-independent-status', 'prayer-dates-and-clock', 'prayer-city-changed', 'prayer-city-restored')
 UI_METHODS = {'journey': JOURNEY, 'gallery-openings': GALLERY_OPENINGS,
               'gallery-dense': GALLERY_DENSE, 'gallery-special': GALLERY_SPECIAL,
               'gallery-final': GALLERY_FINAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
@@ -73,7 +80,7 @@ def digest(path):
 
 
 def lanes(size):
-    return ((['geometry', 'reader-library'] if size == 'medium' else []) + [
+    return ((['service-contracts', 'recitation-contracts', 'geometry', 'reader-library', 'navigation-contracts'] if size == 'medium' else []) + [
         prefix + '-' + look for look in ('light', 'dark') for prefix in UI_METHODS]
         + (['ward-entry'] if size == 'medium' else []))
 
@@ -83,13 +90,21 @@ def ui_prefix(lane):
 
 
 def selectors(lane):
+    if lane == 'navigation-contracts':
+        return list(NAVIGATION_TESTS)
     if lane == 'ward-entry':
         return [WARD_ENTRY]
     prefix = ui_prefix(lane)
     if prefix:
         return ['NoorMushafClosureUITests/' + UI_METHODS[prefix]]
-    classes = ('InteractiveMushafTests', 'MushafViewportTests') if lane == 'geometry' else ('NoorReciterLibraryTests',)
-    bundle = 'AtharTests' if lane == 'geometry' else 'AtharUITests'
+    classes = (('FixedPrayerPolicyTests', 'NotificationReconciliationTests', 'NoorPersonalReminderTests',
+                'NoorSalawatTests', 'WidgetTests', 'WidgetTimelineTests', 'PublishingContentTests', 'KhatmahJourneyTests')
+               if lane == 'service-contracts' else
+               ('QuranMicrophoneInputLifecycleTests', 'QuranWindowMailboxTests',
+                'QuranLiveRecitationStorageTests', 'QuranRecognitionWorkerLifecycleTests')
+               if lane == 'recitation-contracts' else
+               ('InteractiveMushafTests', 'MushafViewportTests') if lane == 'geometry' else ('NoorReciterLibraryTests',))
+    bundle = 'AtharTests' if lane in ('geometry', 'recitation-contracts', 'service-contracts') else 'AtharUITests'
     result = []
     for name in classes:
         source = (ROOT / 'ios' / bundle / (name + '.swift')).read_text(encoding='utf-8')
@@ -227,8 +242,10 @@ def driver_metrics(folder, lane):
     coverage_errors = []
     if len(native_start) != 1 or len(native_end) != 1:
         coverage_errors.append('Missing actual process clock observations')
-    if (ui_prefix(lane) or lane in ('reader-library', 'ward-entry')) and (len(starts) != 1 or len(ends) != 1):
-        coverage_errors.append('UI test did not produce one start/end observation')
+    if ui_prefix(lane) or lane in ('reader-library', 'ward-entry', 'navigation-contracts'):
+        expected_bodies = len(selectors(lane))
+        if len(starts) != expected_bodies or len(ends) != expected_bodies:
+            coverage_errors.append('UI test did not produce each expected start/end observation')
     for row in events:
         require(type(row.get('observerSeconds')) in (int, float) and math.isfinite(row['observerSeconds'])
                 and row['observerSeconds'] >= 0, 'Invalid observed process clock')
@@ -516,12 +533,21 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
             require(context.get('expectedTests', {}).get(lane) == selectors(lane), 'Changed/missing selectors: ' + lane)
 
     attempt('source and actual device', check_context)
+
+    def check_native_product():
+        spec = importlib.util.spec_from_file_location('native_product_artifact', ROOT / 'scripts/native-product-artifact.py')
+        native = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(native)
+        return native.verify_evidence(folder, commit,
+                                      os.environ if os.environ.get('GITHUB_ACTIONS') == 'true' else None)
+
+    native_product = attempt('shared native product provenance', check_native_product)
     commands = attempt('commands', lambda: read(folder / 'commands.json')) or {}
     collection = attempt('collection', lambda: read(folder / 'collection.json')) or {}
     attempt('build', lambda: validate_command(folder, commands, 'build', 1200))
     display = attempt('actual display PNG', lambda: image_probe(folder / 'actual-display.png'))
     for lane in lanes(size):
-        attempt(lane + ' command', lambda lane=lane: validate_command(folder, commands, lane, 600 if lane == 'geometry' else 180))
+        attempt(lane + ' command', lambda lane=lane: validate_command(folder, commands, lane, 600 if lane in ('geometry', 'recitation-contracts', 'service-contracts', 'navigation-contracts') else 180))
         result = attempt(lane + ' xcresult', lambda lane=lane: validate_tests(folder, lane, selectors(lane), collection))
         if result:
             results[lane] = result
@@ -529,10 +555,13 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
         if timing:
             metrics[lane] = timing
             errors.extend(lane + ' raw timing: ' + error for error in timing['coverageErrors'])
-        captures = attempt(lane + ' screenshots', lambda lane=lane: attachment_index(folder, lane, image_probe)) or []
+        # Recitation contracts are injected lifecycle/storage unit tests. Their
+        # exact executed methods and xcresult are mandatory; they claim no UI PNG.
+        captures = ([] if lane in ('recitation-contracts', 'service-contracts') else
+                    attempt(lane + ' screenshots', lambda lane=lane: attachment_index(folder, lane, image_probe)) or [])
         images.extend(captures)
         prefix = ui_prefix(lane)
-        required = (UI_SHOTS[prefix] if prefix else READER_LIBRARY_SHOTS if lane == 'reader-library'
+        required = (UI_SHOTS[prefix] if prefix else NAVIGATION_SHOTS if lane == 'navigation-contracts' else READER_LIBRARY_SHOTS if lane == 'reader-library'
                     else WARD_ENTRY_SHOTS if lane == 'ward-entry' else ())
         if required:
             for name in required:
@@ -568,6 +597,9 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
     report = {'status': 'NATIVE_MUSHAF_EVIDENCE_COMPLETE_REVIEW_PENDING' if not errors else 'FAILED_INCOMPLETE_MUSHAF_EVIDENCE',
               'createdAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'sourceCommit': commit, 'actualContext': context, 'testResults': results,
+              'nativeProduct': ({key: native_product[key] for key in
+                                ('sourceCommit', 'producerRunID', 'archiveSHA256', 'environment', 'xctestrun')}
+                                if native_product else None),
               'uiDriverMetrics': metrics,
               'originalPNGCount': len(images), 'baselinePageCount': len(pages), 'videos': videos,
               'contactSheets': sheets or [], 'errors': errors, 'visualReview': 'PENDING_HUMAN_REVIEW',

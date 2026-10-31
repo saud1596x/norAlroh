@@ -86,6 +86,27 @@ extension XCTestCase {
     }
 
     func selectNoorTab(_ title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        // Prayer is reached through Today, not a fifth or obsolete main tab.
+        // Pop the real child before changing tabs so Today resumes at its root.
+        let prayers = app.navigationBars["مواقيت الصلاة"]
+        if prayers.exists {
+            let back = prayers.buttons.firstMatch
+            XCTAssertTrue(back.isHittable, file: file, line: line)
+            back.tap()
+        }
+        if title == "الصلاة" {
+            selectNoorTab("اليوم", in: app, file: file, line: line)
+            let entry = app.buttons["home.prayers"]
+            for _ in 0..<8 {
+                if entry.exists && entry.isHittable && app.frame.contains(entry.frame) { break }
+                app.swipeUp()
+            }
+            XCTAssertTrue(entry.waitForExistence(timeout: 10), file: file, line: line)
+            XCTAssertTrue(entry.isHittable && app.frame.contains(entry.frame), file: file, line: line)
+            entry.tap()
+            XCTAssertTrue(prayers.waitForExistence(timeout: 10), file: file, line: line)
+            return
+        }
         // iPadOS exposes the floating top tabs outside XCUIElementTypeTabBar.
         let matches = app.buttons.matching(NSPredicate(format: "label == %@", title))
         guard matches.firstMatch.waitForExistence(timeout: 10),

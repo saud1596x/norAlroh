@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import UserNotifications
 
 struct KhatmahDay: Codable, Equatable, Identifiable {
     var date: Date
@@ -109,6 +108,8 @@ struct KhatmahReminder: Equatable {
     var url: String { "nooralruh://reading/\(first)" }
 }
 enum KhatmahReminderPlan {
+    // Archived v1 calculation only. Fixed-policy runtime never schedules this
+    // customizable legacy plan; keep it for decoding and regression fixtures.
     static let prefix = "noor.khatmah."
     static func make(_ plan: KhatmahPlan, now: Date, otherPending: Int) -> [KhatmahReminder] {
         guard plan.valid, !plan.paused, plan.finished == nil, let minutes = plan.reminderMinutes else { return [] }
@@ -193,7 +194,6 @@ enum KhatmahCalculator {
     @Published private(set) var notificationStatus = ""
     private let file: URL
     private var unreadable = false
-    private var reminderTask: Task<Void, Never>?
     var active: KhatmahPlan? { archive.plans.first { $0.id == archive.activeID } }
     var exportBytes: Data? { try? Data(contentsOf: file) }
     init(file: URL? = nil) {
@@ -248,7 +248,6 @@ enum KhatmahCalculator {
     }
     // Called only by the existing explicit "delete all my data" confirmation.
     @discardableResult func erase() async -> Bool {
-        if let reminderTask { await reminderTask.value }
         do {
             if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
             archive = Archive(); unreadable = false; error = nil
@@ -267,39 +266,11 @@ enum KhatmahCalculator {
         } catch { self.error = KhatmahFailure.unavailable.localizedDescription; return false }
     }
     func enableReminderPermission() async {
-        do { _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) }
-        catch { notificationStatus = "تعذر طلب إذن التذكيرات." }
+        // Compatibility for an old caller: this route cannot request a second
+        // permission or revive an archived customizable ward schedule.
         await refreshReminders()
     }
     func refreshReminders() async {
-        let previous = reminderTask
-        let next = Task { @MainActor in
-            if let previous { await previous.value }
-            await self.scheduleReminders()
-        }
-        reminderTask = next
-        await next.value
-    }
-    private func scheduleReminders() async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("noor.khatmah.") }.map(\.identifier))
-        let settings = await center.notificationSettings()
-        guard let plan = active, !plan.paused, plan.finished == nil, let minutes = plan.reminderMinutes else { notificationStatus = "التذكير غير مفعّل"; return }
-        guard [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) else { notificationStatus = "التذكير يحتاج إذن الإشعارات من إعدادات الجهاز"; return }
-        // Leave room for prayer/adhkar requests in iOS's shared 64-request budget.
-        let reminders = KhatmahReminderPlan.make(plan, now: .now, otherPending: pending.filter { !$0.identifier.hasPrefix(KhatmahReminderPlan.prefix) }.count)
-        for reminder in reminders {
-            let content = UNMutableNotificationContent()
-            content.title = "رحلة الختمة"
-            content.body = "تابع رحلتك من الصفحة \(reminder.first). اقرأ في الوقت المناسب لك."
-            content.sound = .default
-            content.userInfo = ["url": reminder.url]
-            var components = plan.calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.fire)
-            components.timeZone = plan.calendar.timeZone
-            do { try await center.add(UNNotificationRequest(identifier: reminder.id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))) }
-            catch { notificationStatus = "تعذرت جدولة التذكير؛ الخطة محفوظة."; return }
-        }
-        notificationStatus = reminders.isEmpty ? "لا توجد تذكيرات قادمة متاحة؛ راجع موعد الورد وإعدادات التذكير" : "التذكير مفعّل للأيام القادمة"
+        notificationStatus = "تذكيرات النظام تُدار من إعدادات التنبيهات الموحدة. خطة الختمة وتقدّمك محفوظان."
     }
 }

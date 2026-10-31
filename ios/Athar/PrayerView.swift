@@ -14,15 +14,16 @@ struct PrayerView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "building.2.crop.circle").font(.title2)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(store.data.city.name).font(.headline)
-                            Text(store.data.city.region ?? "الموقع المحفوظ").font(.caption)
+                            Text(notifications.locationIsTrusted ? store.data.city.name : "اختر مكانك").font(.headline)
+                            Text(notifications.locationIsTrusted ? store.data.city.region ?? "الموقع المحفوظ" : "لعرض مواقيت صحيحة").font(.caption)
                         }
                         Spacer(); Image(systemName: "chevron.down")
                     }.padding(18).foregroundStyle(Theme.gold)
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
                 }.buttonStyle(NoorPressStyle()).accessibilityLabel("تغيير مدينة مواقيت الصلاة")
-                    .accessibilityValue(store.data.city.name)
+                    .accessibilityValue(notifications.locationIsTrusted ? store.data.city.name : "لم يُحدد المكان بعد")
                     .accessibilityIdentifier("prayer.city")
+                if notifications.locationIsTrusted {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
                     let rows = PrayerCalculator.rows(data: store.data, date: context.date)
                     let next = PrayerCalculator.next(data: store.data, now: context.date)
@@ -76,14 +77,17 @@ struct PrayerView: View {
                         }
                     }
                 }
+                } else {
+                    ContentUnavailableView("حدّد مكان مواقيت الصلاة", systemImage: "location",
+                        description: Text("اختر مدينتك أو اسمح بتحديد موقعك من الخيار أدناه. تبقى القراءة متاحة دون إذن الموقع."))
+                        .accessibilityIdentifier("prayer.locationNeeded")
+                }
                 Card {
                     Label("تنبيهات الصلاة", systemImage: "bell.badge").font(.title3.bold())
                     NavigationLink { PrayerNotificationSettings() } label: {
-                        HStack { Text("اختر الصلوات ووقت التنبيه"); Spacer(); Image(systemName: "chevron.left") }.frame(minHeight: 44)
+                        HStack { Text("التنبيهات والأذونات"); Spacer(); Image(systemName: "chevron.left") }.frame(minHeight: 44)
                     }.buttonStyle(NoorPressStyle())
-                    if !notifications.enabled {
-                        Button(notifications.requestingPermission ? "طلب إذن الإشعارات…" : "تفعيل الإشعارات") { Task { await notifications.enable(store: store) } }.frame(minHeight: 44).disabled(notifications.requestingPermission)
-                    }
+                        .accessibilityIdentifier("prayer.notifications")
                     if let message = notifications.message { Text(message).font(.caption).foregroundStyle(Theme.gold) }
                 }
                 Card {
@@ -108,6 +112,7 @@ struct PrayerView: View {
             }.padding(20)
         }.background(Theme.background).noorScreenChrome().navigationTitle("مواقيت الصلاة")
             .sheet(isPresented: $choosingCity) { NavigationStack { SaudiCityPicker() } }
+            .task { await notifications.refresh(store: store) }
 
     }
     private func symbol(_ id: String) -> String {
@@ -120,6 +125,8 @@ struct SaudiCityPicker: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var location: PrayerLocationController
+    @EnvironmentObject private var notifications: PrayerNotifications
+    @State private var saving = false
     @State private var search = ""
     @State private var region = "الكل"
     private var regions: [String] { ["الكل"] + Set(City.all.compactMap(\.region)).sorted() }
@@ -136,7 +143,12 @@ struct SaudiCityPicker: View {
             Section("مدن المملكة") {
                 ForEach(results) { city in
                     Button {
-                        if store.update({ $0.city = city; $0.locationUpdatedAt = nil }) { location.useManualCity(); dismiss() }
+                        guard !saving else { return }
+                        if store.update({ $0.city = city; $0.locationUpdatedAt = nil }) {
+                            saving = true
+                            location.useManualCity()
+                            Task { await notifications.confirmLocation(store: store); saving = false; dismiss() }
+                        }
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -146,7 +158,7 @@ struct SaudiCityPicker: View {
                             Spacer()
                             if store.data.city.id == city.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.gold) }
                         }.frame(minHeight: 48).contentShape(Rectangle())
-                    }.accessibilityIdentifier("city.\(city.id)")
+                    }.disabled(saving).accessibilityIdentifier("city.\(city.id)")
                 }
                 if results.isEmpty { ContentUnavailableView.search(text: search) }
             }

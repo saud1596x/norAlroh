@@ -68,6 +68,49 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         stage("capture.finish.end")
     }
 
+    @MainActor func testColdPreparationDecodesLatestCompleteCapturedPrefixWithoutDroppingOriginalAudio() async throws {
+        // Real bundled reference PCM with injected capture/recognition. This
+        // checks scheduling and byte identity, not microphone or ASR accuracy.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "001002", withExtension: "mp3"))
+        let samples = Array(try AudioProcessor.loadAudioAsFloatArray(fromPath: source.path).prefix(80_000))
+        XCTAssertEqual(samples.count, 80_000)
+        let gate = CaptureStartGate()
+        var capture: ReferenceCapture?
+        let controller = QuranRecitationController(requestPermission: { true }, archiveRoot: root,
+            recognitionProvider: PreparationBarrierProvider(gate: gate),
+            makeCapture: { writer, _ in
+                let value = ReferenceCapture(writer: writer, samples: Array(samples.prefix(32_000)))
+                capture = value; return value
+            }, setSessionActive: { _ in })
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        await controller.start(keys: ["1:2"], page: 1, snapshot: snapshot,
+                               corpus: try XCTUnwrap(QuranResources.corpus))
+        let preparingBy = Date().addingTimeInterval(8)
+        while !(await gate.waiting) && Date() < preparingBy { await Task.yield() }
+        guard await gate.waiting, let capture else {
+            await gate.release(); await controller.finish()
+            XCTFail("Recognition did not hold the initial captured prefix at preparation"); return
+        }
+        capture.writer.append(Array(samples[32_000..<64_000]))
+        capture.writer.append(Array(samples[64_000..<80_000]))
+        let writtenBy = Date().addingTimeInterval(8)
+        while controller.record?.takes.last?.frames != 80_000 && Date() < writtenBy { await Task.yield() }
+        XCTAssertEqual(controller.record?.takes.last?.frames, 80_000)
+        await gate.release()
+        await controller.pause()
+        let first = await gate.firstRecognizedWindow
+        XCTAssertEqual(first?.startFrame, 0)
+        XCTAssertEqual(first?.endFrame, 80_000,
+                       "Cold preparation must not decode the stale 2s prefix when a complete 5s prefix is ready")
+        XCTAssertEqual(first?.samples, samples, "A refreshed prefix must contain the actual immutable source PCM")
+        XCTAssertEqual(controller.record?.takes.last?.frames, 80_000)
+        XCTAssertTrue(controller.revealed.isEmpty)
+        XCTAssertTrue(controller.record?.evidence.isEmpty == true)
+        await controller.finish()
+    }
     private struct PreparationBarrierProvider: QuranSpeechRecognitionProvider {
         let gate: CaptureStartGate
         var capabilities: QuranRecognitionCapabilities {
@@ -78,7 +121,8 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         }
         func prepare() async throws { await gate.wait() }
         func recognize(_ window: QuranAudioWindow) async throws -> QuranRecognitionWorker.Result {
-            .init(runs: [], hasUnresolvedSpeech: true)
+            await gate.observe(window)
+            return .init(runs: [], hasUnresolvedSpeech: true)
         }
     }
 
@@ -121,6 +165,10 @@ final class QuranLiveRecitationStorageTests: XCTestCase {
         private var reply: CheckedContinuation<Void, Never>?
         private var released = false
         private(set) var waiting = false
+        private(set) var firstRecognizedWindow: QuranAudioWindow?
+        func observe(_ window: QuranAudioWindow) {
+            if firstRecognizedWindow == nil { firstRecognizedWindow = window }
+        }
         func wait() async {
             waiting = true
             guard !released else { return }
