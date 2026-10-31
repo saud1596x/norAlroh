@@ -40,7 +40,8 @@ GALLERY_FINAL_SHOTS = tuple('closure-page-' + page + '-' + mode
                            for page in ('048', '604') for mode in ('normal', 'tajweed'))
 CONTROL_SHOTS = ('closure-tajweed-on', 'closure-tajweed-off',
                  'closure-fullscreen-restored-actions', 'closure-six-ayah-actions')
-READER_LIBRARY_SHOTS = ('closure-reader-library-selected-voice-final-surah',)
+READER_LIBRARY_SHOTS = ('closure-reader-library-selected-voice-final-surah',
+                        'grouped-reciter-picker-selected-whole-surah')
 WARD_ENTRY = 'NoorKhatmahUITests/testHomeContinuesOneTwentyPageWardAndKeepsStopInsideSameAction'
 WARD_ENTRY_SHOTS = ('twenty-page-ward-boundary', 'home-ward-completed')
 NAVIGATION_TESTS = ('NoorHomeFlowUITests/testFourTabsAndVisibleOptionalAccountSurviveRelaunch',

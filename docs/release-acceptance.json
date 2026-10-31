@@ -33,7 +33,7 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Commit reviewed metadata/explicit-fullscreen-AX fix/native design evidence batch, then push once to independent verify/noor-native-closure-20261031 so existing cd5 integration jobs are not cancelled. Follow original producer/native tests. Never accept blank live log or helper passes as native/render/recognition approval.",
+    "next": "Run the consolidated heard-header/same-mic/grouped-reciter/calm-motion candidate on a separate verify/noor-inline-motion-20261031 branch, preserving still-active ee7186e adjacent runs on prior branch. This is changed app/config source, not a duplicate run of unchanged source. Inspect original matching results and CTC stage timings; no paidservice/upload/public release this cycle.",
     "paidBuildsOrServicesStartedThisCycle": 0,
     "newFinancialCommitmentAuthorizedByCharter": false,
     "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
@@ -55,7 +55,7 @@
         "scope": "SYNTHETIC_VALIDATOR_AND_DESIGN_SCOPE_REJECTION_NOT_RENDERING"
       },
       "swiftGrammar": {
-        "files": 42,
+        "files": 19,
         "errors": 0,
         "typecheck": false
       },
@@ -81,12 +81,12 @@
         "scope": "RAW_SOURCE_ID_CLOCK_AND_NEGATIVE_CONTROL_AUDIT_NOT_AUDIBLE_PLAYBACK"
       },
       "fullPythonHelpers": {
-        "ran": 180,
-        "passed": 174,
+        "ran": 185,
+        "passed": 179,
         "skipped": 6,
-        "seconds": 191.647,
-        "log": "outputs/closure-20261031/frozen-full-helper-suite.log",
-        "scope": "FROZEN_HELPER_CODE_ONLY_NOT_NATIVE_APP_ACCEPTANCE"
+        "seconds": 236.281,
+        "log": "outputs/closure-20261031/motion-heard-picker-helper-suite.log",
+        "scope": "FROZEN_HELPER_CODE_ONLY_NOT_NATIVE_APP_OR_MOTION_ACCEPTANCE"
       },
       "discardedNonfinalLocalAttempts": [
         "First full helper attempt blocked by Windows sandbox temporary-folder ACLs; not a pass.",
@@ -100,7 +100,7 @@
       "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
       "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
-    "sourceCommit": "574d8cdb7dec5d53de47e2f0042b0cfefc3e3865",
+    "sourceCommit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
     "selectedNativeMethodsNotResults": {
       "recitation-contracts": 41,
       "service-contracts": 82,
@@ -114,15 +114,21 @@
     ],
     "sourceBranch": "verify/noor-native-closure-20261031",
     "currentNativeRun": {
-      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
-      "producerJob": "124625956649",
-      "state": "FAILED_AFTER_SUCCESSFUL_TEST_BUILD_BEFORE_TEST_EXECUTION",
-      "sourceCommit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41234722725",
+      "sourceCommit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
+      "branch": "verify/noor-native-closure-20261031",
+      "state": "FAILED_AFTER_SUCCESSFUL_TEST_BUILD_DURING_IMMUTABLE_PRODUCT_PACKAGING",
+      "configuration": "Release",
       "publication": false,
+      "producerJob": "124635969751",
       "buildExit": 0,
-      "buildElapsedSeconds": 457.212,
-      "packagingCause": "Nonrelocatable xctestrun value: DYLD_INSERT_LIBRARIES",
-      "consumerTests": "NOT_RUN"
+      "buildSeconds": 404.518,
+      "packagingCause": "Missing AtharTests.xctest/Info.plist: test target omitted GENERATE_INFOPLIST_FILE; root fix sets YES only on two test targets, application explicit plist unchanged.",
+      "consumerTests": "NOT_RUN",
+      "diagnosticArtifact": "13055616984",
+      "diagnosticArtifactSHA256": "8d38f48db2c51b1c51be1c156836af82b849cf21b2fcf5ea4936224c8b9f129c",
+      "originalLog": "outputs/closure-20261031/ee7186e-producer-original.log",
+      "repairVerification": "LOCAL_YAML_ONLY_PENDING_NATIVE"
     },
     "rightsAccountObservation": {
       "date": "2026-10-31",
@@ -147,7 +153,7 @@
     "adjacentNativeEvidence": {
       "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
       "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318016/job/124625956657",
-      "state": "RECITER_SMOKE_SUCCESS_OTHER_MATRIX_STILL_IN_PROGRESS",
+      "state": "RECITER_SMOKE_SUCCESS_BOTH_LATER_IOS_MATRIX_FAILED_EXIT65",
       "artifactSHA256": "9f252e03e29722f2a9cf47b1cbc33552de4ad32bcaaf7d4615487a3925fc4c79",
       "rawLog": "outputs/closure-20261031/cd5ab14-reciter-smoke-original.log",
       "swiftPackageDeterministicWordingTests": 39,
@@ -157,7 +163,7 @@
       "scope": "REFERENCE_PLAYBACK_AND_SELECTED_NAVIGATION_NOT_LIVE_MICROPHONE_OR_RECOGNITION_ACCURACY",
       "doesNotReplaceMainMushafMatrix": true
     },
-    "preparedBatchFrom": "574d8cdb7dec5d53de47e2f0042b0cfefc3e3865",
+    "preparedBatchFrom": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
     "nativeDesignCapturePlan": {
       "scope": "ACCEPTANCE_ONLY_ACTUAL_SWIFTUI_COMPONENT_RENDERING_NOT_INSTALLED_WIDGET_OR_LIVE_PRAYER",
       "fixtureStates": [
@@ -178,6 +184,122 @@
       "existingBudgetsUnchanged": true
     },
     "liveNativeEvidence": {
+      "commit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41234722680",
+      "job": "124635969526",
+      "overall": "SUCCESS",
+      "artifact": "13056091000",
+      "artifactSHA256": "3a0825ecfb594bc76e96de4beb846098b2835e2ba09cf44e0cc65b617f1e5299",
+      "localEvidence": "outputs/closure-20261031/ee7186e-live/live-recitation",
+      "totalTests": 98,
+      "unitTestsPassed": 60,
+      "readerGeometryTestsPassed": 30,
+      "uiTestsPassed": 8,
+      "passedLanes": [
+        "live-storage",
+        "one-tap",
+        "background",
+        "privacy",
+        "reader-geometry",
+        "reader-controls",
+        "reader-library",
+        "reader-full-face",
+        "reader-entry",
+        "first-allow"
+      ],
+      "fixedFullscreenAccessibilityRegression": "reader.more no longer remains in AX after explicit fullscreen; actual absence/restoration/native journey passed and original PNG inspected.",
+      "limits": "Previous UI source only; owner newheard-header/same-mic/groupedpicker/motion NOT in this result. Original public PCM integration and actual Simulator capture, not human learner accuracy/physical30min/2second target/overall fullRelease."
+    },
+    "previousNativeProducerRun": {
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
+      "producerJob": "124625956649",
+      "state": "FAILED_AFTER_SUCCESSFUL_TEST_BUILD_BEFORE_TEST_EXECUTION",
+      "sourceCommit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+      "publication": false,
+      "buildExit": 0,
+      "buildElapsedSeconds": 457.212,
+      "packagingCause": "Nonrelocatable xctestrun value: DYLD_INSERT_LIBRARIES",
+      "consumerTests": "NOT_RUN"
+    },
+    "currentAdjacentRuns": {
+      "liveCapture": "https://github.com/saud1596x/norAlroh/actions/runs/41234722680",
+      "nativeChecks": "https://github.com/saud1596x/norAlroh/actions/runs/41234722729",
+      "recitationIntegration": "https://github.com/saud1596x/norAlroh/actions/runs/41234722770",
+      "preservedPriorIntegration": "https://github.com/saud1596x/norAlroh/actions/runs/41231318016"
+    },
+    "actualPairedModelBaseline": {
+      "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+      "originalLog": "outputs/closure-20261031/cd5ab14-live/live-recitation/live-storage.txt",
+      "environment": "iPhone17Pro Simulator, AppleVirtualSoundDevice; CPU-onlyFP32 independent CoreML and pinned primaryWhisper",
+      "input": "Original112001.mp3 50155PCMframes at16kHz via ReferenceCapture, not human live microphone",
+      "inputSHA256": "2b0db8027952e0e7f1620467a34ed908f117a67399765ef538e182e7fb83f7ec",
+      "coldPairedPreparationSeconds": 22.308184,
+      "independentHashSeconds": 5.595952,
+      "independentModelLoadBeginSeconds": 5.809386,
+      "independentModelLoadEndSeconds": 20.533698,
+      "firstClipSeconds": 3.1346875,
+      "firstPrimaryDecodeSeconds": 3.217192,
+      "firstPairedDecodeSeconds": 8.99915,
+      "warmPairedDecodeSeconds": [
+        3.832853,
+        5.944444,
+        5.938135
+      ],
+      "firstAcceptedLocationTimestamp": "NOT_RECORDED",
+      "twoSecondTrackingTarget": "NOT_MET_NOT_REDEFINED",
+      "learnerAccuracy": "NOT_MEASURED"
+    },
+    "preparedUncommittedDiagnostic": {
+      "file": "ios/Athar/QuranIndependentCTC.swift",
+      "inCurrentCICommit": false,
+      "scope": "NOOR_ACCEPTANCE_TESTING_ONLY_NUMERIC_MONOTONIC_STAGE_TIMING",
+      "stages": [
+        "normalization-input",
+        "model-prediction",
+        "swift-postdecode",
+        "source-sha",
+        "total-decode"
+      ],
+      "nativeExecution": "NOT_RUN",
+      "instruction": "Include acceptance-only stage timing in next source-bound native batch after current adjacent runs finish. Do not claim measured timing or speed repair until executed.",
+      "reason": "HistoricalFP32 ALL andCPU_ONLY both miss latency; compressed18-caseALLmatrix is not same model. Need prediction versus postdecode timings before any newcompute/precision choice."
+    },
+    "localStoreDraftUpdates": {
+      "files": [
+        "release/app-store-connect-draft.json",
+        "release/STORE-METADATA.md"
+      ],
+      "inCurrentCICommit": false,
+      "externalWrite": "NONE",
+      "purpose": "Match current four tabs, bundled reading/models, inline temporary-audio recitation, fixed independent-permission notification policy and unproven acceptance limits."
+    },
+    "publicWebsiteObservation": {
+      "date": "2026-10-31",
+      "privacyURL": "https://noor-alruh-support.onrender.com/privacy.html",
+      "supportURL": "https://noor-alruh-support.onrender.com/support.html",
+      "reachableInBrowser": true,
+      "publishedPolicyDate": "2026-10-09",
+      "matchesCurrentCandidate": false,
+      "differences": [
+        "Published privacy still describes recording history/share/trash UI.",
+        "Published support still describes customizable reminders.",
+        "Current local31Oct policy/drafts describe temporary inline recitation and fixed AlarmKit/UN policy."
+      ],
+      "originalTextEvidence": "outputs/closure-20261031/published-privacy-observed.txt",
+      "next": "Deploy matching approved policy with final candidate before public submission; no website deployment performed."
+    },
+    "priorIntegrationFailure": {
+      "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+      "run": "https://github.com/saud1596x/norAlroh/actions/runs/41231318016",
+      "compactJob": "124629452881",
+      "largeJob": "124629452859",
+      "actualVisibleFailure": "NoorContinuousMushafTests.testRealPCMChangesSurahWithinOneListeningSessionWithoutStoppingForResults: nil at112:1 deadline23.191872s,112:1 at114:1 deadline21.488916s, finish drains to114:1 after old position112:1;3assertions in1case. No timing/expectation relaxation.",
+      "excerpt": "outputs/closure-20261031/cd5ab14-compact-visible-failure-excerpt.txt",
+      "scope": "PARTIAL_UI_OBSERVED_ORIGINAL_EXCERPT_NOT_FULL_LOG_OR_COMPLETE_FAILURE_INVENTORY",
+      "status": "OPEN_LATENCY_BACKLOG_DIAGNOSIS_NOT_FIXED",
+      "diagnosis": "Observed cold paired preparation21.726353s exceeds unchanged20s deadline before inference; first3.1347s fixture startsdecode onlyafterfirstassertion with first1s ofnextappend. Firstpaired14.400354s, second128kpaired11.789984s; later114:1 reachescurrentVerse duringfinishdrain. Demonstratedcoldprepare/backlog, no provenwrong-surahmatching or inventedfinishposition. Split CTCprediction/postdecode diagnostic stillNOTRUN."
+    },
+    "previousLiveNativeEvidence": {
       "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
       "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231317962",
       "overall": "FAILED",
@@ -202,7 +324,24 @@
       "actualCause": "Chrome visually hidden and viewport reclaimed, but sheet anchor reader.more remains in accessibility. Reciter search/select/persistence subsequently passed.",
       "writtenRepairPendingNative": "Omit ordinary chrome subtree only during explicit fullScreenReading; retain ordinary hidden/recording measured lanes; seven absence/restoration checks added with original deadline/assertion.",
       "limits": "Simulator microphone/capture and pinned PCM integration, not physical learner accuracy/Tajweed/30min thermal acceptance."
-    }
+    },
+    "ownerRequestedInterfaceBatch": {
+      "status": "IMPLEMENTED_PENDING_NATIVE",
+      "heardHeader": "Only accepted native word evidence matched to actual recognized strings and original timed intervals; bounded2fragments, persisted across silence/pause and restored from accepted timed sources; no canonical expected completion.",
+      "singleMicrophone": "Start and finish on same mic; no standalonefinish. Paused-only resume in existing options menu; permission/background semantics unchanged.",
+      "reciters": "4voicegroups/5stable recording IDs; customArabicsearch, clear/empty/selectedstate; exact small source-derived coverage resource, IPA resource inclusion mandatory. Hudhaify full source coverage; Shuraim missingFatiha1:1; EveryAyah partial. Not all-surah audible audit.",
+      "motion": "Finite .14/.18second symbol/transcript fades plus existing pressfeedback and realmeter ring. Both systemReduceMotion and app lowMotion respected; no new animation dependency, no animation of Quran geometry/background or randomwaveform.",
+      "nativeUI": "Two exact reader-library journeys and mandatory originalshots; actual background resume via options and same-micfinish; actual>=5secondPCM/firstpermission/viewport assertions retained.",
+      "grammar": {
+        "files": 19,
+        "errors": 0,
+        "typecheck": false
+      },
+      "localFocusedPickerTests": 35,
+      "newPureHeardPolicyMethods": 5,
+      "noPublication": true
+    },
+    "preparedCandidateBranch": "verify/noor-inline-motion-20261031"
   },
   "items": [
     {
@@ -323,7 +462,14 @@
           "41 source-declared capture/mailbox/storage/worker lifecycle cases selected in mandatory recitation-contracts; actual native execution pending.",
           "Swift grammar only passed; no ASR accuracy, physical input or first-track latency pass claimed."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231317962",
+            "scope": "SPECIFIC_NATIVE_REFERENCE_PCM_INFERENCE_AND_SIMULATOR_CAPTURE_LIFECYCLE_NOT_LEARNER_ACCURACY",
+            "details": "60unitcasespassed;3productionpaired-ASRreferencecases. Unit clock/coldprefix/visibletracking seams include injected boundaries; do not count their millisecond values as hardware latency."
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
       "releaseBlocking": true,
@@ -336,7 +482,7 @@
       "before": {
         "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
       },
-      "cause": "A concurrent/resumed preparation caller could return at primary readiness while independent warmup was still running.",
+      "cause": "Actual cold paired preparation22.308s plus first3.135s reference PCM paired decode8.999s; configured CPU-onlyFP32 path misses2s target. Model execution exists but speed and learner-quality acceptance remain open.",
       "changes": [
         "QuranRecognitionWorker coalesces the entire concurrent paired preparation attempt; all waiting callers retain the preparation deadline until it ends; primary failure drains independent work before retry. No model, decoding option, acoustic gate or independent failure policy changed."
       ],
@@ -344,7 +490,14 @@
         "tests": [
           "Three controlled-barrier lifecycle regressions authored and selected; no real model/cold latency or accuracy pass."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231317962",
+            "scope": "SPECIFIC_NATIVE_REFERENCE_PCM_INFERENCE_AND_SIMULATOR_CAPTURE_LIFECYCLE_NOT_LEARNER_ACCURACY",
+            "details": "60unitcasespassed;3productionpaired-ASRreferencecases. Unit clock/coldprefix/visibletracking seams include injected boundaries; do not count their millisecond values as hardware latency."
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
       "releaseBlocking": true,
@@ -377,6 +530,11 @@
             "sourceReceipt": "content-sources/reciter-timings/published-surah-word-receipt.json",
             "nativeRun": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
             "scope": "115_LOCAL_SOURCE_CASES_PASSED_NATIVE_AND_ACOUSTIC_PENDING"
+          },
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318016/job/124629452881",
+            "scope": "ACTUAL_MODEL_CROSS_SURAH_PCM_TEST_FAILED_LOCATION_DEADLINES; NOT_FIXED_OR_WAIVED"
           }
         ]
       },
@@ -412,14 +570,22 @@
       "changes": [
         "Bound latest meter feedback10Hz without dropping writer/mailbox PCM.",
         "Extend held first window only by verified bit-identical contiguous raw overlap, max8s; retain later pending tail.",
-        "Own input cleanup/start-task by generation across awaited stop; close meter stream at all exits."
+        "Own input cleanup/start-task by generation across awaited stop; close meter stream at all exits.",
+        "Same microphone finishes active/paused inline recitation; paused resume remains in existing options; durable accepted heard fragments remain through silence/pause and clear on new session/successfulfinish. Native verification pending."
       ],
       "verification": {
         "tests": [
           "41 source-declared capture/mailbox/storage/worker lifecycle cases selected in mandatory recitation-contracts; actual native execution pending.",
           "Swift grammar only passed; no ASR accuracy, physical input or first-track latency pass claimed."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231317962",
+            "scope": "SPECIFIC_NATIVE_REFERENCE_PCM_INFERENCE_AND_SIMULATOR_CAPTURE_LIFECYCLE_NOT_LEARNER_ACCURACY",
+            "details": "60unitcasespassed;3productionpaired-ASRreferencecases. Unit clock/coldprefix/visibletracking seams include injected boundaries; do not count their millisecond values as hardware latency."
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
       "releaseBlocking": true,
@@ -900,7 +1066,8 @@
         "Three production-component SwiftUI design directions authored; selected Najdi Today with primary bounded reading action, account, prayer route and editorial dua.",
         "Scoped inkgreen/ivory app tokens keep approved Mushaf renderer/paper unchanged; semantic fonts and reduced-motion-aware feedback.",
         "Removed old reminder editors and direct permission requests outside policy explanation; city selection commits explicit trust.",
-        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait."
+        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait.",
+        "Owner-requested short actual-state microphone/transcript/rowpress motion with ReduceMotion/app lowMotion, grouped Arabic reciter search and44pt actions. New source native/VoiceOver visual proof pending."
       ],
       "verification": {
         "tests": [
@@ -1176,9 +1343,16 @@
   ],
   "skills": {
     "sourceRegistry": ".agents/skills/skill-sources.json",
-    "externalInstalledSourceEntriesVerified": 7,
+    "externalInstalledSourceEntriesVerified": 10,
     "localWritten": 5,
     "catalog": "Next-turn discovery pending; current entry files manually read; source LF/installed CRLF recorded separately where relevant",
-    "effect": "No accuracy/performance claim from skill names or installation"
+    "effect": "Instructions only; no model/accuracy/performance/native acceptance claim",
+    "newSelected": [
+      "coreml",
+      "swiftui-animation",
+      "ios-accessibility"
+    ],
+    "installedVerification": "outputs/skill-research-20261031/installed-verification.json",
+    "licenses": "PolyForm Perimeter1.0.0 for3newskills; actual LICENSE/requirednotices preserved; no upstream scripts/hooks/MCP installed"
   }
 }

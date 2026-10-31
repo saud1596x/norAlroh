@@ -18,9 +18,13 @@ struct NoorMushafReciter: Identifiable {
         guard let recording, id == "surah:\(recording.id):\(recording.recordingID)" else { return false }
         return NoorSurahWordTimings.supports(recording)
     }
-    var scopeLabel: String { supportsVersePlayback ? "من الآية المحددة" : "السورة كاملة من بدايتها" }
+    var scopeLabel: String { supportsVersePlayback ? "من الآية المحددة" : "السورة كاملة" }
+    var coverage: NoorReciterTimingCoverage? {
+        guard supportsWordTracking else { return nil }
+        return NoorReciterCoverageCatalog.recordings[id]
+    }
     var trackingLabel: String {
-        scopeLabel + (supportsWordTracking ? " · تتبّع الكلمات، بتغطية جزئية" : " · التتبّع غير متاح")
+        scopeLabel + " · " + (coverage?.label ?? (supportsWordTracking ? "توقيت الكلمات حسب التسجيل" : "التتبّع غير متاح"))
     }
     static var all: [Self] {
         (NoorVerseReciter.all.map { Self(id: $0.id, name: $0.name, verseDirectory: $0.id, recording: nil) }
@@ -52,34 +56,53 @@ struct NoorMushafReciterPicker: View {
     let selectedID: String
     let onSelect: (NoorMushafReciter) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
+    @EnvironmentObject private var store: AtharStore
     @State private var search = ""
-    private var matches: [NoorMushafReciter] {
-        let query = ArabicSearch.normalize(search)
-        return NoorMushafReciter.all.filter { query.isEmpty || ArabicSearch.normalize($0.name).contains(query) }
-    }
+    private var groups: [NoorReciterVoiceGroup] { NoorReciterVoiceGroup.matching(search) }
+    private var tokens: NoorChromeTokens { .init(scheme: scheme) }
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(matches) { reciter in
-                    Button {
-                        onSelect(reciter); dismiss()
-                    } label: {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(reciter.name).foregroundStyle(.primary)
-                                Text(reciter.trackingLabel).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if selectedID == reciter.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.gold) }
-                        }.frame(minHeight: 48)
-                    }.accessibilityIdentifier("reader.reciter.\(reciter.id)")
-                        .accessibilityValue(selectedID == reciter.id ? "محدد" : "")
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 16) {
+                    Text("اختر القارئ").font(.title2.bold()).foregroundStyle(tokens.primary)
+                    Spacer(minLength: 8)
+                    Button("إغلاق", systemImage: "xmark") { dismiss() }
+                        .labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
+                        .accessibilityIdentifier("reader.reciters.close")
                 }
-                if matches.isEmpty { Text("لا يوجد قارئ مطابق") }
-            }
-            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث باسم القارئ")
-            .navigationTitle("اختر القارئ")
-            .toolbar { Button("إغلاق") { dismiss() } }
+                NoorReciterSearchField(text: $search, identifier: "reader.reciters.search")
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 24) {
+                        ForEach(groups) { group in
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(group.name).font(.headline).foregroundStyle(tokens.primary)
+                                    .accessibilityAddTraits(.isHeader)
+                                    .accessibilityIdentifier("reader.voice.\(group.id)")
+                                ForEach(group.recordings) { reciter in
+                                    Button {
+                                        onSelect(reciter); dismiss()
+                                    } label: {
+                                        NoorReciterRecordingLabel(reciter: reciter, selected: selectedID == reciter.id)
+                                    }.buttonStyle(NoorChromePressStyle(lowMotion: store.data.lowMotion))
+                                        .accessibilityIdentifier("reader.reciter.\(reciter.id)")
+                                        .accessibilityLabel("\(group.name)، \(reciter.scopeLabel)، \(reciter.coverage?.label ?? "توقيت الكلمات حسب التسجيل")")
+                                        .accessibilityValue(selectedID == reciter.id ? "محدد" : "")
+                                        .accessibilityAddTraits(selectedID == reciter.id ? .isSelected : [])
+                                }
+                            }
+                        }
+                        if groups.isEmpty {
+                            ContentUnavailableView("لا يوجد قارئ مطابق", systemImage: "magnifyingglass",
+                                description: Text("جرّب اسمًا آخر أو امسح البحث."))
+                                .accessibilityIdentifier("reader.reciters.empty")
+                        }
+                    }.padding(.vertical, 8)
+                }
+                .scrollDismissesKeyboard(.interactively)
+            }.padding(20).background(tokens.background)
+                .toolbar(.hidden, for: .navigationBar)
+                .environment(\.layoutDirection, .rightToLeft)
         }
     }
 }

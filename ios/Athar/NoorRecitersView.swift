@@ -1,12 +1,17 @@
 import SwiftUI
 
 struct NoorRecitersView: View {
+    @Environment(\.colorScheme) private var scheme
     @State private var search = ""
     @State private var favoritesOnly = false
     @AppStorage("noor.reciters.favorites") private var favorites = ""
     @AppStorage("noor.reciters.recent") private var recentReciter = 0
     private var favoriteIDs: Set<Int> {
         Set(favorites.split(separator: ",").compactMap { Int($0) })
+    }
+    private var tokens: NoorChromeTokens { .init(scheme: scheme) }
+    private func choice(_ reciter: NoorReciter) -> NoorMushafReciter {
+        .init(id: "surah:\(reciter.id):\(reciter.recordingID)", name: reciter.name, verseDirectory: nil, recording: reciter)
     }
     private var filtered: [NoorReciter] {
         let query = ArabicSearch.normalize(search)
@@ -22,10 +27,11 @@ struct NoorRecitersView: View {
     var body: some View {
         List {
             Section {
-                Text("اختر القارئ ثم افتح السورة داخل المصحف مع تتبّع التلاوة.")
+                NoorReciterSearchField(text: $search, identifier: "reciters.library.search")
+                Text("اختر القارئ، ثم السورة. يبدأ الاستماع من أدوات المصحف عندما تختار ذلك.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Toggle("المفضلة فقط", isOn: $favoritesOnly)
-            }.listRowBackground(Theme.panel)
+            }.listRowBackground(tokens.surface)
             ForEach(filtered) { reciter in
                 HStack {
                     NavigationLink {
@@ -33,7 +39,9 @@ struct NoorRecitersView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(reciter.name).font(.headline)
-                            Text("١١٤ سورة · توقيت كلمات بتغطية جزئية")
+                            Text("\(reciter.surahs.count) سورة · السورة كاملة")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                            Text(choice(reciter).coverage?.label ?? "توقيت الكلمات حسب التسجيل")
                                 .font(.subheadline).foregroundStyle(.secondary)
                         }.padding(.vertical, 6)
                     }.accessibilityIdentifier("reciter.\(reciter.id)")
@@ -47,7 +55,7 @@ struct NoorRecitersView: View {
                             .frame(minWidth: 44, minHeight: 44).foregroundStyle(Theme.gold)
                     }.buttonStyle(.borderless)
                         .accessibilityLabel(favoriteIDs.contains(reciter.id) ? "إزالة \(reciter.name) من المفضلة" : "إضافة \(reciter.name) إلى المفضلة")
-                }.listRowBackground(Theme.panel)
+                }.listRowBackground(tokens.surface)
             }
             if filtered.isEmpty {
                 if NoorReciterCatalog.reciters.filter(NoorSurahWordTimings.supports).isEmpty {
@@ -59,9 +67,9 @@ struct NoorRecitersView: View {
                 }
             }
         }
-        .scrollContentBackground(.hidden).background(Theme.background)
-        .noorScreenChrome().navigationTitle("القرّاء مع التتبّع")
-        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "ابحث باسم القارئ")
+        .scrollContentBackground(.hidden).background(tokens.background)
+        .noorScreenChrome().navigationTitle("القرّاء مع التتبّع").navigationBarTitleDisplayMode(.inline)
+        .environment(\.layoutDirection, .rightToLeft)
     }
 }
 
@@ -89,7 +97,8 @@ private struct NoorReciterSurahsView: View {
             Section {
                 Text("يُفتح المصحف بالقارئ المختار. ابدأ الاستماع من أدوات الآية.")
                     .font(.subheadline).foregroundStyle(.secondary)
-                Text("توقيت الكلمات غير مكتمل لبعض الآيات.")
+                Text(NoorMushafReciter.selected("surah:\(reciter.id):\(reciter.recordingID)")?.coverage?.label
+                     ?? "توقيت الكلمات حسب التسجيل")
                     .font(.caption).foregroundStyle(.secondary)
                 if let first = store.quran.first(where: { $0.number == 1 }) {
                     Button { open(first) } label: {

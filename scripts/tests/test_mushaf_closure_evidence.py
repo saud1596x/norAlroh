@@ -371,7 +371,7 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         fixture(self.folder, 'medium')
         write(self.folder / 'reader-library-attachments/manifest.json', [])
         self.assertNotEqual(self.verify('medium'), 0)
-        self.assertEqual(self.report['testResults']['reader-library']['passedTests'], 1)
+        self.assertEqual(self.report['testResults']['reader-library']['passedTests'], 2)
         self.assertEqual(self.report['testResults']['reader-library']['failedTests'], 0)
         self.assertTrue(any('reader-library zero original PNG screenshots' in error for error in self.report['errors']))
         self.assertTrue(any('closure-reader-library-selected-voice-final-surah' in error for error in self.report['errors']))
@@ -383,6 +383,15 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.mutate('reader-library-attachments/manifest.json', unrelated)
         self.assertNotEqual(self.verify('medium'), 0)
         self.assertTrue(any('reader-library: missing/repeated mandatory actual screenshot closure-reader-library-selected-voice-final-surah'
+                            in error for error in self.report['errors']))
+
+    def test_grouped_picker_original_cannot_be_replaced_by_the_library_opening(self):
+        fixture(self.folder, 'medium')
+        def replace(value):
+            value[0]['attachments'][1]['suggestedHumanReadableName'] = 'closure-reader-library-selected-voice-final-surah_copy.png'
+        self.mutate('reader-library-attachments/manifest.json', replace)
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('reader-library: missing/repeated mandatory actual screenshot grouped-reciter-picker-selected-whole-surah'
                             in error for error in self.report['errors']))
 
     def test_ward_entry_requires_its_own_actual_completion_and_boundary_images(self):

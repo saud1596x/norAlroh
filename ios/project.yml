@@ -85,6 +85,9 @@ targets:
   AtharTests:
     type: bundle.unit-test
     platform: iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     sources:
       - path: AtharTests
       - path: ../tools/RecitationEngineProbe/Tests/RecitationEngineProbeTests/QuranWordAlignmentTests.swift
@@ -93,6 +96,9 @@ targets:
   AtharUITests:
     type: bundle.ui-testing
     platform: iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     sources:
       - path: AtharUITests
     dependencies:

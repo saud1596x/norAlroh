@@ -1,5 +1,5 @@
 {
-  "status": "DRAFT_REQUIRES_NATIVE_RELEASE_AND_PUBLISHER_REVIEW",
+  "status": "DRAFT_NOT_SUBMITTED_REQUIRES_ALL_OWNER_CHARTER_RELEASE_GATES",
   "name": "نور الروح",
   "subtitle": "القرآن والحفظ والذكر والصلاة",
   "primaryLanguage": "ar-SA",
@@ -12,8 +12,8 @@
   "reviewSignInRequired": false,
   "reviewContactPhone": null,
   "ageRatingQuestionnaire": "COMPLETE_CURRENT_APP_STORE_CONNECT_QUESTIONNAIRE",
-  "appPrivacyAnswers": "DRAFT_APPLE_AND_GUEST_WITH_OPT_IN_FIREBASE_SYNC; verify signed Release SDK behavior and current account policy",
-  "contentRights": "Third-party resources; see bundled notices and pending QCF permission",
+  "appPrivacyAnswers": "VERIFY_ACTUAL_SIGNED_IPA_AND_DEPLOYED_POLICY; Apple account/optional Firebase sync must not use historical no-data-collected answers. Local microphone PCM is not automatically uploaded in this candidate; no voice-history screen.",
+  "contentRights": "Owner reports prior Quran Foundation confirmation and instructs use; existing console project ACTIVE READY observed2026-10-31. Written authorization not independently inspected. Keep required bundled notices and accessible credits; no support inquiry authorized.",
   "priceAndTerritories": "PUBLISHER_CHOICE_REQUIRED",
   "EUTraderStatus": "PUBLISHER_DECLARATION_IF_APPLICABLE",
   "screenshotSource": "Actual final native iOS build only; not browser/mockup images",
@@ -22,12 +22,17 @@
     "AI tafsir"
   ],
   "featuresRequiringNativeValidation": [
-    "Apple sign-in, opt-in automatic sync between two devices and account deletion",
-    "Optional on-device transcription, word tracking and probable word differences",
-    "Audio cancellation/retry/offline playback, permission and route interruptions",
-    "Prayer notifications after restart, location changes and Home/Lock Screen widgets",
-    "Full-page interactive Mushaf visual match and glyph hit-testing after zoom"
+    "Final signed Apple-only sign-in, opt-in two-device sync and account deletion using test accounts.",
+    "Physical-device live PCM, paired on-device raw recognition, stable word tracking, measured latency, false positives and held-out learner errors; current2s target is not met.",
+    "Fixed prayer AlarmKit permission/stop/sound/locked/background behavior on iOS26+, independent text-notification permission, and honest UN fallback on iOS17–25.",
+    "Single silent300s repeating salawat request, quiet daily witr/duha, location/date/clock changes, partial scheduler failure and finite coverage.",
+    "Actual Home/Lock Screen widget installation, hourly refresh,48h local timeline, tint/appearance/large text and cold/warm stable-ID deep links.",
+    "Original Mushaf normal/tajweed geometry, touch, full screen and turning across small/medium/large displays; approved screenshots must match final source.",
+    "Final IPA resources, extension entitlements/privacy manifests, upgrade data preservation, offline and interrupted-audio behavior."
   ],
-  "reviewNotes": "Core local functions support guest use. Optional Apple sign-in and opt-in reading/memorization sync require completed production configuration and device acceptance before submission. No automatic audio upload. Model download is optional and runs recognition on device; no validated tajweed or accuracy claim. Account deletion is available in-app and may require recent Apple authentication. Keep the minimal UID deletion-security marker disclosure consistent with the deployed rules. This draft is not proof of TestFlight or App Store submission.",
-  "publicURLsValidation": "REQUIRES_LIVE_DEPLOYMENT_AND_ACCOUNT_POLICY_CHECK"
+  "reviewNotes": "DRAFT ONLY — do not submit before the current owner acceptance ledger is satisfied. The candidate has four tabs: Today, Mushaf, My Journey and Adhkar. Core reading is available as a guest; Apple sign-in and opt-in sync require final production configuration and device validation. Recitation starts from the Mushaf microphone after OS permission, remains inline and stops without a results/history screen. The two pinned recognition models and primary reading resources are bundled; no optional model-download setup is advertised. Uncached reciter audio and tafsir require network access; listened-to audio is cached. No automatic microphone-audio upload is enabled. No validated Tajweed-correction, comparative accuracy or guaranteed realtime claim is made. Settings > Notifications explains the fixed policy before permission requests. On iOS26+, dated prayer alerts use AlarmKit with its own permission; text notifications use UserNotifications independently. On iOS17–25, prayer alerts use ordinary local notifications subject to system sound/Focus settings. The policy schedules five dated prayers, one quiet daily witr and duha message, and ONE silent repeating300-second salawat notification throughout day and night; there is no per-prayer/sound/frequency/time customization. Permission refusal does not block reading and is not repeatedly prompted. Prayer dates require a confirmed city or valid location. Coverage is finite and renewed while the app can run; this is not an unlimited background schedule. Device delivery, stop behavior and sound require acceptance evidence. Review on test accounts only, never delete the publisher account. Account deletion/privacy statements, minimal security deletion marker and App Privacy answers must match the deployed rules and signed archive. No TestFlight, review submission or public publication is asserted by this draft.",
+  "publicURLsValidation": "REQUIRES_LIVE_DEPLOYMENT_AND_ACCOUNT_POLICY_CHECK",
+  "draftUpdated": "2026-10-31",
+  "acceptanceLedger": "docs/release-acceptance.json",
+  "descriptionArabic": "نور الروح يرافق قراءتك وذكرك اليومي بواجهة عربية هادئة. اقرأ المصحف في صفحات كاملة، واحفظ موضعك وعلاماتك، وافتح أدوات الآية للتفسير والاستماع والتكرار. اختر قارئًا من التسجيلات المدعومة، وفعّل ألوان التجويد أو أخفِ الآيات للتسميع داخل المصحف. ابدأ وردك اليومي من «أكمل ختمتك»، وتابع خطة القراءة دون احتساب الاستماع قراءةً. تصفّح أذكار الصباح والمساء بصورة مستقلة، وأضف أدوات القرآن والدعاء إلى الشاشة. بعد اختيار المدينة ومنح الأذونات، تتيح التنبيهات سياسة واضحة للصلوات والوتر والضحى والصلاة على النبي ﷺ. الوظائف المحلية الأساسية متاحة دون حساب، مع دخول Apple ومزامنة اختيارية وفق إعداد النسخة النهائية. المتابعة الصوتية تعرض الملاحظات المدعومة للمراجعة؛ لا تمثل اعتمادًا لصحة النطق أو أحكام التجويد."
 }

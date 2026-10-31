@@ -26,6 +26,7 @@ class ReleasePayloadTests(unittest.TestCase):
         (root / 'ios/Athar').mkdir(parents=True)
         self.quran_files = {'quran.json': b'synthetic-pinned-quran',
                             'reciter-word-timings.json': b'synthetic-pinned-timings',
+                            'reciter-picker-coverage.json': b'synthetic-source-bound-picker-coverage',
                             'Reciter-Timings-LICENSE.txt': b'synthetic-timing-license',
                             'surah-word-timings.json': b'synthetic-pinned-surah-word-timings',
                             'Published-Surah-Word-Timings-SOURCE.txt': b'synthetic-published-timing-source',
@@ -158,6 +159,13 @@ class ReleasePayloadTests(unittest.TestCase):
             for name in self.model_files:
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit='RecitationModel/' + name))
+
+    def test_picker_coverage_cannot_be_missing_or_replaced_in_the_archive(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(KeyError):
+                gate.verify(self.payload(folder, omit='reciter-picker-coverage.json'))
+            with self.assertRaisesRegex(ValueError, 'reciter-picker-coverage.json'):
+                gate.verify(self.payload(folder, corrupt='reciter-picker-coverage.json'))
 
     def test_monitor_manifest_cannot_be_missing_even_when_app_has_group_reason(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -495,6 +495,9 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertEqual(first.takes.count, 1); XCTAssertTrue(first.takes[0].closed)
         XCTAssertEqual(first.takes[0].frames, Int64(samples.count))
         XCTAssertGreaterThanOrEqual(first.evidence.count, 2, "Actual reference speech must produce authentic native word evidence")
+        XCTAssertFalse(original.heardRecitation.fragments.isEmpty, "Actual accepted audio words populate the inline header")
+        let heardHeader = original.heardRecitation.fragments
+        XCTAssertTrue(Set(heardHeader.flatMap(\.nativeIDs)).isSubset(of: Set(first.evidence.map(\.nativeID))))
         let observed = try XCTUnwrap(first.observedSpeech)
         XCTAssertFalse(observed.isEmpty)
         XCTAssertEqual(first.wordingEvents, [], "Correct real reference speech must not produce unsupported error alerts")
@@ -526,6 +529,8 @@ final class QuranRecognitionIntegrationTests: XCTestCase {
         XCTAssertEqual(reopened.state, .paused); XCTAssertNil(reopened.message)
         XCTAssertEqual(reopened.revealed, Set(first.evidence.map(\.nativeID)))
         XCTAssertEqual(reopened.record?.observedSpeech, observed)
+        XCTAssertEqual(reopened.heardRecitation.fragments, heardHeader,
+                       "Restore rebuilds heard text from exact accepted observations, never the expected ayah")
         XCTAssertEqual(reopened.hiddenIDs, original.hiddenIDs,
             "Restoring a session must preserve the same hidden-word scope and durable progress")
         let recoverable = try XCTUnwrap(MushafRecordingArchive.deletedTakes(session: first.id, base: root).first)

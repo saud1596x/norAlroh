@@ -200,7 +200,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         app.alerts["التسميع"].buttons["حسنًا"].tap()
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 5))
         XCTAssertEqual(page.frame, frame, "Permission denial cannot move the Quran page")
-        XCTAssertFalse(app.buttons["study.finish"].exists, "No false recording session after denied permission")
+        XCTAssertFalse(app.buttons["study.microphone"].exists, "No false recording session after denied permission")
         capture(app, "recitation-reading-after-denial")
     }
     func testRecitationRemainsInsideReaderWithoutScopeOrHistoryScreens() {
@@ -214,7 +214,7 @@ final class NoorInteractiveMushafUITests: XCTestCase {
         app.buttons["reader.options.close"].tap()
         XCTAssertTrue(app.buttons["reader.study"].isHittable)
         XCTAssertEqual(page.frame,frame)
-        XCTAssertFalse(app.buttons["study.finish"].exists)
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
         capture(app,"recitation-inline-only-mushaf")
     }
     func testActualVersePlaybackFailureShowsNoticeAndRestoresReader() throws {

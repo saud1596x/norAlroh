@@ -13,12 +13,17 @@ on:
       - tools/reciter_alignment/export_coreml.py
       - ios/Athar/InteractiveMushafReader.swift
       - ios/Athar/NoorMushafReciter.swift
+      - ios/Athar/NoorReciterPresentation.swift
+      - ios/Athar/reciter-picker-coverage.json
+      - ios/Athar/NoorReaderControls.swift
       - ios/Athar/NoorRecitersView.swift
       - ios/Athar/NoorSurahWordTimings.swift
       - ios/Athar/QuranIndependentCTC.swift
       - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranLiveRecitationStorage.swift
       - ios/Athar/QuranRecitationController.swift
+      - ios/Athar/QuranHeardRecitation.swift
+      - ios/project.yml
       - ios/Athar/MushafStudySession.swift
       - ios/Athar/QuranRecognitionWorker.swift
       - ios/AtharTests/QuranLiveRecitationStorageTests.swift

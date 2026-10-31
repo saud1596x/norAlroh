@@ -113,6 +113,9 @@ import WhisperKit
             }
             XCTAssertEqual(controller.currentVerse, expectedVerse)
             XCTAssertEqual(controller.activeWordID, expectedID)
+            XCTAssertEqual(controller.heardRecitation.fragments.last?.verse, expectedVerse)
+            XCTAssertTrue(controller.heardRecitation.fragments.last?.nativeIDs.contains(expectedID) == true,
+                          "The latest accepted word stays in the header whether Quran text is open or hidden")
             XCTAssertEqual(controller.record?.id, session); XCTAssertEqual(controller.state, .listening)
             XCTAssertTrue(controller.hiddenIDs.isEmpty, "Open-text recitation must leave every ayah visible")
             let location = wordIndex.listeningLocation(verse: controller.currentVerse,
@@ -131,7 +134,9 @@ import WhisperKit
         XCTAssertFalse(controller.hiddenIDs.isEmpty, "Unrecited text can still be concealed on request")
         XCTAssertTrue(controller.setPracticeTextHidden(false)); XCTAssertTrue(controller.hiddenIDs.isEmpty)
         XCTAssertEqual(controller.activeWordID, secondIDs.last, "Changing visibility cannot change recognized position")
+        XCTAssertEqual(controller.heardRecitation.fragments.map(\.text), ["قل هو الله أحد", "الله الصمد"])
         await controller.finish()
+        XCTAssertTrue(controller.heardRecitation.fragments.isEmpty, "Finishing clears only the ephemeral heard header")
     }
 
     func testDelayedAnalysisCannotOverwriteVisibilityOrTextAssistance() throws {

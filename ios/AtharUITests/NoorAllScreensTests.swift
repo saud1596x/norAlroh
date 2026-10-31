@@ -14,7 +14,7 @@ final class NoorAllScreensTests: XCTestCase {
         app.buttons["reader.options.close"].tap()
         let visibility = app.buttons["reader.textVisibility"]
         XCTAssertTrue(visibility.isHittable);visibility.tap();visibility.tap()
-        XCTAssertFalse(app.buttons["study.finish"].exists)
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
         capture(app,"inline-recitation-without-workspace-or-history")
         app.buttons["إغلاق المصحف"].tap()
     }

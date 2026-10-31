@@ -797,6 +797,16 @@ struct InteractiveMushafReader: View {
             VStack(spacing: 0) {
             HStack {
                 Menu {
+                    if recitation.state == .paused, recitation.record?.phase != .finished {
+                        Button("استئناف التسميع") {
+                            microphoneCue.beginCapture {
+                                guard readerVisible, recitation.state == .paused else { return }
+                                Task { await recitation.resume() }
+                            }
+                        }
+                        .accessibilityIdentifier("study.resume")
+                        .disabled(recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
+                    }
                     if !followAudio {
                         Button("العودة إلى موضع التلاوة") { followCurrentAudio() }
                     }
@@ -826,22 +836,7 @@ struct InteractiveMushafReader: View {
                     Image(systemName: "ellipsis").frame(width: 44,height: 44).contentShape(Rectangle())
                 }.accessibilityLabel("خيارات داخل المصحف").accessibilityIdentifier("study.options")
                 Spacer(minLength: 8)
-                if showReviewFeedback {
-                    Text("موضع غير محسوم · تابع القراءة").font(.caption).frame(minHeight: 44)
-                        .accessibilityIdentifier("study.reviewProvisional")
-                } else if recitation.state == .listening, let guidance = recitation.inputGuidance {
-                    Text(guidance).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                        .frame(minHeight: 44)
-                        .accessibilityIdentifier("study.inputGuidance")
-                } else {
-                    Text(recitation.status).font(.subheadline).lineLimit(1)
-                        .accessibilityIdentifier("study.status").accessibilityAddTraits(.updatesFrequently)
-                }
-                Spacer(minLength: 8)
-                Button { Task { await recitation.finish() } } label: {
-                    Text("إنهاء").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                }.disabled(recitation.state == .processing || recitation.state == .preparing || recitation.state == .permission)
-                    .accessibilityIdentifier("study.finish")
+                heardRecitationHeader
             }
             }.background { readerControlMeasurement("study-header") }
             Spacer(minLength: 0)
@@ -850,7 +845,10 @@ struct InteractiveMushafReader: View {
                 practiceTextVisibilityButton.frame(maxWidth: .infinity)
                 studyMicrophoneButton
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("الصفحة \(number)").font(.caption).monospacedDigit()
+                    if let support = studySupportMessage {
+                        Text(support).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                            .accessibilityIdentifier("study.notice")
+                    } else { Text("الصفحة \(number)").font(.caption).monospacedDigit() }
                     if let record = recitation.record {
                         Text(MushafAudioTime.text(record.duration))
                             .font(.caption2).monospacedDigit().accessibilityIdentifier("study.elapsed")
@@ -866,34 +864,64 @@ struct InteractiveMushafReader: View {
             .frame(minHeight: readerDockHeight)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: 26))
             .overlay(RoundedRectangle(cornerRadius: 26).stroke(Theme.gold.opacity(0.13), lineWidth: 1))
-            if let message = microphoneCue.error { Text(message).font(.caption).foregroundStyle(.secondary) }
             }.background { readerControlMeasurement("study-footer") }
         }.padding(.horizontal, 10)
     }
-    private var studyMicrophoneButton: some View {
-        Button {
-            if recitation.state == .paused {
-                microphoneCue.beginCapture {
-                    guard readerVisible, recitation.state == .paused else { return }
-                    Task { await recitation.resume() }
-                }
+    private var heardRecitationHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if recitation.heardRecitation.fragments.isEmpty {
+                Text("تلاوتك هنا").font(.subheadline).lineLimit(2)
             } else {
-                Task {
-                    await recitation.pause()
-                    UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.5)
+                ForEach(Array(recitation.heardRecitation.fragments.suffix(dynamicTypeSize > .large ? 1 : 2)), id: \.verse) { fragment in
+                    HStack(spacing: 6) {
+                        Text(heardVerseLabel(fragment.verse)).font(.caption2).lineLimit(1)
+                        Text(fragment.text).font(.subheadline).lineLimit(1).truncationMode(.head)
+                            // Fade only this accepted transcript. The reserved
+                            // header and authored Quran viewport never animate.
+                            .contentTransition(.opacity)
+                            .animation(reduced || store.data.lowMotion ? nil : .easeOut(duration: 0.14), value: fragment.text)
+                    }
                 }
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: dynamicTypeSize.isAccessibilitySize ? 96 : 44)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(recitation.heardRecitation.fragments.isEmpty ? "لم تُلتقط كلمات بعد" : "مما قرأت")
+        .accessibilityValue(recitation.heardRecitation.fragments.map { "\(heardVerseLabel($0.verse)): \($0.text)" }.joined(separator: "، "))
+        .accessibilityIdentifier("study.heard")
+    }
+    private func heardVerseLabel(_ verse: String) -> String {
+        let parts = verse.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2, let surah = store.quran.first(where: { $0.number == parts[0] }) else { return verse }
+        return "\(surah.name) \(ArabicSearch.digits(parts[1]))"
+    }
+    private var studySupportMessage: String? {
+        if microphoneCue.error != nil { return "تعذّر فتح الميكروفون · أعد المحاولة" }
+        if recitation.state == .paused, recitation.record?.phase == .finished { return "تعذّر الإنهاء · اضغط الميكروفون لإعادته" }
+        if !recitation.recognitionAvailable { return "تتبّع الكلمات متعذّر · أعد التسميع" }
+        if recitation.state == .paused { return "متوقف مؤقتًا · الاستئناف من الخيارات" }
+        if showReviewFeedback { return "الموضع غير محسوم · تابع القراءة" }
+        return nil
+    }
+    private var studyMicrophoneButton: some View {
+        Button {
+            microphoneCue.cancel()
+            Task {
+                await recitation.finish()
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.5)
+            }
         } label: {
-            NoorReaderMicrophoneFace(symbol: recitation.state == .paused ? "mic.fill" : "pause.fill",
+            NoorReaderMicrophoneFace(symbol: "stop.fill",
                 listening: recitation.state == .listening, level: recitation.microphoneMeter,
                 busy: microphoneCue.pending || recitation.state == .processing || recitation.state == .preparing,
-                title: recitation.state == .paused ? "استئناف" : "إيقاف")
+                title: "إيقاف")
                 .frame(width: 80)
         }.buttonStyle(NoorReaderControlPressStyle())
-            .disabled(microphoneCue.pending || recitation.state == .processing || recitation.state == .permission
-                || recitation.guidedPhase == .reference || recitation.guidedPhase == .clearance)
-            .accessibilityLabel(recitation.state == .preparing ? "إلغاء التجهيز" : recitation.state == .paused ? "استئناف التسميع" : "إيقاف التسميع مؤقتًا")
-            .accessibilityIdentifier("study.pause")
+            .disabled(recitation.state == .processing)
+            .accessibilityLabel("إيقاف التسميع")
+            .accessibilityValue(recitation.state == .paused ? "متوقف مؤقتًا" : recitation.state == .listening ? "الميكروفون مفتوح" : "جارٍ التجهيز")
+            .accessibilityIdentifier("study.microphone")
     }
     private func reservedReaderInset(_ key: String, minimum: CGFloat) -> CGFloat {
         // Starting capture replaces the controls, not the authored Quran

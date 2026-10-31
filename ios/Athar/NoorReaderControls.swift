@@ -33,10 +33,17 @@ struct NoorReaderMicrophoneFace: View {
             Circle().fill(Theme.gold.opacity(listening ? 0.18 : 0.10)).padding(5)
             Circle().stroke(Theme.gold.opacity(0.45), lineWidth: 1).padding(5)
             VStack(spacing: 4) {
-                if busy { ProgressView().tint(Theme.gold) }
-                else { Image(systemName: symbol).font(.system(size: 24, weight: .medium)).foregroundStyle(Theme.gold) }
+                if busy { ProgressView().tint(Theme.gold).transition(.opacity) }
+                else {
+                    Image(systemName: symbol).font(.system(size: 24, weight: .medium)).foregroundStyle(Theme.gold)
+                        .contentTransition(reduced || store.data.lowMotion ? .identity : .symbolEffect(.replace))
+                        .animation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.18), value: symbol)
+                        .transition(.opacity)
+                }
                 Text(title).font(.caption2.weight(.semibold)).lineLimit(1).foregroundStyle(Theme.gold)
-            }
+                    .contentTransition(.opacity)
+                    .animation(reduced || store.data.lowMotion ? nil : .easeOut(duration: 0.14), value: title)
+            }.animation(reduced || store.data.lowMotion ? nil : .easeOut(duration: 0.14), value: busy)
         }
         .frame(width: 70, height: 70)
         .animation(reduced || store.data.lowMotion ? nil : .easeOut(duration: 0.12), value: amount)

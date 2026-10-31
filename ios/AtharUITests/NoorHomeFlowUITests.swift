@@ -36,11 +36,11 @@ final class NoorHomeFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout:5))
         XCTAssertFalse(app.buttons["اختيار مقطع التسميع"].exists)
         XCTAssertFalse(app.buttons["الحفظ والمراجعة"].exists)
-        XCTAssertFalse(app.buttons["study.finish"].exists)
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
         app.buttons["reader.options.close"].tap()
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 20))
-        XCTAssertFalse(app.buttons["study.finish"].exists)
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
         app.buttons["reader.jump"].tap()
         let field = app.textFields["reader.pageNumber"]
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("604")

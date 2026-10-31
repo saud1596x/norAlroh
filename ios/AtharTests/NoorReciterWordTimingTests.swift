@@ -2,6 +2,47 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterWordTimingTests: XCTestCase {
+    func testVoiceGroupingKeepsAllFiveRecordingIdentitiesAndBothShuraimModes() throws {
+        let groups = NoorReciterVoiceGroup.matching("")
+        XCTAssertEqual(groups.count, 4)
+        let expected: Set<String> = ["Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps",
+            "Saood_ash-Shuraym_128kbps", "surah:31:31", "surah:74:74"]
+        XCTAssertEqual(Set(groups.flatMap(\.recordings).map(\.id)), expected)
+        XCTAssertEqual(groups.flatMap(\.recordings).count, 5)
+        let shuraim = try XCTUnwrap(groups.first { $0.name == "سعود الشريم" })
+        XCTAssertEqual(shuraim.recordings.count, 2)
+        XCTAssertEqual(Set(shuraim.recordings.map(\.scopeLabel)), ["من الآية المحددة", "السورة كاملة"])
+        for choice in shuraim.recordings {
+            let selected = try XCTUnwrap(NoorMushafReciter.selected(choice.id))
+            XCTAssertEqual(selected.recordingIdentity, choice.recordingIdentity)
+            XCTAssertEqual(selected.supportsVersePlayback, choice.supportsVersePlayback)
+        }
+        XCTAssertEqual(NoorReciterVoiceGroup.matching("الشَّرِيم").map(\.id), [shuraim.id])
+        XCTAssertEqual(NoorReciterVoiceGroup.matching("  \n").count, 4)
+        XCTAssertTrue(NoorReciterVoiceGroup.matching("قارئ غير موجود").isEmpty)
+    }
+
+    func testCoverageLabelsDistinguishFullNativeMapMissingBasmalaAndPartialVerseSources() throws {
+        let full = try XCTUnwrap(NoorMushafReciter.selected("surah:74:74")?.coverage)
+        XCTAssertEqual(full.timedWords, 77429); XCTAssertEqual(full.totalWords, 77429)
+        XCTAssertEqual(full.timedVerses, 6236); XCTAssertTrue(full.isComplete)
+        XCTAssertEqual(full.label, "توقيت الكلمات متاح لجميع الآيات")
+        let shuraim = try XCTUnwrap(NoorMushafReciter.selected("surah:31:31")?.coverage)
+        XCTAssertEqual(shuraim.timedWords, 77425); XCTAssertFalse(shuraim.isComplete)
+        XCTAssertTrue(shuraim.onlyMissingFirstBasmala)
+        XCTAssertEqual(shuraim.label, "توقيت الكلمات متاح عدا بسملة الفاتحة")
+        for id in ["Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps", "Saood_ash-Shuraym_128kbps"] {
+            let partial = try XCTUnwrap(NoorMushafReciter.selected(id)?.coverage)
+            XCTAssertFalse(partial.isComplete); XCTAssertFalse(partial.onlyMissingFirstBasmala)
+            XCTAssertLessThan(partial.timedWords, partial.totalWords)
+            XCTAssertEqual(partial.label, "توقيت الكلمات متاح بتغطية جزئية")
+        }
+        let actual = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 74 })
+        let changed = NoorReciter(id: actual.id, name: actual.name, recordingID: actual.recordingID,
+            server: "https://cdn.mp3quran.net/audio/ali-hudhaifi/r2/", surahs: actual.surahs)
+        XCTAssertNil(NoorMushafReciter(id: "surah:74:74", name: changed.name, verseDirectory: nil, recording: changed).coverage)
+    }
+
     func testWholeSurahBundleCoversNativeWordsWithoutBorrowingTheMissingBasmala() async throws {
         let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
             from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()

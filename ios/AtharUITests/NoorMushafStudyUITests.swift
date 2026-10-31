@@ -48,13 +48,18 @@ final class NoorMushafStudyUITests: XCTestCase {
         let app = XCUIApplication(); application = app;openReader(app)
         app.buttons["reader.study"].tap()
         XCTAssertTrue(app.staticTexts["study.elapsed"].waitForExistence(timeout:60))
-        XCTAssertTrue(app.buttons["study.pause"].isHittable)
+        XCTAssertTrue(app.buttons["study.microphone"].isHittable)
+        XCTAssertEqual(app.buttons["study.microphone"].label, "إيقاف التسميع")
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "study.heard").firstMatch.exists)
+        XCTAssertFalse(app.buttons["study.finish"].exists, "The microphone is the single stop/finish action")
+        XCTAssertFalse(app.staticTexts["study.inputGuidance"].exists, "Low input cannot replace the heard-word header")
         XCTAssertTrue(app.descendants(matching:.any)["reader.page.ready"].exists)
         XCTAssertFalse(app.buttons["recitation.scope.start"].exists)
         XCTAssertFalse(app.buttons["hifz.speech"].exists)
         capture(app,"one-tap-inline-actual-microphone")
-        app.buttons["study.finish"].tap()
+        finishCapture(app)
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout:30))
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "study.heard").firstMatch.exists)
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format:"label == %@","إغلاق المصحف")).count,1)
@@ -88,10 +93,10 @@ final class NoorMushafStudyUITests: XCTestCase {
         }, evaluatedWith: elapsed)
         wait(for: [actualFrames], timeout: 30)
         XCTAssertEqual(page.frame, frame)
-        XCTAssertTrue(app.buttons["study.pause"].isHittable)
+        XCTAssertTrue(app.buttons["study.microphone"].isHittable)
         XCTAssertFalse(app.buttons["recitation.scope.start"].exists)
         capture(app, "first-system-microphone-allow-without-second-tap")
-        app.buttons["study.finish"].tap()
+        finishCapture(app)
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30))
     }
     func testInlinePageVisibilitySurvivesPauseButNewLaunchHasNoRecordingHistory() {
@@ -104,7 +109,11 @@ final class NoorMushafStudyUITests: XCTestCase {
         let first = app.buttons["reader.verse.112:1"]
         XCTAssertTrue(first.waitForExistence(timeout: 10)); XCTAssertTrue(first.label.contains("مخفي"))
         let originalFrame = first.frame
-        for id in ["study.pause", "study.finish", "study.options"] {
+        let heardHeader = app.descendants(matching: .any).matching(identifier: "study.heard").firstMatch
+        XCTAssertTrue(heardHeader.exists)
+        XCTAssertFalse(heardHeader.frame.intersects(first.frame), "Heard text must not cover the authored Quran")
+        XCTAssertFalse(app.buttons["study.finish"].exists)
+        for id in ["study.microphone", "study.options"] {
             let action = app.buttons[id]
             XCTAssertTrue(action.isHittable, id)
             XCTAssertGreaterThanOrEqual(action.frame.width, 44, id)
@@ -115,13 +124,13 @@ final class NoorMushafStudyUITests: XCTestCase {
         first.press(forDuration: 0.6)
         let oneWord = app.buttons["كشف الكلمة التالية"]
         XCTAssertTrue(oneWord.waitForExistence(timeout: 5)); oneWord.tap()
-        let paused = expectation(for: NSPredicate(format: "label CONTAINS %@", "استئناف"), evaluatedWith: app.buttons["study.pause"])
+        let paused = expectation(for: NSPredicate(format: "value == %@", "متوقف مؤقتًا"), evaluatedWith: app.buttons["study.microphone"])
         wait(for: [paused], timeout: 20)
         XCTAssertEqual(first.frame, originalFrame, "A textual hint cannot reflow Quran glyphs")
         XCTAssertTrue(first.label.contains("مخفي"), "One hint must not expose the entire ayah to VoiceOver")
         capture(app, "38-practice-mushaf-hint")
-        XCTAssertTrue(app.buttons["study.pause"].waitForExistence(timeout: 60))
-        XCTAssertTrue(app.buttons["study.pause"].label.contains("استئناف"))
+        XCTAssertTrue(app.buttons["study.microphone"].waitForExistence(timeout: 60))
+        XCTAssertEqual(app.buttons["study.microphone"].value as? String, "متوقف مؤقتًا")
         XCTAssertTrue(first.label.contains("مخفي"))
         XCTAssertEqual(first.frame, originalFrame)
         first.press(forDuration: 0.6); app.buttons["كشف الآية كاملة"].tap()
@@ -130,7 +139,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         XCTAssertTrue(app.buttons["reader.verse.112:2"].label.contains("مخفي"), "Revealing one ayah cannot reveal the rest of the passage")
         XCTAssertEqual(first.frame, originalFrame)
         capture(app, "39-practice-mushaf-revealed")
-        app.buttons["study.finish"].tap()
+        finishCapture(app)
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.answered"].exists, "Heard-word evidence is not a subjective remembered-answer count")
@@ -138,7 +147,7 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["إغلاق المصحف"].tap()
         app.terminate(); openReader(app, page: 604)
         XCTAssertTrue(app.buttons["reader.study"].exists)
-        XCTAssertFalse(app.buttons["study.finish"].exists)
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
         XCTAssertFalse(app.buttons["study.recordings"].exists)
         app.buttons["إغلاق المصحف"].tap()
     }
@@ -159,24 +168,32 @@ final class NoorMushafStudyUITests: XCTestCase {
         wait(for: [recording], timeout: 30)
         capture(app, "17-recitation-controls")
         XCUIDevice.shared.press(.home); app.activate()
-        let paused = expectation(for: NSPredicate(format: "label CONTAINS %@", "استئناف"), evaluatedWith: app.buttons["study.pause"])
+        let paused = expectation(for: NSPredicate(format: "value == %@", "متوقف مؤقتًا"), evaluatedWith: app.buttons["study.microphone"])
         wait(for: [paused], timeout: 20)
         capture(app, "study-background-paused-with-temporary-audio")
         let beforeResume = elapsed.label
-        app.buttons["study.pause"].tap()
+        XCTAssertEqual(app.buttons["study.microphone"].label, "إيقاف التسميع", "The primary action remains finish while paused")
+        app.buttons["study.options"].tap()
+        let resume = app.buttons["study.resume"]
+        XCTAssertTrue(resume.waitForExistence(timeout: 5)); resume.tap()
         let advanced = expectation(for: NSPredicate { _, _ in elapsed.label != beforeResume }, evaluatedWith: elapsed)
         wait(for: [advanced], timeout: 30)
-        app.buttons["study.pause"].tap()
-        let pausedAgain = expectation(for: NSPredicate(format: "label CONTAINS %@", "استئناف"), evaluatedWith: app.buttons["study.pause"])
+        XCUIDevice.shared.press(.home); app.activate()
+        let pausedAgain = expectation(for: NSPredicate(format: "value == %@", "متوقف مؤقتًا"), evaluatedWith: app.buttons["study.microphone"])
         wait(for: [pausedAgain], timeout: 20)
+        let heardHeader = app.descendants(matching: .any).matching(identifier: "study.heard").firstMatch
+        XCTAssertTrue(heardHeader.exists)
+        let heardBeforeReaderChange = heardHeader.value as? String
         app.buttons["study.options"].tap()
         XCTAssertFalse(app.buttons["study.recordings"].exists)
         app.buttons["study.reciters"].tap()
-        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout:10))
+        XCTAssertTrue(app.textFields["reader.reciters.search"].waitForExistence(timeout:10))
         app.buttons["إغلاق"].tap()
-        XCTAssertTrue(app.buttons["study.pause"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.buttons["study.microphone"].waitForExistence(timeout:10))
+        XCTAssertEqual(heardHeader.value as? String, heardBeforeReaderChange,
+                       "Choosing a reference reader cannot replace this session's heard words")
         capture(app,"actual-capture-resumed-with-inline-reader-controls")
-        app.buttons["study.finish"].tap()
+        finishCapture(app)
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 30), "Stopping returns to the same Mushaf")
         XCTAssertFalse(app.staticTexts["study.result.saved"].exists)
         XCTAssertFalse(app.staticTexts["study.result.helped"].exists)
@@ -188,6 +205,13 @@ final class NoorMushafStudyUITests: XCTestCase {
         app.buttons["reader.options.close"].tap();app.buttons["إغلاق المصحف"].tap()
     }
 
+    private func finishCapture(_ app: XCUIApplication) {
+        let microphone = app.buttons["study.microphone"]
+        XCTAssertTrue(microphone.isHittable)
+        XCTAssertFalse(app.buttons["study.finish"].exists)
+        XCTAssertEqual(microphone.label, "إيقاف التسميع")
+        microphone.tap()
+    }
     private func openReader(_ app: XCUIApplication, page: Int? = nil) {
         launchNoorApp(app)
         // Home intentionally replaces ordinary resume with the reading-only

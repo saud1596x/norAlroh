@@ -70,7 +70,7 @@ final class NoorMushafClosureUITests: XCTestCase {
         XCTAssertEqual(page.frame, readingFrame); XCTAssertEqual(first.frame, beforeCapture)
         XCTAssertFalse(app.buttons["study.recordings"].exists)
         capture(app, "closure-actual-microphone")
-        app.buttons["study.finish"].tap()
+        app.buttons["study.microphone"].tap()
         XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 20))
         requirePage(14, app: app)
         XCTAssertEqual(page.frame, readingFrame); XCTAssertEqual(first.frame, beforeCapture)

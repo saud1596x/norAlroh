@@ -112,13 +112,26 @@ actor QuranIndependentCTC {
         // start an expensive prediction for that cancelled source window.
         try Task.checkCancellation()
         guard let model else { throw CocoaError(.fileReadCorruptFile) }
+        #if NOOR_ACCEPTANCE_TESTING
+        // Monotonic decode timings exclude the separately measured model
+        // preparation. Emit only after processing so logging does not sit
+        // between the measured stages or disclose speech/source identities.
+        let diagnosticClock = ContinuousClock()
+        let decodeStarted = diagnosticClock.now
+        #endif
         let mean = window.samples.reduce(0.0) { $0 + Double($1) } / Double(window.samples.count)
         let variance = window.samples.reduce(0.0) { $0 + pow(Double($1)-mean,2) } / Double(window.samples.count)
         let divisor = sqrt(variance+1e-7)
         let input = try MLMultiArray(shape:[1, NSNumber(value:window.samples.count)],dataType:.float32)
         let pointer = input.dataPointer.assumingMemoryBound(to:Float.self)
         for index in window.samples.indices { pointer[index] = Float((Double(window.samples[index])-mean)/divisor) }
+        #if NOOR_ACCEPTANCE_TESTING
+        let inputPrepared = diagnosticClock.now
+        #endif
         let prediction = try predict(input, using: model)
+        #if NOOR_ACCEPTANCE_TESTING
+        let predictionFinished = diagnosticClock.now
+        #endif
         try Task.checkCancellation()
         guard let logits = prediction.featureValue(for:"logits")?.multiArrayValue,
               logits.shape.map(\.intValue) == [1,(window.samples.count-400)/320+1,56] else {
@@ -161,9 +174,26 @@ actor QuranIndependentCTC {
             text += characters[symbol.label]; end = symbol.end; sum += symbol.posterior; count += symbol.count
         }
         finish()
+        #if NOOR_ACCEPTANCE_TESTING
+        let postdecodeFinished = diagnosticClock.now
+        #endif
         let sourceSHA = window.samples.withUnsafeBufferPointer { buffer in
             SHA256.hash(data:Data(buffer:buffer)).map{String(format:"%02x",$0)}.joined()
         }
+        #if NOOR_ACCEPTANCE_TESTING
+        let sourceHashed = diagnosticClock.now
+        func diagnosticStage(_ name: String, from start: ContinuousClock.Instant, to end: ContinuousClock.Instant) {
+            let duration = start.duration(to: end).components
+            let milliseconds = Double(duration.seconds) * 1_000 + Double(duration.attoseconds) / 1_000_000_000_000_000
+            print("NOOR_CTC_DECODE_STAGE stage=\(name) milliseconds=\(milliseconds) samples=\(window.samples.count)")
+        }
+        diagnosticStage("normalization-input", from: decodeStarted, to: inputPrepared)
+        // Includes the existing feature-provider construction in predict().
+        diagnosticStage("model-prediction", from: inputPrepared, to: predictionFinished)
+        diagnosticStage("swift-postdecode", from: predictionFinished, to: postdecodeFinished)
+        diagnosticStage("source-sha", from: postdecodeFinished, to: sourceHashed)
+        diagnosticStage("total-decode", from: decodeStarted, to: sourceHashed)
+        #endif
         return .init(modelRevision:Self.revision,configuration:Self.configuration,sourceSHA256:sourceSHA,
                      startFrame:window.startFrame,endFrame:window.endFrame,words:words)
     }

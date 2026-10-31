@@ -12,6 +12,7 @@ import os
     @Published private(set) var revealed = Set<Int>()
     @Published private(set) var currentVerse: String?
     @Published private(set) var activeWordID: Int?
+    @Published private(set) var heardRecitation = QuranHeardRecitation()
     private var listeningLocation = QuranListeningLocation()
     @Published private(set) var uncertain = false
     @Published private(set) var recognitionAvailable = true
@@ -116,6 +117,7 @@ import os
     private var expectedIDs = Set<Int>()
     private var practiceVisibility = QuranPracticeVisibility(expected: [])
     private var words: [QuranAlignedWord] = []
+    private var wordsByID: [Int: QuranAlignedWord] = [:]
     private var wordingReference: QuranWordingAssessment.Reference?
     private var revision = UUID()
     private var finishRequest = false
@@ -260,6 +262,7 @@ import os
         }
         let token = UUID(); revision = token; message = nil; permissionDenied = false; microphonePeak = nil
         record = nil; tracker = nil; wordingReference = nil; expectedIDs = []; revealed = []; currentVerse = nil; recognitionAvailable = true
+        heardRecitation = QuranHeardRecitation()
         listeningLocation = QuranListeningLocation(); activeWordID = nil
         practiceVisibility = QuranPracticeVisibility(expected: [])
         state = .permission
@@ -305,6 +308,7 @@ import os
             prepared.automaticScope = automaticScope
             prepared.referenceExposure = referenceExposure
             try journal.create(prepared); record = prepared
+            heardRecitation.begin(sessionID: prepared.id)
             #if NOOR_ACCEPTANCE_TESTING
             capturePreparationStage("journal-created")
             #endif
@@ -327,9 +331,11 @@ import os
     private func bind(snapshot: QCFV2Snapshot, corpus: [Surah]) async throws {
         let verseKeys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
         words = try await referenceBinder.bind(snapshot: snapshot, verseKeys: verseKeys)
+        wordsByID = Dictionary(uniqueKeysWithValues: words.map { ($0.id, $0) })
     }
     func restore(id: UUID, snapshot: QCFV2Snapshot, corpus: [Surah]) async {
         guard state == .idle || state == .stopped else { return }
+        heardRecitation = QuranHeardRecitation()
         let token = UUID(); revision = token
         do {
             guard let journal else { throw QuranJournalFailure.invalidRecord }
@@ -368,6 +374,7 @@ import os
             practiceVisibility = QuranPracticeVisibility(expected: restoredTracker.expected)
             try journal.save(restored)
             record = restored; tracker = restoredTracker; wordingReference = nil; revealed = restoredTracker.revealedIDs
+            restoreHeardRecitation(restored)
             recognitionAvailable = !restored.recognitionUnavailable
             expectedIDs = Set(restoredTracker.expected.map(\.id))
             listeningLocation = QuranListeningLocation()
@@ -403,6 +410,26 @@ import os
             guard revision == token else { return }
             state = .paused; message = "تعذّر استئناف الميكروفون. أعد المحاولة داخل المصحف."
         }
+    }
+    private func restoreHeardRecitation(_ restored: QuranRecitationRecord) {
+        heardRecitation.begin(sessionID: restored.id)
+        let evidenceByTake = Dictionary(grouping: restored.evidence, by: \.takeID)
+        for span in QuranHeardRecitation.sourcesForRestoration(restored.observedSpeech ?? [], evidenceByTake: evidenceByTake) {
+            heardRecitation.beginTake(sessionID: restored.id, takeID: span.takeID)
+            let source = (span.wordObservations ?? []).filter { $0.recognitionState == "accepted" }
+            let grouped = Dictionary(grouping: source, by: \.runIndex)
+            let runs = grouped.keys.sorted().map { index in
+                (grouped[index] ?? []).compactMap { word -> QuranHeardWord? in
+                    guard let start = word.startInTakeSeconds, let end = word.endInTakeSeconds,
+                          let confidence = word.backendConfidence else { return nil }
+                    return .init(text: word.observedText, start: start, end: end, probability: confidence)
+                }
+            }
+            let evidence = (evidenceByTake[span.takeID] ?? []).filter { $0.start >= span.start && $0.end <= span.end }
+            heardRecitation.accept(sessionID: restored.id, takeID: span.takeID, evidence: evidence,
+                                   expected: wordsByID, runs: runs, offset: 0)
+        }
+        if let take = restored.takes.last { heardRecitation.beginTake(sessionID: restored.id, takeID: take.id) }
     }
     private func beginTake(token: UUID) async throws {
         guard var next = record, let journal else { throw QuranJournalFailure.invalidRecord }
@@ -516,6 +543,7 @@ import os
             guard revision == token, state == .preparing else { throw CancellationError() }
             started = true
             listeningLocation.begin(takeID: take.id); activeWordID = nil
+            heardRecitation.beginTake(sessionID: next.id, takeID: take.id)
             // A new audio take does not prove that previously failed inference
             // has recovered. Keep text visible until a successful decode.
             recognitionAvailable = !next.recognitionUnavailable; state = .listening
@@ -734,6 +762,8 @@ import os
                 }
                 guard revision == token, !Task.isCancelled else { return }
                 mergeAnalysis(current); tracker = updatedTracker
+                heardRecitation.accept(sessionID: current.id, takeID: take, evidence: additions,
+                                       expected: wordsByID, runs: recognized.runs, offset: window.offset)
                 recognitionAvailable = available
                 revealed = recognizedIDs
                 listeningLocation = updatedLocation
@@ -866,6 +896,7 @@ import os
             guard let journal else { throw QuranJournalFailure.invalidRecord }
             try await Task.detached(priority: .utility) { try journal.discard(sessionID) }.value
             state = .stopped
+            heardRecitation = QuranHeardRecitation()
         } catch { state = .paused; message = "تعذّر حذف ملفات التسميع المؤقتة. أعد محاولة الإنهاء بعد فتح قفل الجهاز." }
     }
     @discardableResult func reviewFinding(_ id: UUID, disputed: Bool) -> Bool {

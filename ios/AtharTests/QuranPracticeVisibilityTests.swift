@@ -6,6 +6,105 @@ import WhisperKit
 /// Display/persistence policy over original public PCM with injected words.
 /// This does not measure real ASR, microphone quality or correct recitation.
 @MainActor final class QuranPracticeVisibilityTests: XCTestCase {
+    func testHeardHeaderUsesOnlyAcceptedNativeIntervalsWithoutCompletingHiddenAyah() {
+        let session = UUID(), take = UUID()
+        var header = QuranHeardRecitation()
+        header.begin(sessionID: session); header.beginTake(sessionID: session, takeID: take)
+        let expected = [1: QuranAlignedWord(id: 1, verse: "112:1", page: 604, aliases: [["قل"]]),
+                        2: QuranAlignedWord(id: 2, verse: "112:1", page: 604, aliases: [["هو"]])]
+        let heard = [QuranHeardWord(text: "قل", start: 0, end: 0.4, probability: 0.99),
+                     QuranHeardWord(text: "خطأ", start: 0.5, end: 0.9, probability: 0.99)]
+        header.accept(sessionID: session, takeID: take, evidence: [], expected: expected, runs: [heard], offset: 0)
+        XCTAssertTrue(header.fragments.isEmpty, "Unlocated hypotheses never become confirmed Quran")
+        let evidence = QuranWordEvidence(nativeID: 1, verse: "112:1", takeID: take, start: 0, end: 0.4, minimumConfidence: 0.99)
+        header.accept(sessionID: session, takeID: take, evidence: [evidence], expected: expected, runs: [heard], offset: 0)
+        XCTAssertEqual(header.fragments.map(\.text), ["قل"])
+        XCTAssertEqual(header.fragments.flatMap(\.nativeIDs), [1])
+        XCTAssertFalse(header.fragments[0].text.contains("هو"), "An expected remainder is never a heard word")
+    }
+
+    func testHeardHeaderRetainsAcceptedTextAcrossSilenceResumeAndAyahTransitionButRejectsOldTakeAndSession() {
+        let session = UUID(), firstTake = UUID(), nextTake = UUID()
+        var header = QuranHeardRecitation()
+        header.begin(sessionID: session); header.beginTake(sessionID: session, takeID: firstTake)
+        let expected = [1: QuranAlignedWord(id: 1, verse: "112:1", page: 604, aliases: [["احد"]]),
+                        2: QuranAlignedWord(id: 2, verse: "112:2", page: 604, aliases: [["الصمد"]])]
+        func evidence(_ id: Int, verse: String, take: UUID) -> QuranWordEvidence {
+            .init(nativeID: id, verse: verse, takeID: take, start: 0, end: 0.4, minimumConfidence: 0.99)
+        }
+        header.accept(sessionID: session, takeID: firstTake, evidence: [evidence(1, verse: "112:1", take: firstTake)], expected: expected,
+                      runs: [[.init(text: "أحد", start: 0, end: 0.4, probability: 0.99)]], offset: 0)
+        let accepted = header.fragments
+        header.accept(sessionID: session, takeID: firstTake, evidence: [], expected: expected, runs: [], offset: 2)
+        XCTAssertEqual(header.fragments, accepted, "Silence cannot replace heard text with meter status")
+        header.beginTake(sessionID: session, takeID: nextTake)
+        XCTAssertEqual(header.fragments, accepted, "Resume retains this session's heard text")
+        header.accept(sessionID: session, takeID: firstTake, evidence: [evidence(2, verse: "112:2", take: firstTake)], expected: expected,
+                      runs: [[.init(text: "الصمد", start: 0, end: 0.4, probability: 0.99)]], offset: 0)
+        XCTAssertEqual(header.fragments, accepted, "A delayed old-take result cannot change the resumed header")
+        header.accept(sessionID: session, takeID: nextTake, evidence: [evidence(2, verse: "112:2", take: nextTake)], expected: expected,
+                      runs: [[.init(text: "الصمد", start: 0, end: 0.4, probability: 0.99)]], offset: 0)
+        XCTAssertEqual(header.fragments.map(\.verse), ["112:1", "112:2"])
+        XCTAssertEqual(header.fragments.map(\.text), ["أحد", "الصمد"])
+        header.begin(sessionID: UUID())
+        XCTAssertTrue(header.fragments.isEmpty)
+        header.beginTake(sessionID: session, takeID: nextTake)
+        header.accept(sessionID: session, takeID: nextTake, evidence: [evidence(2, verse: "112:2", take: nextTake)], expected: expected,
+                      runs: [[.init(text: "الصمد", start: 0, end: 0.4, probability: 0.99)]], offset: 0)
+        XCTAssertTrue(header.fragments.isEmpty, "A new session cannot inherit a late old-session header")
+    }
+
+    func testHeardHeaderRejectsWrongAliasAndIncompleteCompoundDespiteMatchingTimes() {
+        let session = UUID(), take = UUID()
+        var header = QuranHeardRecitation()
+        header.begin(sessionID: session); header.beginTake(sessionID: session, takeID: take)
+        let expected = [1: QuranAlignedWord(id: 1, verse: "2:21", page: 4, aliases: [["يا", "ايها"]])]
+        let evidence = QuranWordEvidence(nativeID: 1, verse: "2:21", takeID: take, start: 3, end: 3.8, minimumConfidence: 0.99)
+        for text in ["يا", "خطأ"] {
+            header.accept(sessionID: session, takeID: take, evidence: [evidence], expected: expected,
+                          runs: [[.init(text: text, start: 0, end: 0.8, probability: 0.99)]], offset: 3)
+            XCTAssertTrue(header.fragments.isEmpty)
+        }
+        header.accept(sessionID: session, takeID: take, evidence: [evidence], expected: expected,
+                      runs: [[.init(text: "يا", start: 0, end: 0.3, probability: 0.99),
+                              .init(text: "أيها", start: 0.4, end: 0.8, probability: 0.99)]], offset: 3)
+        XCTAssertEqual(header.fragments.map(\.text), ["يا أيها"])
+    }
+
+    func testHeardHeaderBoundsPresentationWithoutAddingExpectedWordsOrProgress() {
+        let session = UUID(), take = UUID()
+        var header = QuranHeardRecitation()
+        header.begin(sessionID: session); header.beginTake(sessionID: session, takeID: take)
+        let expected = Dictionary(uniqueKeysWithValues: (1...32).map { id in
+            (id, QuranAlignedWord(id: id, verse: id <= 30 ? "2:1" : "2:\(id - 29)", page: 2, aliases: [["قال"]]))
+        })
+        let evidence = (1...32).map { id in
+            QuranWordEvidence(nativeID: id, verse: expected[id]!.verse, takeID: take,
+                              start: Double(id), end: Double(id) + 0.4, minimumConfidence: 0.99)
+        }
+        let run = evidence.map { QuranHeardWord(text: "قال", start: $0.start, end: $0.end, probability: 0.99) }
+        header.accept(sessionID: session, takeID: take, evidence: Array(evidence.prefix(30)), expected: expected, runs: [run], offset: 0)
+        XCTAssertEqual(header.fragments[0].nativeIDs, Array(7...30))
+        header.accept(sessionID: session, takeID: take, evidence: Array(evidence.suffix(2)), expected: expected, runs: [run], offset: 0)
+        XCTAssertEqual(header.fragments.map(\.verse), ["2:2", "2:3"])
+        XCTAssertEqual(header.fragments.flatMap(\.nativeIDs), [31, 32])
+        XCTAssertEqual(evidence.count, 32, "Bounded display never deletes or adds recognition evidence")
+    }
+
+    func testHeardHeaderRestorationSkipsSilenceBeforeBoundingItsAcceptedSources() {
+        let take = UUID()
+        let evidence = QuranWordEvidence(nativeID: 1, verse: "112:1", takeID: take, start: 0, end: 0.4, minimumConfidence: 0.99)
+        var accepted = QuranObservedSpeech(takeID: take, start: 0, end: 2, words: ["قل"], unresolved: false, backendID: "display-policy-fixture")
+        accepted.wordObservations = [.init(occurrenceIndex: 0, runIndex: 0, observedText: "قل", startInTakeSeconds: 0,
+                                          endInTakeSeconds: 0.4, backendConfidence: 0.99, recognitionState: "accepted", timingSource: "fixture")]
+        let silent = QuranObservedSpeech(takeID: take, start: 0, end: 2, words: [], unresolved: false, backendID: "display-policy-fixture")
+        var unrelated = QuranObservedSpeech(takeID: UUID(), start: 0, end: 2, words: ["قل"], unresolved: false, backendID: "display-policy-fixture")
+        unrelated.wordObservations = accepted.wordObservations
+        let sources = QuranHeardRecitation.sourcesForRestoration([accepted] + Array(repeating: silent, count: 32) + [unrelated],
+                                                                evidenceByTake: [take: [evidence]])
+        XCTAssertEqual(sources, [accepted], "Quiet windows and another take cannot evict the last accepted heard text")
+    }
+
     func testShownFatihaAyahStaysVisibleWhenTheNextWindowRetractsItsInterpretation() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -31,6 +130,11 @@ import WhisperKit
         let firstIDs = Set(try XCTUnwrap(controller.record).evidence.map(\.nativeID))
         XCTAssertEqual(firstIDs.count,4)
         XCTAssertNotNil(controller.activeWordID)
+        XCTAssertEqual(controller.heardRecitation.fragments.map(\.text), ["الحمد لله رب العالمين"])
+        let heardHeader = controller.heardRecitation
+        XCTAssertTrue(controller.setPracticeTextHidden(false))
+        XCTAssertEqual(controller.heardRecitation, heardHeader, "Showing Quran text cannot add heard words")
+        XCTAssertTrue(controller.setPracticeTextHidden(true))
         XCTAssertTrue(controller.hiddenIDs.isDisjoint(with:firstIDs))
         let stillHidden = controller.hiddenIDs
         XCTAssertFalse(stillHidden.isEmpty,"The next unread ayah must stay hidden")
@@ -39,6 +143,7 @@ import WhisperKit
         XCTAssertTrue(controller.revealed.isEmpty,"Revisable evidence must actually retract")
         XCTAssertTrue(controller.record?.evidence.isEmpty == true,"Display history cannot award progress")
         XCTAssertNil(controller.activeWordID,"Retracted speech must not leave a stale heard-word highlight")
+        XCTAssertEqual(controller.heardRecitation, heardHeader, "Earlier accepted text remains display history, not a current-word claim")
         XCTAssertTrue(controller.hiddenIDs.isDisjoint(with:firstIDs),"Previously shown ayah must not disappear")
         XCTAssertEqual(controller.hiddenIDs,stillHidden,"Retention must not reveal the next ayah")
         await controller.pause()
@@ -56,6 +161,7 @@ import WhisperKit
         XCTAssertTrue(restored.record?.evidence.isEmpty == true)
         await restored.finish()
         await restored.start(keys:["1:3"],page:1,snapshot:snapshot,corpus:corpus,closedText:true)
+        XCTAssertTrue(restored.heardRecitation.fragments.isEmpty, "A new session starts without heard text")
         XCTAssertNil(restored.record?.retainedVisibleVerses,"A new practice session starts independently")
         XCTAssertNil(restored.record?.takes.first?.textHintIDs)
         await restored.finish()

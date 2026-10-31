@@ -23,7 +23,7 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertTrue(more.isHittable, "Options are discoverable without a hidden long press")
         more.tap()
         XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout: 5), "Options have their own button, separate from immediate microphone capture")
-        XCTAssertFalse(app.buttons["study.pause"].exists)
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
         app.buttons["reader.options.close"].tap()
         XCTAssertTrue(mic.waitForExistence(timeout: 5))
         let readerScreenshot = XCTAttachment(screenshot: app.screenshot())
@@ -111,18 +111,24 @@ final class NoorContinuousReaderUITests: XCTestCase {
         for removed in ["Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "surah:54:54", "surah:21181:340"] {
             XCTAssertFalse(app.buttons["reader.reciter.\(removed)"].exists, "Untimed sources must not reappear")
         }
-        let reciterSearch = app.searchFields.firstMatch
+        let reciterSearch = app.textFields["reader.reciters.search"]
         XCTAssertTrue(reciterSearch.waitForExistence(timeout: 10))
-        reciterSearch.tap(); reciterSearch.typeText("الشريم")
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "Opening the picker must not focus search")
+        reciterSearch.tap(); reciterSearch.typeText("الشريم\n")
+        XCTAssertEqual(app.staticTexts.matching(identifier: "reader.voice.سعود الشريم").count, 1,
+                       "One voice heading contains its distinct recording choices")
+        XCTAssertTrue(app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"].exists)
         let voice = app.buttons["reader.reciter.surah:31:31"]
         XCTAssertTrue(voice.waitForExistence(timeout: 10), "The exact word-timed whole-surah recording is searchable")
         voice.tap()
         XCTAssertTrue(picker.waitForExistence(timeout: 10)); picker.tap()
-        let selectedSearch = app.searchFields.firstMatch
+        let selectedSearch = app.textFields["reader.reciters.search"]
         XCTAssertTrue(selectedSearch.waitForExistence(timeout: 10))
-        selectedSearch.tap(); selectedSearch.typeText("الشريم")
+        selectedSearch.tap(); selectedSearch.typeText("الشريم\n")
         XCTAssertTrue(voice.waitForExistence(timeout: 10))
         XCTAssertEqual(voice.value as? String, "محدد")
+        XCTAssertTrue(voice.label.contains("السورة كاملة"))
+        XCTAssertNotEqual(app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"].value as? String, "محدد")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "word-timed-reciter-selected-and-searchable"; screenshot.lifetime = .keepAlways; add(screenshot)
         app.buttons["إغلاق"].tap()

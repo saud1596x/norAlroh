@@ -121,6 +121,156 @@
       "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
       "execution": "Only builtin installer ran; no upstream scripts/hooks executed",
       "compatibility": "Keep project Swift5/iOS17/current CI SDK; ignore unsupported newer toolchain/API assumptions; owner constraints override general defaults."
+    },
+    {
+      "name": "coreml",
+      "repository": "https://github.com/thienqo/ios-skills",
+      "commit": "e6a2f173e77e36746fc060132f283caf7ad26a41",
+      "commitDateUTC": "2026-10-29T12:04:29Z",
+      "skillPath": "skills/coreml/SKILL.md",
+      "license": "PolyForm Perimeter License 1.0.0",
+      "licenseSHA256": "73e4a04636ccadd620489681d889766924b3bdeb7e3a01f39b298c7d404c9762",
+      "installedLicensePath": "C:\\Users\\ONLYPC\\.codex\\skills\\coreml\\LICENSE",
+      "requiredNoticesPreserved": true,
+      "licenseRestriction": "Noncompete restriction; retain full LICENSE and Required Notice lines. This is not MIT.",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "c66fac44d72cb29c4f2e23b5c27e149995421925097c6beb5f60f23ce7183080",
+      "installedBytesSHA256": "6a5155961e99bab3cb53331c53eb6bb2050ec190dc2449eb3e9f765169374a35",
+      "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\coreml\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Builtin installer only; inspected repository LICENSE copied byte-for-byte. No upstream scripts/hooks executed; no MCP/plugin/runtime dependency installed.",
+      "compatibility": "Use existing actor-owned FP32 model. MLComputePlan needs iOS17.4 guard; MLTensor/MLState need iOS18. Reference claim Swift6.4 is not this toolchain and is not accepted as compatibility proof. No native compile performed.",
+      "installedFiles": [
+        {
+          "path": "SKILL.md",
+          "sourceSHA256": "c66fac44d72cb29c4f2e23b5c27e149995421925097c6beb5f60f23ce7183080",
+          "installedSHA256": "6a5155961e99bab3cb53331c53eb6bb2050ec190dc2449eb3e9f765169374a35",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "evals/evals.json",
+          "sourceSHA256": "e6782a4ceda7fd8e3dbb27b35a48f8671fd577274633856855857ad04016ac03",
+          "installedSHA256": "8ac964472a54571cb5fad2df8e0bda6ed6b1969438677b860c89ffe1bfdc2882",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/coreml-swift-integration.md",
+          "sourceSHA256": "360168319d279648ae1ef47262c0062710f6d018027d9658b2da8d51439cef3f",
+          "installedSHA256": "c7e405e2912f4e3a6b497d967560938843ee93053ec2b654c5d0ba540853fb72",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        }
+      ],
+      "projectOverrides": "See projectOverrides in this registry, AGENTS.md and noor-recitation-streaming/SKILL.md; owner contract and native evidence take precedence."
+    },
+    {
+      "name": "ios-accessibility",
+      "repository": "https://github.com/dpearson2699/swift-ios-skills",
+      "commit": "8d90fd121a263355a4fb44fd082af1416a5c1c2a",
+      "commitDateUTC": "2026-07-31T20:22:31Z",
+      "skillPath": "skills/ios-accessibility/SKILL.md",
+      "license": "PolyForm Perimeter License 1.0.0",
+      "licenseSHA256": "5e253a0d9e4eade975a922062b0ddb499a574378b02fa379d70f80027e086cdd",
+      "installedLicensePath": "C:\\Users\\ONLYPC\\.codex\\skills\\ios-accessibility\\LICENSE",
+      "requiredNoticesPreserved": true,
+      "licenseRestriction": "Noncompete restriction; retain full LICENSE and Required Notice lines. This is not MIT.",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "e0a34bee38bdeed0c676080b1e7cb7b48668267731d65d39cda22da9ea3540fa",
+      "installedBytesSHA256": "c8d0b1836b09e2f4e26575ac696356f3332e5932bd7aae73d38c0233ebf78232",
+      "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\ios-accessibility\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Builtin installer only; inspected repository LICENSE copied byte-for-byte. No upstream scripts/hooks executed; no MCP/plugin/runtime dependency installed.",
+      "compatibility": "Most semantic controls, Dynamic Type and AccessibilityFocusState fit iOS17. Assistive Access example is explicitly iOS18+, must guard/isolate. XCTest focus assertions depend on actual environment; not proof of manual assistive technology behavior.",
+      "installedFiles": [
+        {
+          "path": "SKILL.md",
+          "sourceSHA256": "e0a34bee38bdeed0c676080b1e7cb7b48668267731d65d39cda22da9ea3540fa",
+          "installedSHA256": "c8d0b1836b09e2f4e26575ac696356f3332e5932bd7aae73d38c0233ebf78232",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "evals/evals.json",
+          "sourceSHA256": "f4a8d9a0cd2d48b7b097db9342d22a7286c581fb525dc3eb8e845b686bd443f3",
+          "installedSHA256": "5dd710e9d2ab582d5cd2c97b911c68657786968ba8aecaa03902b366c79b6fc3",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/a11y-patterns.md",
+          "sourceSHA256": "313cfd6580a78c065853109cbc7a9ad47e5a6afbd5753c6bed07beed29283801",
+          "installedSHA256": "b6275f49c6dc3e52e4fdd189ca60bb109cb27f13c2ecdc8ea70db31117d471ac",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/media-accessibility.md",
+          "sourceSHA256": "478f00ae205b1be1b5c7950bd21f47f200262fb9f81ada9c366a405514ab0b24",
+          "installedSHA256": "d3e8ebd9a02b0fc691640a6f930bdf35259b16381e36932fb485410d3ac3da88",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/nutrition-labels.md",
+          "sourceSHA256": "730941fb3cb4c7d4da6f6c5b559090cb3681ebde134726f71f10da600b98c828",
+          "installedSHA256": "8ebfebcf2ba43cb8dcc35802069d4ac0cf9f1d636b6faaa7acc4e0c0a8d5fc15",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        }
+      ],
+      "projectOverrides": "See projectOverrides in this registry, AGENTS.md and noor-recitation-streaming/SKILL.md; owner contract and native evidence take precedence."
+    },
+    {
+      "name": "swiftui-animation",
+      "repository": "https://github.com/thienqo/ios-skills",
+      "commit": "e6a2f173e77e36746fc060132f283caf7ad26a41",
+      "commitDateUTC": "2026-10-29T12:04:29Z",
+      "skillPath": "skills/swiftui-animation/SKILL.md",
+      "license": "PolyForm Perimeter License 1.0.0",
+      "licenseSHA256": "73e4a04636ccadd620489681d889766924b3bdeb7e3a01f39b298c7d404c9762",
+      "installedLicensePath": "C:\\Users\\ONLYPC\\.codex\\skills\\swiftui-animation\\LICENSE",
+      "requiredNoticesPreserved": true,
+      "licenseRestriction": "Noncompete restriction; retain full LICENSE and Required Notice lines. This is not MIT.",
+      "inspectionDate": "2026-10-31",
+      "sourceEntrySHA256": "bfbc60da552f3be55c7cbb4f270f35931386266ae4162d6d09c7ceb85e9aaf81",
+      "installedBytesSHA256": "d67c6a90cbb7533e0fb901cc6c0e18619ffd3114d26cbba11c2872383d291391",
+      "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH",
+      "installedPath": "C:\\Users\\ONLYPC\\.codex\\skills\\swiftui-animation\\SKILL.md",
+      "entryReadAndInspected": true,
+      "automaticCatalogVisibility": "AVAILABLE_NEXT_USER_TURN_NOT_ASSERTED_IN_CURRENT_CATALOG",
+      "execution": "Builtin installer only; inspected repository LICENSE copied byte-for-byte. No upstream scripts/hooks executed; no MCP/plugin/runtime dependency installed.",
+      "compatibility": "PhaseAnimator/KeyframeAnimator verified Apple iOS17+. iOS18 symbol effects/navigation zoom must be gated; use iOS17 opacity/scale/symbol fallback. Preserve Swift5 settings; no SDK27 symbols selected.",
+      "installedFiles": [
+        {
+          "path": "SKILL.md",
+          "sourceSHA256": "bfbc60da552f3be55c7cbb4f270f35931386266ae4162d6d09c7ceb85e9aaf81",
+          "installedSHA256": "d67c6a90cbb7533e0fb901cc6c0e18619ffd3114d26cbba11c2872383d291391",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "evals/evals.json",
+          "sourceSHA256": "1f0e58d8f8fdde67917dca56bfb1dc6c6f55ec1f6e652d2d0cfd3352df02b250",
+          "installedSHA256": "a7d183b58a4f7caaf3a7a92f233ff480e050d548766d7ed873ebc6ec450004ec",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/animation-advanced.md",
+          "sourceSHA256": "036cc8cd1b297cca9233519db23e2c422ba50e885457811ecee9a17e07f51b77",
+          "installedSHA256": "193ad868cbba4e0e988b09526dea6d4be691e3622ae843f585c352eb0d577889",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/core-animation-bridge.md",
+          "sourceSHA256": "68969e99635515b344997e943d67b4b15b12611f5aa3fb23933e949651a21a98",
+          "installedSHA256": "7f6e403838b385673c82503477a2cde6e4ebf877e1ed1f7cef65fd76ebdfad8c",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        },
+        {
+          "path": "references/symbol-effects-and-accessibility.md",
+          "sourceSHA256": "ff4f784a31cc67dd8c3408b47b69cfed6e4da6edc8b9eef9fde076dffd913a43",
+          "installedSHA256": "1b6d85bd4cde3d657547407977f87b93bb247676128018722b99e00057116ce1",
+          "transportLineEndings": "CRLF_FROM_GIT_CHECKOUT_NORMALIZED_BYTES_MATCH"
+        }
+      ],
+      "projectOverrides": "See projectOverrides in this registry, AGENTS.md and noor-recitation-streaming/SKILL.md; owner contract and native evidence take precedence."
     }
   ],
   "local": [
@@ -165,5 +315,26 @@
     "ios-memgraph-leaks",
     "swiftui-expert-skill"
   ],
-  "selectionReason": "Only selected required instructions installed. No XcodeBuildMCP/device profiling capability established; no full plugin or hooks installed."
+  "selectionReason": "Only selected required instructions installed. No XcodeBuildMCP/device profiling capability established; no full plugin or hooks installed.",
+  "projectOverrides": {
+    "toolchain": "Preserve Swift language mode5, iOS17 deployment and actual CI Xcode26.3/SDK26.2. Skills do not authorize Swift6.4, SDK27 or deployment migration; verify each new API in primary Apple docs/SDK.",
+    "coreml": [
+      "Preserve exact current model/source hashes, FP32 arithmetic, CPU-only shipping configuration and lexical/frame/PCM accuracy gates. Actual Noor CPU-vs-ALL measurements override generic ALL/ANE performance claims.",
+      "Measure actual cold/warm hash/load, input preparation, MLModel.prediction and postdecode separately on permitted macOS CI. Simulator results do not establish physical iPhone/ANE performance. No new job, model or precision change follows merely from installing a skill.",
+      "Keep synchronous inference off MainActor in existing worker ownership. Preserve single-flight preparation, cancellation and generation barriers; do not copy generic reference MainActor classify/detect, configuration-blind cache or background unload/reload policies.",
+      "Guard MLComputePlan at iOS17.4 and MLTensor/MLState at iOS18; retain existing iOS17 paths. No Float16/compression/compute-unit substitution without separate source-bound parity and performance evidence."
+    ],
+    "motion": [
+      "Only short, scoped, value-driven feedback from actual UI/audio state; native iOS17 phase/keyframe APIs where justified. Preserve system/app Reduce Motion and interrupted/repeated interaction behavior.",
+      "Stop transient effects on finish, disappearance and background. No unbounded animation loops, new dependencies, fake meter/ASR progress, or animation of Quran text, word positions or evidence geometry.",
+      "Gate newer symbol/navigation effects. No display link, forced frame-rate guarantee, unconditional drawingGroup or Core Animation bridge without measured need."
+    ],
+    "accessibility": [
+      "Use semantic controls with meaningful Arabic labels/states, at least 44-point targets, Dynamic Type, RTL, contrast and intentional traversal/focus. Inspect heard-header readability and single microphone start/finish states.",
+      "Do not announce meter changes every render or confuse capture/listening state with confirmed recognition. Guard iOS18 Assistive Access examples.",
+      "Windows source checks, helper tests, screenshot fixtures and XCTest metadata do not replace actual native readability, assistive-technology or live microphone/ASR proof. App Store claims require their own common-task evidence."
+    ],
+    "license": "Preserve each copied PolyForm Perimeter 1.0.0 LICENSE and required notices. Do not label it MIT; do not install collections, hooks, upstream scripts or new MCP/access.",
+    "precedence": "Current owner charter, local Noor skills, architecture/deadlines and acceptance ledger override generic external recipes. Skill installation itself closes no product or evidence gate."
+  }
 }
