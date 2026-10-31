@@ -2,6 +2,41 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterWordTimingTests: XCTestCase {
+    func testWholeSurahBundleCoversNativeWordsWithoutBorrowingTheMissingBasmala() async throws {
+        let snapshot = try JSONDecoder().decode(QCFV2Snapshot.self,
+            from: XCTUnwrap(QCFV2ContentCache.bundledSnapshot())).validated()
+        let corpus = try XCTUnwrap(QuranResources.corpus)
+        let keys = corpus.flatMap { surah in surah.ayahs.map { "\(surah.number):\($0.number)" } }
+        let words = snapshot.records.filter { $0.record_type == "mushaf_word" && $0.char_type_name == "word" }
+        let expected = Dictionary(uniqueKeysWithValues: try words.map { word in
+            guard let verse = word.verse_id, (1...keys.count).contains(verse) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return (word.id, keys[verse - 1])
+        })
+        let basmala = Set(words.filter { $0.verse_id == 1 }.map(\.id))
+        for id in [74, 31] {
+            let reciter = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == id })
+            var seen = Set<Int>()
+            for surah in corpus {
+                let loaded = await NoorSurahWordTimings.shared.track(reciter: reciter,
+                    surah: surah.number, ayahCount: surah.ayahs.count)
+                let track = try XCTUnwrap(loaded, "Missing actual bundled chapter \(id):\(surah.number)")
+                let last = try XCTUnwrap(track.spans.last)
+                let duration = Double(last[3]) / 1000 + 1
+                for span in track.spans {
+                    let midpoint = Double(span[2] + span[3]) / 2000
+                    let position = track.position(at: midpoint, duration: duration)
+                    XCTAssertEqual(position?.wordID, span[1])
+                    XCTAssertEqual(position?.verse, expected[span[1]], "A native ID must keep its authored ayah")
+                    seen.insert(span[1])
+                }
+            }
+            XCTAssertTrue(seen.isSubset(of: Set(expected.keys)))
+            XCTAssertEqual(Set(expected.keys).subtracting(seen), id == 74 ? [] : basmala,
+                "Only Shuraim's genuinely absent first basmala remains untimed; no inferred clocks")
+        }
+    }
     func testWholeRecordingWordClockTracksActualRepeatsAndGapsWithoutInterpolating() throws {
         let track = try XCTUnwrap(NoorSurahWordTimingTrack(surah: 112, ayahCount: 4,
             spans: [[1, 10, 100, 300], [1, 11, 450, 800], [1, 10, 1000, 1200], [2, 12, 1500, 1800]]))

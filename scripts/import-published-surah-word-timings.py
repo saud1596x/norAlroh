@@ -12,7 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools/reciter_alignment'))
-from published_coordinates import PACKAGES
+from published_coordinates import PACKAGES, PUBLISHED_ALIASES_SHA256
 
 RECORDINGS = {'ali_al_huthaifi_mp3quran': 74, 'saud_al_shuraim_mp3quran': 31}
 
@@ -38,6 +38,7 @@ def main():
         candidate_raw = (args.candidates / (slug + '.json')).read_bytes()
         candidate = json.loads(candidate_raw)
         if (candidate['slug'] != slug or candidate['publishedPackageSHA256'] != PACKAGES[slug]
+                or candidate.get('exactCoordinateBridgeSHA256') != PUBLISHED_ALIASES_SHA256
                 or set(candidate['surahs']) != set(map(str, range(1, 115)))):
             raise ValueError('Different/incomplete pinned published candidate')
         chapters = {}
@@ -67,6 +68,8 @@ def main():
         result[recording['server']] = {'reciterID': reciter_id, 'recordingID': recording['recordingID'], 'surahs': chapters}
         reports[slug] = {'reciterID': reciter_id, 'recordingID': recording['recordingID'], 'server': recording['server'],
             'surahs': len(chapters), 'spans': sum(map(len, chapters.values())),
+            'timedNativeWordIDs': len({span[1] for rows in chapters.values() for span in rows}),
+            'missingNativeWordIDs': sorted(set(native) - {span[1] for rows in chapters.values() for span in rows}),
             'excludedOccurrences': candidate['excludedOccurrences'],
             'publishedPackageSHA256': PACKAGES[slug], 'boundCandidateSHA256': hashlib.sha256(candidate_raw).hexdigest()}
     document = {'schema': 1, 'nativeSnapshotSHA256': hashlib.sha256(snapshot_raw).hexdigest(), 'recordings': result}
@@ -76,9 +79,10 @@ def main():
         'attribution': 'Wider Community', 'license': 'CC BY 4.0', 'publisherVersion': 'v3.2.0',
         'audioSourceIdentityProofSHA256': hashlib.sha256(proof_raw).hexdigest(),
         'outputSHA256': hashlib.sha256(raw).hexdigest(), 'nativeSnapshotSHA256': document['nativeSnapshotSHA256'],
+        'exactCoordinateBridgeSHA256': PUBLISHED_ALIASES_SHA256,
         'status': 'PUBLISHED_PLAYBACK_GUIDANCE_PARTIAL_AYAH_COVERAGE_NOT_LEARNER_EVIDENCE',
         'acousticReview': 'NOT_RUN; published timing mapped to exact native IDs and source URLs, not all20reader approval',
-        'changes': 'Native word/ayah binding; explicit source repetitions and gaps preserved; unmapped verses excluded; no interpolation',
+        'changes': 'Native word/ayah binding plus 98 exact pinned publisher/native script tuples; original clocks, repetitions and gaps preserved; absent source occurrences remain absent; no interpolation',
         'recordings': reports}
     directory = ROOT / 'content-sources/reciter-timings'
     (directory / 'published-surah-word-receipt.json').write_bytes((json.dumps(receipt, ensure_ascii=False, indent=2) + '\n').encode())

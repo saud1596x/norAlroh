@@ -45,7 +45,7 @@ actor NoorSurahWordTimings {
         default: return false
         }
     }
-    static let digest = "60fa8fe85296ba685ca273e1c19f24a0d4b3c9838ecd20f5ece340c700d72cfe"
+    static let digest = "5873788999fdf57c524bb1241f0c89456684bac87ce228c57dfe6315774d6d78"
     private struct Recording: Decodable {
         let reciterID: Int
         let recordingID: Int

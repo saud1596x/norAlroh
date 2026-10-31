@@ -98,7 +98,8 @@ def selectors(lane):
     if prefix:
         return ['NoorMushafClosureUITests/' + UI_METHODS[prefix]]
     classes = (('FixedPrayerPolicyTests', 'NotificationReconciliationTests', 'NoorPersonalReminderTests',
-                'NoorSalawatTests', 'WidgetTests', 'WidgetTimelineTests', 'PublishingContentTests', 'KhatmahJourneyTests')
+                'NoorSalawatTests', 'WidgetTests', 'WidgetTimelineTests', 'PublishingContentTests',
+                'NoorReciterWordTimingTests', 'KhatmahJourneyTests')
                if lane == 'service-contracts' else
                ('QuranMicrophoneInputLifecycleTests', 'QuranWindowMailboxTests',
                 'QuranLiveRecitationStorageTests', 'QuranRecognitionWorkerLifecycleTests')

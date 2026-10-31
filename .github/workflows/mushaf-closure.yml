@@ -44,6 +44,11 @@ on:
       - ios/Athar/QuranMicrophoneCapture.swift
       - ios/Athar/QuranRecitationController.swift
       - ios/Athar/QuranRecognitionWorker.swift
+      - ios/Athar/NoorSurahWordTimings.swift
+      - ios/Athar/surah-word-timings.json
+      - ios/AtharTests/NoorReciterWordTimingTests.swift
+      - ios/project-focus.yml
+      - ios/NoorFocusExtensions/**
       - ios/Athar/KhatmahJourney*.swift
       - ios/AtharTests/QuranMicrophoneInputLifecycleTests.swift
       - ios/AtharTests/QuranWindowMailboxTests.swift

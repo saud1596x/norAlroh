@@ -18,6 +18,10 @@ PACKAGES = {
     'ali_al_huthaifi_mp3quran': '69538d785009f547305057b68e0028d91a552c0e118a3cfcb0eac1698a42a294',
     'saud_al_shuraim_mp3quran': '0b30f23f92874fc54caf7bb83633f3b62da22f992f95a596c1886a681bd36e56',
 }
+NATIVE_SNAPSHOT_SHA256 = '37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1'
+AUTHORED_SCRIPT_SHA256 = '1968cf3a4e8338ae2056b5fba309099d2f7645b1609062cc1a52eac1804c5951'
+PUBLISHED_ALIASES_SHA256 = 'e5ac4ba20abed63017550b3d6cc0f39f06d1c2f89ebb96e651ad69f178bb6f18'
+PUBLISHED_ALIASES_PATH = 'content-sources/reciter-timings/published-native-coordinate-aliases.json'
 
 
 def normalize(text, expand_dagger=False):
@@ -55,6 +59,43 @@ def map_words(groups, source_words):
             return None
     complete = states.get(len(tokens), set())
     return list(next(iter(complete))) if len(complete) == 1 else None
+
+
+def published_aliases(path):
+    """Exact pinned edition variants, never a global Yeh/maqsurah fold."""
+    document = json.loads(pinned(path, PUBLISHED_ALIASES_SHA256))
+    if (document['schema'] != 1 or document['publisherScriptSHA256'] != SCRIPT_SHA256
+            or document['nativeSnapshotSHA256'] != NATIVE_SNAPSHOT_SHA256
+            or document['authoredScriptSHA256'] != AUTHORED_SCRIPT_SHA256
+            or document['publishedPackagesSHA256'] != PACKAGES
+            or len(document['aliases']) != 98):
+        raise ValueError('Different reviewed publisher-coordinate bridge')
+    return document['aliases']
+
+
+def map_published_words(verse, groups, source_words, native_ids, aliases):
+    """Keep strict matching first; bridge only exact reviewed one-word tuples.
+
+    Equal source/native counts and at least one source token per native group
+    admit only the identity partition. A bridge cannot guess a split, combine
+    unknown words, change an ayah, or replace the generic spelling policy.
+    """
+    strict = map_words(groups, source_words)
+    if strict is not None:
+        return strict
+    if (not groups or len(groups) != len(source_words) or len(groups) != len(native_ids)
+            or len(set(native_ids)) != len(native_ids)
+            or any(type(word) is not int or word <= 0 for word in native_ids)):
+        return None
+    for index, (group, source_word, native_id) in enumerate(zip(groups, source_words, native_ids)):
+        if map_words([group], [source_word]) == [0]:
+            continue
+        reviewed = aliases.get(str(native_id))
+        if (reviewed is None or reviewed['verse'] != verse or reviewed['position'] != index + 1
+                or reviewed['authoredWords'] != group[2] or reviewed['canonicalWords'] != group[3]
+                or reviewed['publisherWord'] != source_word):
+            return None
+    return list(range(len(groups)))
 
 
 def bind_row(row, native_ids, source_to_native):
@@ -100,8 +141,9 @@ def main():
         if normalize(value['text']):
             key, position = coordinate.rsplit(':', 1)
             source_verses.setdefault(key, []).append((int(position), value['text']))
-    script = json.loads((root / 'content-sources/recitation-word-script.json').read_bytes())['groups']
-    snapshot = json.loads(gzip.decompress((root / 'content-sources/mushaf-snapshot.json.gz').read_bytes()))
+    aliases = published_aliases(root / PUBLISHED_ALIASES_PATH)
+    script = json.loads(pinned(root / 'content-sources/recitation-word-script.json', AUTHORED_SCRIPT_SHA256))['groups']
+    snapshot = json.loads(gzip.decompress(pinned(root / 'content-sources/mushaf-snapshot.json.gz', NATIVE_SNAPSHOT_SHA256)))
     corpus = json.loads((root / 'ios/Athar/quran.json').read_bytes())
     keys = [f"{surah['number']}:{ayah['number']}" for surah in corpus for ayah in surah['ayahs']]
     records = snapshot['records']
@@ -118,12 +160,14 @@ def main():
         publisher = sorted(source_verses.get(key, []))
         if [position for position, _ in publisher] != list(range(1, len(publisher) + 1)):
             unresolved.append({'verse': key, 'reason': 'NONCONTIGUOUS_SCRIPT_COORDINATES'}); continue
-        mapping = map_words(groups, [text for _, text in publisher])
+        mapping = map_published_words(key, groups, [text for _, text in publisher],
+                                      [word['id'] for word in words], aliases)
         if mapping is None:
             unresolved.append({'verse': key, 'reason': 'NO_UNIQUE_EXACT_AUTHORED_ALIAS_BINDING'}); continue
         coordinates[key] = ([w['id'] for w in words], mapping)
     report = {'scope': 'PUBLISHED_RECORDING_COORDINATES_ONLY_NOT_ACOUSTIC_OR_RELEASE_APPROVAL',
               'version': 'QUD-v3.2.0', 'nativeVerses': len(script), 'mappedVerses': len(coordinates),
+              'exactCoordinateBridgeSHA256': PUBLISHED_ALIASES_SHA256, 'reviewedAliasCount': len(aliases),
               'unresolvedVerses': unresolved, 'productionPromoted': False, 'recordings': {}}
     args.output.mkdir(parents=True, exist_ok=True)
     for slug, digest in PACKAGES.items():
@@ -156,6 +200,7 @@ def main():
             chapter = accepted.setdefault(surah, {'exactPublisherAudioURL': source_url, 'occurrences': []})
             chapter['occurrences'].append({'verse': key, 'canonical': row[3], 'spans': spans})
         candidate = {'schema': 1, 'slug': slug, 'publishedPackageSHA256': digest,
+                     'exactCoordinateBridgeSHA256': PUBLISHED_ALIASES_SHA256,
                      'sourceIdentityBridgeToApp': 'NOT_VERIFIED', 'productionPromoted': False,
                      'surahs': accepted, 'excludedOccurrences': excluded}
         (args.output / (slug + '.json')).write_bytes((json.dumps(candidate, ensure_ascii=False) + '\n').encode())

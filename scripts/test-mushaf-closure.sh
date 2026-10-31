@@ -75,6 +75,7 @@ if [[ "$size" == medium ]]; then
   -only-testing:AtharTests/WidgetTests \
   -only-testing:AtharTests/WidgetTimelineTests \
   -only-testing:AtharTests/PublishingContentTests \
+  -only-testing:AtharTests/NoorReciterWordTimingTests \
   -only-testing:AtharTests/KhatmahJourneyTests
  run_case recitation-contracts 600 120 \
   -only-testing:AtharTests/QuranMicrophoneInputLifecycleTests \

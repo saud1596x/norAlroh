@@ -1,0 +1,1093 @@
+{
+  "schema": 1,
+  "scope": "EXACT_PUBLISHED_PLAYBACK_COORDINATES_ONLY_NOT_ASR_OR_ACOUSTIC_REVIEW",
+  "attribution": "Quranic Universal Audio v3.2.0 / Wider Community; native coordinate bridge by Noor Alruh",
+  "license": "CC-BY-4.0",
+  "publisherScriptSHA256": "19d5694b057dc68c3811e28f3ad1d58c0f07021a0c67a85cd25619ece7a9bf86",
+  "nativeSnapshotSHA256": "37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1",
+  "authoredScriptSHA256": "1968cf3a4e8338ae2056b5fba309099d2f7645b1609062cc1a52eac1804c5951",
+  "publishedPackagesSHA256": {
+    "ali_al_huthaifi_mp3quran": "69538d785009f547305057b68e0028d91a552c0e118a3cfcb0eac1698a42a294",
+    "saud_al_shuraim_mp3quran": "0b30f23f92874fc54caf7bb83633f3b62da22f992f95a596c1886a681bd36e56"
+  },
+  "aliases": {
+    "529830": {
+      "verse": "2:26",
+      "position": 4,
+      "authoredWords": [
+        "يستحيي"
+      ],
+      "canonicalWords": [
+        "يَسْتَحْىِۦٓ"
+      ],
+      "publisherWord": "يَسْتَحْيِۦٓ"
+    },
+    "529969": {
+      "verse": "2:31",
+      "position": 10,
+      "authoredWords": [
+        "انبيوني"
+      ],
+      "canonicalWords": [
+        "أَنۢبِـُٔونِى"
+      ],
+      "publisherWord": "أَنۢبِـُٔونِي"
+    },
+    "530710": {
+      "verse": "2:73",
+      "position": 5,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِ"
+      ],
+      "publisherWord": "يُحْيِ"
+    },
+    "535371": {
+      "verse": "2:258",
+      "position": 18,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "535375": {
+      "verse": "2:258",
+      "position": 22,
+      "authoredWords": [
+        "احيي"
+      ],
+      "canonicalWords": [
+        "أُحْىِۦ"
+      ],
+      "publisherWord": "أُحْيِۦ"
+    },
+    "535411": {
+      "verse": "2:259",
+      "position": 12,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "535481": {
+      "verse": "2:260",
+      "position": 7,
+      "authoredWords": [
+        "تحيي"
+      ],
+      "canonicalWords": [
+        "تُحْىِ"
+      ],
+      "publisherWord": "تُحْيِ"
+    },
+    "537291": {
+      "verse": "3:49",
+      "position": 27,
+      "authoredWords": [
+        "واحيي"
+      ],
+      "canonicalWords": [
+        "وَأُحْىِ"
+      ],
+      "publisherWord": "وَأُحْيِ"
+    },
+    "539334": {
+      "verse": "3:156",
+      "position": 31,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "540677": {
+      "verse": "4:15",
+      "position": 1,
+      "authoredWords": [
+        "واللاتي"
+      ],
+      "canonicalWords": [
+        "وَٱلَّٰتِى"
+      ],
+      "publisherWord": "وَٱلَّٰتِي"
+    },
+    "540866": {
+      "verse": "4:23",
+      "position": 13,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِىٓ"
+      ],
+      "publisherWord": "ٱلَّٰتِيٓ"
+    },
+    "540874": {
+      "verse": "4:23",
+      "position": 21,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِى"
+      ],
+      "publisherWord": "ٱلَّٰتِي"
+    },
+    "540879": {
+      "verse": "4:23",
+      "position": 26,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِى"
+      ],
+      "publisherWord": "ٱلَّٰتِي"
+    },
+    "541196": {
+      "verse": "4:34",
+      "position": 22,
+      "authoredWords": [
+        "واللاتي"
+      ],
+      "canonicalWords": [
+        "وَٱلَّٰتِى"
+      ],
+      "publisherWord": "وَٱلَّٰتِي"
+    },
+    "543320": {
+      "verse": "4:127",
+      "position": 16,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِى"
+      ],
+      "publisherWord": "ٱلَّٰتِي"
+    },
+    "548153": {
+      "verse": "6:34",
+      "position": 21,
+      "authoredWords": [
+        "نبا"
+      ],
+      "canonicalWords": [
+        "نَّبَإِى۟"
+      ],
+      "publisherWord": "نَّبَإِي۟"
+    },
+    "550121": {
+      "verse": "6:130",
+      "position": 10,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "550424": {
+      "verse": "6:143",
+      "position": 19,
+      "authoredWords": [
+        "نبيوني"
+      ],
+      "canonicalWords": [
+        "نَبِّـُٔونِى"
+      ],
+      "publisherWord": "نَبِّـُٔونِي"
+    },
+    "550916": {
+      "verse": "6:161",
+      "position": 3,
+      "authoredWords": [
+        "هداني"
+      ],
+      "canonicalWords": [
+        "هَدَىٰنِى"
+      ],
+      "publisherWord": "هَدَىٰنِي"
+    },
+    "551238": {
+      "verse": "7:20",
+      "position": 7,
+      "authoredWords": [
+        "ووري"
+      ],
+      "canonicalWords": [
+        "وُۥرِىَ"
+      ],
+      "publisherWord": "وُۥرِيَ"
+    },
+    "551545": {
+      "verse": "7:35",
+      "position": 9,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "553124": {
+      "verse": "7:127",
+      "position": 17,
+      "authoredWords": [
+        "ونستحيي"
+      ],
+      "canonicalWords": [
+        "وَنَسْتَحْىِۦ"
+      ],
+      "publisherWord": "وَنَسْتَحْيِۦ"
+    },
+    "553423": {
+      "verse": "7:143",
+      "position": 14,
+      "authoredWords": [
+        "تراني"
+      ],
+      "canonicalWords": [
+        "تَرَىٰنِى"
+      ],
+      "publisherWord": "تَرَىٰنِي"
+    },
+    "553432": {
+      "verse": "7:143",
+      "position": 23,
+      "authoredWords": [
+        "تراني"
+      ],
+      "canonicalWords": [
+        "تَرَىٰنِى"
+      ],
+      "publisherWord": "تَرَىٰنِيۚ"
+    },
+    "553493": {
+      "verse": "7:146",
+      "position": 3,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِىَ"
+      ],
+      "publisherWord": "ءَايَٰتِيَ"
+    },
+    "553838": {
+      "verse": "7:158",
+      "position": 18,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "554595": {
+      "verse": "7:196",
+      "position": 2,
+      "authoredWords": [
+        "وليي"
+      ],
+      "canonicalWords": [
+        "وَلِـِّۧىَ"
+      ],
+      "publisherWord": "وَلِـِّۧيَ"
+    },
+    "558598": {
+      "verse": "9:116",
+      "position": 7,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "560032": {
+      "verse": "10:56",
+      "position": 2,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "561483": {
+      "verse": "11:28",
+      "position": 10,
+      "authoredWords": [
+        "واتاني"
+      ],
+      "canonicalWords": [
+        "وَءَاتَىٰنِى"
+      ],
+      "publisherWord": "وَءَاتَىٰنِي"
+    },
+    "562154": {
+      "verse": "11:63",
+      "position": 10,
+      "authoredWords": [
+        "واتاني"
+      ],
+      "canonicalWords": [
+        "وَءَاتَىٰنِى"
+      ],
+      "publisherWord": "وَءَاتَىٰنِي"
+    },
+    "562425": {
+      "verse": "11:80",
+      "position": 8,
+      "authoredWords": [
+        "اوي"
+      ],
+      "canonicalWords": [
+        "ءَاوِىٓ"
+      ],
+      "publisherWord": "ءَاوِيٓ"
+    },
+    "563742": {
+      "verse": "12:36",
+      "position": 8,
+      "authoredWords": [
+        "اراني"
+      ],
+      "canonicalWords": [
+        "أَرَىٰنِىٓ"
+      ],
+      "publisherWord": "أَرَىٰنِيٓ"
+    },
+    "563749": {
+      "verse": "12:36",
+      "position": 14,
+      "authoredWords": [
+        "اراني"
+      ],
+      "canonicalWords": [
+        "أَرَىٰنِىٓ"
+      ],
+      "publisherWord": "أَرَىٰنِيٓ"
+    },
+    "563797": {
+      "verse": "12:38",
+      "position": 3,
+      "authoredWords": [
+        "ابايي"
+      ],
+      "canonicalWords": [
+        "ءَابَآءِىٓ"
+      ],
+      "publisherWord": "ءَابَآءِيٓ"
+    },
+    "563930": {
+      "verse": "12:43",
+      "position": 20,
+      "authoredWords": [
+        "روياي"
+      ],
+      "canonicalWords": [
+        "رُءْيَٰىَ"
+      ],
+      "publisherWord": "رُءْيَٰيَ"
+    },
+    "564040": {
+      "verse": "12:50",
+      "position": 16,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِى"
+      ],
+      "publisherWord": "ٱلَّٰتِي"
+    },
+    "564913": {
+      "verse": "12:100",
+      "position": 12,
+      "authoredWords": [
+        "روياي"
+      ],
+      "canonicalWords": [
+        "رُءْيَٰىَ"
+      ],
+      "publisherWord": "رُءْيَٰيَ"
+    },
+    "564955": {
+      "verse": "12:101",
+      "position": 3,
+      "authoredWords": [
+        "اتيتني"
+      ],
+      "canonicalWords": [
+        "ءَاتَيْتَنِى"
+      ],
+      "publisherWord": "ءَاتَيْتَنِي"
+    },
+    "564967": {
+      "verse": "12:101",
+      "position": 14,
+      "authoredWords": [
+        "وليي"
+      ],
+      "canonicalWords": [
+        "وَلِىِّۦ"
+      ],
+      "publisherWord": "وَلِيِّۦ"
+    },
+    "567251": {
+      "verse": "15:23",
+      "position": 3,
+      "authoredWords": [
+        "نحيي"
+      ],
+      "canonicalWords": [
+        "نُحْىِۦ"
+      ],
+      "publisherWord": "نُحْيِۦ"
+    },
+    "568157": {
+      "verse": "16:27",
+      "position": 7,
+      "authoredWords": [
+        "شركايي"
+      ],
+      "canonicalWords": [
+        "شُرَكَآءِىَ"
+      ],
+      "publisherWord": "شُرَكَآءِيَ"
+    },
+    "572053": {
+      "verse": "18:23",
+      "position": 3,
+      "authoredWords": [
+        "لشيء"
+      ],
+      "canonicalWords": [
+        "لِشَا۟ىْءٍ"
+      ],
+      "publisherWord": "لِشَا۟يْءٍ"
+    },
+    "572571": {
+      "verse": "18:52",
+      "position": 4,
+      "authoredWords": [
+        "شركايي"
+      ],
+      "canonicalWords": [
+        "شُرَكَآءِىَ"
+      ],
+      "publisherWord": "شُرَكَآءِيَ"
+    },
+    "572645": {
+      "verse": "18:56",
+      "position": 15,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "572842": {
+      "verse": "18:70",
+      "position": 5,
+      "authoredWords": [
+        "تسالني"
+      ],
+      "canonicalWords": [
+        "تَسْـَٔلْنِى"
+      ],
+      "publisherWord": "تَسْـَٔلْنِي"
+    },
+    "573207": {
+      "verse": "18:96",
+      "position": 1,
+      "authoredWords": [
+        "اتوني"
+      ],
+      "canonicalWords": [
+        "ءَاتُونِى"
+      ],
+      "publisherWord": "ءَاتُونِي"
+    },
+    "573224": {
+      "verse": "18:96",
+      "position": 16,
+      "authoredWords": [
+        "اتوني"
+      ],
+      "canonicalWords": [
+        "ءَاتُونِىٓ"
+      ],
+      "publisherWord": "ءَاتُونِيٓ"
+    },
+    "573343": {
+      "verse": "18:106",
+      "position": 7,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "573443": {
+      "verse": "19:5",
+      "position": 5,
+      "authoredWords": [
+        "ورايي"
+      ],
+      "canonicalWords": [
+        "وَرَآءِى"
+      ],
+      "publisherWord": "وَرَآءِي"
+    },
+    "573740": {
+      "verse": "19:30",
+      "position": 5,
+      "authoredWords": [
+        "اتاني"
+      ],
+      "canonicalWords": [
+        "ءَاتَىٰنِىَ"
+      ],
+      "publisherWord": "ءَاتَىٰنِيَ"
+    },
+    "573929": {
+      "verse": "19:46",
+      "position": 5,
+      "authoredWords": [
+        "الهتي"
+      ],
+      "canonicalWords": [
+        "ءَالِهَتِى"
+      ],
+      "publisherWord": "ءَالِهَتِي"
+    },
+    "574461": {
+      "verse": "19:93",
+      "position": 8,
+      "authoredWords": [
+        "اتي"
+      ],
+      "canonicalWords": [
+        "ءَاتِى"
+      ],
+      "publisherWord": "ءَاتِي"
+    },
+    "576488": {
+      "verse": "21:37",
+      "position": 6,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "577094": {
+      "verse": "21:88",
+      "position": 7,
+      "authoredWords": [
+        "ننجي"
+      ],
+      "canonicalWords": [
+        "نُـۨجِى"
+      ],
+      "publisherWord": "نُـۨجِي"
+    },
+    "577518": {
+      "verse": "22:6",
+      "position": 7,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِ"
+      ],
+      "publisherWord": "يُحْيِ"
+    },
+    "579485": {
+      "verse": "23:66",
+      "position": 3,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "579630": {
+      "verse": "23:80",
+      "position": 3,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "579877": {
+      "verse": "23:105",
+      "position": 3,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "581290": {
+      "verse": "24:60",
+      "position": 4,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِى"
+      ],
+      "publisherWord": "ٱلَّٰتِي"
+    },
+    "582139": {
+      "verse": "25:49",
+      "position": 1,
+      "authoredWords": [
+        "لنحيي"
+      ],
+      "canonicalWords": [
+        "لِّنُحْـِۧىَ"
+      ],
+      "publisherWord": "لِّنُحْـِۧيَ"
+    },
+    "583108": {
+      "verse": "26:82",
+      "position": 6,
+      "authoredWords": [
+        "خطييتي"
+      ],
+      "canonicalWords": [
+        "خَطِيٓـَٔتِى"
+      ],
+      "publisherWord": "خَطِيٓـَٔتِي"
+    },
+    "585408": {
+      "verse": "28:4",
+      "position": 14,
+      "authoredWords": [
+        "ويستحيي"
+      ],
+      "canonicalWords": [
+        "وَيَسْتَحْىِۦ"
+      ],
+      "publisherWord": "وَيَسْتَحْيِۦ"
+    },
+    "586486": {
+      "verse": "28:62",
+      "position": 5,
+      "authoredWords": [
+        "شركايي"
+      ],
+      "canonicalWords": [
+        "شُرَكَآءِىَ"
+      ],
+      "publisherWord": "شُرَكَآءِيَ"
+    },
+    "586659": {
+      "verse": "28:74",
+      "position": 5,
+      "authoredWords": [
+        "شركايي"
+      ],
+      "canonicalWords": [
+        "شُرَكَآءِىَ"
+      ],
+      "publisherWord": "شُرَكَآءِيَ"
+    },
+    "588307": {
+      "verse": "30:19",
+      "position": 9,
+      "authoredWords": [
+        "ويحيي"
+      ],
+      "canonicalWords": [
+        "وَيُحْىِ"
+      ],
+      "publisherWord": "وَيُحْيِ"
+    },
+    "588390": {
+      "verse": "30:24",
+      "position": 11,
+      "authoredWords": [
+        "فيحيي"
+      ],
+      "canonicalWords": [
+        "فَيُحْىِۦ"
+      ],
+      "publisherWord": "فَيُحْيِۦ"
+    },
+    "588850": {
+      "verse": "30:50",
+      "position": 7,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِ"
+      ],
+      "publisherWord": "يُحْيِ"
+    },
+    "588857": {
+      "verse": "30:50",
+      "position": 13,
+      "authoredWords": [
+        "لمحيي"
+      ],
+      "canonicalWords": [
+        "لَمُحْىِ"
+      ],
+      "publisherWord": "لَمُحْيِ"
+    },
+    "590108": {
+      "verse": "33:4",
+      "position": 12,
+      "authoredWords": [
+        "اللايي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰٓـِٔى"
+      ],
+      "publisherWord": "ٱلَّٰٓـِٔي"
+    },
+    "590997": {
+      "verse": "33:50",
+      "position": 7,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِىٓ"
+      ],
+      "publisherWord": "ٱلَّٰتِيٓ"
+    },
+    "591015": {
+      "verse": "33:50",
+      "position": 25,
+      "authoredWords": [
+        "اللاتي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰتِى"
+      ],
+      "publisherWord": "ٱلَّٰتِي"
+    },
+    "591060": {
+      "verse": "33:51",
+      "position": 5,
+      "authoredWords": [
+        "وتووي"
+      ],
+      "canonicalWords": [
+        "وَتُـْٔوِىٓ"
+      ],
+      "publisherWord": "وَتُـْٔوِيٓ"
+    },
+    "591155": {
+      "verse": "33:53",
+      "position": 32,
+      "authoredWords": [
+        "فيستحيي"
+      ],
+      "canonicalWords": [
+        "فَيَسْتَحْىِۦ"
+      ],
+      "publisherWord": "فَيَسْتَحْيِۦ"
+    },
+    "591160": {
+      "verse": "33:53",
+      "position": 36,
+      "authoredWords": [
+        "يستحيي"
+      ],
+      "canonicalWords": [
+        "يَسْتَحْىِۦ"
+      ],
+      "publisherWord": "يَسْتَحْيِۦ"
+    },
+    "593462": {
+      "verse": "36:12",
+      "position": 3,
+      "authoredWords": [
+        "نحيي"
+      ],
+      "canonicalWords": [
+        "نُحْىِ"
+      ],
+      "publisherWord": "نُحْيِ"
+    },
+    "594145": {
+      "verse": "36:78",
+      "position": 8,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِ"
+      ],
+      "publisherWord": "يُحْيِ"
+    },
+    "597165": {
+      "verse": "39:57",
+      "position": 6,
+      "authoredWords": [
+        "هداني"
+      ],
+      "canonicalWords": [
+        "هَدَىٰنِى"
+      ],
+      "publisherWord": "هَدَىٰنِي"
+    },
+    "597186": {
+      "verse": "39:59",
+      "position": 4,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "597325": {
+      "verse": "39:69",
+      "position": 7,
+      "authoredWords": [
+        "وجيء"
+      ],
+      "canonicalWords": [
+        "وَجِا۟ىٓءَ"
+      ],
+      "publisherWord": "وَجِا۟يٓءَ"
+    },
+    "598571": {
+      "verse": "40:68",
+      "position": 3,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "599407": {
+      "verse": "41:39",
+      "position": 16,
+      "authoredWords": [
+        "لمحيي"
+      ],
+      "canonicalWords": [
+        "لَمُحْىِ"
+      ],
+      "publisherWord": "لَمُحْيِ"
+    },
+    "599499": {
+      "verse": "41:44",
+      "position": 9,
+      "authoredWords": [
+        "ااعجمي"
+      ],
+      "canonicalWords": [
+        "ءَا۬عْجَمِىٌّ"
+      ],
+      "publisherWord": "ءَا۬عْجَمِيࣱّ"
+    },
+    "599584": {
+      "verse": "41:47",
+      "position": 22,
+      "authoredWords": [
+        "شركايي"
+      ],
+      "canonicalWords": [
+        "شُرَكَآءِى"
+      ],
+      "publisherWord": "شُرَكَآءِي"
+    },
+    "599836": {
+      "verse": "42:9",
+      "position": 10,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِ"
+      ],
+      "publisherWord": "يُحْيِ"
+    },
+    "601708": {
+      "verse": "44:8",
+      "position": 5,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "602532": {
+      "verse": "45:31",
+      "position": 6,
+      "authoredWords": [
+        "اياتي"
+      ],
+      "canonicalWords": [
+        "ءَايَٰتِى"
+      ],
+      "publisherWord": "ءَايَٰتِي"
+    },
+    "603274": {
+      "verse": "46:33",
+      "position": 15,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْـِۧىَ"
+      ],
+      "publisherWord": "يُحْـِۧيَ"
+    },
+    "605366": {
+      "verse": "50:43",
+      "position": 3,
+      "authoredWords": [
+        "نحيي"
+      ],
+      "canonicalWords": [
+        "نُحْىِۦ"
+      ],
+      "publisherWord": "نُحْيِۦ"
+    },
+    "606821": {
+      "verse": "54:25",
+      "position": 1,
+      "authoredWords": [
+        "االقي"
+      ],
+      "canonicalWords": [
+        "أَءُلْقِىَ"
+      ],
+      "publisherWord": "أَءُلْقِيَ"
+    },
+    "607967": {
+      "verse": "57:2",
+      "position": 5,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِۦ"
+      ],
+      "publisherWord": "يُحْيِۦ"
+    },
+    "608287": {
+      "verse": "57:17",
+      "position": 4,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْىِ"
+      ],
+      "publisherWord": "يُحْيِ"
+    },
+    "608631": {
+      "verse": "58:2",
+      "position": 12,
+      "authoredWords": [
+        "اللايي"
+      ],
+      "canonicalWords": [
+        "ٱلَّٰٓـِٔى"
+      ],
+      "publisherWord": "ٱلَّٰٓـِٔي"
+    },
+    "611050": {
+      "verse": "65:4",
+      "position": 1,
+      "authoredWords": [
+        "واللايي"
+      ],
+      "canonicalWords": [
+        "وَٱلَّٰٓـِٔى"
+      ],
+      "publisherWord": "وَٱلَّٰٓـِٔي"
+    },
+    "611061": {
+      "verse": "65:4",
+      "position": 12,
+      "authoredWords": [
+        "واللايي"
+      ],
+      "canonicalWords": [
+        "وَٱلَّٰٓـِٔى"
+      ],
+      "publisherWord": "وَٱلَّٰٓـِٔي"
+    },
+    "612919": {
+      "verse": "71:6",
+      "position": 3,
+      "authoredWords": [
+        "دعايي"
+      ],
+      "canonicalWords": [
+        "دُعَآءِىٓ"
+      ],
+      "publisherWord": "دُعَآءِيٓ"
+    },
+    "614189": {
+      "verse": "75:40",
+      "position": 6,
+      "authoredWords": [
+        "يحيي"
+      ],
+      "canonicalWords": [
+        "يُحْـِۧىَ"
+      ],
+      "publisherWord": "يُحْـِۧيَ"
+    },
+    "616445": {
+      "verse": "89:23",
+      "position": 1,
+      "authoredWords": [
+        "وجيء"
+      ],
+      "canonicalWords": [
+        "وَجِا۟ىٓءَ"
+      ],
+      "publisherWord": "وَجِا۟يٓءَ"
+    }
+  }
+}

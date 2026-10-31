@@ -33,7 +33,7 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Finish narrow pinned reciter edition-coordinate repair under review, then push coherent compiler/privacy/timing fixes and rerun native; previousrunFAILEDandtestsNOTRUN.",
+    "next": "Commit reviewed exact publisher timing bridge + source-bound native whole-corpus timing test, push one coherent successor; rerun actual native producer and consumers after genuinecompilefix. Do not reuse ae failedbuild.",
     "paidBuildsOrServicesStartedThisCycle": 0,
     "newFinancialCommitmentAuthorizedByCharter": false,
     "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
@@ -73,6 +73,12 @@
         "priorFullSetPassed": 26,
         "finalIPATestClassPassed": 19,
         "scope": "HELPER_SYNTHETIC_AND_XCODEGEN_MEMBERSHIP_NOT_REAL_ARCHIVE"
+      },
+      "publishedCoordinateBridge": {
+        "passed": 115,
+        "skipped": 0,
+        "sourceInputs": "PINNED_RAW_QUD_PACKAGES_AND_PREBRIDGE60fa8f_ARTIFACT",
+        "scope": "RAW_SOURCE_ID_CLOCK_AND_NEGATIVE_CONTROL_AUDIT_NOT_AUDIBLE_PLAYBACK"
       }
     },
     "externalAcceptanceGaps": [
@@ -82,10 +88,10 @@
       "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
       "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
-    "sourceCommit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
+    "sourceCommit": "0638ad7 (local compiler/privacy repair; verified timing successor pending commit; remote ae116f9 terminal failed)",
     "selectedNativeMethodsNotResults": {
       "recitation-contracts": 41,
-      "service-contracts": 75,
+      "service-contracts": 82,
       "geometry": 23,
       "navigation-contracts": 4
     },
@@ -262,15 +268,25 @@
       "requiredBehavior": "تحديد موضع وتتبع مستقر في القرآن كاملًا",
       "reproduction": "بدءمنمنتصفآية وسورةأخرى وعباراتمتشابهة واستعادةالتتبع",
       "before": {
-        "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
+        "status": "REFERENCE_PLAYBACK_COORDINATE_GAP_REPRODUCED",
+        "detail": "87 valid timestamped ayahs excluded by98 pinned publisher/native orthographic tuple differences; genericYehfold would also accept wrongwords and is not allowed."
       },
-      "cause": null,
-      "changes": [],
+      "cause": "Exact edition-coordinate adapter rejected genuine source variants, suppressing whole ayahs. Shuraim1:1 has no raw source occurrence and must remain untimed.",
+      "changes": [
+        "98 exact pinned publisher/native coordinate tuples keyed by nativewordID +verse +position +both exactstrings; generic spelling policy unchanged.",
+        "Regenerate through original audited builder/importer and preserve every original integer interval, gap, repeat and prebridge row multiplicity; native resource SHA now5873788999fdf57c524bb1241f0c89456684bac87ce228c57dfe6315774d6d78.",
+        "Hudhaify source covers all77429nativewordIDs; Shuraim77425with529417–529420absent. Other voice sources remainpartial/unsupported; no allreader/acousticapproval.",
+        "Select native NoorReciterWordTimingTests including all114surahs/eachwordclock/nativeayah identity coverage; no live audio or learner progress from this test."
+      ],
       "verification": {
-        "tests": [],
+        "tests": [
+          "Parent independent run115pytestcasespassedzero skips with rawpinnedpackages and prebridgeartifact.",
+          "All87ayah maps/sourceintegers preserve original source; no interpolated times.",
+          "Native bundle loader/wordclock7cases authoredandselected inservice-contracts; nativeexecutionpending."
+        ],
         "evidence": []
       },
-      "status": "OPEN",
+      "status": "IMPLEMENTED_PENDING_NATIVE_AND_ACOUSTIC_VERIFICATION",
       "releaseBlocking": true,
       "finalState": null
     },

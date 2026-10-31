@@ -4,8 +4,9 @@ import CryptoKit
 import FoundationNetworking
 #endif
 
-/// Content Sync's full-copy contract. The approved V2 edition can be bundled;
+/// Content Sync's full-copy data contract. The pinned V2 edition is bundled;
 /// a font and its positioned words must always share that exact edition.
+/// Distribution-rights evidence is tracked separately under DATA-004.
 struct QCFV2Snapshot: Decodable, Sendable, Equatable {
     let resource_group: String
     let resource_id: Int

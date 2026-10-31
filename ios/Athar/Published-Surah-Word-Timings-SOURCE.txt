@@ -6,9 +6,14 @@ https://creativecommons.org/licenses/by/4.0/
 
 Changes by Noor Alruh: bound exact published word coordinates to the approved
 native Mushaf word IDs and ayah numbers; verified publisher redirects against
-all114 exact application chapter URLs for each imported recording; excluded
-unresolved verse spellings; preserved original source times, gaps and repeats.
-No interpolated or estimated replacement timings. Partial ayah coverage.
+all114 exact application chapter URLs for each imported recording. A pinned
+98-entry publisher/native coordinate bridge preserves exact authored and
+publisher strings, native IDs and positions without global spelling folding.
+Original source times, gaps and repeats are preserved byte-for-byte as integer
+intervals. No interpolated or estimated replacement timings. Hudhaify's source
+coordinates cover all77429 native word IDs; Shuraim's Fatiha basmala has no
+source occurrence, so its four words remain untimed. This is source-coordinate
+coverage, not an independent acoustic review or listening-quality approval.
 These timestamps guide reference playback only, never assess learner speech.
 Original audio remains on its existing MP3Quran source, not redistributed here.
 Receipt: content-sources/reciter-timings/published-surah-word-receipt.json
