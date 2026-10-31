@@ -12,7 +12,16 @@ struct NoorLaunchGate: View {
     @State private var preparedAcceptanceWelcome = false
     #endif
     private var still: Bool { reduced || store.data.lowMotion || ProcessInfo.processInfo.isLowPowerModeEnabled }
-    var body: some View {
+    @ViewBuilder var body: some View {
+        #if NOOR_ACCEPTANCE_TESTING
+        if let request = NoorAcceptanceDesignRequest.current {
+            NoorAcceptanceDesignHost(request: request)
+        } else { launchContent }
+        #else
+        launchContent
+        #endif
+    }
+    private var launchContent: some View {
         ZStack {
             if finished {
                 if welcomeCompleted || account.signedIn {

@@ -87,6 +87,12 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertTrue(fullScreen.waitForExistence(timeout: 5)); fullScreen.tap()
         let hiddenControls = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: more)
         XCTAssertEqual(XCTWaiter.wait(for: [hiddenControls], timeout: 5), .completed)
+        let ordinaryControls = ["reader.reciters", "reader.jump", "reader.study", "reader.more",
+                                "reader.textVisibility", "reader.previous", "reader.next"]
+        for identifier in ordinaryControls {
+            XCTAssertFalse(app.buttons[identifier].exists,
+                           "Explicit full screen removes hidden controls from accessibility: \(identifier)")
+        }
         waitForVisibleReader(viewport, mode: "القراءة العادية")
         XCTAssertGreaterThan(viewport.frame.height, readingHeight + 44,
                              "The explicit full-screen mode must reclaim its reserved reading space")
@@ -94,6 +100,12 @@ final class NoorContinuousReaderUITests: XCTestCase {
         fullScreenProof.name = "full-screen-reclaimed-reading-space"; fullScreenProof.lifetime = .keepAlways; add(fullScreenProof)
         viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.01)).tap()
         XCTAssertTrue(more.waitForExistence(timeout: 5), "A tap exits the explicit full-screen mode")
+        for identifier in ordinaryControls {
+            XCTAssertTrue(app.buttons[identifier].exists,
+                          "Leaving explicit full screen restores its controls: \(identifier)")
+        }
+        XCTAssertTrue(picker.isHittable)
+        XCTAssertTrue(more.isHittable)
         XCTAssertEqual(viewport.frame.height, readingHeight, "Leaving explicit full screen restores the ordinary fixed reading frame")
         picker.tap()
         for removed in ["Hudhaify_64kbps", "Maher_AlMuaiqly_64kbps", "surah:54:54", "surah:21181:340"] {

@@ -55,7 +55,7 @@ def fixture(folder, size='small'):
     synthetic_png(folder / 'actual-display.png', (750, 1334))
     commands, collection = {}, {}
     for lane in ['build'] + expected:
-        deadline = 1200 if lane == 'build' else 600 if lane in ('geometry', 'recitation-contracts', 'service-contracts', 'navigation-contracts') else 180
+        deadline = 1200 if lane == 'build' else 600 if lane in ('geometry', 'recitation-contracts', 'service-contracts', 'navigation-contracts', 'design-contracts') else 180
         commands[lane] = {'exitCode': 0, 'deadlineSeconds': deadline, 'log': lane + '.txt'}
         stage = 'BUILD' if lane == 'build' else 'TEST'
         raw_log = ''.join('NOOR_NATIVE_PROCESS ' + json.dumps(
@@ -64,10 +64,14 @@ def fixture(folder, size='small'):
         if closure.ui_prefix(lane) == 'journey':
             raw_log += 'MUSHAF_UI_DRIVER_OPEN_SECONDS 0.5\n' + ''.join(
                 'MUSHAF_UI_DRIVER_TURN target=%d seconds=0.25\n' % target for target in (15, 16, 15, 14))
+        if lane == 'design-contracts':
+            for name in closure.DESIGN_SHOTS:
+                scope = 'SYNTHETIC_DESIGN_DATA' if name.startswith('design-fixture-') else 'PRODUCTION_TODAY_REAL_STATE'
+                raw_log += 'NOOR_DESIGN_SCREEN scope=' + scope + ' name=' + name + '\n'
         (folder / (lane + '.txt')).write_text(raw_log, encoding='utf-8')
         events = [{'kind': 'native-process', 'observerSeconds': 0,
                    'process': {'event': 'start', 'elapsedSeconds': 0}}]
-        if closure.ui_prefix(lane) or lane in ('reader-library', 'ward-entry', 'navigation-contracts'):
+        if closure.ui_prefix(lane) or lane in ('reader-library', 'ward-entry', 'navigation-contracts', 'design-contracts'):
             for _ in closure.selectors(lane):
                 events.extend([{'kind': 'test-start', 'observerSeconds': 1},
                            {'kind': 'test-end', 'observerSeconds': 7,
@@ -94,6 +98,7 @@ def fixture(folder, size='small'):
                  list(closure.UI_SHOTS[closure.ui_prefix(lane)]) if closure.ui_prefix(lane) else
                  ['QCF-V2-shaped-page-%03d' % page for page in range(1, 605)] if lane == 'geometry' else
                  list(closure.WARD_ENTRY_SHOTS) if lane == 'ward-entry' else
+                 list(closure.DESIGN_SHOTS) if lane == 'design-contracts' else
                  list(closure.NAVIGATION_SHOTS) if lane == 'navigation-contracts' else list(closure.READER_LIBRARY_SHOTS))
         records = []
         for index, name in enumerate(names):
@@ -109,7 +114,12 @@ def fixture(folder, size='small'):
                 'configuration': 'Release', 'project': 'project-accounts.yml',
                 'environment': {'xcode': context['xcode'], 'architecture': 'arm64',
                                 'developerDirectory': '/Applications/Xcode_SYNTHETIC.app/Contents/Developer',
-                                'sdkVersion': '26.3', 'sdkBuildVersion': 'SYNTHETIC', 'sdkPath': '/SYNTHETIC/SDK'},
+                                'sdkVersion': '26.3', 'sdkBuildVersion': 'SYNTHETIC', 'sdkPath': '/SYNTHETIC/SDK',
+                                'macOSVersion': '15.8.2', 'macOSBuildVersion': '24H232',
+                                'systemInjectionLibraries': {'/usr/lib/libRPAC.dylib': {
+                                    'realPath': '/usr/lib/libRPAC.dylib', 'sha256': 'f' * 64,
+                                    'size': 1236416, 'mode': 0o755, 'ownerUID': 0,
+                                    'architectures': ['arm64e', 'x86_64']}}},
                 'archiveSHA256': 'a' * 64, 'xctestrun': 'Build/Products/SYNTHETIC.xctestrun',
                 'files': {'producer/' + name: {'sha256': closure.digest(folder / local)}
                           for name, local in [('commands.json', 'producer-commands.json'),
@@ -231,6 +241,62 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.assertEqual(self.report['testResults']['navigation-contracts']['passedTests'], 4)
         self.mutate('navigation-contracts-observations.json', lambda value: value['events'].pop(1))
         self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_medium_requires_native_design_cases_without_installed_widget_claim(self):
+        self.assertIn('design-contracts', closure.lanes('medium'))
+        self.assertNotIn('design-contracts', closure.lanes('small'))
+        self.assertNotIn('design-contracts', closure.lanes('large'))
+        fixture(self.folder, 'medium')
+        self.assertEqual(self.verify('medium'), 0, self.report['errors'])
+        self.assertEqual(self.report['testResults']['design-contracts']['passedTests'], 8)
+        self.assertEqual(len([row for row in self.report['testResults']['design-contracts']['actualSelectors']
+                              if 'ProductionToday' in row]), 3)
+        self.assertEqual(self.report['designEvidence']['fixtureData'], 'SYNTHETIC_DESIGN_DATA')
+        self.assertEqual(self.report['designEvidence']['installedWidgetEvidence'], 'NOT_VERIFIED')
+
+    def test_design_lane_cannot_reuse_another_lanes_named_screenshot(self):
+        self.assertIn('design-contracts', closure.lanes('medium'))
+        fixture(self.folder, 'medium')
+        self.assertEqual(self.verify('medium'), 0, self.report['errors'])
+        self.mutate('design-contracts-attachments/manifest.json', lambda value: value[0]['attachments'].pop())
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('design-contracts: missing/repeated mandatory actual screenshot' in error
+                            for error in self.report['errors']))
+
+    def test_design_lane_requires_all_test_bodies_and_no_skips(self):
+        self.assertIn('design-contracts', closure.lanes('medium'))
+        fixture(self.folder, 'medium')
+        self.mutate('design-contracts-summary.json', lambda value: value.update(skippedTests=1))
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('design-contracts nonzero or absent skippedTests' in error
+                            for error in self.report['errors']))
+
+    def test_design_screenshot_wrong_display_size_cannot_pass(self):
+        self.assertIn('design-contracts', closure.lanes('medium'))
+        fixture(self.folder, 'medium')
+        synthetic_png(self.folder / 'design-contracts-attachments/synthetic-000.png', (100, 100))
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('design-contracts: screenshot is not the actual full simulator display' in error
+                            for error in self.report['errors']))
+
+    def test_design_data_cannot_be_relabelled_as_production(self):
+        fixture(self.folder, 'medium')
+        path = self.folder / 'design-contracts.txt'
+        path.write_text(path.read_text().replace('scope=SYNTHETIC_DESIGN_DATA', 'scope=PRODUCTION_TODAY_REAL_STATE', 1))
+        self.mutate('design-contracts-observations.json', lambda value:
+                    value.update(sourceLogSHA256=closure.digest(path)))
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('design-contracts scope' in error for error in self.report['errors']))
+
+    def test_design_requires_every_native_screenshot_log_marker(self):
+        fixture(self.folder, 'medium')
+        path = self.folder / 'design-contracts.txt'
+        path.write_text('\n'.join(line for line in path.read_text().splitlines()
+                                  if 'name=design-production-ax-today-dua' not in line) + '\n')
+        self.mutate('design-contracts-observations.json', lambda value:
+                    value.update(sourceLogSHA256=closure.digest(path)))
+        self.assertNotEqual(self.verify('medium'), 0)
+        self.assertTrue(any('design-contracts scope' in error for error in self.report['errors']))
 
     def test_navigation_requires_its_own_actual_screens(self):
         fixture(self.folder, 'medium')

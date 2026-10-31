@@ -16,6 +16,14 @@ import stat
 import subprocess
 import tarfile
 
+RPAC_PATH = '/usr/lib/libRPAC.dylib'
+HOST_INJECTION = '__TESTHOST__/Frameworks/libXCTestBundleInject.dylib'
+PLATFORM_DIRECTORIES = {
+    'DYLD_FRAMEWORK_PATH': '__PLATFORMS__/iPhoneSimulator.platform/Developer/Library/Frameworks',
+    'DYLD_LIBRARY_PATH': '__PLATFORMS__/iPhoneSimulator.platform/Developer/usr/lib',
+}
+ENVIRONMENT_SECTIONS = {'EnvironmentVariables', 'TestingEnvironmentVariables', 'UITargetAppEnvironmentVariables'}
+
 
 def require(value, message):
     if not value:
@@ -43,7 +51,172 @@ def environment():
             'sdkVersion': output('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version'),
             'sdkBuildVersion': output('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-build-version'),
             'sdkPath': output('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path'),
-            'architecture': platform.machine()}
+            'architecture': platform.machine(),
+            'macOSVersion': output('sw_vers', '-productVersion'),
+            'macOSBuildVersion': output('sw_vers', '-buildVersion'),
+            'systemInjectionLibraries': {RPAC_PATH: system_injection_fingerprint()}}
+
+
+def system_injection_fingerprint():
+    """Only the OS library observed in original Xcode26.3 probe run41232876938.
+
+    Its bytes are captured from the producer and anchored in needs.build's
+    manifest hash, then compared on every consumer. No library is loaded here.
+    """
+    path = Path(RPAC_PATH)
+    require(path.is_file() and not path.is_symlink() and str(path.resolve()) == RPAC_PATH,
+            'Missing or linked observed system injection library')
+    info = path.stat()
+    mode = stat.S_IMODE(info.st_mode)
+    require(info.st_uid == 0 and not mode & 0o7022, 'Unsafe system injection library owner/mode')
+    architectures = sorted(subprocess.check_output(['xcrun', 'lipo', '-archs', str(path)], text=True).split())
+    require(architectures == ['arm64e', 'x86_64'], 'Unobserved system injection library architectures')
+    return {'realPath': RPAC_PATH, 'sha256': digest(path), 'size': info.st_size,
+            'mode': mode, 'ownerUID': info.st_uid, 'architectures': architectures}
+
+
+def validate_platform_directory(value, build_environment):
+    require(value in PLATFORM_DIRECTORIES.values(), 'Unobserved Xcode platform directory')
+    developer = Path(build_environment['developerDirectory'])
+    target = developer / 'Platforms' / value[len('__PLATFORMS__/'):]
+    require(target.is_dir() and target.resolve().is_relative_to(developer.resolve()),
+            'Missing/escaping exact Xcode platform directory')
+
+
+def product_path(value, products, host=None):
+    if value.startswith('__TESTHOST__/'):
+        require(host is not None, 'Missing test host for product placeholder')
+        value = host + value[len('__TESTHOST__'):]
+    require(value.startswith('__TESTROOT__/'), 'Nonrelocatable test product path')
+    relative = value[len('__TESTROOT__/'):]
+    require(relative and '\\' not in relative and ':' not in relative and '\0' not in relative and
+            all(part not in ('', '.', '..') for part in relative.split('/')),
+            'Missing/escaping or unsafe test product path: ' + value)
+    target = products / relative
+    require(target.resolve().is_relative_to(products.resolve()) and target.exists(),
+            'Missing/escaping xctestrun product: ' + value)
+    return target
+
+
+def validate_environment_value(key, value, section, products, host, build_environment):
+    if key == 'DYLD_INSERT_LIBRARIES':
+        require(section in ('EnvironmentVariables', 'TestingEnvironmentVariables'),
+                'Unobserved injection environment section')
+        allowed = [RPAC_PATH]
+        if section == 'TestingEnvironmentVariables':
+            allowed.append(HOST_INJECTION + ':' + RPAC_PATH)
+        require(value in allowed, 'Unobserved system/test injection library list')
+        if value.startswith(HOST_INJECTION):
+            require(product_path(HOST_INJECTION, products, host).is_file(), 'Missing original test injection library')
+        return
+    directory_keys = {'DYLD_FRAMEWORK_PATH', 'DYLD_LIBRARY_PATH', '__XPC_DYLD_FRAMEWORK_PATH',
+                      '__XPC_DYLD_LIBRARY_PATH', '__XCODE_BUILT_PRODUCTS_DIR_PATHS'}
+    if key in directory_keys:
+        require(section in ('TestingEnvironmentVariables', 'UITargetAppEnvironmentVariables'),
+                'Unobserved search-path environment section')
+        components = value.split(':')
+        require(all(components) and len(components) == len(set(components)), 'Empty/duplicate search-path component')
+        for component in components:
+            if component.startswith('__PLATFORMS__/'):
+                require(section == 'TestingEnvironmentVariables' and PLATFORM_DIRECTORIES.get(key) == component,
+                        'Unobserved Xcode search-path component')
+                validate_platform_directory(component, build_environment)
+            else:
+                require(product_path(component, products, host).is_dir(), 'Search path must reference a product directory')
+        return
+    require(not key.startswith(('DYLD_', '__XPC_DYLD_', '__XCODE_')), 'Unobserved generated loader environment key')
+    reject_external_string(value, key)
+
+
+def reject_external_string(value, key):
+    require(not value.startswith('/') and ':/' not in value and '\\' not in value and '\0' not in value
+            and not re.search(r'[A-Za-z]:[\\/]', value)
+            and not any(part in ('.', '..') for part in value.split('/'))
+            and not any(token in value for token in ('__TESTROOT__', '__TESTHOST__', '__PLATFORMS__')),
+            'Nonrelocatable xctestrun value: ' + key)
+
+
+def validate_xctestrun_metadata(run, products, build_environment):
+    targets = set()
+    path_keys = {'TestBundlePath', 'TestHostPath', 'UITargetAppPath', 'DependentProductPaths'}
+
+    def inspect(value, key='', host=None):
+        if isinstance(value, dict):
+            target_dictionary = 'TestBundlePath' in value and 'TestHostPath' in value
+            if isinstance(value.get('TestHostPath'), str):
+                raw_host = value['TestHostPath']
+                product_path(raw_host, products)
+                parts = raw_host.split('/')
+                app_index = next((i for i, part in enumerate(parts) if part.endswith('.app')), None)
+                require(app_index is not None, 'Original app test host required')
+                host = '/'.join(parts[:app_index + 1])
+            for field, child in value.items():
+                if field in path_keys:
+                    require((field == 'DependentProductPaths' and isinstance(child, list) and child
+                             and all(isinstance(path, str) for path in child)) or
+                            (field != 'DependentProductPaths' and isinstance(child, str)),
+                            'Malformed original test product path field: ' + field)
+                if field in ('BlueprintName', 'ProductModuleName') and isinstance(child, str):
+                    targets.add(child)
+                if field in ('AtharTests', 'AtharUITests'):
+                    targets.add(field)
+                if field in ENVIRONMENT_SECTIONS:
+                    require(target_dictionary and isinstance(child, dict), 'Environment outside original test target')
+                    for env_key, env_value in child.items():
+                        require(isinstance(env_key, str) and env_key and '\0' not in env_key and '\\' not in env_key,
+                                'Unsafe generated environment key')
+                        require(isinstance(env_value, str), 'Generated environment values must be strings')
+                        validate_environment_value(env_key, env_value, field, products, host, build_environment)
+                else:
+                    inspect(child, field, host)
+        elif isinstance(value, list):
+            for child in value:
+                inspect(child, key, host)
+        elif isinstance(value, str):
+            if key in path_keys:
+                product_path(value, products, host)
+            else:
+                reject_external_string(value, key)
+    inspect(run)
+    return targets
+
+
+def preserve_diagnostics(products, producer, commit, run_id):
+    """Save original inputs before environment checks, product validation or move.
+
+    The producer directory is always uploaded by the existing workflow. Failure
+    diagnostics remain there even when no transport archive can be produced.
+    """
+    output = producer / 'native-product-diagnostics'
+    output.mkdir(parents=True, exist_ok=False)
+    originals, values = [], []
+    for index, path in enumerate(sorted(products.glob('*.xctestrun'))):
+        require(path.is_file() and not path.is_symlink(), 'Generated xctestrun must be an original regular file')
+        name = 'original-%d-' % index + path.name
+        shutil.copyfile(path, output / name)
+        originals.append({'file': name, 'sha256': digest(path), 'bytes': path.stat().st_size})
+        try:
+            def inspect(value, trail=()):
+                if isinstance(value, dict):
+                    for key, child in value.items(): inspect(child, trail + (str(key),))
+                elif isinstance(value, list):
+                    for i, child in enumerate(value): inspect(child, trail + (str(i),))
+                elif isinstance(value, str) and (value.startswith(('/', '__')) or
+                     any(part.endswith('EnvironmentVariables') for part in trail)):
+                    values.append({'originalFile': name, 'plistPath': list(trail), 'value': value})
+            inspect(plistlib.loads(path.read_bytes()))
+        except Exception as error:
+            values.append({'originalFile': name, 'parseError': type(error).__name__})
+    write(output / 'originals.json', {'sourceCommit': commit, 'producerRunID': run_id, 'files': originals,
+                                     'scope': 'ORIGINAL_PACK_INPUTS_NOT_TEST_OR_RELEASE_ACCEPTANCE'})
+    write(output / 'generated-path-environment-values.json', values)
+    try:
+        actual_environment = environment()
+        write(output / 'environment.json', actual_environment)
+        return actual_environment, output
+    except Exception as error:
+        write(output / 'environment-error.json', {'type': type(error).__name__, 'error': str(error)})
+        raise
 
 
 def safe_name(name):
@@ -95,40 +268,13 @@ def binary_architecture(path, architecture):
             == [architecture], 'Wrong executable architecture: ' + str(path))
 
 
-def validate_products(folder, architecture):
+def validate_products(folder, architecture, build_environment=None):
     products = folder / 'Build/Products'
     require(architecture == 'arm64', 'Requires the same standard arm64 macOS runner')
     runs = list(products.glob('*.xctestrun'))
     require(len(runs) == 1, 'Exactly one original generated xctestrun required')
     run = plistlib.loads(runs[0].read_bytes())
-    targets = set()
-    path_keys = {'TestBundlePath', 'TestHostPath', 'UITargetAppPath', 'DependentProductPaths'}
-
-    def inspect(value, key='', host=None):
-        if isinstance(value, dict):
-            if isinstance(value.get('TestHostPath'), str):
-                host = value['TestHostPath']
-                # __TESTHOST__ denotes the enclosing host .app, not its binary.
-                host = host[:host.find('.app') + 4] if '.app' in host else None
-            for field, child in value.items():
-                if field in ('BlueprintName', 'ProductModuleName') and isinstance(child, str):
-                    targets.add(child)
-                if field in ('AtharTests', 'AtharUITests'):
-                    targets.add(field)
-                inspect(child, field, host)
-        elif isinstance(value, list):
-            for child in value:
-                inspect(child, key, host)
-        elif isinstance(value, str):
-            require(not value.startswith('/') and ':/' not in value and
-                    not re.search(r'[A-Za-z]:[\\/]', value), 'Nonrelocatable xctestrun value: ' + key)
-            if key in path_keys:
-                expanded = value.replace('__TESTHOST__', host) if '__TESTHOST__' in value and host else value
-                require(expanded.startswith('__TESTROOT__/'), 'Nonrelocatable test product: ' + key)
-                target = products / expanded[len('__TESTROOT__/'):]
-                require(target.resolve().is_relative_to(products.resolve()) and target.exists(),
-                        'Missing/escaping xctestrun product: ' + value)
-    inspect(run)
+    targets = validate_xctestrun_metadata(run, products, build_environment or environment())
     require({'AtharTests', 'AtharUITests'} <= targets, 'Both original test bundles required')
     app = products / 'Release-iphonesimulator/Athar.app'
     required = [app, app / 'PlugIns/NoorWidgets.appex',
@@ -165,6 +311,7 @@ def pack(products, producer, output, commit, run_id):
     require(re.fullmatch('[0-9a-f]{40}', commit) and re.fullmatch('[1-9][0-9]*', run_id),
             'Full source commit and GitHub producer run ID required')
     require(not output.exists(), 'Refuse to overwrite producer artifact')
+    env, diagnostics = preserve_diagnostics(products, producer, commit, run_id)
     output.mkdir(parents=True)
     # Stage by rename: the exact complete products tree, including links/modes,
     # never a hand-picked app or rewritten xctestrun.
@@ -172,14 +319,17 @@ def pack(products, producer, output, commit, run_id):
     (payload / 'Build').mkdir(parents=True)
     shutil.move(str(products), str(payload / 'Build/Products'))
     shutil.copytree(producer, payload / 'producer')
-    env = environment()
-    xctestrun = validate_products(payload, env['architecture'])
-    validate_build(payload)
-    files = inventory(payload)
-    archive = output / 'native-products.tar.gz'
-    with tarfile.open(archive, 'w:gz', dereference=False) as tar:
-        for name in files:
-            tar.add(payload / name, arcname=name, recursive=False)
+    try:
+        xctestrun = validate_products(payload, env['architecture'], env)
+        validate_build(payload)
+        files = inventory(payload)
+        archive = output / 'native-products.tar.gz'
+        with tarfile.open(archive, 'w:gz', dereference=False) as tar:
+            for name in files:
+                tar.add(payload / name, arcname=name, recursive=False)
+    except Exception as error:
+        write(diagnostics / 'pack-failure.json', {'type': type(error).__name__, 'error': str(error)})
+        raise
     manifest = {'schemaVersion': 1, 'sourceCommit': commit, 'producerRunID': run_id,
                 'configuration': 'Release', 'project': 'project-accounts.yml',
                 'environment': env, 'xctestrun': xctestrun, 'files': files,
@@ -200,11 +350,24 @@ def load_manifest(artifact, commit, run_id, manifest_hash, archive_hash):
     require(manifest.get('configuration') == 'Release' and manifest.get('project') == 'project-accounts.yml',
             'Wrong native product configuration')
     require(manifest.get('archiveSHA256') == archive_hash, 'Producer archive binding mismatch')
-    expected_environment = {'developerDirectory', 'xcode', 'sdkVersion', 'sdkBuildVersion', 'sdkPath', 'architecture'}
+    string_environment = {'developerDirectory', 'xcode', 'sdkVersion', 'sdkBuildVersion', 'sdkPath', 'architecture',
+                          'macOSVersion', 'macOSBuildVersion'}
+    expected_environment = string_environment | {'systemInjectionLibraries'}
     require(isinstance(manifest.get('environment'), dict) and
             set(manifest['environment']) == expected_environment and
-            all(isinstance(value, str) and value for value in manifest['environment'].values()),
+            all(isinstance(manifest['environment'].get(key), str) and manifest['environment'][key]
+                for key in string_environment),
             'Incomplete exact producer environment')
+    libraries = manifest['environment']['systemInjectionLibraries']
+    require(isinstance(libraries, dict) and set(libraries) == {RPAC_PATH}, 'Unobserved producer system library')
+    library = libraries[RPAC_PATH]
+    require(isinstance(library, dict) and set(library) == {'realPath', 'sha256', 'size', 'mode', 'ownerUID', 'architectures'}
+            and library.get('realPath') == RPAC_PATH and isinstance(library.get('sha256'), str)
+            and re.fullmatch('[0-9a-f]{64}', library['sha256']) and type(library.get('size')) is int and library['size'] > 0
+            and type(library.get('mode')) is int and 0 <= library['mode'] <= 0o7777 and not library['mode'] & 0o7022
+            and type(library.get('ownerUID')) is int and library['ownerUID'] == 0
+            and library.get('architectures') == ['arm64e', 'x86_64'],
+            'Incomplete/unsafe producer system injection fingerprint')
     require(manifest['environment']['architecture'] == 'arm64', 'Wrong producer architecture')
     require(isinstance(manifest.get('files'), dict) and manifest['files'], 'Missing full product inventory')
     run = manifest.get('xctestrun', '')
@@ -247,7 +410,7 @@ def unpack(artifact, destination, commit, run_id, manifest_hash, archive_hash):
         # All names, link targets, member types and bytes validated first.
         tar.extractall(destination, members=members, filter='fully_trusted')
     require(inventory(destination) == files, 'Extracted full product inventory mismatch')
-    require(validate_products(destination, manifest['environment']['architecture']) == manifest['xctestrun'],
+    require(validate_products(destination, manifest['environment']['architecture'], manifest['environment']) == manifest['xctestrun'],
             'Original xctestrun changed')
     validate_build(destination)
     return manifest

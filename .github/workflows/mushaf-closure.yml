@@ -19,6 +19,7 @@ on:
       - ios/Athar/NoorRecitersView.swift
       - ios/Athar/NoorMyJourneyView.swift
       - ios/Athar/NoorToday*.swift
+      - ios/Athar/NoorLaunch.swift
       - ios/Athar/NoorChromeTokens.swift
       - ios/Athar/AtharApp.swift
       - ios/Athar/Services.swift
@@ -38,6 +39,7 @@ on:
       - ios/AtharTests/NoorPersonalReminderTests.swift
       - ios/AtharTests/NoorSalawatTests.swift
       - ios/AtharUITests/NoorHomeFlowUITests.swift
+      - ios/AtharUITests/NoorTodayDesignUITests.swift
       - ios/AtharUITests/NoorNavigationTests.swift
       - ios/AtharUITests/NoorPrayerDisplayUITests.swift
       - ios/AtharUITests/NoorReminderUITests.swift

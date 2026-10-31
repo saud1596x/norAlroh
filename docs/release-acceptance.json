@@ -33,16 +33,16 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Commit reviewed exact publisher timing bridge + source-bound native whole-corpus timing test, push one coherent successor; rerun actual native producer and consumers after genuinecompilefix. Do not reuse ae failedbuild.",
+    "next": "Commit reviewed metadata/explicit-fullscreen-AX fix/native design evidence batch, then push once to independent verify/noor-native-closure-20261031 so existing cd5 integration jobs are not cancelled. Follow original producer/native tests. Never accept blank live log or helper passes as native/render/recognition approval.",
     "paidBuildsOrServicesStartedThisCycle": 0,
     "newFinancialCommitmentAuthorizedByCharter": false,
     "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
     "publicRelease": "NOT_SUBMITTED_NOT_PUBLISHED_BY_THIS_CYCLE",
     "latestLocalChecks": {
       "nativeArtifact": {
-        "passed": 20,
+        "passed": 30,
         "skipped": 2,
-        "scope": "PYTHON_HELPER_ONLY"
+        "scope": "PYTHON_TRANSPORT_HELPER_WITH_ORIGINAL_XCODE_METADATA_FIXTURE_NOT_APP_EXECUTION"
       },
       "nativeDeadline": {
         "passed": 14,
@@ -50,9 +50,9 @@
         "scope": "PYTHON_HELPER_ONLY"
       },
       "evidenceValidator": {
-        "passed": 49,
+        "passed": 55,
         "skipped": 0,
-        "scope": "SYNTHETIC_VALIDATOR_ONLY_NOT_APP_EXECUTION"
+        "scope": "SYNTHETIC_VALIDATOR_AND_DESIGN_SCOPE_REJECTION_NOT_RENDERING"
       },
       "swiftGrammar": {
         "files": 42,
@@ -79,7 +79,19 @@
         "skipped": 0,
         "sourceInputs": "PINNED_RAW_QUD_PACKAGES_AND_PREBRIDGE60fa8f_ARTIFACT",
         "scope": "RAW_SOURCE_ID_CLOCK_AND_NEGATIVE_CONTROL_AUDIT_NOT_AUDIBLE_PLAYBACK"
-      }
+      },
+      "fullPythonHelpers": {
+        "ran": 180,
+        "passed": 174,
+        "skipped": 6,
+        "seconds": 191.647,
+        "log": "outputs/closure-20261031/frozen-full-helper-suite.log",
+        "scope": "FROZEN_HELPER_CODE_ONLY_NOT_NATIVE_APP_ACCEPTANCE"
+      },
+      "discardedNonfinalLocalAttempts": [
+        "First full helper attempt blocked by Windows sandbox temporary-folder ACLs; not a pass.",
+        "Second full helper attempt overlapped in-progress producer-environment schema edits and imported old fixtures; not a pass. Fresh frozen180-case rerun supersedes it."
+      ]
     },
     "externalAcceptanceGaps": [
       "No independent consented learner ground-truth corpus/qualified labeling with speaker-separated error metrics.",
@@ -88,33 +100,108 @@
       "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
       "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
-    "sourceCommit": "0638ad7 (local compiler/privacy repair; verified timing successor pending commit; remote ae116f9 terminal failed)",
+    "sourceCommit": "574d8cdb7dec5d53de47e2f0042b0cfefc3e3865",
     "selectedNativeMethodsNotResults": {
       "recitation-contracts": 41,
       "service-contracts": 82,
       "geometry": 23,
-      "navigation-contracts": 4
+      "navigation-contracts": 4,
+      "design-contracts": 8
     },
     "preservedUnrelatedDrafts": [
       "docs/live-recitation-gap-ledger-20261019.md",
       "scripts/test-engine-latency.sh"
     ],
-    "sourceBranch": "verify/noor-codemagic-fast-20261015",
+    "sourceBranch": "verify/noor-native-closure-20261031",
     "currentNativeRun": {
-      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557",
-      "producerJob": "124617984336",
-      "state": "FAILED_BUILD",
-      "observedPhase": "Xcode26.3 actual Swiftcompile failed on switch-expression as Textargument; fixed locally. No consumer tests started.",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
+      "producerJob": "124625956649",
+      "state": "FAILED_AFTER_SUCCESSFUL_TEST_BUILD_BEFORE_TEST_EXECUTION",
+      "sourceCommit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
       "publication": false,
-      "duration": "6m51s",
-      "nativeCompileExit": 65
+      "buildExit": 0,
+      "buildElapsedSeconds": 457.212,
+      "packagingCause": "Nonrelocatable xctestrun value: DYLD_INSERT_LIBRARIES",
+      "consumerTests": "NOT_RUN"
     },
     "rightsAccountObservation": {
       "date": "2026-10-31",
       "surface": "https://dev-console.quran.foundation/projects",
       "existingNoorProject": "ACTIVE READY",
       "credentialsOpenedOrChanged": false,
-      "distributionAuthorization": "NOT_ESTABLISHED_BY_ACTIVE_ACCOUNT"
+      "distributionAuthorization": "NOT_ESTABLISHED_BY_ACTIVE_ACCOUNT",
+      "ownerReply20261031": "Owner states previously confirmed and instructs use; explicitly declined sending developer support inquiry. No message sent, no new agreement accepted. Written authorization has not been independently inspected."
+    },
+    "metadataProbe": {
+      "commit": "574d8cdb7dec5d53de47e2f0042b0cfefc3e3865",
+      "run": "https://github.com/saud1596x/norAlroh/actions/runs/41232876938",
+      "artifact": "13054666137",
+      "artifactSHA256": "cc0bc2fe0961dd22b136db5d3656145bd6411730fe3c1c6db7bb77d566afc257",
+      "buildExitCode": 0,
+      "testsExecuted": false,
+      "scope": "ISOLATED_GENERATED_CONFIGURATION_ONLY",
+      "originalXctestrunSHA256": "efd97159f7fe0fb43506c41d18a25976c4c4c92f377d8c50482f57131a902cc1",
+      "observedSystemInjection": "/usr/lib/libRPAC.dylib",
+      "localEvidence": "outputs/closure-20261031/xctestrun-probe-574d8cd"
+    },
+    "adjacentNativeEvidence": {
+      "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318016/job/124625956657",
+      "state": "RECITER_SMOKE_SUCCESS_OTHER_MATRIX_STILL_IN_PROGRESS",
+      "artifactSHA256": "9f252e03e29722f2a9cf47b1cbc33552de4ad32bcaaf7d4615487a3925fc4c79",
+      "rawLog": "outputs/closure-20261031/cd5ab14-reciter-smoke-original.log",
+      "swiftPackageDeterministicWordingTests": 39,
+      "nativeReciterAndGuideTests": 11,
+      "nativeUITests": 3,
+      "actualReferencePlaybackCompletion": "PASSED_5.926_SECONDS",
+      "scope": "REFERENCE_PLAYBACK_AND_SELECTED_NAVIGATION_NOT_LIVE_MICROPHONE_OR_RECOGNITION_ACCURACY",
+      "doesNotReplaceMainMushafMatrix": true
+    },
+    "preparedBatchFrom": "574d8cdb7dec5d53de47e2f0042b0cfefc3e3865",
+    "nativeDesignCapturePlan": {
+      "scope": "ACCEPTANCE_ONLY_ACTUAL_SWIFTUI_COMPONENT_RENDERING_NOT_INSTALLED_WIDGET_OR_LIVE_PRAYER",
+      "fixtureStates": [
+        "linear-light",
+        "editorial-light",
+        "najdi-light",
+        "najdi-dark",
+        "najdi-ax"
+      ],
+      "realTodayStates": [
+        "light",
+        "dark",
+        "ax"
+      ],
+      "requiredOriginalPNGs": 24,
+      "actualExecution": "NOT_RUN",
+      "knownRiskNotWaived": "Original fixed180pt medium wrapper/home[9] at accessibility3 may reveal text overflow; preserve originals and strict full-text bounds checks.",
+      "existingBudgetsUnchanged": true
+    },
+    "liveNativeEvidence": {
+      "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231317962",
+      "overall": "FAILED",
+      "artifactSHA256": "47ee8e374e627a355c2b55dd81444d45a9eaaf8ff2d62a2ae7260d1e5abfc26e",
+      "originalLog": "outputs/closure-20261031/cd5ab14-live-original.log",
+      "unitTestsPassed": 60,
+      "readerGeometryTestsPassed": 30,
+      "sourceCoordinateCasesPassed": 7,
+      "passedLanes": [
+        "live-storage",
+        "one-tap",
+        "background",
+        "privacy",
+        "reader-geometry",
+        "reader-library",
+        "reader-full-face",
+        "reader-entry",
+        "first-allow"
+      ],
+      "failedLane": "reader-controls",
+      "failedAssertion": "NoorContinuousReaderUITests.swift89 reader.more must not exist in explicit full-screen mode",
+      "actualCause": "Chrome visually hidden and viewport reclaimed, but sheet anchor reader.more remains in accessibility. Reciter search/select/persistence subsequently passed.",
+      "writtenRepairPendingNative": "Omit ordinary chrome subtree only during explicit fullScreenReading; retain ordinary hidden/recording measured lanes; seven absence/restoration checks added with original deadline/assertion.",
+      "limits": "Simulator microphone/capture and pinned PCM integration, not physical learner accuracy/Tajweed/30min thermal acceptance."
     }
   },
   "items": [
@@ -284,7 +371,14 @@
           "All87ayah maps/sourceintegers preserve original source; no interpolated times.",
           "Native bundle loader/wordclock7cases authoredandselected inservice-contracts; nativeexecutionpending."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "sourceReceipt": "content-sources/reciter-timings/published-surah-word-receipt.json",
+            "nativeRun": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
+            "scope": "115_LOCAL_SOURCE_CASES_PASSED_NATIVE_AND_ACOUSTIC_PENDING"
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_ACOUSTIC_VERIFICATION",
       "releaseBlocking": true,
@@ -362,13 +456,26 @@
       "before": {
         "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
       },
-      "cause": null,
+      "cause": "Available local diagnostic71rollingwindows lacks verified speaker identities, collection consent, exact spoken/error timings and trainingoverlap proof. Publishedcandidate access/licenses/labels do not yet close this.",
       "changes": [],
       "verification": {
         "tests": [],
-        "evidence": []
+        "evidence": [
+          {
+            "url": "https://huggingface.co/datasets/IWAN/L2-KSU-Dataset/blob/main/README.md",
+            "scope": "CC-BY-NC-ND4.0; purposefit must be established; published train/test CSV identical; mixedQuran/MSA; no recordings acquired."
+          },
+          {
+            "url": "https://huggingface.co/datasets/IqraEval/QuranMB.v2/tree/main",
+            "scope": "Public audioID package without published rootlicense/labels/speakermapping established; deliberatelyproduced errors are not naturallearner acceptance."
+          },
+          {
+            "url": "https://huggingface.co/datasets/Quran-Lab/quranic-asr-benchmark/blob/main/README.md",
+            "scope": "Manual accessgate notaccepted; exact benchmarklicense/evaluationderivative obligations unverified; no account data shared."
+          }
+        ]
       },
-      "status": "OPEN",
+      "status": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "releaseBlocking": true,
       "finalState": null
     },
@@ -697,7 +804,8 @@
         "Three production-component SwiftUI design directions authored; selected Najdi Today with primary bounded reading action, account, prayer route and editorial dua.",
         "Scoped inkgreen/ivory app tokens keep approved Mushaf renderer/paper unchanged; semantic fonts and reduced-motion-aware feedback.",
         "Removed old reminder editors and direct permission requests outside policy explanation; city selection commits explicit trust.",
-        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait."
+        "Root stale-ward guard and location republish; Today observes trust so confirmation updates without60s wait.",
+        "Acceptance-only runtime route reuses actual3 Today/medium-dua compositions and productionToday light/dark/AX;8nativecases/24originalPNGs required, fixture versus real-state labels enforced. Native execution pending."
       ],
       "verification": {
         "tests": [
@@ -888,6 +996,12 @@
             "surface": "https://dev-console.quran.foundation/projects",
             "observation": "Existing Noor Alruh project ACTIVE READY",
             "scope": "ACCOUNT_STATUS_ONLY_NOT_PREPACKAGED_CONTENT_AUTHORIZATION"
+          },
+          {
+            "date": "2026-10-31",
+            "source": "Owner chat reply",
+            "observation": "Previously verified; use normally; do not send inquiry",
+            "scope": "OWNER_ATTESTATION_PRIOR_CONFIRMATION_NOT_INDEPENDENT_WRITTEN_REVIEW"
           }
         ]
       },
@@ -896,7 +1010,7 @@
       "finalState": null,
       "nextExternalActionDraft": {
         "destination": "Quran Foundation developer support",
-        "state": "DRAFT_ONLY_NOT_SENT_NOT_AUTHORIZED_AS_OUTBOUND_MESSAGE",
+        "state": "NOT_SENT_OWNER_DECLINED_DO_NOT_SEND_OR_REPEAT_QUESTION",
         "purpose": "Clarify rights basis for actual integrated offline glyph snapshot without new credentials, sale of data or font redistribution service.",
         "message": "Noor Alruh is a native Quran reading application. We have an existing active Developer Console project. The application bundles the integrated Hafs QCF V2 glyph/page snapshot (resource1/resource_content382;23212238bytes;SHA256125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d) so first opening works offline, with existing Content Sync refresh logic. We do not sell or expose it as a separate database/API/download. Please confirm in writing which authorization covers this integrated build-time bundle under section3.1 of the2026-10-11 terms, and any required correction/update/attribution conditions. We will not assume that the font-bundling exception alone authorizes the data snapshot."
       }
@@ -929,7 +1043,8 @@
       "changes": [
         "One unsigned Release producer with original xctestrun and full products; three display consumers verify source/run/XcodeSDK/architecture/archive/file identities before and after tests.",
         "Retain all original lanes, PNGs, continuous journey videos and deadlines; add mandatory exact recitation, widget/notification and navigation lanes.",
-        "Central39-item acceptance ledger and5 scoped local skills; pinned7 external skill sources, compatibility constraints."
+        "Central39-item acceptance ledger and5 scoped local skills; pinned7 external skill sources, compatibility constraints.",
+        "Allow only observed Xcode26.3 RPAC/test-host injection and exact platform directory forms; bind root-owned system library bytes/mode/architecture and macOS context across jobs. Preserve original xctestrun before validation/move."
       ],
       "verification": {
         "tests": [
@@ -941,16 +1056,33 @@
         "evidence": [
           {
             "commit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
-            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557",
-            "scope": "IN_PROGRESS_NO_NATIVE_PASS_OR_RELEASE_CLAIM"
-          },
-          {
-            "commit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
             "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557/job/124617984336",
             "originalLog": "C:/Users/ONLYPC/Documents/Codex/2026-10-14/new-chat/outputs/closure-20261031/ae116f9-original-build.log",
             "result": "BUILD_FAILED_EXIT65",
             "cause": "PrayerNotificationSettings.swift78 Text(switch...) is not legal Swift expression usage; grammarparserdidnotdetect; nativecompiler did.",
             "scope": "APPLICATION TESTS_NOT_RUN"
+          },
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
+            "originalLog": "outputs/closure-20261031/cd5ab14-original-build.log",
+            "result": "TEST_BUILD_SUCCEEDED_EXIT0_PACK_FAILED",
+            "buildElapsedSeconds": 457.212,
+            "cause": "Generated DYLD_INSERT_LIBRARIES rejected by packaging helper",
+            "scope": "NO_APP_TEST_EXECUTION_NO_ACCEPTED_PRODUCT_ARTIFACT"
+          },
+          {
+            "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318026/job/124625956791",
+            "originalLog": "outputs/closure-20261031/cd5ab14-ios-helper-original.log",
+            "result": "163_HELPER_PASS_1_FAIL_NO_NATIVE_EXECUTION",
+            "cause": "Obsolete156624 aggregate corpus expectation after exact pinned coordinate bridge restored3806 source spans; fix must prove counts per recording and missing basmala."
+          },
+          {
+            "commit": "574d8cdb7dec5d53de47e2f0042b0cfefc3e3865",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41232876938",
+            "scope": "ISOLATED_METADATA_BUILD_ONLY_NOT_NOOR_EXECUTION",
+            "originalXctestrunSHA256": "efd97159f7fe0fb43506c41d18a25976c4c4c92f377d8c50482f57131a902cc1"
           }
         ]
       },

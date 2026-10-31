@@ -49,6 +49,15 @@ NAVIGATION_TESTS = ('NoorHomeFlowUITests/testFourTabsAndVisibleOptionalAccountSu
     'NoorPrayerDisplayUITests/testPrayerDatesClocksAndCityPersistAcrossRestart')
 NAVIGATION_SHOTS = ('today-production-najdi', 'fixed-policy-before-permissions',
     'fixed-policy-independent-status', 'prayer-dates-and-clock', 'prayer-city-changed', 'prayer-city-restored')
+DESIGN_TESTS = tuple('NoorTodayDesignUITests/' + method for method in (
+    'testLinearLightComposition', 'testEditorialLightComposition', 'testNajdiLightComposition',
+    'testNajdiDarkComposition', 'testNajdiAccessibilityComposition',
+    'testProductionTodayLight', 'testProductionTodayDark', 'testProductionTodayAccessibility'))
+DESIGN_SHOTS = tuple('design-fixture-' + state + '-' + surface
+    for state in ('linear-light', 'editorial-light', 'najdi-light', 'najdi-dark', 'najdi-ax')
+    for surface in ('today-top', 'today-prayer', 'medium-dua')) + tuple(
+    'design-production-' + state + '-' + surface
+    for state in ('light', 'dark', 'ax') for surface in ('today-top', 'today-prayer', 'today-dua'))
 UI_METHODS = {'journey': JOURNEY, 'gallery-openings': GALLERY_OPENINGS,
               'gallery-dense': GALLERY_DENSE, 'gallery-special': GALLERY_SPECIAL,
               'gallery-final': GALLERY_FINAL, 'controls': CONTROLS, 'large-text': LARGE_TEXT}
@@ -80,7 +89,7 @@ def digest(path):
 
 
 def lanes(size):
-    return ((['service-contracts', 'recitation-contracts', 'geometry', 'reader-library', 'navigation-contracts'] if size == 'medium' else []) + [
+    return ((['service-contracts', 'recitation-contracts', 'geometry', 'reader-library', 'navigation-contracts', 'design-contracts'] if size == 'medium' else []) + [
         prefix + '-' + look for look in ('light', 'dark') for prefix in UI_METHODS]
         + (['ward-entry'] if size == 'medium' else []))
 
@@ -90,6 +99,8 @@ def ui_prefix(lane):
 
 
 def selectors(lane):
+    if lane == 'design-contracts':
+        return list(DESIGN_TESTS)
     if lane == 'navigation-contracts':
         return list(NAVIGATION_TESTS)
     if lane == 'ward-entry':
@@ -243,7 +254,7 @@ def driver_metrics(folder, lane):
     coverage_errors = []
     if len(native_start) != 1 or len(native_end) != 1:
         coverage_errors.append('Missing actual process clock observations')
-    if ui_prefix(lane) or lane in ('reader-library', 'ward-entry', 'navigation-contracts'):
+    if ui_prefix(lane) or lane in ('reader-library', 'ward-entry', 'navigation-contracts', 'design-contracts'):
         expected_bodies = len(selectors(lane))
         if len(starts) != expected_bodies or len(ends) != expected_bodies:
             coverage_errors.append('UI test did not produce each expected start/end observation')
@@ -416,8 +427,24 @@ def attachment_index(folder, lane, image_probe=png_info):
             output.append({'lane': lane, 'name': item.get('suggestedHumanReadableName', ''),
                            'file': path.relative_to(folder).as_posix(), 'width': width, 'height': height,
                            'bytes': path.stat().st_size, 'sha256': digest(path), 'visualReview': 'PENDING'})
+            if lane == 'design-contracts':
+                output[-1]['contentScope'] = ('SYNTHETIC_DESIGN_DATA'
+                    if output[-1]['name'].startswith('design-fixture-') else
+                    'PRODUCTION_TODAY_REAL_STATE' if output[-1]['name'].startswith('design-production-') else
+                    'UNCLASSIFIED_FAILURE_OR_DIAGNOSTIC')
     require(output, lane + ' zero original PNG screenshots')
     return output
+
+
+def validate_design_scope(folder):
+    markers = re.findall(r'^NOOR_DESIGN_SCREEN scope=(\S+) name=(\S+)\s*$',
+                         (folder / 'design-contracts.txt').read_text(encoding='utf-8'), re.M)
+    expected = [('SYNTHETIC_DESIGN_DATA' if name.startswith('design-fixture-') else
+                 'PRODUCTION_TODAY_REAL_STATE', name) for name in DESIGN_SHOTS]
+    require(len(markers) == len(expected) and sorted(markers) == sorted(expected),
+            'design-contracts scope markers missing, duplicated or relabelled')
+    return {'fixtureData': 'SYNTHETIC_DESIGN_DATA', 'productionData': 'PRODUCTION_TODAY_REAL_STATE',
+            'nativeScreenshotMarkers': len(markers), 'installedWidgetEvidence': 'NOT_VERIFIED'}
 
 
 def inspect_video(path):
@@ -545,10 +572,12 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
     native_product = attempt('shared native product provenance', check_native_product)
     commands = attempt('commands', lambda: read(folder / 'commands.json')) or {}
     collection = attempt('collection', lambda: read(folder / 'collection.json')) or {}
+    if size == 'medium':
+        attempt('design-contracts scope', lambda: validate_design_scope(folder))
     attempt('build', lambda: validate_command(folder, commands, 'build', 1200))
     display = attempt('actual display PNG', lambda: image_probe(folder / 'actual-display.png'))
     for lane in lanes(size):
-        attempt(lane + ' command', lambda lane=lane: validate_command(folder, commands, lane, 600 if lane in ('geometry', 'recitation-contracts', 'service-contracts', 'navigation-contracts') else 180))
+        attempt(lane + ' command', lambda lane=lane: validate_command(folder, commands, lane, 600 if lane in ('geometry', 'recitation-contracts', 'service-contracts', 'navigation-contracts', 'design-contracts') else 180))
         result = attempt(lane + ' xcresult', lambda lane=lane: validate_tests(folder, lane, selectors(lane), collection))
         if result:
             results[lane] = result
@@ -562,7 +591,7 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
                     attempt(lane + ' screenshots', lambda lane=lane: attachment_index(folder, lane, image_probe)) or [])
         images.extend(captures)
         prefix = ui_prefix(lane)
-        required = (UI_SHOTS[prefix] if prefix else NAVIGATION_SHOTS if lane == 'navigation-contracts' else READER_LIBRARY_SHOTS if lane == 'reader-library'
+        required = (UI_SHOTS[prefix] if prefix else DESIGN_SHOTS if lane == 'design-contracts' else NAVIGATION_SHOTS if lane == 'navigation-contracts' else READER_LIBRARY_SHOTS if lane == 'reader-library'
                     else WARD_ENTRY_SHOTS if lane == 'ward-entry' else ())
         if required:
             for name in required:
@@ -609,6 +638,12 @@ def verify(folder, size, commit, *, make_sheets=False, image_probe=png_info, vid
                                     'DIFFERENT_RUNTIME_NOT_MATCHING_PRIOR_IOS26_2_EVIDENCE'),
               'physicalDeviceTesting': 'NOT_VERIFIED', 'ASRLatency': 'NOT_EVALUATED',
               'learnerAccuracy': 'NOT_EVALUATED', 'fullReleaseApproval': False, 'publicationApproved': False}
+    report['designEvidence'] = {
+        'fixtureData': 'SYNTHETIC_DESIGN_DATA',
+        'scope': 'NATIVE_SHARED_COMPONENT_RENDERING_AND_SEPARATE_PRODUCTION_TODAY',
+        'installedWidgetEvidence': 'NOT_VERIFIED', 'livePrayerEvidence': 'NOT_VERIFIED',
+        'requiredOriginalScreenshots': list(DESIGN_SHOTS) if size == 'medium' else [],
+        'visualApproval': 'PENDING_HUMAN_REVIEW'}
     write(folder / 'report.json', report)
     print(json.dumps({'status': report['status'], 'displayClass': size, 'errors': errors,
                       'originalPNGCount': len(images), 'baselinePageCount': len(pages)}, ensure_ascii=False))

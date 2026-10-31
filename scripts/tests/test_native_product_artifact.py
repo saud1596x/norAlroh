@@ -19,7 +19,15 @@ COMMIT, RUN_ID = 'c' * 40, '42'
 ENV = {'developerDirectory': '/Applications/Xcode_26.3.app/Contents/Developer',
        'xcode': 'Xcode 26.3\nBuild version SYNTHETIC', 'sdkVersion': '26.3',
        'sdkBuildVersion': 'SYNTHETIC', 'sdkPath': '/Applications/Xcode_26.3.app/SDK',
-       'architecture': 'arm64'}
+       'architecture': 'arm64', 'macOSVersion': '15.8.2', 'macOSBuildVersion': '24H232',
+       'systemInjectionLibraries': {'/usr/lib/libRPAC.dylib': {
+           'realPath': '/usr/lib/libRPAC.dylib', 'sha256': 'f' * 64, 'size': 1236416,
+           'mode': 0o755, 'ownerUID': 0, 'architectures': ['arm64e', 'x86_64']}}}
+RPAC = '/usr/lib/libRPAC.dylib'
+HOST_INJECT = '__TESTHOST__/Frameworks/libXCTestBundleInject.dylib'
+PLATFORM_FRAMEWORKS = '__PLATFORMS__/iPhoneSimulator.platform/Developer/Library/Frameworks'
+PLATFORM_LIBRARIES = '__PLATFORMS__/iPhoneSimulator.platform/Developer/usr/lib'
+PRODUCT_ROOT = '__TESTROOT__/Release-iphonesimulator'
 
 
 def create_fixture(base):
@@ -40,12 +48,27 @@ def create_fixture(base):
     for name in ('RecitationModel', 'IndependentCTC'):
         (app / name).mkdir()
         (app / name / 'fixture.bin').write_bytes(b'SYNTHETIC MODEL RESOURCE - NOT LOADED')
+    (app / 'Frameworks').mkdir()
+    (app / 'Frameworks/libXCTestBundleInject.dylib').write_bytes(b'SYNTHETIC INJECTION FIXTURE')
     (products / 'Athar_iphonesimulator26.3-arm64.xctestrun').write_bytes(plistlib.dumps({
         'TestConfigurations': [{'TestTargets': [
             {'BlueprintName': 'AtharTests', 'TestBundlePath': '__TESTROOT__/Release-iphonesimulator/Athar.app/PlugIns/AtharTests.xctest',
-             'TestHostPath': '__TESTROOT__/Release-iphonesimulator/Athar.app/Athar.exe'},
+             'TestHostPath': '__TESTROOT__/Release-iphonesimulator/Athar.app/Athar.exe',
+             'EnvironmentVariables': {'DYLD_INSERT_LIBRARIES': RPAC},
+             'TestingEnvironmentVariables': {
+                 'DYLD_INSERT_LIBRARIES': HOST_INJECT + ':' + RPAC,
+                 'DYLD_FRAMEWORK_PATH': PRODUCT_ROOT + ':' + PLATFORM_FRAMEWORKS,
+                 'DYLD_LIBRARY_PATH': PRODUCT_ROOT + ':' + PLATFORM_LIBRARIES,
+                 '__XPC_DYLD_FRAMEWORK_PATH': PRODUCT_ROOT,
+                 '__XPC_DYLD_LIBRARY_PATH': PRODUCT_ROOT,
+                 '__XCODE_BUILT_PRODUCTS_DIR_PATHS': PRODUCT_ROOT}},
             {'BlueprintName': 'AtharUITests', 'TestBundlePath': '__TESTROOT__/Release-iphonesimulator/AtharUITests-Runner.app/PlugIns/AtharUITests.xctest',
-             'UITargetAppPath': '__TESTROOT__/Release-iphonesimulator/Athar.app'}]}]}))
+             'TestHostPath': '__TESTROOT__/Release-iphonesimulator/AtharUITests-Runner.app',
+             'UITargetAppPath': '__TESTROOT__/Release-iphonesimulator/Athar.app',
+             'EnvironmentVariables': {'DYLD_INSERT_LIBRARIES': RPAC},
+             'TestingEnvironmentVariables': {'DYLD_INSERT_LIBRARIES': RPAC},
+             'UITargetAppEnvironmentVariables': {'DYLD_FRAMEWORK_PATH': PRODUCT_ROOT,
+                                                'DYLD_LIBRARY_PATH': PRODUCT_ROOT}}]}]}))
     producer.mkdir()
     native.write(producer / 'commands.json', {'build': {'exitCode': 0, 'deadlineSeconds': 1200, 'log': 'build.txt'}})
     (producer / 'build.txt').write_text(''.join('NOOR_NATIVE_PROCESS ' + json.dumps({
@@ -65,10 +88,13 @@ class NativeProductArtifactTests(unittest.TestCase):
         self.artifact, self.destination = self.base / 'artifact', self.base / 'extracted'
         self.environment = patch.object(native, 'environment', return_value=copy.deepcopy(ENV))
         self.binary = patch.object(native, 'binary_architecture')
+        self.platform_path = patch.object(native, 'validate_platform_directory', create=True)
         self.environment.start()
         self.binary.start()
+        self.platform_path.start()
         self.addCleanup(self.environment.stop)
         self.addCleanup(self.binary.stop)
+        self.addCleanup(self.platform_path.stop)
         self.addCleanup(self.temp.cleanup)
 
     def pack(self):
@@ -100,6 +126,148 @@ class NativeProductArtifactTests(unittest.TestCase):
         self.assertEqual(native.inventory(self.destination), expected['files'])
         self.assertEqual((self.destination / 'producer/build.txt').read_bytes(), (self.producer / 'build.txt').read_bytes())
         self.assertIn('Build/Products/Release-iphonesimulator/Athar.app/IndependentCTC/fixture.bin', expected['files'])
+
+    def metadata(self):
+        return plistlib.loads(next(self.products.glob('*.xctestrun')).read_bytes())
+
+    def validate_metadata(self, value):
+        return native.validate_xctestrun_metadata(value, self.products, ENV)
+
+    def test_observed_xcode263_injection_forms_survive_binary_plist_transport_without_rewrite(self):
+        # Observed source: probe run41232876938, original SHA256
+        # efd97159f7fe0fb43506c41d18a25976c4c4c92f377d8c50482f57131a902cc1.
+        run = next(self.products.glob('*.xctestrun'))
+        original = plistlib.dumps(self.metadata(), fmt=plistlib.FMT_BINARY)
+        run.write_bytes(original)
+        manifest = self.pack(); self.unpack()
+        self.assertEqual((self.destination / manifest['xctestrun']).read_bytes(), original)
+        self.assertEqual(manifest['environment']['systemInjectionLibraries'], ENV['systemInjectionLibraries'])
+        self.assertEqual(manifest['environment']['macOSBuildVersion'], '24H232')
+
+    def test_complete_unmodified_actual_8376byte_xcode263_snapshot_matches_metadata_policy(self):
+        # Original probe commit574d8cdb7dec5d53de47e2f0042b0cfefc3e3865,
+        # run41232876938. Only filesystem existence is represented by stubs;
+        # no built probe/app or native acceptance result is simulated here.
+        snapshot = SCRIPT.parent / 'tests/fixtures/xcode-26.3-sdk-26.2-original.xctestrun'
+        original = snapshot.read_bytes()
+        self.assertEqual(len(original), 8376)
+        self.assertEqual(native.digest(snapshot), 'efd97159f7fe0fb43506c41d18a25976c4c4c92f377d8c50482f57131a902cc1')
+        for relative in ['Release-iphonesimulator/NativeMetadataProbe.app/PlugIns/ProbeUnitTests.xctest',
+                         'Release-iphonesimulator/ProbeUITests-Runner.app/PlugIns/ProbeUITests.xctest']:
+            (self.products / relative).mkdir(parents=True)
+        injection = self.products / 'Release-iphonesimulator/NativeMetadataProbe.app/Frameworks/libXCTestBundleInject.dylib'
+        injection.parent.mkdir(); injection.write_bytes(b'METADATA EXISTENCE STUB ONLY')
+        env = {**ENV, 'sdkVersion': '26.2', 'sdkBuildVersion': '23C57',
+               'sdkPath': '/Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk'}
+        self.assertEqual(native.validate_xctestrun_metadata(plistlib.loads(original), self.products, env),
+                         {'ProbeUnitTests', 'ProbeUITests'})
+        self.assertEqual(snapshot.read_bytes(), original)
+
+    def test_system_injection_is_exact_field_section_and_component_only(self):
+        invalid = [RPAC + ':/tmp/foreign.dylib', RPAC + ':' + RPAC, RPAC + ':',
+                   '/usr/lib/libRPAC.dylib.evil', '/usr/lib/../lib/libRPAC.dylib',
+                   '/tmp/libRPAC.dylib', HOST_INJECT + 'Other:' + RPAC,
+                   HOST_INJECT + '/../libXCTestBundleInject.dylib:' + RPAC,
+                   PLATFORM_LIBRARIES + '/libRPAC.dylib', 'C:\\usr\\lib\\libRPAC.dylib']
+        for text in invalid:
+            value = self.metadata()
+            value['TestConfigurations'][0]['TestTargets'][0]['TestingEnvironmentVariables']['DYLD_INSERT_LIBRARIES'] = text
+            with self.subTest(value=text), self.assertRaises(ValueError): self.validate_metadata(value)
+        for field in ('TestBundlePath', 'TestHostPath', 'UITargetAppPath', 'UnrelatedMetadata'):
+            value = self.metadata()
+            value['TestConfigurations'][0]['TestTargets'][0][field] = RPAC
+            with self.subTest(field=field), self.assertRaises(ValueError): self.validate_metadata(value)
+        value = self.metadata()
+        value['TestConfigurations'][0]['TestTargets'][1]['UITargetAppEnvironmentVariables']['DYLD_INSERT_LIBRARIES'] = RPAC
+        with self.assertRaisesRegex(ValueError, 'section'): self.validate_metadata(value)
+        value = self.metadata()
+        value['NotATestTarget'] = {'EnvironmentVariables': {'DYLD_INSERT_LIBRARIES': RPAC}}
+        with self.assertRaisesRegex(ValueError, 'outside original test target'): self.validate_metadata(value)
+        for env_key in ('BAD\0KEY', 'BAD\\KEY'):
+            value = self.metadata()
+            value['TestConfigurations'][0]['TestTargets'][0]['EnvironmentVariables'][env_key] = 'unused'
+            with self.subTest(env_key=repr(env_key)), self.assertRaisesRegex(ValueError, 'Unsafe generated environment key'):
+                self.validate_metadata(value)
+
+    def test_product_and_platform_search_path_lists_reject_unsafe_components(self):
+        invalid = [PRODUCT_ROOT + ':', ':' + PRODUCT_ROOT, PRODUCT_ROOT + '::' + PLATFORM_FRAMEWORKS,
+                   PRODUCT_ROOT + ':' + PRODUCT_ROOT, '__TESTROOT__/Release-iphonesimulator-sibling',
+                   '__TESTROOT__/../Products/Release-iphonesimulator',
+                   PRODUCT_ROOT + '/./', PRODUCT_ROOT + '/../Release-iphonesimulator',
+                   PRODUCT_ROOT + ':/tmp/Frameworks', PRODUCT_ROOT + ':relative/Frameworks',
+                   PRODUCT_ROOT + ':' + PLATFORM_FRAMEWORKS + '-sibling',
+                   PRODUCT_ROOT + ':' + PLATFORM_LIBRARIES,
+                   '__PLATFORMS__/iPhoneSimulator.platform/Developer/Library/../Library/Frameworks',
+                   '/Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks']
+        for text in invalid:
+            value = self.metadata()
+            value['TestConfigurations'][0]['TestTargets'][0]['TestingEnvironmentVariables']['DYLD_FRAMEWORK_PATH'] = text
+            with self.subTest(value=text), self.assertRaises(ValueError): self.validate_metadata(value)
+        # Extra package-product directories remain relocatable, hashed products.
+        (self.products / 'Release-iphonesimulator/PackageFrameworks').mkdir()
+        value = self.metadata()
+        value['TestConfigurations'][0]['TestTargets'][0]['TestingEnvironmentVariables']['DYLD_FRAMEWORK_PATH'] = (
+            PRODUCT_ROOT + '/PackageFrameworks:' + PRODUCT_ROOT + ':' + PLATFORM_FRAMEWORKS)
+        self.validate_metadata(value)
+
+    def test_missing_host_injection_library_cannot_be_substituted_by_system_library(self):
+        (self.products / 'Release-iphonesimulator/Athar.app/Frameworks/libXCTestBundleInject.dylib').unlink()
+        with self.assertRaisesRegex(ValueError, 'Missing/escaping'): self.validate_metadata(self.metadata())
+
+    def test_platform_directories_resolve_inside_exact_bound_xcode_and_must_exist(self):
+        self.platform_path.stop()
+        developer = self.base / 'Xcode.app/Contents/Developer'
+        frameworks = developer / 'Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks'
+        frameworks.mkdir(parents=True)
+        env = {**ENV, 'developerDirectory': str(developer)}
+        native.validate_platform_directory(PLATFORM_FRAMEWORKS, env)
+        with self.assertRaisesRegex(ValueError, 'Missing/escaping'):
+            native.validate_platform_directory(PLATFORM_LIBRARIES, env)
+        for text in (PLATFORM_FRAMEWORKS + '-sibling', PLATFORM_FRAMEWORKS + '/../../other'):
+            with self.assertRaisesRegex(ValueError, 'Unobserved'):
+                native.validate_platform_directory(text, env)
+
+    def test_consumer_system_library_hash_mode_architecture_and_os_context_are_bound(self):
+        self.pack()
+        for field, replacement in [('sha256', 'e' * 64), ('mode', 0o555), ('size', 1),
+                                   ('realPath', '/tmp/libRPAC.dylib'), ('ownerUID', 1),
+                                   ('architectures', ['arm64'])]:
+            env = copy.deepcopy(ENV)
+            env['systemInjectionLibraries'][RPAC][field] = replacement
+            with self.subTest(field=field), patch.object(native, 'environment', return_value=env):
+                with self.assertRaisesRegex(ValueError, 'Xcode/SDK/architecture mismatch'): self.unpack()
+            self.assertFalse(self.destination.exists())
+
+    def test_boolean_owner_cannot_satisfy_system_library_root_uid(self):
+        self.pack()
+        path = self.artifact / 'manifest.json'
+        value = json.loads(path.read_text())
+        value['environment']['systemInjectionLibraries'][RPAC]['ownerUID'] = False
+        native.write(path, value)
+        with self.assertRaisesRegex(ValueError, 'producer system injection fingerprint'): self.unpack()
+
+    def test_failure_preserves_original_bytes_environment_and_values_before_validation(self):
+        path = next(self.products.glob('*.xctestrun'))
+        value = self.metadata()
+        value['TestConfigurations'][0]['TestTargets'][0]['TestHostPath'] = '/Users/runner/nonrelocatable'
+        original = plistlib.dumps(value); path.write_bytes(original)
+        with self.assertRaisesRegex(ValueError, 'Nonrelocatable'): self.pack()
+        diagnostics = self.producer / 'native-product-diagnostics'
+        copies = list(diagnostics.glob('original-*.xctestrun'))
+        self.assertEqual(len(copies), 1); self.assertEqual(copies[0].read_bytes(), original)
+        self.assertEqual(json.loads((diagnostics / 'environment.json').read_text()), ENV)
+        self.assertTrue((diagnostics / 'pack-failure.json').is_file())
+        self.assertTrue(any(row.get('value') == '/Users/runner/nonrelocatable'
+                            for row in json.loads((diagnostics / 'generated-path-environment-values.json').read_text())))
+
+    def test_environment_failure_preserves_original_input_before_any_product_move(self):
+        original = next(self.products.glob('*.xctestrun')).read_bytes()
+        with patch.object(native, 'environment', side_effect=ValueError('system fingerprint rejected')):
+            with self.assertRaisesRegex(ValueError, 'fingerprint'): self.pack()
+        self.assertTrue(self.products.is_dir()); self.assertFalse(self.artifact.exists())
+        diagnostics = self.producer / 'native-product-diagnostics'
+        self.assertEqual(next(diagnostics.glob('original-*.xctestrun')).read_bytes(), original)
+        self.assertTrue((diagnostics / 'environment-error.json').is_file())
 
     def test_archive_byte_tamper_rejected_before_extraction(self):
         manifest = self.pack()
@@ -177,6 +345,7 @@ class NativeProductArtifactTests(unittest.TestCase):
             import shutil
             shutil.move(str(self.artifact / 'payload/Build/Products'), str(self.products))
             shutil.rmtree(self.artifact)
+            shutil.rmtree(self.producer / 'native-product-diagnostics')
 
     def test_requires_one_generated_xctestrun(self):
         next(self.products.glob('*.xctestrun')).unlink()

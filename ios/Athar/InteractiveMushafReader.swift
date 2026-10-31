@@ -423,6 +423,12 @@ struct InteractiveMushafReader: View {
         ZStack {
             Theme.panel.ignoresSafeArea()
             readerPage
+            // Explicit full screen releases its control lanes altogether. The
+            // options sheet's anchor can otherwise remain in accessibility
+            // despite the enclosing lane's opacity and accessibility hiding.
+            // This mode starts in the options sheet's onDismiss, after its
+            // presentation closes; a canvas tap restores the same controls.
+            if !fullScreenReading {
             // Keep the ordinary lanes measured while hidden or recording. A
             // status change must not resize the production Quran viewport.
             VStack {
@@ -482,6 +488,7 @@ struct InteractiveMushafReader: View {
                 .opacity(tools && !studyOpen ? 1 : 0)
                 .allowsHitTesting(tools && !studyOpen)
                 .accessibilityHidden(!tools || studyOpen)
+            }
             if studyOpen { recitationControls }
         }
     }

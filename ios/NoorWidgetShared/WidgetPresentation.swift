@@ -1,6 +1,16 @@
 import SwiftUI
 import WidgetKit
 
+#if NOOR_ACCEPTANCE_TESTING
+// Resolved by the native design fixture, without changing shipping layout.
+struct NoorDuaDesignBoundsKey: PreferenceKey {
+    static var defaultValue: [String: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+#endif
+
 enum NoorDuaComposition: String, CaseIterable { case linear, editorial, najdi }
 
 enum NoorWidgetPalette {
@@ -55,6 +65,9 @@ struct NoorDuaWidgetComposition: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                     .accessibilityIdentifier("widget.dua.\(dua.id)")
+                    #if NOOR_ACCEPTANCE_TESTING
+                    .anchorPreference(key: NoorDuaDesignBoundsKey.self, value: .bounds) { ["text": $0] }
+                    #endif
                 if large || composition == .editorial { Spacer(minLength: 0) }
                 if composition == .linear || large {
                     Rectangle().fill(textColor.opacity(0.25)).frame(width: 32, height: 1).accessibilityHidden(true)
@@ -64,5 +77,10 @@ struct NoorDuaWidgetComposition: View {
         .foregroundStyle(textColor)
         .environment(\.layoutDirection, .rightToLeft)
         .accessibilityElement(children: .combine)
+        #if NOOR_ACCEPTANCE_TESTING
+        .transformAnchorPreference(key: NoorDuaDesignBoundsKey.self, value: .bounds) { value, anchor in
+            value["component"] = anchor
+        }
+        #endif
     }
 }

@@ -93,6 +93,10 @@ if [[ "$size" == medium ]]; then
   -only-testing:AtharUITests/NoorHomeFlowUITests/testFourTabsAndVisibleOptionalAccountSurviveRelaunch \
   -only-testing:AtharUITests/NoorReminderUITests \
   -only-testing:AtharUITests/NoorPrayerDisplayUITests
+ # Native component fixtures are explicitly synthetic design data. They do
+ # not install widgets or certify live prayer times; production Today is also
+ # captured independently by this same class. Keep all existing lane budgets.
+ run_case design-contracts 600 120 -only-testing:AtharUITests/NoorTodayDesignUITests
 fi
 for look in light dark; do
  xcrun simctl ui "$device" appearance "$look"
