@@ -74,13 +74,14 @@ struct PrayerNotificationSettings: View {
             (notifications.usesAlarmKit && notifications.prayerAuthorization == .notDetermined)
     }
     private func status(_ title: String, _ value: PrayerAuthorizationState) -> some View {
-        LabeledContent(title) {
-            Text(switch value {
-            case .notDetermined: "لم يُطلب بعد"
-            case .authorized: "مسموح"
-            case .denied: "غير مسموح"
-            case .unavailable: "غير متاح"
-            })
+        LabeledContent(title) { Text(statusText(value)) }
+    }
+    private func statusText(_ value: PrayerAuthorizationState) -> String {
+        switch value {
+        case .notDetermined: return "لم يُطلب بعد"
+        case .authorized: return "مسموح"
+        case .denied: return "غير مسموح"
+        case .unavailable: return "غير متاح"
         }
     }
     private func coverage(_ title: String, date: Date?) -> some View {

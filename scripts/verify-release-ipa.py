@@ -23,6 +23,36 @@ EXTENSIONS = {
     BUNDLE + '.focus-action': 'com.apple.ManagedSettings.shield-action-service',
 }
 
+def verify_required_reasons(manifest, required, label):
+    entries = manifest.get('NSPrivacyAccessedAPITypes') if isinstance(manifest, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError(label + ' privacy manifest has no required-reason declarations')
+    actual = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError(label + ' privacy manifest has a malformed API entry')
+        category, reasons = entry.get('NSPrivacyAccessedAPIType'), entry.get('NSPrivacyAccessedAPITypeReasons')
+        if (not isinstance(category, str) or category in actual or not isinstance(reasons, list)
+            or not all(isinstance(reason, str) for reason in reasons)):
+            raise ValueError(label + ' privacy manifest has a malformed or duplicate API category')
+        actual[category] = set(reasons)
+    for category, reasons in required.items():
+        missing = set(reasons) - actual.get(category, set())
+        if missing:
+            raise ValueError(label + ' privacy manifest missing ' + category + ' reasons: ' + ', '.join(sorted(missing)))
+
+
+def verify_monitor_privacy(ipa, bundle_root):
+    label = BUNDLE + '.focus-monitor'
+    path = bundle_root + 'PrivacyInfo.xcprivacy'
+    if ipa.namelist().count(path) != 1:
+        raise ValueError(label + ' privacy manifest missing or duplicated in its own bundle')
+    try:
+        manifest = plistlib.loads(ipa.read(path))
+    except (ValueError, TypeError) as error:
+        raise ValueError(label + ' privacy manifest is malformed') from error
+    verify_required_reasons(manifest, {'NSPrivacyAccessedAPICategoryUserDefaults': {'1C8F.1'}}, label)
+
 def verify_remote_policy(info, legal):
     endpoint = info.get('NoorRecitationServerURL')
     if endpoint is None: return False
@@ -135,7 +165,14 @@ def verify(path):
         module.validate(configuration)
         legal = json.loads(ipa.read(root + 'app-legal.json'))
         verify_remote_policy(info, legal)
-        validate_accounts(plistlib.loads(ipa.read(root + 'PrivacyInfo.xcprivacy')))
+        privacy = plistlib.loads(ipa.read(root + 'PrivacyInfo.xcprivacy'))
+        validate_accounts(privacy)
+        verify_required_reasons(privacy, {
+            'NSPrivacyAccessedAPICategoryUserDefaults': {'CA92.1', '1C8F.1'},
+            'NSPrivacyAccessedAPICategoryFileTimestamp': {'C617.1'},
+            'NSPrivacyAccessedAPICategorySystemBootTime': {'35F9.1'},
+            'NSPrivacyAccessedAPICategoryDiskSpace': {'E174.1'},
+        }, 'Athar')
         if legal.get('accountMode') != 'firebase-opt-in':
             raise ValueError('Bundled privacy policy still describes local-only use; review and publish the actual account policy first')
         if legal.get('contact', {}).get('supportEmail') != 'noralrohsupport@gmail.com':
@@ -160,6 +197,8 @@ def verify(path):
                 raise ValueError('Extension version/build differs from app: ' + identifier)
             if name.removesuffix('Info.plist') + 'embedded.mobileprovision' not in names:
                 raise ValueError('Missing extension distribution profile: ' + identifier)
+            if identifier == BUNDLE + '.focus-monitor':
+                verify_monitor_privacy(ipa, name.removesuffix('Info.plist'))
         if found != set(EXTENSIONS):
             raise ValueError('Missing required extensions: ' + ', '.join(sorted(set(EXTENSIONS) - found)))
         recognition_count = verify_recitation_resources(ipa, root)
@@ -187,6 +226,7 @@ def verify(path):
             'originalTajweedPagesVerified': tajweed_count,
             'independentCTCResourcesVerified': independent_count,
             'microphoneFeedbackIncluded': True,
+            'appGroupDefaultsManifestExecutablesVerified': [BUNDLE, BUNDLE + '.focus-monitor'],
             'quranTextResourcesMatchSource': True, 'completeReciterCatalogs': len(readers),
             'deviceTested': False}
 

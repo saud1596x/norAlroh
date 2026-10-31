@@ -81,7 +81,8 @@ class ReleasePayloadTests(unittest.TestCase):
         self.root_patch.start()
         self.addCleanup(self.root_patch.stop)
 
-    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False, missing_name=None, corrupt=None):
+    def payload(self, folder, omit=None, stale_build=False, wrong_project=False, local_policy=False, local_manifest=False, missing_name=None, corrupt=None,
+                app_defaults_reasons=('CA92.1', '1C8F.1'), monitor_defaults_reasons=('1C8F.1',), omitted_api_category=None):
         path = Path(folder) / 'test.ipa'
         config = {'PROJECT_ID': 'wrong' if wrong_project else 'noor-alruh',
                   'BUNDLE_ID': gate.BUNDLE,
@@ -113,7 +114,16 @@ class ReleasePayloadTests(unittest.TestCase):
                 archive.writestr(root + 'GoogleService-Info.plist', plistlib.dumps(config))
             archive.writestr(root + 'embedded.mobileprovision', b'synthetic-profile')
             if omit != 'privacy':
-                archive.writestr(root + 'PrivacyInfo.xcprivacy', plistlib.dumps(configure_privacy({}, not local_manifest)))
+                archive.writestr(root + 'PrivacyInfo.xcprivacy', plistlib.dumps(configure_privacy({
+                    'NSPrivacyAccessedAPITypes': [{
+                        'NSPrivacyAccessedAPIType': 'NSPrivacyAccessedAPICategoryUserDefaults',
+                        'NSPrivacyAccessedAPITypeReasons': list(app_defaults_reasons)}] + [
+                            {'NSPrivacyAccessedAPIType': category, 'NSPrivacyAccessedAPITypeReasons': [reason]}
+                            for category, reason in [
+                                ('NSPrivacyAccessedAPICategoryFileTimestamp', 'C617.1'),
+                                ('NSPrivacyAccessedAPICategorySystemBootTime', '35F9.1'),
+                                ('NSPrivacyAccessedAPICategoryDiskSpace', 'E174.1')]
+                            if category != omitted_api_category]}, not local_manifest)))
             archive.writestr(root + 'app-legal.json', __import__('json').dumps({
                 'accountMode': 'local-only' if local_policy else 'firebase-opt-in',
                 'contact': {'supportEmail': 'noralrohsupport@gmail.com'}}))
@@ -127,6 +137,12 @@ class ReleasePayloadTests(unittest.TestCase):
                     **({} if missing_name == identifier else {'CFBundleDisplayName': 'نور الروح'}),
                     'NSExtension': {'NSExtensionPointIdentifier': point}}))
                 archive.writestr(ext + 'embedded.mobileprovision', b'synthetic-profile')
+                if identifier == gate.BUNDLE + '.focus-monitor' and omit != 'monitor-privacy':
+                    archive.writestr(ext + 'PrivacyInfo.xcprivacy', b'invalid plist' if corrupt == 'monitor-privacy' else plistlib.dumps({
+                        'NSPrivacyAccessedAPITypes': [{
+                            'NSPrivacyAccessedAPIType': 'NSPrivacyAccessedAPICategoryUserDefaults',
+                            'NSPrivacyAccessedAPITypeReasons': list(monitor_defaults_reasons)}],
+                        'NSPrivacyCollectedDataTypes': [], 'NSPrivacyTracking': False, 'NSPrivacyTrackingDomains': []}))
         return path
 
     def test_complete_payload_reports_without_claiming_device_acceptance(self):
@@ -135,12 +151,47 @@ class ReleasePayloadTests(unittest.TestCase):
             self.assertEqual(len(result['extensions']), 4)
             self.assertFalse(result['deviceTested'])
             self.assertEqual(result['recognitionResourcesVerified'], len(self.model_files))
+            self.assertEqual(result['appGroupDefaultsManifestExecutablesVerified'], [gate.BUNDLE, gate.BUNDLE + '.focus-monitor'])
 
     def test_missing_model_or_tokenizer_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             for name in self.model_files:
                 with self.subTest(name=name), self.assertRaises(KeyError):
                     gate.verify(self.payload(folder, omit='RecitationModel/' + name))
+
+    def test_monitor_manifest_cannot_be_missing_even_when_app_has_group_reason(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(ValueError, 'focus-monitor.*privacy manifest'):
+                gate.verify(self.payload(folder, omit='monitor-privacy'))
+
+    def test_app_file_timer_and_capacity_reasons_must_reach_the_actual_archive(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for category in ['NSPrivacyAccessedAPICategoryFileTimestamp',
+                             'NSPrivacyAccessedAPICategorySystemBootTime',
+                             'NSPrivacyAccessedAPICategoryDiskSpace']:
+                with self.subTest(category=category), self.assertRaisesRegex(ValueError, category):
+                    gate.verify(self.payload(folder, omitted_api_category=category))
+
+    def test_each_group_defaults_executable_must_declare_its_own_group_reason(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(ValueError, 'Athar.*1C8F.1'):
+                gate.verify(self.payload(folder, app_defaults_reasons=('CA92.1',)))
+            for reasons in [(), ('CA92.1',)]:
+                with self.subTest(reasons=reasons), self.assertRaisesRegex(ValueError, 'focus-monitor.*1C8F.1'):
+                    gate.verify(self.payload(folder, monitor_defaults_reasons=reasons))
+
+    def test_monitor_manifest_malformed_or_in_another_extension_cannot_satisfy_gate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(ValueError):
+                gate.verify(self.payload(folder, corrupt='monitor-privacy'))
+            path = self.payload(folder, omit='monitor-privacy')
+            with zipfile.ZipFile(path, 'a') as archive:
+                archive.writestr('Payload/Athar.app/PlugIns/focus-shield.appex/PrivacyInfo.xcprivacy',
+                                 plistlib.dumps({'NSPrivacyAccessedAPITypes': [{
+                                     'NSPrivacyAccessedAPIType': 'NSPrivacyAccessedAPICategoryUserDefaults',
+                                     'NSPrivacyAccessedAPITypeReasons': ['1C8F.1']}]}))
+            with self.assertRaisesRegex(ValueError, 'focus-monitor.*privacy manifest'):
+                gate.verify(path)
 
     def test_independent_payload_rejects_missing_files_corruption_and_unreviewed_source(self):
         with tempfile.TemporaryDirectory() as folder:

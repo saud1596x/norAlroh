@@ -21,6 +21,8 @@ targets:
     sources:
       - path: NoorFocusExtensions/NoorFocusMonitor.swift
       - path: NoorFocusShared
+      - path: NoorFocusExtensions/MonitorPrivacy/PrivacyInfo.xcprivacy
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.saud1596x.nooralruh.focus-monitor

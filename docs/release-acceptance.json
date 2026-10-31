@@ -33,7 +33,7 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Commit frozen reviewed native/product/policy batch and push verify/noor-codemagic-fast-20261015; observe one original unsigned Release producer +3 source-bound display consumers. Investigate actual failures, no paid builds/publication or approval claims.",
+    "next": "Finish narrow pinned reciter edition-coordinate repair under review, then push coherent compiler/privacy/timing fixes and rerun native; previousrunFAILEDandtestsNOTRUN.",
     "paidBuildsOrServicesStartedThisCycle": 0,
     "newFinancialCommitmentAuthorizedByCharter": false,
     "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
@@ -68,6 +68,11 @@
       "publishingPolicyModes": {
         "passed": 9,
         "scope": "PYTHON_GENERATOR_CONTRACT_ONLY_NOT_ARCHIVE_OR_APPLE_ACCEPTANCE"
+      },
+      "privacyPackaging": {
+        "priorFullSetPassed": 26,
+        "finalIPATestClassPassed": 19,
+        "scope": "HELPER_SYNTHETIC_AND_XCODEGEN_MEMBERSHIP_NOT_REAL_ARCHIVE"
       }
     },
     "externalAcceptanceGaps": [
@@ -75,9 +80,9 @@
       "No physical-device30min microphone/thermal/memory or AlarmKit/Widget delivery evidence.",
       "Current cold model preparation/decode baseline misses first-distinct-track target; no latency improvement claim.",
       "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
-      "QF prepackaged glyph snapshot distribution authorization and current active Developer Console account evidence not verified; mandatory resource rights remain release blocking."
+      "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
-    "sourceCommit": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008 (dirty successor under final review; not a native-tested commit)",
+    "sourceCommit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
     "selectedNativeMethodsNotResults": {
       "recitation-contracts": 41,
       "service-contracts": 75,
@@ -87,7 +92,24 @@
     "preservedUnrelatedDrafts": [
       "docs/live-recitation-gap-ledger-20261019.md",
       "scripts/test-engine-latency.sh"
-    ]
+    ],
+    "sourceBranch": "verify/noor-codemagic-fast-20261015",
+    "currentNativeRun": {
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557",
+      "producerJob": "124617984336",
+      "state": "FAILED_BUILD",
+      "observedPhase": "Xcode26.3 actual Swiftcompile failed on switch-expression as Textargument; fixed locally. No consumer tests started.",
+      "publication": false,
+      "duration": "6m51s",
+      "nativeCompileExit": 65
+    },
+    "rightsAccountObservation": {
+      "date": "2026-10-31",
+      "surface": "https://dev-console.quran.foundation/projects",
+      "existingNoorProject": "ACTIVE READY",
+      "credentialsOpenedOrChanged": false,
+      "distributionAuthorization": "NOT_ESTABLISHED_BY_ACTIVE_ACCOUNT"
+    }
   },
   "items": [
     {
@@ -483,14 +505,24 @@
         "Conservative app budgets, per-ID failure repair, stable UUIDs and observed-removal tombstones.",
         "Explicit location trust/confirmation used in app and widget; preserve legacy archive bytes.",
         "Bound settled history with monotonic rollback protection and civil-ID time-zone margin; preserve active failed-cancel identities and stopped UUIDs across boundary rollback.",
-        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress."
+        "Retire the separate customizable khatmah notification producer and permission path; central exact-prefix migration only, preserving archived reminder times and reading progress.",
+        "Replace unsupported Text(switch...) argument with a normal String-returning switch; actual Xcode26.3 compiler reproduction retained."
       ],
       "verification": {
         "tests": [
           "FixedPrayerPolicyTests/NotificationReconciliationTests/NoorPersonalReminderTests selected in mandatory service-contracts; native SDK26 compile and real device permission/stop/sound/delivery pending.",
           "NoorReminderUITests and NoorPrayerDisplayUITests selected in source-bound navigation-contracts."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557/job/124617984336",
+            "originalLog": "C:/Users/ONLYPC/Documents/Codex/2026-10-14/new-chat/outputs/closure-20261031/ae116f9-original-build.log",
+            "result": "BUILD_FAILED_EXIT65",
+            "cause": "PrayerNotificationSettings.swift78 Text(switch...) is not legal Swift expression usage; grammarparserdidnotdetect; nativecompiler did.",
+            "scope": "APPLICATION TESTS_NOT_RUN"
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
       "releaseBlocking": true,
@@ -815,12 +847,13 @@
       "before": {
         "status": "NOT_YET_REPRODUCED_AGAINST_20261031_CHARTER"
       },
-      "cause": "Mandatory source attribution omission found; current QF prepackaged Content distribution authorization and active account evidence do not match the runtime-only license narrative.",
+      "cause": "Current QF prepackaged Content distribution authorization remains unverified; active existing Noor Developer Console account/project now observed ACTIVE READY, without opening credentials.",
       "changes": [
         "Restore mandatory Tanzil notice and clickable source in existing legal surface, both templates and generated website terms.",
         "Remote footer now discloses one-hour expiry and best-effort end-session deletion rather than promising immediate deletion despite failed DELETE.",
         "Added app-owned SystemBootTime35F9.1 and DiskSpaceE174.1 for elapsed processing feedback and capacity-before-write, verified against Apple DocC value table; fixed notification wording in both policy modes.",
-        "Correct existing QCF rights document to disclose actual build-time bundled glyph snapshot; historical font/account record is not clearance for new data distribution."
+        "Correct existing QCF rights document to disclose actual build-time bundled glyph snapshot; historical font/account record is not clearance for new data distribution.",
+        "App and actual group-defaults Monitor executable each declare UserDefaults1C8F.1; monitor-only resource avoids duplicate app manifest. IPA gate requires each executable own manifest and app file/elapsed/capacity reasons."
       ],
       "verification": {
         "tests": [
@@ -833,12 +866,24 @@
             "observedOn": "2026-10-31",
             "section": "3.1 prepackaged content versus font/image exception",
             "scope": "Actual23MB glyph snapshot is bundled by prepare-bundled-mushaf.py; written authorization covering that distribution not verified. No legal clearance assumed."
+          },
+          {
+            "date": "2026-10-31",
+            "surface": "https://dev-console.quran.foundation/projects",
+            "observation": "Existing Noor Alruh project ACTIVE READY",
+            "scope": "ACCOUNT_STATUS_ONLY_NOT_PREPACKAGED_CONTENT_AUTHORIZATION"
           }
         ]
       },
       "status": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "releaseBlocking": true,
-      "finalState": null
+      "finalState": null,
+      "nextExternalActionDraft": {
+        "destination": "Quran Foundation developer support",
+        "state": "DRAFT_ONLY_NOT_SENT_NOT_AUTHORIZED_AS_OUTBOUND_MESSAGE",
+        "purpose": "Clarify rights basis for actual integrated offline glyph snapshot without new credentials, sale of data or font redistribution service.",
+        "message": "Noor Alruh is a native Quran reading application. We have an existing active Developer Console project. The application bundles the integrated Hafs QCF V2 glyph/page snapshot (resource1/resource_content382;23212238bytes;SHA256125af9666b7166070782d6a7ab77fc5bb7926f3286a42374c5a540ae681abd7d) so first opening works offline, with existing Content Sync refresh logic. We do not sell or expose it as a separate database/API/download. Please confirm in writing which authorization covers this integrated build-time bundle under section3.1 of the2026-10-11 terms, and any required correction/update/attribution conditions. We will not assume that the font-bundling exception alone authorizes the data snapshot."
+      }
     },
     {
       "id": "DATA-005",
@@ -877,7 +922,21 @@
           "Evidence validator49 final cases passed; synthetic false-green rejection only, not native app execution.",
           "Source-preserving Quran copy check6236 verses+112 basmalas exact; not glyph/specialist approval."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557",
+            "scope": "IN_PROGRESS_NO_NATIVE_PASS_OR_RELEASE_CLAIM"
+          },
+          {
+            "commit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557/job/124617984336",
+            "originalLog": "C:/Users/ONLYPC/Documents/Codex/2026-10-14/new-chat/outputs/closure-20261031/ae116f9-original-build.log",
+            "result": "BUILD_FAILED_EXIT65",
+            "cause": "PrayerNotificationSettings.swift78 Text(switch...) is not legal Swift expression usage; grammarparserdidnotdetect; nativecompiler did.",
+            "scope": "APPLICATION TESTS_NOT_RUN"
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
       "releaseBlocking": true,
@@ -920,7 +979,13 @@
           "Evidence validator49 final cases passed; synthetic false-green rejection only, not native app execution.",
           "Source-preserving Quran copy check6236 verses+112 basmalas exact; not glyph/specialist approval."
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "commit": "ae116f9253edf3e9a5a826416ce3a70de567ecbd",
+            "url": "https://github.com/saud1596x/norAlroh/actions/runs/41228640557",
+            "scope": "IN_PROGRESS_NO_NATIVE_PASS_OR_RELEASE_CLAIM"
+          }
+        ]
       },
       "status": "IMPLEMENTED_PENDING_NATIVE_AND_PRODUCT_VERIFICATION",
       "releaseBlocking": true,
