@@ -1,0 +1,39 @@
+name: Observe original SDK generated xctestrun metadata
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/native-xctestrun-probe.yml
+      - tools/NativeMetadataProbe/collect.sh
+permissions:
+  contents: read
+concurrency:
+  group: native-xctestrun-probe-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  metadata:
+    # Standard public runner, no signing, models, app launch or acceptance claim.
+    runs-on: macos-15
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Select the same installed Xcode policy as the native producer
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Locate the existing project generator
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Compile the isolated configuration probe without running tests
+        run: bash tools/NativeMetadataProbe/collect.sh
+      - name: Preserve original metadata and actual build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-xctestrun-probe-${{ github.run_id }}-${{ github.sha }}
+          path: release/native-xctestrun-probe/evidence/
+          retention-days: 3
+          if-no-files-found: error
