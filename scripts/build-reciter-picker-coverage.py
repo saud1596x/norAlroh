@@ -33,11 +33,12 @@ def build(root=ROOT):
     result = {'schema': 1, 'scope': 'PUBLISHED_TIMING_COVERAGE_NOT_AUDIBLE_APPROVAL',
               'nativeSnapshotSHA256': hashlib.sha256(raw_native).hexdigest(),
               'sourceSHA256': {}, 'recordings': {}}
-    for name, swift in [('reciter-word-timings', 'NoorReciterWordTimings'),
-                        ('surah-word-timings', 'NoorSurahWordTimings')]:
+    for name, swift, field in [('reciter-word-timings', 'NoorReciterWordTimings', 'digest'),
+                        ('surah-word-timings', 'NoorSurahWordTimings', 'digest'),
+                        ('additional-surah-word-timings', 'NoorAdditionalReciters', 'timingDigest')]:
         raw = (root/'ios/Athar'/f'{name}.json').read_bytes()
         digest = hashlib.sha256(raw).hexdigest()
-        pin = re.search(r'static let digest = "([a-f0-9]{64})"',
+        pin = re.search(r'static let '+field+r' = "([a-f0-9]{64})"',
                         (root/'ios/Athar'/f'{swift}.swift').read_text(encoding='utf-8'))
         if not pin or digest != pin[1]:
             raise ValueError('Timing source is not the runtime-pinned payload: ' + name)
@@ -45,7 +46,7 @@ def build(root=ROOT):
         document = json.loads(raw)
         if document['schema'] != 1:
             raise ValueError('Unexpected timing schema')
-        if name == 'surah-word-timings' and document['nativeSnapshotSHA256'] != result['nativeSnapshotSHA256']:
+        if name != 'reciter-word-timings' and document['nativeSnapshotSHA256'] != result['nativeSnapshotSHA256']:
             raise ValueError('Timing source uses another native edition')
         for source, recording in document['recordings'].items():
             if name == 'reciter-word-timings':

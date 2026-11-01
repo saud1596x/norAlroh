@@ -22,6 +22,27 @@
       "totalVerses": 6236,
       "totalWords": 77429
     },
+    "surah:1000001:1000001": {
+      "onlyMissingFirstBasmala": false,
+      "timedVerses": 6236,
+      "timedWords": 77429,
+      "totalVerses": 6236,
+      "totalWords": 77429
+    },
+    "surah:1000002:1000002": {
+      "onlyMissingFirstBasmala": false,
+      "timedVerses": 6236,
+      "timedWords": 77429,
+      "totalVerses": 6236,
+      "totalWords": 77429
+    },
+    "surah:1000003:1000003": {
+      "onlyMissingFirstBasmala": false,
+      "timedVerses": 6236,
+      "timedWords": 77429,
+      "totalVerses": 6236,
+      "totalWords": 77429
+    },
     "surah:31:31": {
       "onlyMissingFirstBasmala": true,
       "timedVerses": 6235,
@@ -40,6 +61,7 @@
   "schema": 1,
   "scope": "PUBLISHED_TIMING_COVERAGE_NOT_AUDIBLE_APPROVAL",
   "sourceSHA256": {
+    "additional-surah-word-timings.json": "69317b4f3c27a38a60a312d535419e2193a1e7bd71f0e87b24a895d078b2903c",
     "reciter-word-timings.json": "c3364cd2f2f76de78274e24d6b7b4e0ce8a74f7c5f8dd64fad9cad6826d2eb9d",
     "surah-word-timings.json": "5873788999fdf57c524bb1241f0c89456684bac87ce228c57dfe6315774d6d78"
   }

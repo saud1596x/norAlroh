@@ -33,7 +33,7 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Run the consolidated heard-header/same-mic/grouped-reciter/calm-motion candidate on a separate verify/noor-inline-motion-20261031 branch, preserving still-active ee7186e adjacent runs on prior branch. This is changed app/config source, not a duplicate run of unchanged source. Inspect original matching results and CTC stage timings; no paidservice/upload/public release this cycle.",
+    "next": "Finish diagnosis of original native consumer failures; verify frozen complete-reciter/seek candidate and bounded compiled FP32 comparison on permitted macOS CI, preserving all failed/incomplete evidence. Publish matching signed candidate to TestFlight only after required checks; no generic approval needed.",
     "paidBuildsOrServicesStartedThisCycle": 0,
     "newFinancialCommitmentAuthorizedByCharter": false,
     "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
@@ -55,9 +55,10 @@
         "scope": "SYNTHETIC_VALIDATOR_AND_DESIGN_SCOPE_REJECTION_NOT_RENDERING"
       },
       "swiftGrammar": {
-        "files": 19,
+        "files": 15,
         "errors": 0,
-        "typecheck": false
+        "typecheck": false,
+        "scope": "BEFORE_ACCEPTANCE_ONLY_PAGE_SUBMIT_TRACE"
       },
       "quranCopy": {
         "verses": 6236,
@@ -81,17 +82,23 @@
         "scope": "RAW_SOURCE_ID_CLOCK_AND_NEGATIVE_CONTROL_AUDIT_NOT_AUDIBLE_PLAYBACK"
       },
       "fullPythonHelpers": {
-        "ran": 185,
-        "passed": 179,
+        "ran": 192,
+        "passed": 186,
         "skipped": 6,
-        "seconds": 236.281,
-        "log": "outputs/closure-20261031/motion-heard-picker-helper-suite.log",
-        "scope": "FROZEN_HELPER_CODE_ONLY_NOT_NATIVE_APP_OR_MOTION_ACCEPTANCE"
+        "seconds": 237.517,
+        "log": "outputs/closure-20261031/final-reciters-seek-helper-suite.log",
+        "scope": "FROZEN_HELPER_CODE_ONLY_NOT_NATIVE_APP_OR_MODEL_INFERENCE_ACCEPTANCE"
       },
       "discardedNonfinalLocalAttempts": [
         "First full helper attempt blocked by Windows sandbox temporary-folder ACLs; not a pass.",
         "Second full helper attempt overlapped in-progress producer-environment schema edits and imported old fixtures; not a pass. Fresh frozen180-case rerun supersedes it."
-      ]
+      ],
+      "compiledCTCProbe": {
+        "passed": 10,
+        "seconds": 0.451,
+        "scope": "PURE_PIN_POLICY_FRAME_CLOCK_NUMERIC_PARITY_HELPERS_ONLY_NOT_MODEL_EXECUTION",
+        "broadToolCollection": "7 missing-dependency import errors in numpy-only runtime, not passing tests: test_audit missing faster_whisper; test_canonical_setup/test_coreml_audio/test_coreml_download/test_published_coordinates/test_raw_ctc/test_stream_audio missing pytest. No installations attempted."
+      }
     },
     "externalAcceptanceGaps": [
       "No independent consented learner ground-truth corpus/qualified labeling with speaker-separated error metrics.",
@@ -100,11 +107,12 @@
       "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
       "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
-    "sourceCommit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
+    "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
     "selectedNativeMethodsNotResults": {
       "recitation-contracts": 41,
-      "service-contracts": 82,
+      "service-contracts": 84,
       "geometry": 23,
+      "reader-library": 2,
       "navigation-contracts": 4,
       "design-contracts": 8
     },
@@ -112,23 +120,45 @@
       "docs/live-recitation-gap-ledger-20261019.md",
       "scripts/test-engine-latency.sh"
     ],
-    "sourceBranch": "verify/noor-native-closure-20261031",
+    "sourceBranch": "verify/noor-inline-motion-20261031",
     "currentNativeRun": {
-      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41234722725",
-      "sourceCommit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
-      "branch": "verify/noor-native-closure-20261031",
-      "state": "FAILED_AFTER_SUCCESSFUL_TEST_BUILD_DURING_IMMUTABLE_PRODUCT_PACKAGING",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41238441691",
+      "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+      "branch": "verify/noor-inline-motion-20261031",
+      "state": "FAILED_CONSUMERS_OBSERVED_20261101_0925_RIYADH",
       "configuration": "Release",
       "publication": false,
-      "producerJob": "124635969751",
-      "buildExit": 0,
-      "buildSeconds": 404.518,
-      "packagingCause": "Missing AtharTests.xctest/Info.plist: test target omitted GENERATE_INFOPLIST_FILE; root fix sets YES only on two test targets, application explicit plist unchanged.",
-      "consumerTests": "NOT_RUN",
-      "diagnosticArtifact": "13055616984",
-      "diagnosticArtifactSHA256": "8d38f48db2c51b1c51be1c156836af82b849cf21b2fcf5ea4936224c8b9f129c",
-      "originalLog": "outputs/closure-20261031/ee7186e-producer-original.log",
-      "repairVerification": "LOCAL_YAML_ONLY_PENDING_NATIVE"
+      "queueScreenshot": "outputs/closure-20261031/dfc9546-native-queued.png",
+      "producer": {
+        "state": "SUCCEEDED",
+        "duration": "14m9s",
+        "artifactID": 13056749830,
+        "sha256": "150815d69c911c802882d2f53b93b1d665391b1377e500b3767e671bfadde4ca",
+        "scope": "RELEASE_BUILD_FOR_TESTING_ONLY_NOT_CONSUMER_ACCEPTANCE"
+      },
+      "consumers": {
+        "small": "FAILED",
+        "large": "FAILED",
+        "medium": "JOB_TIMEOUT_55MIN",
+        "smallOriginalArtifactSHA256": "743e514d454ac877f37c46794439fb7f7176a4da5a4e98bf7e4f75d46dd0f1a7",
+        "smallObservedFailures": [
+          "journey-light outer process timeout",
+          "gallery-final-light page48 picker remains visible after one navigation tap",
+          "light video guard exceeded",
+          "dark video backwards timestamp"
+        ],
+        "remainingOriginalArtifacts": "LARGE_AND_MEDIUM_NOT_DOWNLOADED_OR_DIAGNOSED"
+      },
+      "pagePickerNextDiagnostic": "NOOR_ACCEPTANCE_TESTING-only numeric action entry/settlement trace added; single tap and original requirePage preserved; no behavior fix or success claim yet.",
+      "smallVideoDiagnosis": {
+        "decodedFrames": 1266,
+        "backwardsPresentationTimes": 1,
+        "frameIndex": 367,
+        "previousPTS": "27239/600",
+        "nextPTS": "27238/600",
+        "secondsDelta": -0.0016666666666666668,
+        "scope": "ORIGINAL_DARK_SIMULATOR_VIDEO_MALFORMED_TIMING_NOT_PROVEN_APP_MOTION_DEFECT; no reordering/tolerance/rewriting"
+      }
     },
     "rightsAccountObservation": {
       "date": "2026-10-31",
@@ -184,31 +214,34 @@
       "existingBudgetsUnchanged": true
     },
     "liveNativeEvidence": {
-      "commit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
-      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41234722680",
-      "job": "124635969526",
-      "overall": "SUCCESS",
-      "artifact": "13056091000",
-      "artifactSHA256": "3a0825ecfb594bc76e96de4beb846098b2835e2ba09cf44e0cc65b617f1e5299",
-      "localEvidence": "outputs/closure-20261031/ee7186e-live/live-recitation",
-      "totalTests": 98,
-      "unitTestsPassed": 60,
-      "readerGeometryTestsPassed": 30,
-      "uiTestsPassed": 8,
-      "passedLanes": [
-        "live-storage",
-        "one-tap",
-        "background",
-        "privacy",
-        "reader-geometry",
-        "reader-controls",
-        "reader-library",
-        "reader-full-face",
-        "reader-entry",
-        "first-allow"
-      ],
-      "fixedFullscreenAccessibilityRegression": "reader.more no longer remains in AX after explicit fullscreen; actual absence/restoration/native journey passed and original PNG inspected.",
-      "limits": "Previous UI source only; owner newheard-header/same-mic/groupedpicker/motion NOT in this result. Original public PCM integration and actual Simulator capture, not human learner accuracy/physical30min/2second target/overall fullRelease."
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41238441659",
+      "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+      "state": "FAILED",
+      "configuration": "Release",
+      "device": "iPhone17ProSimulator_iOS26.2_Xcode26.3",
+      "artifactID": 13058012074,
+      "artifactSHA256": "9b37cf7bb8040fe0910c1e142b83a39a21401f35db40879a4786a6d2b37f57cd",
+      "casePassCounts": {
+        "background": 1,
+        "first-allow": 1,
+        "live-storage": 65,
+        "one-tap": 1,
+        "privacy": 1,
+        "reader-controls": 1,
+        "reader-entry": 1,
+        "reader-full-face": 1,
+        "reader-geometry": 32,
+        "reader-library": 2,
+        "source": 0,
+        "xcode": 0
+      },
+      "totalCasePasses": 106,
+      "failedProcess": "background",
+      "failedProcessExit": 124,
+      "failedProcessDeadlineSeconds": 180,
+      "backgroundXCTestCaseSeconds": 77.308,
+      "backgroundOriginalFooter": "TEST EXECUTE SUCCEEDED, but process did not terminate within outer deadline; lane/run remain failed",
+      "scope": "EXACT_DFC_SOURCE_NOT_NEW_COMPLETE_RECITERS_OR_NEW_SEEK_FIX; no learner accuracy/physical microphone claim"
     },
     "previousNativeProducerRun": {
       "url": "https://github.com/saud1596x/norAlroh/actions/runs/41231318020",
@@ -222,10 +255,11 @@
       "consumerTests": "NOT_RUN"
     },
     "currentAdjacentRuns": {
-      "liveCapture": "https://github.com/saud1596x/norAlroh/actions/runs/41234722680",
-      "nativeChecks": "https://github.com/saud1596x/norAlroh/actions/runs/41234722729",
-      "recitationIntegration": "https://github.com/saud1596x/norAlroh/actions/runs/41234722770",
-      "preservedPriorIntegration": "https://github.com/saud1596x/norAlroh/actions/runs/41231318016"
+      "liveCapture": "https://github.com/saud1596x/norAlroh/actions/runs/41238441659",
+      "nativeChecks": "https://github.com/saud1596x/norAlroh/actions/runs/41238441662",
+      "recitationIntegration": "https://github.com/saud1596x/norAlroh/actions/runs/41238441661",
+      "engineLatency": "https://github.com/saud1596x/norAlroh/actions/runs/41238441663",
+      "preservedPriorIntegration": "https://github.com/saud1596x/norAlroh/actions/runs/41234722770"
     },
     "actualPairedModelBaseline": {
       "commit": "cd5ab14ceec5101347aedba739a78f5af58463b0",
@@ -251,7 +285,7 @@
     },
     "preparedUncommittedDiagnostic": {
       "file": "ios/Athar/QuranIndependentCTC.swift",
-      "inCurrentCICommit": false,
+      "inCurrentCICommit": true,
       "scope": "NOOR_ACCEPTANCE_TESTING_ONLY_NUMERIC_MONOTONIC_STAGE_TIMING",
       "stages": [
         "normalization-input",
@@ -261,7 +295,7 @@
         "total-decode"
       ],
       "nativeExecution": "NOT_RUN",
-      "instruction": "Include acceptance-only stage timing in next source-bound native batch after current adjacent runs finish. Do not claim measured timing or speed repair until executed.",
+      "instruction": "Numeric stages are now in currentcandidate; actual results remainpending. Do not restart running jobs or claim speed improvement.",
       "reason": "HistoricalFP32 ALL andCPU_ONLY both miss latency; compressed18-caseALLmatrix is not same model. Need prediction versus postdecode timings before any newcompute/precision choice."
     },
     "localStoreDraftUpdates": {
@@ -269,7 +303,7 @@
         "release/app-store-connect-draft.json",
         "release/STORE-METADATA.md"
       ],
-      "inCurrentCICommit": false,
+      "inCurrentCICommit": true,
       "externalWrite": "NONE",
       "purpose": "Match current four tabs, bundled reading/models, inline temporary-audio recitation, fixed independent-permission notification policy and unproven acceptance limits."
     },
@@ -339,9 +373,163 @@
       },
       "localFocusedPickerTests": 35,
       "newPureHeardPolicyMethods": 5,
-      "noPublication": true
+      "noPublication": true,
+      "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d"
     },
-    "preparedCandidateBranch": "verify/noor-inline-motion-20261031"
+    "preparedCandidateBranch": "verify/noor-inline-motion-20261031",
+    "previousNativeProducerRunEE": {
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41234722725",
+      "sourceCommit": "ee7186e8cbdfe6e9afa4f88e517400b46c5ac24b",
+      "branch": "verify/noor-native-closure-20261031",
+      "state": "FAILED_AFTER_SUCCESSFUL_TEST_BUILD_DURING_IMMUTABLE_PRODUCT_PACKAGING",
+      "configuration": "Release",
+      "publication": false,
+      "producerJob": "124635969751",
+      "buildExit": 0,
+      "buildSeconds": 404.518,
+      "packagingCause": "Missing AtharTests.xctest/Info.plist: test target omitted GENERATE_INFOPLIST_FILE; root fix sets YES only on two test targets, application explicit plist unchanged.",
+      "consumerTests": "NOT_RUN",
+      "diagnosticArtifact": "13055616984",
+      "diagnosticArtifactSHA256": "8d38f48db2c51b1c51be1c156836af82b849cf21b2fcf5ea4936224c8b9f129c",
+      "originalLog": "outputs/closure-20261031/ee7186e-producer-original.log",
+      "repairVerification": "LOCAL_YAML_ONLY_PENDING_NATIVE"
+    },
+    "latestOwnerSteering": {
+      "date": "2026-10-31",
+      "delivery": "TESTFLIGHT_AFTER_REPAIRS_AND_MATCHING_CHECKS",
+      "publicAppStore": "NOT_REQUESTED_IN_LATEST_INSTRUCTION",
+      "authorization": "Owner explicitly authorizes attempts and Codemagic delivery without another generic publication confirmation. No unbounded/new recurring financial commitment inferred; inspect prior remaining budget before paid build.",
+      "reciters": "Only recordings with complete word tracking across the entire Quran may remain selectable; partial timing choices hidden, no interpolated/borrowed clocks, cached user media preserved."
+    },
+    "reciterExpansionDraft": {
+      "status": "IMPLEMENTING_PENDING_NATIVE_NOT_PUBLISHED",
+      "source": "https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0",
+      "license": "CC BY4.0 Wider Community; audio streams from exact source, recordings not redistributed",
+      "newVoices": [
+        "مشاري بن راشد العفاسي",
+        "ماهر المعيقلي — QuranicAudio1440 exact recording",
+        "محمود خليل الحصري"
+      ],
+      "existingCompleteVoice": "علي بن عبدالرحمن الحذيفي",
+      "perNewRecordingCoverage": {
+        "surahs": 114,
+        "verses": 6236,
+        "nativeWordIDs": 77429,
+        "excludedOccurrences": 0,
+        "interpolatedClocks": 0
+      },
+      "allNewChapterURLs": {
+        "checked": 342,
+        "status200AudioMPEG": 342,
+        "failed": 0,
+        "proofSHA256": "f01e39d807b0a82849ba8118e9a1240d043712d212372bc58684a7171e83ad3c"
+      },
+      "oldFilesPreserved": [
+        "haramain-reciters.json",
+        "surah-word-timings.json",
+        "reciter-word-timings.json"
+      ],
+      "hiddenPartialChoices": [
+        "surah:31:31",
+        "Abdul_Basit_Murattal_64kbps",
+        "Abdurrahmaan_As-Sudais_192kbps",
+        "Saood_ash-Shuraym_128kbps"
+      ],
+      "nativeActualPlayback": "FOUR_NEW_TEST_METHODS_WRITTEN_WITH_THREE_REAL_FATIHA_RECORDINGS_PENDING_NATIVE_EXECUTION",
+      "independentAllAudioAcousticAudit": "NOT_RUN",
+      "newSourceCommit": "NOT_COMMITTED"
+    },
+    "latestMeasuredEngineDiagnosis": {
+      "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+      "run": "https://github.com/saud1596x/norAlroh/actions/runs/41238441663",
+      "artifactSHA256": "0212889556b3063bcadf1cc430f355b3cb4fa50929b42839f50e10366bb2af97",
+      "scope": "Release/iPhone17ProSimulator26.2 actualcompiledFP32CPUmodel onpublicinjectedPCM; notdevicelearneraccuracy",
+      "buildSeconds": 659.373,
+      "tests": 14,
+      "passed": 13,
+      "failed": 1,
+      "failure": "Cold112001 firsttracking missesunchanged20sdeadline; second114001 andfinalpositionpass. No decodecompletebyfirstassertion.",
+      "pairedPreparationSeconds": 24.628493,
+      "firstPrimaryLoadedSeconds": 23.711613,
+      "ctcLoadIntervalSeconds": 15.59276,
+      "ctcPredictionMilliseconds": [
+        8932.889625,
+        6528.771166,
+        4574.510042,
+        2512.672958,
+        5117.015542,
+        1806.549875
+      ],
+      "ctcPostdecodeMilliseconds": [
+        16.642167,
+        13.67375,
+        13.747666,
+        4.181417,
+        14.311208,
+        7.386416
+      ],
+      "finding": "Prediction99.53–99.80percentofCTCdecode. Sourcehash/postloop microoptimization cannotrepairseconds. No2secondgoalorenginecompletionclaim.",
+      "next": "NONSHIPPING exactcompiledFP32 CPU_ONLY vs CPU_AND_GPU samehost parity/timing comparison beingprepared; no shippingcompute/precision/modelchange or newpaidauthorization."
+    },
+    "engineeringResearch20261101": {
+      "status": "RESEARCH_APPLIED_TO_NONSHIPPING_PROBE_AND_PENDING_NATIVE_SEEK_FIX",
+      "tools": [
+        "CoreMLTools9.0 CompiledMLModel with exact approved FP32 app model",
+        "CPU_ONLY versus CPU_AND_GPU bounded35case comparison",
+        "Existing process-group deadline wrapper",
+        "AVPlayer observer/seek epochs and exact recording clocks",
+        "XCTest source-bound Release UI and actual recording tests",
+        "SwiftUI Instruments/Time Profiler for native hitch attribution"
+      ],
+      "skillsApplied": [
+        "systematic-debugging",
+        "coreml",
+        "swiftui-performance-audit",
+        "noor-reciter-timing",
+        "noor-recitation-streaming",
+        "noor-recitation-evaluation",
+        "verification-before-completion"
+      ],
+      "primarySources": [
+        "https://developer.apple.com/documentation/coreml/analyzing-a-core-ml-model-s-performance-in-xcode",
+        "https://apple.github.io/coremltools/docs-guides/source/model-prediction.html",
+        "https://developer.apple.com/documentation/avfoundation/avplayer/addperiodictimeobserver(forinterval:queue:using:)",
+        "https://developer.apple.com/documentation/avfoundation/avplayer/removetimeobserver(_:)",
+        "https://developer.apple.com/documentation/avfoundation/avplayeritem/cancelpendingseeks()",
+        "https://developer.apple.com/documentation/xcode/understanding-and-improving-swiftui-performance"
+      ],
+      "scope": [
+        "No new model/revision/precision/shipping compute configuration",
+        "No new paid service/credential/account permission",
+        "Actual compiled-model inference comparison NOT_RUN locally on Windows",
+        "GPU-allowed does not prove GPU dispatch; Mac timings do not establish iPhone latency",
+        "Shipping CTC receives original window; gain/DC conditioned copy only feeds primary Whisper",
+        "New seek ownership regressions written; native execution pending"
+      ],
+      "rejectedApproaches": [
+        "Blind .all/Float16/quantization switch without source/parity evidence",
+        "Adding dependencies or skills solely by count",
+        "Replacing word tracking with nominal timers or borrowed recording clocks",
+        "Accepting successful XCTest text despite failed outer process or incomplete artifacts"
+      ],
+      "comparisonRun": {
+        "url": "https://github.com/saud1596x/norAlroh/actions/runs/41281034260",
+        "sourceCommit": "9886fabaf2119b0a602f64429544a2bbbce70c55",
+        "observedState": "IN_PROGRESS_20261101_0929_RIYADH",
+        "jobLimitMinutes": 35,
+        "shippingModelChanged": false,
+        "paidBuildsStarted": 0,
+        "scope": "EXPERIMENT_ONLY_NO_APP_BUILD_OR_DEVICE_SPEED_CLAIM"
+      }
+    },
+    "pendingSeekOwnershipFix": {
+      "source": "ios/Athar/MushafVerseAudio.swift",
+      "newRegressionClass": "MushafVerseAudioSeekTests",
+      "nativeRegressionCases": 4,
+      "behavior": "Per-seek epoch, creator-owned observer removal, item pending-seek cancellation, current player/item/sequence guards; no old observation can publish into replacement seek",
+      "state": "IMPLEMENTED_PENDING_NATIVE_RED_GREEN",
+      "selectorGuard": "New helper exclusion test failed before selector addition and passed after; this proves selection guard only"
+    }
   },
   "items": [
     {
@@ -1344,7 +1532,7 @@
   "skills": {
     "sourceRegistry": ".agents/skills/skill-sources.json",
     "externalInstalledSourceEntriesVerified": 10,
-    "localWritten": 5,
+    "localWritten": 6,
     "catalog": "Next-turn discovery pending; current entry files manually read; source LF/installed CRLF recorded separately where relevant",
     "effect": "Instructions only; no model/accuracy/performance/native acceptance claim",
     "newSelected": [
@@ -1353,6 +1541,8 @@
       "ios-accessibility"
     ],
     "installedVerification": "outputs/skill-research-20261031/installed-verification.json",
-    "licenses": "PolyForm Perimeter1.0.0 for3newskills; actual LICENSE/requirednotices preserved; no upstream scripts/hooks/MCP installed"
+    "licenses": "PolyForm Perimeter1.0.0 for3newskills; actual LICENSE/requirednotices preserved; no upstream scripts/hooks/MCP installed",
+    "newReciterSkill": ".agents/skills/noor-reciter-timing/SKILL.md",
+    "externalAudioSearch": "Inspected externalAVFoundation/NowPlaying skills notinstalled: incompleteAVPlayerobservercontract or neweriOS/Swift/globaltargetremoval patterns unsuitable. Task-specific localskillvalidated, basedonactualNoorcode andAppleownershipdocs."
   }
 }

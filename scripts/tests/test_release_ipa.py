@@ -27,6 +27,10 @@ class ReleasePayloadTests(unittest.TestCase):
         self.quran_files = {'quran.json': b'synthetic-pinned-quran',
                             'reciter-word-timings.json': b'synthetic-pinned-timings',
                             'reciter-picker-coverage.json': b'synthetic-source-bound-picker-coverage',
+                            'additional-reciters.json': b'synthetic-additional-catalog',
+                            'additional-surah-word-timings.json': b'synthetic-additional-exact-clocks',
+                            'Additional-Reciter-Timings-SOURCE.txt': b'synthetic-additional-source-notice',
+                            'Additional-Reciter-Timings-LICENSE.txt': b'synthetic-additional-license',
                             'Reciter-Timings-LICENSE.txt': b'synthetic-timing-license',
                             'surah-word-timings.json': b'synthetic-pinned-surah-word-timings',
                             'Published-Surah-Word-Timings-SOURCE.txt': b'synthetic-published-timing-source',
@@ -166,6 +170,15 @@ class ReleasePayloadTests(unittest.TestCase):
                 gate.verify(self.payload(folder, omit='reciter-picker-coverage.json'))
             with self.assertRaisesRegex(ValueError, 'reciter-picker-coverage.json'):
                 gate.verify(self.payload(folder, corrupt='reciter-picker-coverage.json'))
+
+    def test_each_additional_recording_resource_and_notice_must_reach_the_archive(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name in ['additional-reciters.json', 'additional-surah-word-timings.json',
+                         'Additional-Reciter-Timings-SOURCE.txt', 'Additional-Reciter-Timings-LICENSE.txt']:
+                with self.subTest(name=name), self.assertRaises(KeyError):
+                    gate.verify(self.payload(folder, omit=name))
+                with self.subTest(name=name), self.assertRaisesRegex(ValueError, name):
+                    gate.verify(self.payload(folder, corrupt=name))
 
     def test_monitor_manifest_cannot_be_missing_even_when_app_has_group_reason(self):
         with tempfile.TemporaryDirectory() as folder:

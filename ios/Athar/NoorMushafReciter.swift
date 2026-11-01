@@ -23,6 +23,7 @@ struct NoorMushafReciter: Identifiable {
         guard supportsWordTracking else { return nil }
         return NoorReciterCoverageCatalog.recordings[id]
     }
+    var hasCompleteWordTracking: Bool { supportsWordTracking && coverage?.isComplete == true }
     var trackingLabel: String {
         scopeLabel + " · " + (coverage?.label ?? (supportsWordTracking ? "توقيت الكلمات حسب التسجيل" : "التتبّع غير متاح"))
     }
@@ -30,8 +31,9 @@ struct NoorMushafReciter: Identifiable {
         (NoorVerseReciter.all.map { Self(id: $0.id, name: $0.name, verseDirectory: $0.id, recording: nil) }
         + NoorReciterCatalog.reciters.map {
             Self(id: "surah:\($0.id):\($0.recordingID)", name: $0.name, verseDirectory: nil, recording: $0)
-        }).filter(\.supportsWordTracking)
+        }).filter(\.hasCompleteWordTracking)
     }
+    static var completeSurahReciters: [NoorReciter] { all.compactMap(\.recording) }
     static func selected(_ id: String) -> Self? {
         // Old untimed preferences cannot reinsert an unsupported choice.
         // Cached media retains its exact identity and is never relabelled.

@@ -2,22 +2,24 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterWordTimingTests: XCTestCase {
-    func testVoiceGroupingKeepsAllFiveRecordingIdentitiesAndBothShuraimModes() throws {
+    func testVoiceGroupingContainsOnlyCompleteRecordingsAndPreservesExactIdentities() throws {
         let groups = NoorReciterVoiceGroup.matching("")
         XCTAssertEqual(groups.count, 4)
-        let expected: Set<String> = ["Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps",
-            "Saood_ash-Shuraym_128kbps", "surah:31:31", "surah:74:74"]
+        let expected: Set<String> = ["surah:74:74", "surah:1000001:1000001",
+            "surah:1000002:1000002", "surah:1000003:1000003"]
         XCTAssertEqual(Set(groups.flatMap(\.recordings).map(\.id)), expected)
-        XCTAssertEqual(groups.flatMap(\.recordings).count, 5)
-        let shuraim = try XCTUnwrap(groups.first { $0.name == "سعود الشريم" })
-        XCTAssertEqual(shuraim.recordings.count, 2)
-        XCTAssertEqual(Set(shuraim.recordings.map(\.scopeLabel)), ["من الآية المحددة", "السورة كاملة"])
-        for choice in shuraim.recordings {
+        XCTAssertEqual(groups.flatMap(\.recordings).count, 4)
+        for choice in groups.flatMap(\.recordings) {
             let selected = try XCTUnwrap(NoorMushafReciter.selected(choice.id))
             XCTAssertEqual(selected.recordingIdentity, choice.recordingIdentity)
-            XCTAssertEqual(selected.supportsVersePlayback, choice.supportsVersePlayback)
+            XCTAssertTrue(selected.hasCompleteWordTracking)
+            XCTAssertFalse(selected.supportsVersePlayback)
+            XCTAssertEqual(selected.coverage?.timedWords, 77_429)
+            XCTAssertEqual(selected.coverage?.timedVerses, 6_236)
         }
-        XCTAssertEqual(NoorReciterVoiceGroup.matching("الشَّرِيم").map(\.id), [shuraim.id])
+        XCTAssertTrue(NoorReciterVoiceGroup.matching("الشَّرِيم").isEmpty,
+            "Missing Fatiha basmala makes the old Shuraim recording ineligible")
+        XCTAssertEqual(NoorReciterVoiceGroup.matching("الحُذَيْفِي").count, 1)
         XCTAssertEqual(NoorReciterVoiceGroup.matching("  \n").count, 4)
         XCTAssertTrue(NoorReciterVoiceGroup.matching("قارئ غير موجود").isEmpty)
     }
@@ -27,12 +29,12 @@ final class NoorReciterWordTimingTests: XCTestCase {
         XCTAssertEqual(full.timedWords, 77429); XCTAssertEqual(full.totalWords, 77429)
         XCTAssertEqual(full.timedVerses, 6236); XCTAssertTrue(full.isComplete)
         XCTAssertEqual(full.label, "توقيت الكلمات متاح لجميع الآيات")
-        let shuraim = try XCTUnwrap(NoorMushafReciter.selected("surah:31:31")?.coverage)
+        let shuraim = try XCTUnwrap(NoorReciterCoverageCatalog.recordings["surah:31:31"])
         XCTAssertEqual(shuraim.timedWords, 77425); XCTAssertFalse(shuraim.isComplete)
         XCTAssertTrue(shuraim.onlyMissingFirstBasmala)
         XCTAssertEqual(shuraim.label, "توقيت الكلمات متاح عدا بسملة الفاتحة")
         for id in ["Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps", "Saood_ash-Shuraym_128kbps"] {
-            let partial = try XCTUnwrap(NoorMushafReciter.selected(id)?.coverage)
+            let partial = try XCTUnwrap(NoorReciterCoverageCatalog.recordings[id])
             XCTAssertFalse(partial.isComplete); XCTAssertFalse(partial.onlyMissingFirstBasmala)
             XCTAssertLessThan(partial.timedWords, partial.totalWords)
             XCTAssertEqual(partial.label, "توقيت الكلمات متاح بتغطية جزئية")

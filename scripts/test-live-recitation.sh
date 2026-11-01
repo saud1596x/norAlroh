@@ -99,8 +99,11 @@ run_case privacy -only-testing:AtharUITests/NoorInteractiveMushafUITests/testExp
 # these separate invocations survive an unrelated live recognition failure.
 run_case reader-geometry \
  -only-testing:AtharTests/NoorReciterWordTimingTests \
+ -only-testing:AtharTests/NoorAdditionalReciterTests \
+ -only-testing:AtharTests/MushafVerseAudioSeekTests \
  -only-testing:AtharTests/NoorContinuousMushafTests/testOnlyWordTimedRecordingsAreSelectableWithStableIdentityAndRestorableKeys \
  -only-testing:AtharTests/NoorContinuousMushafTests/testSelectingEveryReciterPreservesRecordingOwnershipAndDoesNotStartPlayback \
+ -only-testing:AtharTests/NoorContinuousMushafTests/testProductionPlaybackCannotFallBackToAnUnselectedPartialRecording \
  -only-testing:AtharTests/NoorReaderCoreRegressionTests/testRemovedUntimedPreferencesStayHiddenAndTheirCacheIsNeverRelabelled \
  -only-testing:AtharTests/MushafViewportTests \
  -only-testing:AtharTests/NoorContinuousMushafTests/testOriginalTajweedLayersRenderAll604PagesAndPreserveHiddenWordGeometry

@@ -22,7 +22,7 @@ final class NoorReciterTests: XCTestCase {
     }
     func testCatalogContainsVerifiedCoverageAndDistinctRecordings() throws {
         let readers = NoorReciterCatalog.reciters
-        XCTAssertEqual(readers.count, 20)
+        XCTAssertEqual(readers.count, 23)
         XCTAssertEqual(Set(readers.map(\.recordingID)).count, readers.count)
         XCTAssertNil(readers.first { $0.id == 21188 })
         for reader in readers {

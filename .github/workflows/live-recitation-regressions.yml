@@ -13,6 +13,9 @@ on:
       - tools/reciter_alignment/export_coreml.py
       - ios/Athar/InteractiveMushafReader.swift
       - ios/Athar/NoorMushafReciter.swift
+      - ios/Athar/NoorAdditionalReciters.swift
+      - ios/Athar/additional-reciters.json
+      - ios/Athar/additional-surah-word-timings.json
       - ios/Athar/NoorReciterPresentation.swift
       - ios/Athar/reciter-picker-coverage.json
       - ios/Athar/NoorReaderControls.swift
@@ -36,6 +39,8 @@ on:
       - ios/AtharTests/QuranShortPassageTests.swift
       - ios/AtharTests/NoorReaderCoreRegressionTests.swift
       - ios/AtharTests/NoorReciterWordTimingTests.swift
+      - ios/AtharTests/NoorAdditionalReciterTests.swift
+      - ios/AtharTests/MushafVerseAudioSeekTests.swift
       - ios/AtharUITests/NoorContinuousReaderUITests.swift
       - ios/AtharUITests/NoorReciterLibraryTests.swift
       - tools/RecitationEngineProbe/Sources/RecitationSessions/QuranListeningLocation.swift

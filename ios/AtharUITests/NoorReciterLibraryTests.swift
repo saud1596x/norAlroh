@@ -2,7 +2,7 @@ import XCTest
 
 final class NoorReciterLibraryTests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
-    @MainActor func testGroupedPickerSearchClearsAndDistinctShuraimRecordingsPersistWithoutPlayback() {
+    @MainActor func testCompletePickerSearchClearsAndNewRecordingsPersistWithoutPlayback() {
         executionTimeAllowance = 120
         let app = XCUIApplication(); launchNoorApp(app)
         selectNoorTab("المصحف", in: app)
@@ -15,32 +15,36 @@ final class NoorReciterLibraryTests: XCTestCase {
         let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 20))
         let original = page.frame
-        for identity in ["Saood_ash-Shuraym_128kbps", "surah:31:31"] {
+        for (index, choice) in [("surah:1000001:1000001", "العفاسي"), ("surah:1000002:1000002", "ماهر"), ("surah:1000003:1000003", "الحصري")].enumerated() {
+            let (identity, query) = choice
             open.tap()
             let search = app.textFields["reader.reciters.search"]
             XCTAssertTrue(search.waitForExistence(timeout: 10))
             XCTAssertFalse(app.keyboards.firstMatch.exists)
             let close = app.buttons["reader.reciters.close"]
             XCTAssertGreaterThanOrEqual(close.frame.height, 44); XCTAssertTrue(close.isHittable)
-            search.tap(); search.typeText("قارئ غير موجود\n")
-            XCTAssertTrue(app.descendants(matching: .any)["reader.reciters.empty"].waitForExistence(timeout: 5))
-            app.buttons["reader.reciters.search.clear"].tap()
-            XCTAssertFalse(app.descendants(matching: .any)["reader.reciters.empty"].exists)
-            search.tap(); search.typeText("الشَّرِيم\n")
-            XCTAssertEqual(app.staticTexts.matching(identifier: "reader.voice.سعود الشريم").count, 1)
-            let ayah = app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"]
-            let whole = app.buttons["reader.reciter.surah:31:31"]
-            XCTAssertTrue(ayah.waitForExistence(timeout: 5)); XCTAssertTrue(whole.exists)
-            XCTAssertTrue(ayah.label.contains("من الآية المحددة")); XCTAssertTrue(whole.label.contains("السورة كاملة"))
-            let choice = app.buttons["reader.reciter.\(identity)"]
-            XCTAssertTrue(choice.isHittable); choice.tap()
+            for removed in ["surah:31:31", "Saood_ash-Shuraym_128kbps", "Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps"] {
+                XCTAssertFalse(app.buttons["reader.reciter.\(removed)"].exists, "Partial timing must stay out of the picker")
+            }
+            if index == 0 {
+                search.tap(); search.typeText("قارئ غير موجود\n")
+                XCTAssertTrue(app.descendants(matching: .any)["reader.reciters.empty"].waitForExistence(timeout: 5))
+                app.buttons["reader.reciters.search.clear"].tap()
+                XCTAssertFalse(app.descendants(matching: .any)["reader.reciters.empty"].exists)
+            }
+            search.tap(); search.typeText(query + "\n")
+            XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reader.voice.")).count, 1)
+            let button = app.buttons["reader.reciter.\(identity)"]
+            XCTAssertTrue(button.isHittable)
+            XCTAssertTrue(button.label.contains("توقيت الكلمات متاح لجميع الآيات"))
+            button.tap()
             XCTAssertTrue(open.waitForExistence(timeout: 10))
             XCTAssertEqual(page.frame, original)
             XCTAssertTrue(app.buttons["reader.verse.114:1"].exists)
             XCTAssertFalse(app.buttons["reader.audio.stop"].exists)
             open.tap()
             let selectedSearch = app.textFields["reader.reciters.search"]
-            XCTAssertTrue(selectedSearch.waitForExistence(timeout: 10)); selectedSearch.tap(); selectedSearch.typeText("الشريم\n")
+            XCTAssertTrue(selectedSearch.waitForExistence(timeout: 10)); selectedSearch.tap(); selectedSearch.typeText(query + "\n")
             XCTAssertEqual(app.buttons["reader.reciter.\(identity)"].value as? String, "محدد")
             app.buttons["reader.reciters.close"].tap()
         }
@@ -50,9 +54,9 @@ final class NoorReciterLibraryTests: XCTestCase {
         XCTAssertTrue(resume.waitForExistence(timeout: 15)); resume.tap()
         XCTAssertTrue(open.waitForExistence(timeout: 120)); open.tap()
         let restoredSearch = app.textFields["reader.reciters.search"]
-        XCTAssertTrue(restoredSearch.waitForExistence(timeout: 10)); restoredSearch.tap(); restoredSearch.typeText("الشريم\n")
-        XCTAssertEqual(app.buttons["reader.reciter.surah:31:31"].value as? String, "محدد")
-        XCTAssertNotEqual(app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"].value as? String, "محدد")
+        XCTAssertTrue(restoredSearch.waitForExistence(timeout: 10)); restoredSearch.tap(); restoredSearch.typeText("الحصري\n")
+        XCTAssertEqual(app.buttons["reader.reciter.surah:1000003:1000003"].value as? String, "محدد")
+        XCTAssertFalse(app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"].exists)
         XCTAssertFalse(app.buttons["reader.audio.stop"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "grouped-reciter-picker-selected-whole-surah"; screenshot.lifetime = .keepAlways; add(screenshot)

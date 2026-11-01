@@ -185,7 +185,7 @@ struct InteractiveMushafReader: View {
     @State private var pendingReaderAction: ReaderAction?
     @State private var recitersOpen = false
     @ObservedObject private var audioFocus = NoorAudioFocus.shared
-    @AppStorage("noor.mushaf.reciter") private var preferredReciter = "Abdul_Basit_Murattal_64kbps"
+    @AppStorage("noor.mushaf.reciter") private var preferredReciter = "surah:74:74"
     @State private var controlHeights: [String: CGFloat] = ["header": 44, "footer": 86]
     @State private var khatmah = false
     @State private var khatmahStopMessage: String?
@@ -410,9 +410,21 @@ struct InteractiveMushafReader: View {
                 TextField("\(allowedPages.lowerBound) إلى \(allowedPages.upperBound)", text: $input).keyboardType(.numberPad)
                     .focused($pageInputFocused).accessibilityIdentifier("reader.pageNumber")
                 Button("انتقل") {
-                    if let value = ArabicSearch.integer(input), allowedPages.contains(value) {
+                    let requested = ArabicSearch.integer(input)
+                    #if NOOR_ACCEPTANCE_TESTING
+                    // Test-only numeric metadata distinguishes a missed action
+                    // from rejected input without logging text or user audio.
+                    NSLog("NOOR_PAGE_SUBMIT entered length=%ld parsed=%ld lower=%ld upper=%ld focused=%d visible=%d",
+                          input.count, requested ?? -1, allowedPages.lowerBound, allowedPages.upperBound,
+                          pageInputFocused ? 1 : 0, picker ? 1 : 0)
+                    #endif
+                    if let value = requested, allowedPages.contains(value) {
                         pageInputFocused = false; turn(value - number); picker = false
                     }
+                    #if NOOR_ACCEPTANCE_TESTING
+                    NSLog("NOOR_PAGE_SUBMIT settled focused=%d visible=%d",
+                          pageInputFocused ? 1 : 0, picker ? 1 : 0)
+                    #endif
                 }
             }.navigationTitle("الانتقال في المصحف").toolbar {
                 Button("إغلاق") { pageInputFocused = false; picker = false }

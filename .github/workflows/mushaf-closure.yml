@@ -18,6 +18,9 @@ on:
       - ios/Athar/MushafTajweedFonts.swift
       - ios/Athar/NoorRecitersView.swift
       - ios/Athar/NoorMushafReciter.swift
+      - ios/Athar/NoorAdditionalReciters.swift
+      - ios/Athar/additional-reciters.json
+      - ios/Athar/additional-surah-word-timings.json
       - ios/Athar/NoorReciterPresentation.swift
       - ios/Athar/reciter-picker-coverage.json
       - ios/Athar/NoorReaderControls.swift
@@ -54,6 +57,8 @@ on:
       - ios/Athar/NoorSurahWordTimings.swift
       - ios/Athar/surah-word-timings.json
       - ios/AtharTests/NoorReciterWordTimingTests.swift
+      - ios/AtharTests/NoorAdditionalReciterTests.swift
+      - ios/AtharTests/MushafVerseAudioSeekTests.swift
       - ios/project-focus.yml
       - ios/project.yml
       - ios/NoorFocusExtensions/**

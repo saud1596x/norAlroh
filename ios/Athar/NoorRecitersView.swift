@@ -15,7 +15,7 @@ struct NoorRecitersView: View {
     }
     private var filtered: [NoorReciter] {
         let query = ArabicSearch.normalize(search)
-        return NoorReciterCatalog.reciters.filter(NoorSurahWordTimings.supports).filter {
+        return NoorMushafReciter.completeSurahReciters.filter {
             (!favoritesOnly || favoriteIDs.contains($0.id)) &&
             (query.isEmpty || ArabicSearch.normalize($0.name).contains(query))
         }.sorted { left, right in
@@ -58,7 +58,7 @@ struct NoorRecitersView: View {
                 }.listRowBackground(tokens.surface)
             }
             if filtered.isEmpty {
-                if NoorReciterCatalog.reciters.filter(NoorSurahWordTimings.supports).isEmpty {
+                if NoorMushafReciter.completeSurahReciters.isEmpty {
                     ContentUnavailableView("تعذّر تحميل مكتبة القراء", systemImage: "exclamationmark.triangle",
                         description: Text("بيانات المكتبة غير متاحة في هذه النسخة. أعد فتح التطبيق أو حدّثه إلى آخر نسخة."))
                 } else {
@@ -75,7 +75,7 @@ struct NoorRecitersView: View {
 
 private struct NoorReciterSurahsView: View {
     @EnvironmentObject private var store: AtharStore
-    @AppStorage("noor.mushaf.reciter") private var preferredReciter = "Abdul_Basit_Murattal_64kbps"
+    @AppStorage("noor.mushaf.reciter") private var preferredReciter = "surah:74:74"
     let reciter: NoorReciter
     @State private var search = ""
     @State private var readerSurah: Surah?

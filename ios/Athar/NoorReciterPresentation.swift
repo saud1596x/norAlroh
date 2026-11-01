@@ -24,7 +24,7 @@ struct NoorReciterTimingCoverage: Decodable, Equatable {
 enum NoorReciterCoverageCatalog {
     // Generated from the actual pinned word-timing payloads and native IDs by
     // build-reciter-picker-coverage.py. No large JSON decode in a SwiftUI body.
-    static let digest = "9ac1e9521a98005c95ac0e479efef66d2c9afab903a1ce13fedf0395ca285a91"
+    static let digest = "9d26b3076b28904878d6d01157b9246a8b740ab37960b7cd71ac8c821d56131a"
     private struct Document: Decodable {
         let schema: Int
         let scope: String
@@ -40,7 +40,8 @@ enum NoorReciterCoverageCatalog {
               document.scope == "PUBLISHED_TIMING_COVERAGE_NOT_AUDIBLE_APPROVAL",
               document.nativeSnapshotSHA256 == "37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1",
               document.sourceSHA256 == ["reciter-word-timings.json": NoorReciterWordTimings.digest,
-                                         "surah-word-timings.json": NoorSurahWordTimings.digest],
+                                         "surah-word-timings.json": NoorSurahWordTimings.digest,
+                                         "additional-surah-word-timings.json": NoorAdditionalReciters.timingDigest],
               document.recordings.values.allSatisfy(\.valid) else { return [:] }
         return document.recordings
     }()

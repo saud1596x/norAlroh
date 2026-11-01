@@ -225,6 +225,30 @@ class MushafClosureEvidenceTests(unittest.TestCase):
         self.mutate('service-contracts-tests.json', lambda value: value['testNodes'].pop())
         self.assertNotEqual(self.verify('medium'), 0)
 
+    def test_all_additional_reciter_native_contracts_are_mandatory(self):
+        expected = {
+            'NoorAdditionalReciterTests/testActualThreeFatihaRecordingsDriveTheirOwnWordClocks',
+            'NoorAdditionalReciterTests/testAdditionalSourcesHaveSeparateExactRecordingsAndCacheKeys',
+            'NoorAdditionalReciterTests/testForeignRecordingOrURLCannotAcquireAnAdditionalSourceClock',
+            'NoorAdditionalReciterTests/testAllThreeBundledClocksCoverEveryNativeWordIncludingFirstBasmala'}
+        actual = {name for name in closure.selectors('service-contracts') if name.startswith('NoorAdditionalReciterTests/')}
+        self.assertEqual(actual, expected)
+        fixture(self.folder, 'medium')
+        self.assertEqual(self.verify('medium'), 0, self.report['errors'])
+        self.mutate('service-contracts-tests.json', lambda value:
+                    value.update(testNodes=[row for row in value['testNodes'] if
+                        'testForeignRecordingOrURLCannotAcquireAnAdditionalSourceClock' not in row['nodeIdentifier']]))
+        self.assertNotEqual(self.verify('medium'), 0)
+
+    def test_seek_ownership_regressions_cannot_be_omitted(self):
+        expected = {'MushafVerseAudioSeekTests/' + method for method in (
+            'testPreSeekObservationCannotRestoreAWordDuringOrAfterSeek',
+            'testOlderSeekCompletionCannotFinishItsReplacement',
+            'testReleasedPlayerInvalidatesBothPendingSeekAndQueuedObservation',
+            'testEachSeekCompletionCanSettleOnlyOnce')}
+        actual = {name for name in closure.selectors('service-contracts') if name.startswith('MushafVerseAudioSeekTests/')}
+        self.assertEqual(actual, expected)
+
     def test_skipped_widget_policy_lane_is_not_success(self):
         fixture(self.folder, 'medium')
         self.mutate('service-contracts-summary.json', lambda value: value.update(skippedTests=1))

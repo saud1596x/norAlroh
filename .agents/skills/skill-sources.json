@@ -308,6 +308,15 @@
       "authoringDate": "2026-10-31",
       "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
       "sourceHeadAtAuthoring": "8a190fcd2c74ba97e7f683940bcbf07b2dc24008"
+    },
+    {
+      "name": "noor-reciter-timing",
+      "path": ".agents/skills/noor-reciter-timing/SKILL.md",
+      "authoringDate": "2026-10-31",
+      "status": "WRITTEN_MANUALLY_READ_NOT_A_MODEL",
+      "sourceHeadAtAuthoring": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+      "entrySHA256": "cb20de3ae29a25c383c6becea965ccfc1b80a17720e0d7f1cafb777405cc72f0",
+      "scope": "Exact-recording playback clocks, native coordinate bridge, observer/seek lifetime and page-follow contracts; no ASR/model-quality or acoustic acceptance claim."
     }
   ],
   "optionalNotInstalled": [

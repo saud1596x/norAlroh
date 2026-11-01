@@ -27,7 +27,7 @@ class ReciterPickerCoverageTests(unittest.TestCase):
         receipt = json.loads(path.read_bytes())
         self.assertEqual(receipt['schema'], 1)
         self.assertEqual(receipt['scope'], 'PUBLISHED_TIMING_COVERAGE_NOT_AUDIBLE_APPROVAL')
-        for name in ('reciter-word-timings.json', 'surah-word-timings.json'):
+        for name in ('reciter-word-timings.json', 'surah-word-timings.json', 'additional-surah-word-timings.json'):
             self.assertEqual(receipt['sourceSHA256'][name], hashlib.sha256((ROOT/'ios/Athar'/name).read_bytes()).hexdigest())
         raw = (ROOT/'content-sources/mushaf-snapshot.json.gz').read_bytes()
         self.assertEqual(receipt['nativeSnapshotSHA256'], hashlib.sha256(raw).hexdigest())
@@ -40,13 +40,15 @@ class ReciterPickerCoverageTests(unittest.TestCase):
         for identity, rows in verses.items():
             sources[identity] = ({span[0] for spans in rows.values() for span in spans}, set(rows))
         whole = json.loads((ROOT/'ios/Athar/surah-word-timings.json').read_bytes())['recordings']
+        whole.update(json.loads((ROOT/'ios/Athar/additional-surah-word-timings.json').read_bytes())['recordings'])
         for row in whole.values():
             sources[f"surah:{row['reciterID']}:{row['recordingID']}"] = (
                 {span[1] for spans in row['surahs'].values() for span in spans},
                 {f'{surah}:{span[0]}' for surah, spans in row['surahs'].items() for span in spans})
         self.assertEqual(set(receipt['recordings']), {
             'Abdul_Basit_Murattal_64kbps','Abdurrahmaan_As-Sudais_192kbps',
-            'Saood_ash-Shuraym_128kbps','surah:74:74','surah:31:31'})
+            'Saood_ash-Shuraym_128kbps','surah:74:74','surah:31:31',
+            'surah:1000001:1000001','surah:1000002:1000002','surah:1000003:1000003'})
         for identity, row in receipt['recordings'].items():
             words, timed = sources[identity]
             self.assertEqual(row['timedWords'], len(words))

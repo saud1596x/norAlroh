@@ -3,6 +3,26 @@ import Combine
 import Foundation
 import MediaPlayer
 
+/// One media-clock epoch owns queued observations and a pending seek. A seek
+/// replaces the observer before asking AVPlayer to move, so an already queued
+/// callback can never publish the preceding clock into the new position.
+struct MushafPlaybackClockEpoch: Sendable {
+    private var generation = UUID()
+    private var seeking = false
+    var observationToken: UUID? { seeking ? nil : generation }
+    mutating func beginSeek() -> UUID {
+        generation = UUID(); seeking = true
+        return generation
+    }
+    mutating func endSeek(_ token: UUID) -> Bool {
+        guard seeking, generation == token else { return false }
+        seeking = false
+        return true
+    }
+    mutating func invalidate() { generation = UUID(); seeking = false }
+    func acceptsObservation(_ token: UUID) -> Bool { !seeking && generation == token }
+}
+
 /// Cursor stores a range once. Only a real item-end event starts the next
 /// delay, and stop/replacement invalidates both that delay and stale callbacks.
 @MainActor final class MushafVerseAudio: ObservableObject {
@@ -38,6 +58,7 @@ import MediaPlayer
     private(set) var currentSeconds: Double = 0
     private(set) var durationSeconds: Double = 0
     private var timeObservation: Any?
+    private var clockEpoch = MushafPlaybackClockEpoch()
     private var durationTask: Task<Void, Never>?
     private var wordTimingTask: Task<Void, Never>?
     private var wordTiming: NoorReciterTimingTrack?
@@ -52,7 +73,7 @@ import MediaPlayer
     private var bookmarkKey: String { "noor.audio.bookmark." + currentRecordingIdentity }
     private(set) var selectedCatalogReciter: NoorMushafReciter?
     func selectReciter(_ reciter: NoorMushafReciter) {
-        guard source == nil, reciter.supportsWordTracking else { return }
+        guard source == nil, reciter.hasCompleteWordTracking else { return }
         stop()
         reciterDirectory = reciter.verseDirectory ?? "Abdul_Basit_Murattal_64kbps"
         selectedCatalogReciter = reciter
@@ -125,6 +146,9 @@ import MediaPlayer
               onFinished: (() -> Void)? = nil, onInterrupted: (() -> Void)? = nil) {
         let keys = source == nil ? selectedCatalogReciter?.playbackKeys(keys) ?? keys : keys
         stop(); error = nil; lastPlaybackDiagnostic = ""
+        guard !usesPublishedTimingSource || selectedCatalogReciter?.hasCompleteWordTracking == true else {
+            error = "اختر قارئًا مع تتبّع كامل للكلمات أولًا."; return
+        }
         guard NoorAudioFocus.shared.preparePlayback(focusID) else {
             error = "أوقف التسميع أولًا للاستماع إلى التلاوة."; return
         }
@@ -157,13 +181,22 @@ import MediaPlayer
         isPaused = false; player.playImmediately(atRate: playbackRate); updateNowPlaying()
     }
     func seek(to seconds: Double) {
-        guard seconds.isFinite, let player, durationSeconds > 0, seconds >= 0, seconds <= durationSeconds else { return }
-        activeWordID = nil
+        guard seconds.isFinite, let player, let item = player.currentItem,
+              durationSeconds > 0, seconds >= 0, seconds <= durationSeconds else { return }
+        let seekToken = clockEpoch.beginSeek()
+        removeTimeObservation()
+        activeWordID = nil; activeVerseKey = nil
         let token = revision
-        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player] finished in
+        item.cancelPendingSeeks()
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player, weak item] finished in
             Task { @MainActor in
-                guard let self, let player, finished, self.revision == token, self.player === player else { return }
-                self.currentSeconds = seconds; self.updateNowPlaying()
+                guard let self, let player, let item, self.revision == token,
+                      self.player === player, player.currentItem === item,
+                      self.clockEpoch.endSeek(seekToken) else { return }
+                // A cancelled/failed seek never publishes the requested time.
+                // Re-arm from the actual next media-clock observation instead.
+                if finished { self.currentSeconds = seconds; self.updateNowPlaying() }
+                self.installTimeObservation(player, item: item, revision: token)
             }
         }
     }
@@ -176,7 +209,7 @@ import MediaPlayer
         return true
     }
     @discardableResult func switchReciter(to directory: String) -> Bool {
-        let permitted = NoorReciterWordTimings.timedDirectories
+        let permitted = Set(NoorMushafReciter.all.compactMap(\.verseDirectory))
         guard source == nil, permitted.contains(directory), index < keys.count,
               keys[index].split(separator: ":").count == 2 else { return false }
         let range = keys, position = index, repetitions = count, completed = pass, pause = gap
@@ -217,13 +250,14 @@ import MediaPlayer
     }
     private func releasePlayer() {
         traceAudio("player.release.begin")
+        clockEpoch.invalidate()
         resolvingSource?.cancel(); resolvingSource = nil
         loadDeadline?.cancel(); loadDeadline = nil
         durationTask?.cancel(); durationTask = nil
         if player != nil { lastPlaybackDiagnostic = playbackDiagnostic }
         observation = nil; playbackObservation = nil
-        if let timeObservation, let player { player.removeTimeObserver(timeObservation) }
-        timeObservation = nil
+        removeTimeObservation()
+        player?.currentItem?.cancelPendingSeeks()
         player?.pause(); player = nil
         currentSeconds = 0; durationSeconds = 0
         if let end { NotificationCenter.default.removeObserver(end) }; end = nil
@@ -316,23 +350,7 @@ import MediaPlayer
         traceAudio("player.create.begin")
         let playback = AVPlayer(playerItem: item); player = playback
         traceAudio("player.create.end")
-        timeObservation = playback.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.05, preferredTimescale: 600), queue: .main) { [weak self, weak playback] time in
-            let seconds = time.seconds
-            Task { @MainActor in
-                guard let self, let playback, self.revision == token, self.player === playback,
-                      seconds.isFinite, seconds >= 0 else { return }
-                self.currentSeconds = seconds
-                let position = self.isPaused || playback.timeControlStatus != .playing ? nil
-                    : self.surahWordTiming?.position(at: seconds, duration: self.durationSeconds)
-                let word = self.isPaused || playback.timeControlStatus != .playing ? nil
-                    : position?.wordID ?? self.wordTiming?.word(at: seconds, duration: self.durationSeconds)
-                if self.activeWordID != word { self.activeWordID = word }
-                if !self.isPaused, playback.timeControlStatus == .playing {
-                    let verse = position?.verse ?? self.ayahTiming?.verse(at: seconds, duration: self.durationSeconds)
-                    if self.activeVerseKey != verse { self.activeVerseKey = verse }
-                }
-            }
-        }
+        installTimeObservation(playback, item: item, revision: token)
         if usesPublishedTimingSource {
             if let (reciter, surah) = NoorAudioIntegrity.reciterRecording(key),
                let corpus = QuranResources.corpus, corpus.indices.contains(surah - 1) {
@@ -403,6 +421,33 @@ import MediaPlayer
         traceAudio("player.play.begin")
         playback.playImmediately(atRate: playbackRate)
         traceAudio("player.play.end")
+    }
+    private func removeTimeObservation() {
+        if let timeObservation, let player { player.removeTimeObserver(timeObservation) }
+        timeObservation = nil
+    }
+    private func installTimeObservation(_ playback: AVPlayer, item: AVPlayerItem, revision token: UUID) {
+        guard player === playback, playback.currentItem === item,
+              revision == token, let clockToken = clockEpoch.observationToken else { return }
+        removeTimeObservation()
+        timeObservation = playback.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.05, preferredTimescale: 600), queue: .main) { [weak self, weak playback, weak item] time in
+            let seconds = time.seconds
+            Task { @MainActor in
+                guard let self, let playback, let item, self.revision == token, self.player === playback,
+                      playback.currentItem === item, self.clockEpoch.acceptsObservation(clockToken),
+                      seconds.isFinite, seconds >= 0 else { return }
+                self.currentSeconds = seconds
+                let position = self.isPaused || playback.timeControlStatus != .playing ? nil
+                    : self.surahWordTiming?.position(at: seconds, duration: self.durationSeconds)
+                let word = self.isPaused || playback.timeControlStatus != .playing ? nil
+                    : position?.wordID ?? self.wordTiming?.word(at: seconds, duration: self.durationSeconds)
+                if self.activeWordID != word { self.activeWordID = word }
+                if !self.isPaused, playback.timeControlStatus == .playing {
+                    let verse = position?.verse ?? self.ayahTiming?.verse(at: seconds, duration: self.durationSeconds)
+                    if self.activeVerseKey != verse { self.activeVerseKey = verse }
+                }
+            }
+        }
     }
     private func refreshPlaybackState(_ playback: AVPlayer, key: String, token: UUID) {
         guard revision == token, player === playback else { return }

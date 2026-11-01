@@ -35,9 +35,14 @@ struct NoorReciter: Codable, Identifiable, Hashable, Sendable {
     func audioURL(surah: Int) -> URL? {
         guard (1...114).contains(surah), surahs.contains(surah),
               let base = URL(string: server), base.scheme == "https",
-              base.host == "cdn.mp3quran.net", base.user == nil, base.password == nil,
+              base.user == nil, base.password == nil,
               base.port == nil, base.query == nil, base.fragment == nil,
-              base.path.hasPrefix("/audio/"), base.hasDirectoryPath else { return nil }
+              base.hasDirectoryPath else { return nil }
+        if id >= 1_000_000 || recordingID >= 1_000_000 {
+            guard NoorAdditionalReciters.matches(self) else { return nil }
+        } else {
+            guard base.host == "cdn.mp3quran.net", base.path.hasPrefix("/audio/") else { return nil }
+        }
         return base.appendingPathComponent(String(format: "%03d.mp3", surah))
     }
 }
@@ -48,7 +53,8 @@ enum NoorReciterCatalog {
         let reciters: [NoorReciter]
     }
     static let source = URL(string: "https://www.mp3quran.net/ar/api")!
-    static let reciters: [NoorReciter] = {
+    static let reciters: [NoorReciter] = legacyReciters + NoorAdditionalReciters.reciters
+    static let legacyReciters: [NoorReciter] = {
         guard let url = Bundle.main.url(forResource: "haramain-reciters", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let document = try? JSONDecoder().decode(Document.self, from: data),

@@ -190,12 +190,15 @@ import WhisperKit
 
     func testOnlyWordTimedRecordingsAreSelectableWithStableIdentityAndRestorableKeys() throws {
         let voices = NoorMushafReciter.all
-        XCTAssertEqual(Set(voices.compactMap(\.verseDirectory)), NoorReciterWordTimings.timedDirectories)
-        XCTAssertEqual(Set(voices.compactMap { $0.recording?.id }), [31, 74])
-        XCTAssertEqual(voices.count, 5)
+        XCTAssertTrue(voices.compactMap(\.verseDirectory).isEmpty, "Partial ayah recordings must remain hidden")
+        XCTAssertEqual(Set(voices.compactMap { $0.recording?.id }), [74, 1_000_001, 1_000_002, 1_000_003])
+        XCTAssertEqual(voices.count, 4)
         XCTAssertEqual(Set(voices.map(\.id)).count, voices.count)
         for voice in voices {
             XCTAssertTrue(voice.supportsWordTracking)
+            XCTAssertTrue(voice.hasCompleteWordTracking)
+            XCTAssertEqual(voice.coverage?.timedWords, 77_429)
+            XCTAssertEqual(voice.coverage?.timedVerses, 6_236)
             XCTAssertEqual(NoorMushafReciter.selected(voice.id)?.id, voice.id)
             let keys = voice.playbackKeys(["2:1", "2:2", "19:16", "19:17"])
             if let recording = voice.recording {
@@ -208,6 +211,9 @@ import WhisperKit
         XCTAssertNil(NoorMushafReciter.selected("Hudhaify_64kbps"))
         XCTAssertNil(NoorMushafReciter.selected("Maher_AlMuaiqly_64kbps"))
         XCTAssertNil(NoorMushafReciter.selected("surah:54:54"), "Ayah-only timing cannot qualify as word tracking")
+        for partial in ["surah:31:31", "Abdul_Basit_Murattal_64kbps", "Abdurrahmaan_As-Sudais_192kbps", "Saood_ash-Shuraym_128kbps"] {
+            XCTAssertNil(NoorMushafReciter.selected(partial), "A saved partial recording cannot reappear: \(partial)")
+        }
         for legacy in NoorVerseReciter.legacyRecordings {
             XCTAssertNil(NoorMushafReciter.selected(legacy.id), "An old preference must not reinsert an untimed source")
         }
@@ -234,7 +240,23 @@ import WhisperKit
         let untimed = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 54 })
         audio.selectReciter(.init(id: "surah:54:54", name: untimed.name, verseDirectory: nil, recording: untimed))
         XCTAssertEqual(audio.selectedCatalogReciter?.id, previous, "Direct callers cannot bypass the tracked-only picker")
+        let partial = try XCTUnwrap(NoorReciterCatalog.reciters.first { $0.id == 31 })
+        audio.selectReciter(.init(id: "surah:31:31", name: partial.name, verseDirectory: nil, recording: partial))
+        XCTAssertEqual(audio.selectedCatalogReciter?.id, previous, "A source with one missing ayah cannot bypass full coverage")
         XCTAssertNil(audio.playing); XCTAssertNil(audio.loadingKey)
+    }
+    func testProductionPlaybackCannotFallBackToAnUnselectedPartialRecording() {
+        let otherPlayer = UUID()
+        var unrelatedStops = 0
+        NoorAudioFocus.shared.register(otherPlayer) { unrelatedStops += 1 }
+        defer { NoorAudioFocus.shared.unregister(otherPlayer) }
+        let audio = MushafVerseAudio()
+        audio.play(["1:1"])
+        XCTAssertNotNil(audio.error)
+        XCTAssertNil(audio.playing); XCTAssertNil(audio.loadingKey)
+        XCTAssertFalse(audio.switchReciter(to: "Abdul_Basit_Murattal_64kbps"))
+        XCTAssertFalse(audio.switchReciter(to: "Saood_ash-Shuraym_128kbps"))
+        XCTAssertEqual(unrelatedStops, 0, "Rejecting an incomplete source cannot take another player's focus")
     }
     func testAll604OriginalPagesRenderWithoutClippingAndCacheMatchesExactSource() async throws {
         executionTimeAllowance = 180

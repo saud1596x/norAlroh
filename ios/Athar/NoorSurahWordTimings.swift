@@ -42,7 +42,7 @@ actor NoorSurahWordTimings {
         switch (reciter.id, reciter.recordingID, reciter.server) {
         case (74, 74, "https://cdn.mp3quran.net/audio/ali-hudhaifi/r1/"),
              (31, 31, "https://cdn.mp3quran.net/audio/saud-shuraim/r1/"): return true
-        default: return false
+        default: return NoorAdditionalReciters.matches(reciter)
         }
     }
     static let digest = "5873788999fdf57c524bb1241f0c89456684bac87ce228c57dfe6315774d6d78"
@@ -58,8 +58,25 @@ actor NoorSurahWordTimings {
     }
     private var document: Document?
     private var attempted = false
+    private var additionalDocument: Document?
+    private var attemptedAdditional = false
     func track(reciter: NoorReciter, surah: Int, ayahCount: Int) -> NoorSurahWordTimingTrack? {
         guard Self.supports(reciter) else { return nil }
+        if NoorAdditionalReciters.matches(reciter) {
+            if !attemptedAdditional {
+                attemptedAdditional = true
+                if let url = Bundle.main.url(forResource: "additional-surah-word-timings", withExtension: "json"),
+                   let bytes = try? Data(contentsOf: url), bytes.count < 32_000_000,
+                   SHA256.hash(data: bytes).map({ String(format: "%02x", $0) }).joined() == NoorAdditionalReciters.timingDigest,
+                   let decoded = try? JSONDecoder().decode(Document.self, from: bytes), decoded.schema == 1,
+                   decoded.nativeSnapshotSHA256 == "37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1" {
+                    additionalDocument = decoded
+                }
+            }
+            guard let source = additionalDocument?.recordings[reciter.server], source.reciterID == reciter.id,
+                  source.recordingID == reciter.recordingID, let spans = source.surahs[String(surah)] else { return nil }
+            return NoorSurahWordTimingTrack(surah: surah, ayahCount: ayahCount, spans: spans)
+        }
         if !attempted {
             attempted = true
             if let url = Bundle.main.url(forResource: "surah-word-timings", withExtension: "json"),

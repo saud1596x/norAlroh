@@ -1,0 +1,29 @@
+Quranic Universal Audio v3.2.0
+Copyright (c) Wider Community
+https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Additional recording packages:
+mishary_rashid_al_afasy_mp3quran
+maher_al_muaiqly_qdc (QuranicAudio year1440 recording; not Maher MP3Quran r1)
+mahmoud_khalil_al_husary_mp3quran
+
+Changes by Noor Alruh: bound the original published word coordinates to the
+approved native Mushaf IDs using the existing exact coordinate bridge. Original
+integer timestamps, repeats and gaps are preserved. No inferred/interpolated
+clock spans or substitute recordings. All114 published audio URLs per recording
+were checked by HEAD against their exact application URL or public redirect.
+IDs1000001/1000002/1000003 are Noor-internal recording IDs, not provider IDs.
+
+Each imported recording covers all77429 native words and6236 ayahs, including
+the first basmala. This is coordinate coverage, not independent acoustic review,
+listening-quality approval or learner assessment. The publisher uses automated
+alignment with community validation; the word-tier files provide no per-word
+confidence or independent human-review flags.
+
+Recitation recordings remain the property of their reciters and original sources.
+No audio is redistributed here; playback uses the exact public source recording.
+Package/source/native hashes and identity observations are preserved in
+content-sources/reciter-timings/additional-recordings-receipt.json and
+additional-audio-identity-proof.json.

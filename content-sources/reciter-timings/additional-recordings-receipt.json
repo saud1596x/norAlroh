@@ -1,0 +1,57 @@
+{
+  "source": "https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0",
+  "attribution": "Wider Community",
+  "license": "CC BY 4.0",
+  "namespace": "NOOR_INTERNAL_RECORDING_IDS_NOT_PROVIDER_IDS",
+  "nativeSnapshotSHA256": "37544d69f3615fa2040be516eb2ba57c62fa25741332e3ba67f31f2a6df292d1",
+  "publisherScriptSHA256": "19d5694b057dc68c3811e28f3ad1d58c0f07021a0c67a85cd25619ece7a9bf86",
+  "preservedExactCoordinateBridgeSHA256": "e5ac4ba20abed63017550b3d6cc0f39f06d1c2f89ebb96e651ad69f178bb6f18",
+  "audioSourceIdentityProofSHA256": "f01e39d807b0a82849ba8118e9a1240d043712d212372bc58684a7171e83ad3c",
+  "catalogSHA256": "7bd7f9b0f27f111458d240c41308cbf8996420f794c95f07c3467aaa93b34392",
+  "timingSHA256": "69317b4f3c27a38a60a312d535419e2193a1e7bd71f0e87b24a895d078b2903c",
+  "scope": "COMPLETE_NATIVE_COORDINATE_COVERAGE_NOT_INDEPENDENT_ACOUSTIC_REVIEW",
+  "recordings": {
+    "mishary_rashid_al_afasy_mp3quran": {
+      "internalID": 1000001,
+      "server": "https://cdn.mp3quran.net/audio/mishary-alafasy/r1/",
+      "publishedPackageSHA256": "2ef64637e14b657fc354c6aab718344d61102b6a4934a32ff214c77bd1e3db69",
+      "publishedPackageBytes": 4744231,
+      "wordTierSHA256": "d088d20e32252bdbbf14d78eba2b76f3f38d5fc0d5d7ed418ee879085cf3f889",
+      "occurrences": 6249,
+      "nativeWords": 77429,
+      "verses": 6236,
+      "surahs": 114,
+      "excludedOccurrences": 0,
+      "interpolatedClocks": 0,
+      "globalClockOverlaps": 0
+    },
+    "maher_al_muaiqly_qdc": {
+      "internalID": 1000002,
+      "server": "https://download.quranicaudio.com/quran/maher_almu3aiqly/year1440/",
+      "publishedPackageSHA256": "538c8ec00170eacfd908872177d4d5446a062f9a0f98c8ddbad467cd78b9b567",
+      "publishedPackageBytes": 4602330,
+      "wordTierSHA256": "cc4eddc9b7e1333b85c1a4e761b7ec62551ff7cd9283c61b75a1bb596fab2a18",
+      "occurrences": 6236,
+      "nativeWords": 77429,
+      "verses": 6236,
+      "surahs": 114,
+      "excludedOccurrences": 0,
+      "interpolatedClocks": 0,
+      "globalClockOverlaps": 0
+    },
+    "mahmoud_khalil_al_husary_mp3quran": {
+      "internalID": 1000003,
+      "server": "https://cdn.mp3quran.net/audio/mahmoud-husary/r1/",
+      "publishedPackageSHA256": "478e20aa0bdbb3d4a89a55e44788989843e2a46efb99ecd11712791d7b4dbc7e",
+      "publishedPackageBytes": 4651305,
+      "wordTierSHA256": "bf389fac4805da8173512c9b59375bf3ea56813794ee23f16a6d8b18dc606e8e",
+      "occurrences": 6238,
+      "nativeWords": 77429,
+      "verses": 6236,
+      "surahs": 114,
+      "excludedOccurrences": 0,
+      "interpolatedClocks": 0,
+      "globalClockOverlaps": 0
+    }
+  }
+}
