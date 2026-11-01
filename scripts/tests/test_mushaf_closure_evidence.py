@@ -245,7 +245,12 @@ class MushafClosureEvidenceTests(unittest.TestCase):
             'testPreSeekObservationCannotRestoreAWordDuringOrAfterSeek',
             'testOlderSeekCompletionCannotFinishItsReplacement',
             'testReleasedPlayerInvalidatesBothPendingSeekAndQueuedObservation',
-            'testEachSeekCompletionCanSettleOnlyOnce')}
+            'testEachSeekCompletionCanSettleOnlyOnce',
+            'testNonzeroInitialPositionCannotPlayBeforeItsSeekCompletes',
+            'testInitialPositionRequiresAnActualObservedMediaClock',
+            'testReplacementInitialSeekKeepsItsOwnObservedClockFloor',
+            'testReleasedInitialPositionCannotConstrainItsReplacementPlayer',
+            'testActualNonzeroFixtureStartPublishesOnlyTheObservedSeekClock')}
         actual = {name for name in closure.selectors('service-contracts') if name.startswith('MushafVerseAudioSeekTests/')}
         self.assertEqual(actual, expected)
 

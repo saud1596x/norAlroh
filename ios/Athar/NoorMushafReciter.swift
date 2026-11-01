@@ -75,12 +75,9 @@ struct NoorMushafReciterPicker: View {
                 }
                 NoorReciterSearchField(text: $search, identifier: "reader.reciters.search")
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(groups) { group in
                             VStack(alignment: .leading, spacing: 12) {
-                                Text(group.name).font(.headline).foregroundStyle(tokens.primary)
-                                    .accessibilityAddTraits(.isHeader)
-                                    .accessibilityIdentifier("reader.voice.\(group.id)")
                                 ForEach(group.recordings) { reciter in
                                     Button {
                                         onSelect(reciter); dismiss()
@@ -88,11 +85,12 @@ struct NoorMushafReciterPicker: View {
                                         NoorReciterRecordingLabel(reciter: reciter, selected: selectedID == reciter.id)
                                     }.buttonStyle(NoorChromePressStyle(lowMotion: store.data.lowMotion))
                                         .accessibilityIdentifier("reader.reciter.\(reciter.id)")
-                                        .accessibilityLabel("\(group.name)، \(reciter.scopeLabel)، \(reciter.coverage?.label ?? "توقيت الكلمات حسب التسجيل")")
+                                        .accessibilityLabel(group.name)
                                         .accessibilityValue(selectedID == reciter.id ? "محدد" : "")
                                         .accessibilityAddTraits(selectedID == reciter.id ? .isSelected : [])
                                 }
-                            }
+                            }.accessibilityElement(children: .contain)
+                                .accessibilityIdentifier("reader.voice.\(group.id)")
                         }
                         if groups.isEmpty {
                             ContentUnavailableView("لا يوجد قارئ مطابق", systemImage: "magnifyingglass",

@@ -33,7 +33,7 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Finish diagnosis of original native consumer failures; verify frozen complete-reciter/seek candidate and bounded compiled FP32 comparison on permitted macOS CI, preserving all failed/incomplete evidence. Publish matching signed candidate to TestFlight only after required checks; no generic approval needed.",
+    "next": "Finish local helper suite, isolate exact committed release candidate from unrelated drafts, pin truthful user-review manifest, push with skipCI per owner and manually sign/upload via existing Codemagic18min route within20USD ceiling. Confirm newbuild available to existing InternalTesters. No GitHub tests, no AppStore/publicsubmission.",
     "paidBuildsOrServicesStartedThisCycle": 0,
     "newFinancialCommitmentAuthorizedByCharter": false,
     "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
@@ -58,7 +58,7 @@
         "files": 15,
         "errors": 0,
         "typecheck": false,
-        "scope": "BEFORE_ACCEPTANCE_ONLY_PAGE_SUBMIT_TRACE"
+        "scope": "FINAL_CHANGED_SWIFT_INCLUDING_ACCEPTANCE_ONLY_PAGE_SUBMIT_TRACE"
       },
       "quranCopy": {
         "verses": 6236,
@@ -107,7 +107,7 @@
       "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
       "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
-    "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+    "sourceCommit": "db93cdc8d0b52d266bc88a0f2c3fc87cac9368ac",
     "selectedNativeMethodsNotResults": {
       "recitation-contracts": 41,
       "service-contracts": 84,
@@ -122,42 +122,37 @@
     ],
     "sourceBranch": "verify/noor-inline-motion-20261031",
     "currentNativeRun": {
-      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41238441691",
-      "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41281206894",
+      "sourceCommit": "db93cdc8d0b52d266bc88a0f2c3fc87cac9368ac",
       "branch": "verify/noor-inline-motion-20261031",
-      "state": "FAILED_CONSUMERS_OBSERVED_20261101_0925_RIYADH",
+      "state": "FAILED_OBSERVED_20261101; ORIGINAL_EVIDENCE_RETAINED",
       "configuration": "Release",
       "publication": false,
-      "queueScreenshot": "outputs/closure-20261031/dfc9546-native-queued.png",
-      "producer": {
-        "state": "SUCCEEDED",
-        "duration": "14m9s",
-        "artifactID": 13056749830,
-        "sha256": "150815d69c911c802882d2f53b93b1d665391b1377e500b3767e671bfadde4ca",
-        "scope": "RELEASE_BUILD_FOR_TESTING_ONLY_NOT_CONSUMER_ACCEPTANCE"
+      "scope": "NEW_COMPLETE_RECITERS_SEEK_EPOCH_AND_NUMERIC_PAGE_SUBMIT_DIAGNOSTIC; no current native pass claim",
+      "originalArtifacts": {
+        "smallSHA256": "8364f135bc26219b3c14dc40615f70d5e158c2fcaa556ec7b19e3731ab545bc5",
+        "mediumSHA256": "4642f6b4426137e9c7cb8a2e7a9fc4547501bdd5cd9235763fbc8fdbcdb6dcf4",
+        "scope": "READ_EXISTING_RESULTS_ONLY; no rerun"
       },
-      "consumers": {
-        "small": "FAILED",
-        "large": "FAILED",
-        "medium": "JOB_TIMEOUT_55MIN",
-        "smallOriginalArtifactSHA256": "743e514d454ac877f37c46794439fb7f7176a4da5a4e98bf7e4f75d46dd0f1a7",
-        "smallObservedFailures": [
-          "journey-light outer process timeout",
-          "gallery-final-light page48 picker remains visible after one navigation tap",
-          "light video guard exceeded",
-          "dark video backwards timestamp"
-        ],
-        "remainingOriginalArtifacts": "LARGE_AND_MEDIUM_NOT_DOWNLOADED_OR_DIAGNOSED"
-      },
-      "pagePickerNextDiagnostic": "NOOR_ACCEPTANCE_TESTING-only numeric action entry/settlement trace added; single tap and original requirePage preserved; no behavior fix or success claim yet.",
-      "smallVideoDiagnosis": {
-        "decodedFrames": 1266,
-        "backwardsPresentationTimes": 1,
-        "frameIndex": 367,
-        "previousPTS": "27239/600",
-        "nextPTS": "27238/600",
-        "secondsDelta": -0.0016666666666666668,
-        "scope": "ORIGINAL_DARK_SIMULATOR_VIDEO_MALFORMED_TIMING_NOT_PROVEN_APP_MOTION_DEFECT; no reordering/tolerance/rewriting"
+      "diagnosed": {
+        "serviceContracts": {
+          "cases": 92,
+          "failures": 0,
+          "scope": "EXACT_DB93_SOURCE_INCLUDES3REAL_FATIHA_AND4SEEK_OWNERSHIP_CASES; no allrecordings-acoustic approval"
+        },
+        "recitationContracts": {
+          "cases": 41,
+          "failures": 0
+        },
+        "geometry": {
+          "cases": 23,
+          "failures": 0,
+          "baselinePages": 604
+        },
+        "smallUI": "13lanesPASS; journey-light outer180sTIMEOUT after73.7s coldtesthost startup, no assertion failure captured",
+        "productionToday": "accountAX18regular/43accessibility fails44minimum; sourcecontentShape/ArabicAXlabel repair written, native recheck pending",
+        "mediumDua": "Text169.333pt alone exceeds148pt usable fixedmediumcard; unresolved; no fontshrinking/clipping/falsefit",
+        "video": "Original timestamps/guard failures retained; not relabelled as app success"
       }
     },
     "rightsAccountObservation": {
@@ -395,14 +390,16 @@
       "repairVerification": "LOCAL_YAML_ONLY_PENDING_NATIVE"
     },
     "latestOwnerSteering": {
-      "date": "2026-10-31",
-      "delivery": "TESTFLIGHT_AFTER_REPAIRS_AND_MATCHING_CHECKS",
-      "publicAppStore": "NOT_REQUESTED_IN_LATEST_INSTRUCTION",
-      "authorization": "Owner explicitly authorizes attempts and Codemagic delivery without another generic publication confirmation. No unbounded/new recurring financial commitment inferred; inspect prior remaining budget before paid build.",
-      "reciters": "Only recordings with complete word tracking across the entire Quran may remain selectable; partial timing choices hidden, no interpolated/borrowed clocks, cached user media preserved."
+      "date": "2026-11-01",
+      "delivery": "TESTFLIGHT_PERSONAL_DEVICE_TEST_AFTER_LOCAL_REPAIRS",
+      "latestRequest": "واصلح الاخطاء ب دقة وابحث عن الاخطاء وتعمق واصلحها ثم انشرها ف تيست لايت انا بختبرها",
+      "verificationLocation": "OWNER_EXPLICITLY_FORBIDS_NEW_GITHUB_TESTS; local Windows or Linux only; Codemagic signed build/upload authorized",
+      "publicAppStore": "NOT_AUTHORIZED_IN_CURRENT_SCOPE",
+      "reciters": "Selectable4complete recordings only; no full/partial coverage badges; explicit picker tap starts tracked playback from selected visible word; opening reader/relaunch alone does not autoplay",
+      "financial": "Existing20USD engine stage17.015reserved; one18min signing/upload attempt planned1.805USD within ceiling, not started yet"
     },
     "reciterExpansionDraft": {
-      "status": "IMPLEMENTING_PENDING_NATIVE_NOT_PUBLISHED",
+      "status": "COMMITTED_PUSHED_PENDING_NATIVE_NOT_PUBLISHED",
       "source": "https://github.com/QUD-Technologies/quranic-universal-audio/releases/tag/v3.2.0",
       "license": "CC BY4.0 Wider Community; audio streams from exact source, recordings not redistributed",
       "newVoices": [
@@ -437,7 +434,7 @@
       ],
       "nativeActualPlayback": "FOUR_NEW_TEST_METHODS_WRITTEN_WITH_THREE_REAL_FATIHA_RECORDINGS_PENDING_NATIVE_EXECUTION",
       "independentAllAudioAcousticAudit": "NOT_RUN",
-      "newSourceCommit": "NOT_COMMITTED"
+      "newSourceCommit": "db93cdc8d0b52d266bc88a0f2c3fc87cac9368ac"
     },
     "latestMeasuredEngineDiagnosis": {
       "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
@@ -515,11 +512,24 @@
       "comparisonRun": {
         "url": "https://github.com/saud1596x/norAlroh/actions/runs/41281034260",
         "sourceCommit": "9886fabaf2119b0a602f64429544a2bbbce70c55",
-        "observedState": "IN_PROGRESS_20261101_0929_RIYADH",
+        "observedState": "SUCCEEDED_EXISTING_RUN; no new GitHub execution",
         "jobLimitMinutes": 35,
         "shippingModelChanged": false,
         "paidBuildsStarted": 0,
         "scope": "EXPERIMENT_ONLY_NO_APP_BUILD_OR_DEVICE_SPEED_CLAIM"
+      },
+      "comparisonResult": {
+        "artifactSHA256": "601599adcacbe805887de7b68db1c0a7065b25718937d6b2bda4cc7a890cd4af",
+        "pairs": 35,
+        "originalStrictParity": "PASSED",
+        "localReplay": "35preservedlogitpairs revalidated after measured6ULP libm rounding repair, no newinference",
+        "cpuMedianPredictionMs": 1788.749208,
+        "gpuAllowedMedianPredictionMs": 1710.9045,
+        "cpuWorstMs": 3594.072541,
+        "gpuAllowedWorstMs": 4325.252709,
+        "gpuDispatchProven": false,
+        "shippingComputeChanged": false,
+        "scope": "Mac experiment, no physicaliPhone latency claim; GPUcandidate not promoted"
       }
     },
     "pendingSeekOwnershipFix": {
@@ -529,6 +539,76 @@
       "behavior": "Per-seek epoch, creator-owned observer removal, item pending-seek cancellation, current player/item/sequence guards; no old observation can publish into replacement seek",
       "state": "IMPLEMENTED_PENDING_NATIVE_RED_GREEN",
       "selectorGuard": "New helper exclusion test failed before selector addition and passed after; this proves selection guard only"
+    },
+    "previousNativeProducerAndConsumerRunDFC": {
+      "url": "https://github.com/saud1596x/norAlroh/actions/runs/41238441691",
+      "sourceCommit": "dfc95464187a5abf04e60b1c861d5010c1a11a4d",
+      "branch": "verify/noor-inline-motion-20261031",
+      "state": "FAILED_CONSUMERS_OBSERVED_20261101_0925_RIYADH",
+      "configuration": "Release",
+      "publication": false,
+      "queueScreenshot": "outputs/closure-20261031/dfc9546-native-queued.png",
+      "producer": {
+        "state": "SUCCEEDED",
+        "duration": "14m9s",
+        "artifactID": 13056749830,
+        "sha256": "150815d69c911c802882d2f53b93b1d665391b1377e500b3767e671bfadde4ca",
+        "scope": "RELEASE_BUILD_FOR_TESTING_ONLY_NOT_CONSUMER_ACCEPTANCE"
+      },
+      "consumers": {
+        "small": "FAILED",
+        "large": "FAILED",
+        "medium": "JOB_TIMEOUT_55MIN",
+        "smallOriginalArtifactSHA256": "743e514d454ac877f37c46794439fb7f7176a4da5a4e98bf7e4f75d46dd0f1a7",
+        "smallObservedFailures": [
+          "journey-light outer process timeout",
+          "gallery-final-light page48 picker remains visible after one navigation tap",
+          "light video guard exceeded",
+          "dark video backwards timestamp"
+        ],
+        "remainingOriginalArtifacts": "LARGE_AND_MEDIUM_NOT_DOWNLOADED_OR_DIAGNOSED"
+      },
+      "pagePickerNextDiagnostic": "NOOR_ACCEPTANCE_TESTING-only numeric action entry/settlement trace added; single tap and original requirePage preserved; no behavior fix or success claim yet.",
+      "smallVideoDiagnosis": {
+        "decodedFrames": 1266,
+        "backwardsPresentationTimes": 1,
+        "frameIndex": 367,
+        "previousPTS": "27239/600",
+        "nextPTS": "27238/600",
+        "secondsDelta": -0.0016666666666666668,
+        "scope": "ORIGINAL_DARK_SIMULATOR_VIDEO_MALFORMED_TIMING_NOT_PROVEN_APP_MOTION_DEFECT; no reordering/tolerance/rewriting"
+      }
+    },
+    "localRepairCandidate20261101": {
+      "state": "FROZEN_LOCAL_CHECKS_PASSED_NATIVE_USER_TO_TEST_NOT_UPLOADED",
+      "changes": [
+        "Name-only4complete reciter picker",
+        "Explicit choice resolves bundled firstvisibleword offset and drains temporary recitation before playback",
+        "Initial nonzero media seek completes before first play; only observed clocks publish tracking",
+        "Pending choice/seek cancel on stop/mic/scene/page/replacement",
+        "Homeaccount framed hitshape and Arabic accessibilitylabel",
+        "Local comparison receipt rounds only8ULPs for recomputed saved mean; exactwords/frames/source and matrix1e-5 unchanged"
+      ],
+      "newNativeCases": "9seekclass(total)+2offsetcases; written but not executed after source repair",
+      "localEnvironment": "Windows; WSL not installed, Docker/Swift/swiftc unavailable; no new installs",
+      "knownUnverified": [
+        "Native iOS UI/AVPlayer execution after new repairs",
+        "Learner population/word-error and Tajweed accuracy",
+        "First distinct anchor2s cold target unmet",
+        "Fixed mediumdua accessibility overflow remains",
+        "Continuous video proof remains invalid in originalfailed run"
+      ],
+      "publishingChannel": "EXISTING_TESTFLIGHT_USER_REVIEW; preserve unresolved flags; no publicAppStore",
+      "localChecks": {
+        "helpersRan": 192,
+        "helpersPassed": 186,
+        "unixSkipped": 6,
+        "seconds": 247.107,
+        "log": "outputs/closure-20261101/local-review-helpers.log",
+        "probePureChecksPassed": 12,
+        "swiftGrammarFiles": 11,
+        "nativeExecution": false
+      }
     }
   },
   "items": [

@@ -2,6 +2,33 @@ import XCTest
 @testable import Athar
 
 final class NoorReciterWordTimingTests: XCTestCase {
+    func testVisibleWordStartUsesItsOwnInclusiveBoundaryAcrossSplitAyahAndGaps() throws {
+        let track = try XCTUnwrap(NoorSurahWordTimingTrack(surah: 2, ayahCount: 3, spans: [
+            [1, 201, 1000, 1400], [1, 202, 1700, 2100], [2, 203, 2500, 2900]
+        ]))
+        // Starting the visible continuation of an ayah must not rewind to its
+        // preceding word, including when that word belongs on another face.
+        let seconds = try XCTUnwrap(track.startOffset(wordID: 202, verse: "2:1"))
+        XCTAssertEqual(seconds, 1.7)
+        XCTAssertEqual(track.position(at: seconds, duration: 4), .init(verse: "2:1", wordID: 202))
+        XCTAssertNil(track.position(at: seconds - 0.001, duration: 4), "The source pause is not a word")
+        XCTAssertNil(track.position(at: 2.1, duration: 4), "The source end is exclusive")
+        XCTAssertEqual(track.startOffset(wordID: 203, verse: "2:2"), 2.5)
+        XCTAssertNil(track.startOffset(wordID: 202, verse: "2:2"), "An ID cannot borrow another ayah's start")
+        XCTAssertNil(track.startOffset(wordID: 999, verse: "2:1"))
+        XCTAssertNil(track.startOffset(wordID: 202, verse: "1:1"))
+    }
+
+    func testRepeatedWordStartRetainsFirstActualSourceOccurrence() throws {
+        let track = try XCTUnwrap(NoorSurahWordTimingTrack(surah: 1, ayahCount: 7, spans: [
+            [1, 101, 300, 700], [1, 102, 900, 1300], [1, 101, 1500, 1900]
+        ]))
+        XCTAssertEqual(track.startOffset(wordID: 101, verse: "1:1"), 0.3)
+        XCTAssertNil(track.startOffset(wordID: 101, verse: "01:1"), "Only the exact canonical verse can select a clock")
+        XCTAssertNil(track.startOffset(wordID: 101, verse: "1:01"))
+        XCTAssertNil(track.startOffset(wordID: 101, verse: "1:0"))
+    }
+
     func testVoiceGroupingContainsOnlyCompleteRecordingsAndPreservesExactIdentities() throws {
         let groups = NoorReciterVoiceGroup.matching("")
         XCTAssertEqual(groups.count, 4)

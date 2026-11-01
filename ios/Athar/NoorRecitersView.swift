@@ -10,9 +10,6 @@ struct NoorRecitersView: View {
         Set(favorites.split(separator: ",").compactMap { Int($0) })
     }
     private var tokens: NoorChromeTokens { .init(scheme: scheme) }
-    private func choice(_ reciter: NoorReciter) -> NoorMushafReciter {
-        .init(id: "surah:\(reciter.id):\(reciter.recordingID)", name: reciter.name, verseDirectory: nil, recording: reciter)
-    }
     private var filtered: [NoorReciter] {
         let query = ArabicSearch.normalize(search)
         return NoorMushafReciter.completeSurahReciters.filter {
@@ -28,7 +25,7 @@ struct NoorRecitersView: View {
         List {
             Section {
                 NoorReciterSearchField(text: $search, identifier: "reciters.library.search")
-                Text("اختر القارئ، ثم السورة. يبدأ الاستماع من أدوات المصحف عندما تختار ذلك.")
+                Text("اختر قارئًا وسورة لفتحها في المصحف.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Toggle("المفضلة فقط", isOn: $favoritesOnly)
             }.listRowBackground(tokens.surface)
@@ -37,13 +34,7 @@ struct NoorRecitersView: View {
                     NavigationLink {
                         NoorReciterSurahsView(reciter: reciter)
                     } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(reciter.name).font(.headline)
-                            Text("\(reciter.surahs.count) سورة · السورة كاملة")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                            Text(choice(reciter).coverage?.label ?? "توقيت الكلمات حسب التسجيل")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                        }.padding(.vertical, 6)
+                        Text(reciter.name).font(.headline).padding(.vertical, 10)
                     }.accessibilityIdentifier("reciter.\(reciter.id)")
                     Button {
                         var ids = favoriteIDs
@@ -68,7 +59,7 @@ struct NoorRecitersView: View {
             }
         }
         .scrollContentBackground(.hidden).background(tokens.background)
-        .noorScreenChrome().navigationTitle("القرّاء مع التتبّع").navigationBarTitleDisplayMode(.inline)
+        .noorScreenChrome().navigationTitle("القرّاء").navigationBarTitleDisplayMode(.inline)
         .environment(\.layoutDirection, .rightToLeft)
     }
 }
@@ -97,9 +88,6 @@ private struct NoorReciterSurahsView: View {
             Section {
                 Text("يُفتح المصحف بالقارئ المختار. ابدأ الاستماع من أدوات الآية.")
                     .font(.subheadline).foregroundStyle(.secondary)
-                Text(NoorMushafReciter.selected("surah:\(reciter.id):\(reciter.recordingID)")?.coverage?.label
-                     ?? "توقيت الكلمات حسب التسجيل")
-                    .font(.caption).foregroundStyle(.secondary)
                 if let first = store.quran.first(where: { $0.number == 1 }) {
                     Button { open(first) } label: {
                         Label("افتح المصحف من الفاتحة", systemImage: "book")

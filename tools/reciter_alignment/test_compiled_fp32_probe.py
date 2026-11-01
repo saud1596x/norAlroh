@@ -133,6 +133,69 @@ class CompiledFP32PolicyTests(unittest.TestCase):
             self.assertEqual(result['status'], 'FAILED'); self.assertTrue(result['errors'])
             with self.assertRaises(ValueError): probe.compare(args)
 
+    def compare_preserved_logit_fixture(self, change):
+        """Tiny policy fixture; this neither loads nor executes a Core ML model."""
+        import json
+        vocab = json.loads((probe.ROOT / 'content-sources/independent-ctc-vocab.json').read_text(encoding='utf-8'))
+        logits = np.full((1, 1, 56), -10, dtype=np.float32)
+        logits[0, 0, vocab['ا']] = 10
+        decoded, _ = probe.decode_logits(logits, 400, vocab)
+        with tempfile.TemporaryDirectory(dir=probe.ROOT / 'release') as folder:
+            root = Path(folder)
+            for unit, process_id in zip(probe.COMPUTES, (100, 101)):
+                target = root / unit; target.mkdir()
+                np.save(target / 'logits.npy', logits, allow_pickle=False)
+                rows = []
+                plan = []
+                for index in range(35):
+                    row = dict(id=f'policy-{index}', samples=400, startFrame=0, endFrame=400,
+                               rawPCM_SHA256='a' * 64, conditionedSHA256='b' * 64,
+                               sourceFiles={}, negativeControl=False, **copy.deepcopy(decoded),
+                               logitsFile='logits.npy', logitsSHA256=probe.digest(target / 'logits.npy'),
+                               timingsMs=dict(normalizationInput=.1, prediction=1, pythonPostdecode=.2,
+                                              sourceAndConditionedSHA=.1, total=1.4))
+                    change(row)
+                    rows.append(row)
+                    plan.append({key: row[key] for key in ('id', 'samples', 'sourceFiles',
+                                                         'negativeControl', 'rawPCM_SHA256')})
+                profile = dict(schema=1, scope=probe.SCOPE, status='INFERENCE_COMPLETED',
+                               computeUnits=unit, processID=process_id, gpuExecutionProven=False,
+                               errors=[], cases=rows, plan=plan, modelLoadMs=1,
+                               assetsBefore=self.descriptor(), assetsAfter=self.descriptor(),
+                               fixturesBefore={}, fixturesAfter={}, environment={'source': 'a' * 40})
+                (target / 'profile.json').write_text(json.dumps(profile), encoding='utf-8')
+            args = SimpleNamespace(baseline=root / 'CPU_ONLY', candidate=root / 'CPU_AND_GPU',
+                                   expected_source='a' * 40, output=root / 'comparison.json')
+            code = probe.compare(args)
+            return code, json.loads(args.output.read_text(encoding='utf-8'))
+
+    def test_saved_word_means_allow_only_small_cross_platform_recomputation_roundoff(self):
+        def perturb(row):
+            for _ in range(8):
+                row['words'][0]['meanPosterior'] = math.nextafter(row['words'][0]['meanPosterior'], 0)
+        code, result = self.compare_preserved_logit_fixture(perturb)
+        self.assertEqual(code, 0, result['errors'])
+        self.assertEqual(len(result['cases']), 35)
+
+    def test_saved_decode_rejects_word_frame_probability_and_nonfinite_drift(self):
+        def beyond_roundoff(row):
+            for _ in range(9):
+                row['words'][0]['meanPosterior'] = math.nextafter(row['words'][0]['meanPosterior'], 0)
+        for name, change in (
+            ('nine-ulp', beyond_roundoff),
+            ('small-probability-drift', lambda row: row['words'][0].update(
+                meanPosterior=row['words'][0]['meanPosterior'] - 1e-8)),
+            ('probability', lambda row: row['words'][0].update(meanPosterior=.8)),
+            ('text', lambda row: row['words'][0].update(text='ب')),
+            ('frame', lambda row: row['words'][0].update(endFrame=321)),
+            ('nan', lambda row: row['words'][0].update(meanPosterior=float('nan'))),
+            ('inf', lambda row: row['words'][0].update(meanPosterior=float('inf'))),
+            ('boolean', lambda row: row['words'][0].update(meanPosterior=True))):
+            with self.subTest(drift=name):
+                code, result = self.compare_preserved_logit_fixture(change)
+                self.assertEqual(code, 1)
+                self.assertTrue(result['errors'])
+
     def test_decoder_keeps_actual_repeats_blanks_and_word_clock(self):
         vocab = __import__('json').loads((Path(__file__).resolve().parents[2] / 'content-sources/independent-ctc-vocab.json').read_text(encoding='utf-8'))
         label = vocab['ا']; ids = [label, label, 0, label, vocab['|']]

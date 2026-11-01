@@ -97,17 +97,14 @@ struct NoorReciterRecordingLabel: View {
     private var tokens: NoorChromeTokens { .init(scheme: scheme) }
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(reciter.scopeLabel).font(.headline).foregroundStyle(tokens.primary)
-                Text(reciter.coverage?.label ?? "توقيت الكلمات حسب التسجيل")
-                    .font(.subheadline).foregroundStyle(tokens.secondary)
-            }.fixedSize(horizontal: false, vertical: true)
+            Text(reciter.name).font(.headline).foregroundStyle(tokens.primary)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if selected {
                 Image(systemName: "checkmark.circle.fill").font(.title3)
                     .foregroundStyle(tokens.primary).accessibilityHidden(true)
             }
-        }.padding(16).frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+        }.padding(16).frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
             .background(tokens.surface, in: RoundedRectangle(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).stroke(tokens.primary.opacity(selected ? 0.45 : 0.1), lineWidth: selected ? 1.5 : 1) }
             .contentShape(RoundedRectangle(cornerRadius: 12))

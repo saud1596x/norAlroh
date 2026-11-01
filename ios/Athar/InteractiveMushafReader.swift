@@ -153,7 +153,7 @@ struct InteractiveMushafReader: View {
     // including buffering, pauses and repeat gaps. Canonical playback callbacks
     // can still advance the page; Stop releases the lock immediately.
     private var playbackLocksPage: Bool {
-        audio.playing != nil || audio.loadingKey != nil || audio.waitingKey != nil
+        reciterPreparation != nil || audio.playing != nil || audio.loadingKey != nil || audio.waitingKey != nil
     }
     @ObservedObject private var readingJourney = KhatmahStore.shared
     @State private var wardComplete = false
@@ -169,6 +169,13 @@ struct InteractiveMushafReader: View {
     @State private var pageTurns = MushafPageTurnCoordinator()
     @State private var pageTurnTask: Task<Void, Never>?
     @State private var referencePreparation: Task<Void, Never>?
+    @State private var reciterPreparation: Task<Void, Never>?
+    @State private var reciterRequest = UUID()
+    private struct ReciterPlaybackStart {
+        let identity: String
+        let seconds: Double
+    }
+    @State private var reciterPlaybackStart: ReciterPlaybackStart?
     @State private var selected: String?
     @State private var manualSelection: VerseSelection?
     @State private var practiceSelection: String?
@@ -260,6 +267,7 @@ struct InteractiveMushafReader: View {
         }
         .onChange(of: recitation.record?.wordingEvents) { _, _ in announceReviewFeedback() }
         .onChange(of: audio.error) { _, value in
+            if value != nil { reciterPlaybackStart = nil }
             if value != nil, recitation.guidedPhase == .reference { recitation.cancelGuided() }
         }
         .onChange(of: audio.loadingKey) { _, value in
@@ -287,6 +295,7 @@ struct InteractiveMushafReader: View {
         }
         .onChange(of: recitation.activeWordID) { _, _ in followLiveRecitation() }
         .onChange(of: recitation.state) { _, state in
+            if state == .listening { cancelReciterPreparation() }
             if state == .stopped { tools = true }
         }
         // Live input owns route/interruption handling in QuranAudioInputEvents.
@@ -332,10 +341,7 @@ struct InteractiveMushafReader: View {
         initializedReader
         .sheet(isPresented: $recitersOpen) {
             NoorMushafReciterPicker(selectedID: preferredReciter) { reciter in
-                preferredReciter = reciter.id
-                audio.selectReciter(reciter)
-                // Choosing a voice does not play media or change audio route.
-                // Playback remains the explicit Play action in the Mushaf.
+                chooseAndPlayReciter(reciter)
             }
         }
         .task(id: number) {
@@ -346,9 +352,9 @@ struct InteractiveMushafReader: View {
             injectAcceptanceRenderFailureIfNeeded()
             await fonts.prepareNeighbors(of: requestedPage)
         }
-        .onDisappear { rememberWardPosition(); readerVisible = false; cancelPageTurn(); referencePreparation?.cancel(); referencePreparation = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
+        .onDisappear { rememberWardPosition(); readerVisible = false; cancelPageTurn(); cancelReciterPreparation(); referencePreparation?.cancel(); referencePreparation = nil; microphoneCue.cancel(); initialEntry.cancel(); recitation.cancelGuided(); Task { await recitation.finish() }; audio.stop(); audio.onVerse = nil }
         .onChange(of: scenePhase) { _, value in
-            if value != .active { microphoneCue.cancel() }
+            if value != .active { microphoneCue.cancel(); cancelReciterPreparation() }
             if value == .background { rememberWardPosition() }
             if value == .background || (value == .inactive && recitation.state != .permission) { recitation.cancelGuided(); Task { await recitation.pause() } }
         }
@@ -357,6 +363,7 @@ struct InteractiveMushafReader: View {
         }
         .onChange(of: number) { _, value in
             cancelPageTurn()
+            cancelReciterPreparation()
             guard allowedPages.contains(value) else { number = min(allowedPages.upperBound, max(allowedPages.lowerBound, value)); return }
             renderGeneration = UUID(); lastPage = value; rememberWardPosition()
         }
@@ -466,9 +473,12 @@ struct InteractiveMushafReader: View {
                     if let selection = manualSelection {
                         Button { openTools(selection, action: .details) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                             .accessibilityLabel("المزيد من أدوات الآية").accessibilityIdentifier("verse.more")
-                    } else if audioFocus.activePlayer != nil || audio.playing != nil || audio.waitingKey != nil { Button { audio.stop(); audioFocus.activePlayer?.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel(audio.waitingKey == nil ? "إيقاف التلاوة" : "إيقاف التكرار أثناء المهلة").accessibilityIdentifier("reader.audio.stop") }
+                    } else if reciterPreparation != nil {
+                        Button { cancelReciterPreparation() } label: { ProgressView().frame(width: 44, height: 44) }
+                            .accessibilityLabel("إلغاء تجهيز التلاوة").accessibilityIdentifier("reader.audio.preparing")
+                    } else if audioFocus.activePlayer != nil || audio.playing != nil || audio.waitingKey != nil { Button { cancelReciterPreparation(); audio.stop(); audioFocus.activePlayer?.stop() } label: { Image(systemName: "stop.fill").frame(width: 44, height: 44) }.accessibilityLabel(audio.waitingKey == nil ? "إيقاف التلاوة" : "إيقاف التكرار أثناء المهلة").accessibilityIdentifier("reader.audio.stop") }
                     else if audio.loadingKey != nil {
-                        Button { audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
+                        Button { cancelReciterPreparation(); audio.stop() } label: { ProgressView().frame(width: 44, height: 44) }.accessibilityLabel("إلغاء تحميل التلاوة")
                     } else if readingOnly {
                         Button { khatmah = true } label: { Image(systemName: "book.closed").frame(width: 44, height: 44) }
                             .accessibilityLabel("رحلة الختمة وتأكيد القراءة").accessibilityIdentifier("reader.khatmah")
@@ -652,8 +662,60 @@ struct InteractiveMushafReader: View {
         let visible = Set(page?.words.map(\.verse) ?? [])
         return keys.filter { visible.contains($0) }
     }
+    private func cancelReciterPreparation() {
+        reciterRequest = UUID(); reciterPreparation?.cancel(); reciterPreparation = nil
+        reciterPlaybackStart = nil
+    }
+    private func chooseAndPlayReciter(_ reciter: NoorMushafReciter) {
+        let previousPreparation = reciterPreparation
+        cancelReciterPreparation(); cancelPageTurn(); microphoneCue.cancel()
+        guard !readingOnly, readerVisible, scenePhase == .active, reciter.hasCompleteWordTracking,
+              let recording = reciter.recording, let page, let studyIndex else { return }
+        let chosenVerse = visibleSelection
+        guard let word = page.words.first(where: { word in
+            (chosenVerse == nil || chosenVerse == word.verse) && studyIndex.words[word.verse]?.contains(word.id) == true
+        }) else { return }
+        let verse = VerseSelection(key: word.verse)
+        guard let surah = store.quran.first(where: { $0.number == verse.chapter }) else { return }
+        preferredReciter = reciter.id
+        recitation.cancelGuided(); audio.selectReciter(reciter)
+        let request = reciterRequest, requestedPage = number
+        reciterPreparation = Task {
+            defer { if reciterRequest == request { reciterPreparation = nil } }
+            // A replaced request may still be draining the shared microphone.
+            // Wait for that owned cleanup; never pause a newer take merely
+            // because a cancelled preparation task finally got actor time.
+            await previousPreparation?.value
+            guard !Task.isCancelled, readerVisible, scenePhase == .active,
+                  reciterRequest == request, number == requestedPage,
+                  preferredReciter == reciter.id, audio.selectedCatalogReciter?.id == reciter.id else { return }
+            // Explicitly changing to a reciter ends the temporary learner
+            // session, releases its microphone and reveals the reading page.
+            // Reference playback cannot become independently recalled words.
+            await recitation.finish()
+            guard !Task.isCancelled, readerVisible, scenePhase == .active,
+                  reciterRequest == request, number == requestedPage,
+                  preferredReciter == reciter.id, audio.selectedCatalogReciter?.id == reciter.id else { return }
+            guard !recitation.hasSession && recitation.state != .processing &&
+                    recitation.state != .permission && recitation.state != .preparing else {
+                audio.error = "انتظر توقف التسميع ثم اختر القارئ."; return
+            }
+            let track = await NoorSurahWordTimings.shared.track(reciter: recording,
+                surah: verse.chapter, ayahCount: surah.ayahs.count)
+            guard !Task.isCancelled, readerVisible, scenePhase == .active,
+                  reciterRequest == request, number == requestedPage,
+                  preferredReciter == reciter.id, audio.selectedCatalogReciter?.id == reciter.id else { return }
+            guard let seconds = track?.startOffset(wordID: word.id, verse: word.verse) else {
+                audio.error = "تعذّر تجهيز التلاوة لهذا الموضع. أعد اختيار القارئ."; return
+            }
+            legacyRecorder.stop(); clearManualSelection(); tools = true; followAudio = true
+            reciterPlaybackStart = .init(identity: reciter.recordingIdentity, seconds: seconds)
+            audio.play([word.verse], seconds: seconds)
+        }
+    }
     private func startRecitation(keys scope: [String], automatic: Bool = false) {
         guard !readingOnly, readerVisible, let snapshot, !recitation.hasSession else { return }
+        cancelReciterPreparation()
         cancelPageTurn()
         followAudio = true
         audio.stop(); legacyRecorder.stop(); clearManualSelection()
@@ -667,6 +729,7 @@ struct InteractiveMushafReader: View {
     private var startRecitationButton: some View {
         Button {
             guard readerVisible, recitation.state == .idle || recitation.state == .stopped else { return }
+            cancelReciterPreparation()
             cancelPageTurn()
             audio.stop(); legacyRecorder.stop()
             microphoneCue.beginCapture {
@@ -811,6 +874,7 @@ struct InteractiveMushafReader: View {
                 Menu {
                     if recitation.state == .paused, recitation.record?.phase != .finished {
                         Button("استئناف التسميع") {
+                            cancelReciterPreparation(); audio.stop()
                             microphoneCue.beginCapture {
                                 guard readerVisible, recitation.state == .paused else { return }
                                 Task { await recitation.resume() }
@@ -918,6 +982,7 @@ struct InteractiveMushafReader: View {
     }
     private var studyMicrophoneButton: some View {
         Button {
+            cancelReciterPreparation(); audio.stop()
             microphoneCue.cancel()
             Task {
                 await recitation.finish()
@@ -1084,6 +1149,15 @@ struct InteractiveMushafReader: View {
         guard readerVisible, recitation.state != .listening,
               manualSelection == nil, sheetVerse == nil,
               let mediaKey = audio.playing else { return }
+        if let start = reciterPlaybackStart {
+            // A whole-surah file's key denotes ayah1, not this requested word.
+            // Do not navigate until the actual selected recording's clock has
+            // reached the offset and supplied its own word/ayah location.
+            guard audio.currentRecordingIdentity == start.identity,
+                  audio.currentSeconds >= start.seconds - 0.002,
+                  audio.activeWordID != nil, audio.activeVerseKey != nil else { return }
+            reciterPlaybackStart = nil
+        }
         let wholeSurah = NoorAudioIntegrity.reciterRecording(mediaKey) != nil
         // A gap or an unavailable timing track must not jump back to ayah1
         // after playback has advanced. Only the known start can navigate there.

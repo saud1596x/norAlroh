@@ -104,7 +104,9 @@ struct NoorTodayView: View {
         NavigationLink { NoorAccountView() } label: {
             Label("حسابي", systemImage: account.signedIn ? "person.crop.circle.fill" : NoorChromeTokens.Symbol.account)
                 .font(.subheadline).foregroundStyle(tokens.primary).frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }.buttonStyle(NoorChromePressStyle(lowMotion: store.data.lowMotion)).accessibilityIdentifier("home.account")
+            .accessibilityLabel("حسابي")
             .accessibilityHint("اختياري؛ القراءة والأذكار متاحة دون حساب")
     }
     private func prayerRow(at date: Date) -> some View {

@@ -31,6 +31,7 @@ VERIFICATION_SCOPE = '26fixed public/prefix/negative conversion cases; NOT natur
 SCOPE = 'NONSHIPPING_COMPILED_APP_FP32_MAC_COMPUTE_COMPARISON_NOT_IPHONE_OR_LEARNER_ACCEPTANCE'
 COMPUTES = ('CPU_ONLY', 'CPU_AND_GPU')
 POSTERIOR_ATOL = 1e-5  # Fixed strict experiment comparator, never an app threshold.
+SAVED_MEAN_MAX_ULPS = 8  # libm roundoff only, not acoustic/posterior parity slack.
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 
 
@@ -171,6 +172,29 @@ def decode_logits(logits, samples, vocab):
         text += characters[label]; end = stop; posterior_sum += posterior; count += length
     finish()
     return dict(shape=list(logits.shape), frameLabels=labels, rawWords=[w['text'] for w in words], words=words), np.asarray(posteriors, dtype=np.float64)
+
+
+def validate_saved_decode(saved, decoded):
+    """Bind receipt words/clocks exactly; permit only binary64 mean roundoff.
+
+    Recomputing the same preserved logits with another platform's libm may
+    change exp/sum rounding by a few ULPs. No token, frame, word boundary or
+    posterior matrix receives this allowance, and no source receipt is edited.
+    """
+    if any(saved.get(key) != value for key, value in decoded.items() if key != 'words'):
+        raise ValueError('Saved decode differs from actual preserved logits')
+    words = saved.get('words')
+    if not isinstance(words, list) or len(words) != len(decoded['words']):
+        raise ValueError('Saved word count differs from actual preserved logits')
+    for original, actual in zip(words, decoded['words']):
+        if (not isinstance(original, dict) or set(original) != set(actual)
+                or any(original[key] != actual[key] for key in ('text', 'startFrame', 'endFrame'))
+                or any(type(original[key]) is not int for key in ('startFrame', 'endFrame'))):
+            raise ValueError('Saved word/clock differs from actual preserved logits')
+        value, observed = original['meanPosterior'], actual['meanPosterior']
+        if (type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1
+                or abs(value - observed) > SAVED_MEAN_MAX_ULPS * math.ulp(observed)):
+            raise ValueError('Saved word posterior exceeds binary64 recomputation roundoff')
 
 
 def validate_parity(left, right, first, second):
@@ -363,7 +387,8 @@ def compare(args):
     if args.output.exists(): raise ValueError('Refusing to overwrite comparison')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     report = dict(schema=1, scope=SCOPE, status='FAILED', gpuExecutionProven=False,
-                  posteriorAbsoluteTolerance=POSTERIOR_ATOL, cases=[], errors=[])
+                  posteriorAbsoluteTolerance=POSTERIOR_ATOL,
+                  savedMeanPosteriorRoundoffULPs=SAVED_MEAN_MAX_ULPS, cases=[], errors=[])
     try:
         a = json.loads((args.baseline / 'profile.json').read_text(encoding='utf-8'))
         b = json.loads((args.candidate / 'profile.json').read_text(encoding='utf-8'))
@@ -403,7 +428,7 @@ def compare(args):
                                maxPosteriorDifference=float(np.max(np.abs(px-py))) if px.shape == py.shape else None,
                                cpuPredictionMs=left['timingsMs']['prediction'], gpuAllowedPredictionMs=right['timingsMs']['prediction'])
                 for row, decoded in ((left, dx), (right, dy)):
-                    if any(row[key] != decoded[key] for key in decoded): raise ValueError('Saved decode differs from actual preserved logits')
+                    validate_saved_decode(row, decoded)
                     if row['negativeControl'] and row['rawWords']: raise ValueError('Negative control decoded words')
                 difference = validate_parity(left, right, px, py)
                 outcome.update(parity=True, maxPosteriorDifference=difference)

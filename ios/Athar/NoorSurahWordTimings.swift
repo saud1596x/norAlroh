@@ -21,6 +21,15 @@ struct NoorSurahWordTimingTrack: Sendable {
         }
         self.surah = surah; self.spans = spans
     }
+    /// The actual first published occurrence of this visible native word.
+    /// This is a media offset, not a synthetic playback clock or interpolation.
+    func startOffset(wordID: Int, verse: String) -> Double? {
+        let parts = verse.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2, parts[0] == surah, parts[1] > 0,
+              verse == "\(surah):\(parts[1])",
+              let span = spans.first(where: { $0[0] == parts[1] && $0[1] == wordID }) else { return nil }
+        return Double(span[2]) / 1000
+    }
     func position(at seconds: Double, duration: Double) -> Position? {
         guard seconds.isFinite, duration.isFinite, seconds >= 0, duration > 0,
               seconds < duration, let last = spans.last, Double(last[3]) <= duration * 1000 + 50 else { return nil }

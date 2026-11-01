@@ -115,19 +115,23 @@ final class NoorContinuousReaderUITests: XCTestCase {
         XCTAssertTrue(reciterSearch.waitForExistence(timeout: 10))
         XCTAssertFalse(app.keyboards.firstMatch.exists, "Opening the picker must not focus search")
         reciterSearch.tap(); reciterSearch.typeText("الحذيفي\n")
-        XCTAssertEqual(app.staticTexts.matching(identifier: "reader.voice.علي بن عبدالرحمن الحذيفي").count, 1,
-                       "One voice heading contains its distinct recording choices")
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "reader.voice.علي بن عبدالرحمن الحذيفي").count, 1,
+                       "One voice group contains its exact recording")
         XCTAssertFalse(app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"].exists)
         let voice = app.buttons["reader.reciter.surah:74:74"]
         XCTAssertTrue(voice.waitForExistence(timeout: 10), "The exact word-timed whole-surah recording is searchable")
         voice.tap()
+        let stopPlayback = app.buttons["reader.audio.stop"]
+        XCTAssertTrue(stopPlayback.waitForExistence(timeout: 20), "The explicit selected voice starts playback")
+        XCTAssertFalse(app.buttons["study.microphone"].exists)
+        stopPlayback.tap()
         XCTAssertTrue(picker.waitForExistence(timeout: 10)); picker.tap()
         let selectedSearch = app.textFields["reader.reciters.search"]
         XCTAssertTrue(selectedSearch.waitForExistence(timeout: 10))
         selectedSearch.tap(); selectedSearch.typeText("الحذيفي\n")
         XCTAssertTrue(voice.waitForExistence(timeout: 10))
         XCTAssertEqual(voice.value as? String, "محدد")
-        XCTAssertTrue(voice.label.contains("السورة كاملة"))
+        XCTAssertEqual(voice.label, "علي بن عبدالرحمن الحذيفي")
         XCTAssertFalse(app.buttons["reader.reciter.Saood_ash-Shuraym_128kbps"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "word-timed-reciter-selected-and-searchable"; screenshot.lifetime = .keepAlways; add(screenshot)

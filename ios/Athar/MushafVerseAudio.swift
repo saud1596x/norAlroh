@@ -9,9 +9,19 @@ import MediaPlayer
 struct MushafPlaybackClockEpoch: Sendable {
     private var generation = UUID()
     private var seeking = false
-    var observationToken: UUID? { seeking ? nil : generation }
-    mutating func beginSeek() -> UUID {
+    private(set) var requiresInitialSeek = false
+    private var initialClockFloor: Double?
+    var permitsPlayback: Bool { !seeking && !requiresInitialSeek }
+    var awaitingInitialClock: Bool { initialClockFloor != nil }
+    var observationToken: UUID? { permitsPlayback ? generation : nil }
+    mutating func prepareInitialPosition(_ seconds: Double?) {
+        initialClockFloor = seconds.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        requiresInitialSeek = initialClockFloor != nil
+    }
+    mutating func beginSeek(to seconds: Double? = nil) -> UUID {
         generation = UUID(); seeking = true
+        requiresInitialSeek = false
+        if initialClockFloor != nil, let seconds { initialClockFloor = seconds }
         return generation
     }
     mutating func endSeek(_ token: UUID) -> Bool {
@@ -19,8 +29,16 @@ struct MushafPlaybackClockEpoch: Sendable {
         seeking = false
         return true
     }
-    mutating func invalidate() { generation = UUID(); seeking = false }
-    func acceptsObservation(_ token: UUID) -> Bool { !seeking && generation == token }
+    mutating func invalidate() {
+        generation = UUID(); seeking = false; requiresInitialSeek = false; initialClockFloor = nil
+    }
+    func acceptsObservation(_ token: UUID) -> Bool { permitsPlayback && generation == token }
+    mutating func recordObservedClock(_ seconds: Double) -> Bool {
+        guard permitsPlayback, seconds.isFinite, seconds >= 0 else { return false }
+        if let floor = initialClockFloor, seconds + 0.05 < floor { return false }
+        initialClockFloor = nil
+        return true
+    }
 }
 
 /// Cursor stores a range once. Only a real item-end event starts the next
@@ -147,7 +165,7 @@ struct MushafPlaybackClockEpoch: Sendable {
         let keys = source == nil ? selectedCatalogReciter?.playbackKeys(keys) ?? keys : keys
         stop(); error = nil; lastPlaybackDiagnostic = ""
         guard !usesPublishedTimingSource || selectedCatalogReciter?.hasCompleteWordTracking == true else {
-            error = "اختر قارئًا مع تتبّع كامل للكلمات أولًا."; return
+            error = "اختر القارئ أولًا."; return
         }
         guard NoorAudioFocus.shared.preparePlayback(focusID) else {
             error = "أوقف التسميع أولًا للاستماع إلى التلاوة."; return
@@ -170,7 +188,7 @@ struct MushafPlaybackClockEpoch: Sendable {
     func pausePlayback() {
         activeWordID = nil
         if waitingKey != nil { delay?.cancel(); delay = nil; isPaused = true; updateNowPlaying(); return }
-        guard player != nil, playing != nil else { return }
+        guard player != nil, playing != nil || loadingKey != nil else { return }
         saveBookmark(); isPaused = true; player?.pause(); updateNowPlaying()
     }
     func resumePlayback() {
@@ -178,25 +196,40 @@ struct MushafPlaybackClockEpoch: Sendable {
             waitingKey = nil; isPaused = false; advance(); return
         }
         guard isPaused, let player, NoorAudioFocus.shared.preparePlayback(focusID) else { return }
-        isPaused = false; player.playImmediately(atRate: playbackRate); updateNowPlaying()
+        isPaused = false
+        // A pending initial/explicit seek owns the next transport start.
+        if clockEpoch.permitsPlayback { player.playImmediately(atRate: playbackRate) }
+        updateNowPlaying()
     }
     func seek(to seconds: Double) {
         guard seconds.isFinite, let player, let item = player.currentItem,
               durationSeconds > 0, seconds >= 0, seconds <= durationSeconds else { return }
-        let seekToken = clockEpoch.beginSeek()
+        let seekToken = clockEpoch.beginSeek(to: seconds)
         removeTimeObservation()
         activeWordID = nil; activeVerseKey = nil
         let token = revision
+        player.pause()
         item.cancelPendingSeeks()
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak player, weak item] finished in
             Task { @MainActor in
                 guard let self, let player, let item, self.revision == token,
                       self.player === player, player.currentItem === item,
                       self.clockEpoch.endSeek(seekToken) else { return }
-                // A cancelled/failed seek never publishes the requested time.
-                // Re-arm from the actual next media-clock observation instead.
-                if finished { self.currentSeconds = seconds; self.updateNowPlaying() }
+                // A seek completion is not a media-clock observation. The
+                // periodic observer alone updates elapsed time/highlighting.
+                guard finished else {
+                    self.error = "تعذّر الانتقال إلى موضع التلاوة. حاول التشغيل مجددًا."
+                    self.stop(); return
+                }
                 self.installTimeObservation(player, item: item, revision: token)
+                if !self.isPaused, self.clockEpoch.permitsPlayback {
+                    player.playImmediately(atRate: self.playbackRate)
+                } else if self.isPaused {
+                    // Ready media intentionally paused by its owner is no
+                    // longer waiting on the buffering/seek load deadline.
+                    self.loadDeadline?.cancel(); self.loadDeadline = nil
+                }
+                self.updateNowPlaying()
             }
         }
     }
@@ -204,7 +237,7 @@ struct MushafPlaybackClockEpoch: Sendable {
         guard rate.isFinite, (0.75...1.25).contains(rate) else { return false }
         playbackRate = rate
         UserDefaults.standard.set(rate, forKey: bookmarkKey + ".rate")
-        if !isPaused, playing != nil { player?.rate = rate }
+        if !isPaused, playing != nil, clockEpoch.permitsPlayback { player?.rate = rate }
         updateNowPlaying()
         return true
     }
@@ -350,6 +383,7 @@ struct MushafPlaybackClockEpoch: Sendable {
         traceAudio("player.create.begin")
         let playback = AVPlayer(playerItem: item); player = playback
         traceAudio("player.create.end")
+        clockEpoch.prepareInitialPosition(bookmarkSeconds)
         installTimeObservation(playback, item: item, revision: token)
         if usesPublishedTimingSource {
             if let (reciter, surah) = NoorAudioIntegrity.reciterRecording(key),
@@ -418,9 +452,11 @@ struct MushafPlaybackClockEpoch: Sendable {
             }
         }
         startLoadDeadline(key: key, token: token)
-        traceAudio("player.play.begin")
-        playback.playImmediately(atRate: playbackRate)
-        traceAudio("player.play.end")
+        if clockEpoch.permitsPlayback {
+            traceAudio("player.play.begin")
+            playback.playImmediately(atRate: playbackRate)
+            traceAudio("player.play.end")
+        }
     }
     private func removeTimeObservation() {
         if let timeObservation, let player { player.removeTimeObserver(timeObservation) }
@@ -436,6 +472,8 @@ struct MushafPlaybackClockEpoch: Sendable {
                 guard let self, let playback, let item, self.revision == token, self.player === playback,
                       playback.currentItem === item, self.clockEpoch.acceptsObservation(clockToken),
                       seconds.isFinite, seconds >= 0 else { return }
+                let firstPosition = self.clockEpoch.awaitingInitialClock
+                guard self.clockEpoch.recordObservedClock(seconds) else { return }
                 self.currentSeconds = seconds
                 let position = self.isPaused || playback.timeControlStatus != .playing ? nil
                     : self.surahWordTiming?.position(at: seconds, duration: self.durationSeconds)
@@ -446,20 +484,31 @@ struct MushafPlaybackClockEpoch: Sendable {
                     let verse = position?.verse ?? self.ayahTiming?.verse(at: seconds, duration: self.durationSeconds)
                     if self.activeVerseKey != verse { self.activeVerseKey = verse }
                 }
+                if firstPosition, let key = self.currentCanonicalKey {
+                    self.refreshPlaybackState(playback, key: key, token: token)
+                }
             }
         }
     }
     private func refreshPlaybackState(_ playback: AVPlayer, key: String, token: UUID) {
         guard revision == token, player === playback else { return }
+        if clockEpoch.requiresInitialSeek {
+            guard playback.currentItem?.status == .readyToPlay, durationSeconds > 0,
+                  let seconds = bookmarkSeconds else { return }
+            guard seconds < durationSeconds else {
+                error = "موضع التلاوة خارج مدة هذا التسجيل. اختر موضعًا آخر."
+                stop(); return
+            }
+            bookmarkSeconds = nil
+            seek(to: seconds)
+            return
+        }
         if playback.timeControlStatus == .playing,
-           playback.currentItem?.status == .readyToPlay {
+           playback.currentItem?.status == .readyToPlay,
+           clockEpoch.permitsPlayback, !clockEpoch.awaitingInitialClock {
             traceAudio("ready-state.begin")
             loadDeadline?.cancel(); loadDeadline = nil
             playing = key; loadingKey = nil
-            if let seconds = bookmarkSeconds, durationSeconds > 0 {
-                bookmarkSeconds = nil
-                seek(to: min(seconds, max(0, durationSeconds - 0.05)))
-            }
             if !reportedStart {
                 reportedStart = true; onVerse?(key)
                 if let automaticCacheKey { NoorAudioDownloads.shared.cacheWhenHeard(automaticCacheKey) }
