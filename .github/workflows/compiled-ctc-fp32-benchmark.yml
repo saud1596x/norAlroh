@@ -1,0 +1,145 @@
+name: Nonshipping compiled app FP32 CTC comparison
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/reciter_alignment/compiled_fp32_probe.py
+      - tools/reciter_alignment/test_compiled_fp32_probe.py
+      - .github/workflows/compiled-ctc-fp32-benchmark.yml
+permissions:
+  contents: read
+concurrency:
+  group: compiled-ctc-fp32-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  compiled-fp32:
+    runs-on: macos-15
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONHASHSEED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Select installed Xcode without generating or building an app
+        run: python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+      - name: Cache only source assets that the approved preparer revalidates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/noor-independent-ctc
+            release/independent-coreml-model-seed0-float32
+          key: compiled-fp32-source-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/prepare-independent-ctc.py', 'scripts/coreml-build-constraints.txt', 'tools/reciter_alignment/export_coreml.py') }}
+      - name: Create minimal pinned Core ML probe runtime
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/noor-compiled-fp32-runtime
+          /tmp/noor-compiled-fp32-runtime/bin/python -m pip install --disable-pip-version-check \
+            -c scripts/coreml-build-constraints.txt coremltools==9.0 numpy==2.1.3
+      - name: Pure validator checks only, without inference
+        run: /tmp/noor-compiled-fp32-runtime/bin/python -m unittest discover -s tools/reciter_alignment -p test_compiled_fp32_probe.py -v
+      - name: Record actual host and GPU availability without claiming GPU dispatch
+        run: |
+          set -euo pipefail
+          mkdir -p release/compiled-ctc-fp32
+          python3 - <<'PY'
+          import json, platform, subprocess
+          from pathlib import Path
+          def observed(command):
+              result = subprocess.run(command, text=True, capture_output=True, timeout=60)
+              return {'command': command, 'exitCode': result.returncode,
+                      'stdout': result.stdout.strip(), 'stderr': result.stderr.strip()}
+          host = {'source': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
+                  'architecture': platform.machine(), 'gpuExecutionProven': False,
+                  'metalAvailability': observed(['xcrun','swift','-e',
+                      'import Metal; print(MTLCreateSystemDefaultDevice()?.name ?? "NONE")']),
+                  'xcode': observed(['xcodebuild','-version']), 'macOS': observed(['sw_vers']),
+                  'scope': 'GPU-allowed compute profile only; no actual GPU dispatch proof'}
+          Path('release/compiled-ctc-fp32/host.json').write_text(json.dumps(host, indent=2)+'\n')
+          PY
+      - name: Prepare only the approved app CTC if compiled assets are unavailable
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, subprocess, sys, time
+          from pathlib import Path
+          out=Path('release/compiled-ctc-fp32')
+          receipt={'status':'STARTED','scope':'PINNED_MODEL_PREPARATION_ONLY_NO_APP_BUILD'}
+          runtime='/tmp/noor-compiled-fp32-runtime/bin/python'
+          compiled=Path('ios/IndependentCTC/quran-ctc.mlmodelc')
+          command=([runtime,'tools/reciter_alignment/compiled_fp32_probe.py','verify-assets',
+                    '--assets-dir','ios/IndependentCTC','--source-package',
+                    'release/independent-coreml-model-seed0-float32/quran-ctc-float32.mlpackage']
+                   if compiled.exists() else [sys.executable,'scripts/prepare-independent-ctc.py'])
+          wrapped=[sys.executable,'scripts/run-native-with-deadline.py','600',*command]
+          receipt['command']=command; receipt['wrappedCommand']=wrapped
+          receipt['reusedCompiledAssets']=compiled.exists(); receipt['deadlineSeconds']=600
+          started=time.monotonic(); code=1
+          try:
+              with (out/'prepare.txt').open('w') as log:
+                  # The existing wrapper owns the entire converter process
+                  # group, even if its root exits before a descendant on TERM.
+                  code=subprocess.run(wrapped, stdout=log, stderr=subprocess.STDOUT).returncode
+              receipt['exitCode']=code
+              receipt['status']='READY' if code==0 else 'TIMEOUT' if code==124 else 'FAILED'
+          except Exception as error:
+              receipt['status']='FAILED'; receipt['error']=type(error).__name__+': '+str(error)
+          finally:
+              receipt['elapsedSeconds']=time.monotonic()-started
+              (out/'prepare.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          raise SystemExit(code)
+          PY
+      - name: Run two fresh compute processes, each bounded at 600 seconds
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, subprocess, sys, time
+          from pathlib import Path
+          out=Path('release/compiled-ctc-fp32'); receipts=[]
+          for unit in ['CPU_ONLY','CPU_AND_GPU']:
+              command=['/tmp/noor-compiled-fp32-runtime/bin/python',
+                       'tools/reciter_alignment/compiled_fp32_probe.py','profile',
+                       '--assets-dir','ios/IndependentCTC','--source-package',
+                       'release/independent-coreml-model-seed0-float32/quran-ctc-float32.mlpackage',
+                       '--fixtures','ios/AtharTests/RecitationFixtures','--compute',unit,
+                       '--output-dir',str(out/unit)]
+              wrapped=[sys.executable,'scripts/run-native-with-deadline.py','600',*command]
+              receipt={'computeUnits':unit,'command':command,'wrappedCommand':wrapped,
+                       'deadlineSeconds':600,'status':'STARTED'}
+              receipts.append(receipt)
+              (out/'processes.json').write_text(json.dumps(receipts,indent=2)+'\n')
+              started=time.monotonic()
+              try:
+                  with (out/(unit+'.txt')).open('w') as log:
+                      receipt['exitCode']=subprocess.run(wrapped, stdout=log, stderr=subprocess.STDOUT).returncode
+                      receipt['status']=('COMPLETED' if receipt['exitCode']==0 else
+                                         'TIMEOUT' if receipt['exitCode']==124 else 'FAILED')
+              except Exception as error:
+                  receipt['status']='FAILED'; receipt['error']=type(error).__name__+': '+str(error)
+              finally:
+                  receipt['elapsedSeconds']=time.monotonic()-started
+                  (out/'processes.json').write_text(json.dumps(receipts,indent=2)+'\n')
+          # Preserve both profiles before strict comparison marks any failure.
+          PY
+      - name: Require source, raw word, frame, clock and posterior parity
+        if: always()
+        run: |
+          set -euo pipefail
+          /tmp/noor-compiled-fp32-runtime/bin/python tools/reciter_alignment/compiled_fp32_probe.py compare \
+            --baseline release/compiled-ctc-fp32/CPU_ONLY \
+            --candidate release/compiled-ctc-fp32/CPU_AND_GPU \
+            --expected-source "$GITHUB_SHA" --output release/compiled-ctc-fp32/comparison.json
+      - name: Preserve original successful and failed comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-app-ctc-fp32-${{ github.sha }}
+          path: release/compiled-ctc-fp32
+          if-no-files-found: error
+          retention-days: 14
