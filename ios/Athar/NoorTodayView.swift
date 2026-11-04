@@ -167,7 +167,7 @@ struct NoorTodayView: View {
     /// Optional account: a quiet chip, never a full-width panel.
     private var accountAction: some View {
         NavigationLink { NoorAccountView() } label: {
-            Label(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "الدخول",
+            Label(account.signedIn ? (account.name.isEmpty ? "حسابي" : account.name) : "حسابي",
                   systemImage: account.signedIn ? "person.crop.circle.fill" : NoorChromeTokens.Symbol.account)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
@@ -178,7 +178,7 @@ struct NoorTodayView: View {
                 .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.22), lineWidth: 1))
                 .contentShape(Capsule())
         }.buttonStyle(NoorChromePressStyle(lowMotion: store.data.lowMotion)).accessibilityIdentifier("home.account")
-            .accessibilityLabel("حسابي")
+            .accessibilityLabel(account.signedIn && !account.name.isEmpty ? "حسابي، \(account.name)" : "حسابي")
             .accessibilityValue(account.signedIn ? account.syncStatus : "لم تسجّل الدخول")
             .accessibilityHint("اختياري؛ القراءة والأذكار متاحة دون حساب")
     }
@@ -206,7 +206,7 @@ struct NoorTodayView: View {
                 .font(.body)
                 .opacity(0.88)
                 .fixedSize(horizontal: false, vertical: true)
-            if let plan = khatmah.active, plan.finished == nil {
+            if let plan = khatmah.active, plan.finished == nil, ward != nil || finishedDailyWard {
                 khatmahProgress(plan)
             }
             // When today's ward is complete the title says so, and there is no action,
@@ -250,7 +250,7 @@ struct NoorTodayView: View {
         let value = plan.progress.isFinite ? min(1, max(0, plan.progress)) : 0
         return VStack(alignment: .leading, spacing: 6) {
             ProgressView(value: value).tint(Theme.buttonInk)
-            Text("قرأت \(ArabicSearch.digits(plan.completed.count)) من \(ArabicSearch.digits(total)) صفحة في ختمتك")
+            Text("أكملت \(ArabicSearch.digits(plan.completed.count)) من \(pageCount(total)) في ختمتك")
                 .font(.footnote).opacity(0.88)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -346,14 +346,15 @@ struct NoorTodayView: View {
         return VStack(alignment: .leading, spacing: NoorChromeTokens.Space.medium) {
             sectionTitle("دعاء")
             NavigationLink { NoorWidgetDuaReader(duaID: dua.id) } label: {
-                HStack(alignment: .top, spacing: 14) {
-                    Capsule().fill(Theme.gold.opacity(0.55)).frame(width: 3)
-                        .accessibilityHidden(true)
-                    Text(dua.text).font(.system(.title3, design: .serif)).lineSpacing(8)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Text(dua.text).font(.system(.title3, design: .serif)).lineSpacing(8)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 17)
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(Theme.gold.opacity(0.55)).frame(width: 3)
+                            .accessibilityHidden(true)
+                    }
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }.buttonStyle(NoorChromePressStyle(lowMotion: store.data.lowMotion)).accessibilityIdentifier("home.dua")
@@ -413,7 +414,7 @@ struct NoorTodayView: View {
                 VStack(spacing: 0) {
                     NavigationLink { KhatmahJourneyView() } label: {
                         homeRoute("رحلة الختمة",
-                            subtitle: khatmah.active.map { "قرأت \(ArabicSearch.digits($0.completed.count)) من \(ArabicSearch.digits(605 - $0.firstPage)) صفحة" } ?? "خطتك ووردك اليومي",
+                            subtitle: khatmah.active.map { "أكملت \(ArabicSearch.digits($0.completed.count)) من \(pageCount(605 - $0.firstPage))" } ?? "خطتك ووردك اليومي",
                             symbol: "book.closed")
                     }.accessibilityIdentifier("home.khatmah")
                     insetRule

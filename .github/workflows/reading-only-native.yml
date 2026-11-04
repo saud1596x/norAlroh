@@ -76,11 +76,11 @@ jobs:
           outputs['release/publishing-content-report.json']=digest('release/publishing-content-report.json')
           assert all(digest(name)==value for name,value in outputs.items())
           changed=subprocess.check_output(['git','diff','--name-only','HEAD'],text=True).splitlines()
-          assert set(changed)<=set(outputs), 'Publishing preparation changed unrelated tracked source'
           receipt.update(outputs=outputs,trackedGeneratedChanges=changed)
           destination=root/'release/mushaf-closure-producer/account-preparation.json'
           destination.parent.mkdir(parents=True,exist_ok=True)
           destination.write_text(json.dumps(receipt,indent=2)+'\n')
+          assert set(changed)<=set(outputs), 'Publishing preparation changed unrelated tracked source: '+repr(sorted(set(changed)-set(outputs)))
           PY
       - name: Build one immutable account-enabled Release product
         id: product

@@ -35,6 +35,6 @@ report = {'status': 'EXACT_SOURCE_COPY_VERIFIED' if all(checks.values()) else 'F
           'comparisonNormalization': 'NONE; exact Unicode codepoint equality',
           'nativeRendering': 'NOT_TESTED', 'religiousAndPrintedPageReview': 'PENDING',
           'scope': 'Verbatim source-copy integrity. This does not certify font shaping, QCF glyph semantics or specialist approval.'}
-(ROOT / 'release/quran-text-integrity.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+(ROOT / 'release/quran-text-integrity.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8', newline='\n')
 print(json.dumps(report, ensure_ascii=False, indent=2))
 sys.exit(not all(checks.values()))
