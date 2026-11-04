@@ -1,0 +1,168 @@
+name: Noor reading-only Release verification
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact complete source commit to verify (no signing or publication)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: noor-reading-only-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    outputs:
+      manifest-sha256: ${{ steps.product.outputs.manifest-sha256 }}
+      archive-sha256: ${{ steps.product.outputs.archive-sha256 }}
+      producer-run-id: ${{ steps.product.outputs.producer-run-id }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require exact complete source
+        env:
+          NOOR_EXPECTED_SOURCE: ${{ inputs.source_sha }}
+        run: |
+          python3 - <<'PY'
+          import os,re,subprocess
+          expected=os.environ['NOOR_EXPECTED_SOURCE']
+          assert re.fullmatch('[0-9a-f]{40}',expected), 'A complete source SHA is required'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==expected
+          assert not subprocess.check_output(['git','status','--porcelain'],text=True)
+          print('Exact source verified; this workflow cannot sign or publish.')
+          PY
+      - name: Select installed Xcode and verify test selection
+        run: |
+          set -euo pipefail
+          python3 scripts/select-xcode.py >> "$GITHUB_ENV"
+          python3 scripts/check-native-test-selectors.py scripts/test-reading-only.sh
+          python3 scripts/tests/test_reading_only_surface.py
+          python3 scripts/verify-quran-text.py
+      - name: Install project generator
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Verify unchanged artifact binding helpers
+        run: python3 -m unittest discover -s scripts/tests -p test_native_product_artifact.py -v
+      - name: Prepare and bind optional-account publishing resources
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          root=pathlib.Path.cwd()
+          def digest(name):
+              return hashlib.sha256((root/name).read_bytes()).hexdigest()
+          inputs=['scripts/prepare-publishing.py','scripts/account_privacy.py',
+                  'release/config.json','release/legal-content.json','release/legal-content-accounts.json']
+          receipt={'sourceCommit':os.environ['GITHUB_SHA'],'producerRunID':os.environ['GITHUB_RUN_ID'],
+                   'command':['python3','scripts/prepare-publishing.py','--accounts'],
+                   'inputs':{name:digest(name) for name in inputs},
+                   'privacyBaseSHA256':digest('ios/Athar/PrivacyInfo.xcprivacy')}
+          subprocess.run(receipt['command'],check=True)
+          subprocess.run(receipt['command']+['--check'],check=True)
+          report=json.loads((root/'release/publishing-content-report.json').read_text())
+          assert report['accountMode']=='firebase-opt-in'
+          outputs=dict(report['files'])
+          outputs['release/publishing-content-report.json']=digest('release/publishing-content-report.json')
+          assert all(digest(name)==value for name,value in outputs.items())
+          changed=subprocess.check_output(['git','diff','--name-only','HEAD'],text=True).splitlines()
+          assert set(changed)<=set(outputs), 'Publishing preparation changed unrelated tracked source'
+          receipt.update(outputs=outputs,trackedGeneratedChanges=changed)
+          destination=root/'release/mushaf-closure-producer/account-preparation.json'
+          destination.parent.mkdir(parents=True,exist_ok=True)
+          destination.write_text(json.dumps(receipt,indent=2)+'\n')
+          PY
+      - name: Build one immutable account-enabled Release product
+        id: product
+        run: |
+          set -euo pipefail
+          bash scripts/build-mushaf-closure.sh
+          python3 scripts/prepare-publishing.py --accounts --check
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path.cwd()
+          receipt=root/'release/mushaf-closure-producer/account-preparation.json'
+          binding=json.loads(receipt.read_text())
+          for name,expected in {**binding['inputs'],**binding['outputs']}.items():
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected, name+' changed during build'
+          manifest=json.loads((root/'release/mushaf-native-artifact/manifest.json').read_text())
+          assert manifest['sourceCommit']==binding['sourceCommit']
+          assert manifest['producerRunID']==binding['producerRunID']
+          assert manifest['files']['producer/account-preparation.json']['sha256']==hashlib.sha256(receipt.read_bytes()).hexdigest()
+          PY
+      - name: Preserve exact producer product
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-only-products-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            release/mushaf-native-artifact/manifest.json
+            release/mushaf-native-artifact/native-products.tar.gz
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+      - name: Preserve original build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-only-build-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            release/mushaf-closure-producer/
+            release/recitation-core-preflight/
+          retention-days: 7
+          if-no-files-found: error
+  native:
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: ${{ matrix.minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - size: small
+            minutes: 55
+          - size: large
+            minutes: 55
+          - size: services
+            minutes: 25
+    env:
+      NATIVE_MANIFEST_SHA256: ${{ needs.build.outputs.manifest-sha256 }}
+      NATIVE_ARCHIVE_SHA256: ${{ needs.build.outputs.archive-sha256 }}
+      NATIVE_PRODUCER_RUN_ID: ${{ needs.build.outputs.producer-run-id }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: reading-only-products-${{ github.run_id }}-${{ github.sha }}
+          path: release/mushaf-native-artifact
+      - name: Select verified producer Xcode
+        run: |
+          set -euo pipefail
+          test "$NATIVE_PRODUCER_RUN_ID" = "$GITHUB_RUN_ID"
+          python3 scripts/native-product-artifact.py select --artifact release/mushaf-native-artifact >> "$GITHUB_ENV"
+      - name: Execute actual reading-only app journeys and service contracts
+        run: bash scripts/test-reading-only.sh '${{ matrix.size }}'
+      - name: Preserve original native results and screenshots including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-only-${{ matrix.size }}-${{ github.run_id }}-${{ github.sha }}
+          path: release/reading-only/${{ matrix.size }}/
+          retention-days: 7
+          compression-level: 6
+          if-no-files-found: error

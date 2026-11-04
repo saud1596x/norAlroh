@@ -1,6 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import AVFoundation
 import UIKit
 
 struct QuranView: View {
@@ -136,7 +135,6 @@ struct SettingsView: View {
     @EnvironmentObject var dhikrCounters: DhikrCounterStore
     @EnvironmentObject var salawat: NoorSalawatStore
     @EnvironmentObject var memorization: MemorizationStore
-    @EnvironmentObject var recitation: LocalRecitationRecorder
     @EnvironmentObject var speech: LegacySpeechArchive
     @EnvironmentObject var retiredFriday: NoorRetiredFridayCleanup
     @EnvironmentObject var account: NoorAccountStore
@@ -146,8 +144,6 @@ struct SettingsView: View {
     @State private var document = ExportDocument(bytes: Data())
     @State private var exportMessage: String?
     @State private var erasing = false
-    @State private var microphonePermission = AVAudioApplication.shared.recordPermission
-    @State private var requestingMicrophone = false
     @State private var preparingExport = false
     var body: some View {
         Form {
@@ -164,31 +160,6 @@ struct SettingsView: View {
             Section("القراءة والتذكيرات") {
                 NavigationLink("تذكيراتي") { NoorReminderSettings() }.accessibilityIdentifier("settings.reminders")
                 NavigationLink("حماية وقت الورد") { NoorFocusView() }
-            }
-            Section("الميكروفون والتسميع") {
-                DisclosureGroup("الميكروفون") {
-                Text(microphonePermission == .granted ? "الميكروفون مسموح" : microphonePermission == .denied ? "إذن الميكروفون مرفوض" : "لم يُطلب إذن الميكروفون بعد")
-                    .accessibilityIdentifier("settings.microphone.status")
-                if microphonePermission == .undetermined {
-                    Button("السماح بالميكروفون") {
-                        Task { @MainActor in
-                            guard !requestingMicrophone else { return }
-                            requestingMicrophone = true
-                            _ = await AVAudioApplication.requestRecordPermission()
-                            microphonePermission = AVAudioApplication.shared.recordPermission
-                            requestingMicrophone = false
-                        }
-                    }.disabled(requestingMicrophone)
-                    .accessibilityIdentifier("settings.microphone.request")
-                } else {
-                    Button("فتح إعدادات الميكروفون") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                    }.accessibilityIdentifier("settings.microphone.open")
-                }
-                Text("يُستخدم الميكروفون عند بدء التسميع. السماح به لا يضمن دقة التعرّف على القراءة.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                Text("التسميع مباشر داخل المصحف. تُحذف ملفات الصوت المؤقتة عند إنهائه أو إغلاق المصحف، ولا توجد مكتبة تسجيلات.").font(.footnote).foregroundStyle(.secondary)
-                }
             }
             Section("مساحة تحترم خصوصيتك") {
                 Toggle("تقليل الحركة", isOn: Binding(
@@ -224,7 +195,7 @@ struct SettingsView: View {
                 }
                 .disabled(preparingExport || erasing)
                 if preparingExport { ProgressView("تجهيز ملف التصدير…") }
-                Text("ملف التصدير غير مشفر. احفظه في مكان خاص. لا يتضمن ملف التصدير صوت التسميع.").font(.subheadline).foregroundStyle(.secondary)
+                Text("ملف التصدير غير مشفر. احفظه في مكان خاص.").font(.subheadline).foregroundStyle(.secondary)
                 Button("حذف كل بياناتي", role: .destructive) { erase = true }.disabled(erasing || preparingExport)
                 if erasing { ProgressView("حذف البيانات والنموذج المحلي…") }
                 }
@@ -237,8 +208,7 @@ struct SettingsView: View {
             }
             Section("عن نور الروح") {
                 DisclosureGroup("عن التطبيق") {
-                Text("مصحف كامل، وأذكار ومواقيت الصلاة. التسميع يحاول تحديد موضع التلاوة داخل المصحف، وقد يتعذّر التتبع. لا يقيس صحة النطق أو التجويد. التسميع مباشر داخل المصحف دون مكتبة تسجيلات.")
-                    .accessibilityIdentifier("settings.studyCapability")
+                Text("مصحف كامل، وأذكار ومواقيت الصلاة.")
                 Text("النص القرآني مضمّن في التطبيق. مواقيت الصلاة محسوبة محليًا. لا يقدم نور الروح فتاوى أو تفسيرًا مولدًا.")
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—") · البناء \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -246,11 +216,7 @@ struct SettingsView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Theme.background)
-        .noorScreenChrome().navigationTitle("الإعدادات")
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            microphonePermission = AVAudioApplication.shared.recordPermission
-        }
+        .noorScreenChrome(nightMotion: true).navigationTitle("الإعدادات")
         // Pulling a long settings list must not dismiss the entire sheet.
         // Users can still leave explicitly with the Done button.
         .interactiveDismissDisabled()
@@ -263,7 +229,8 @@ struct SettingsView: View {
                 account.disconnectLocalSync()
                 guard await speech.eraseModel() else { exportMessage = speech.message; return }
                 guard await NoorAudioDownloads.shared.erase() else { exportMessage = NoorAudioDownloads.shared.message; return }
-                guard recitation.erase() else { exportMessage = recitation.message; return }
+                do { try await Task.detached(priority: .utility) { try QuranLiveRecitationStorage.removePreviousRecordings() }.value }
+                catch { exportMessage = "تعذّر حذف ملفات الصوت القديمة. حاول بعد فتح قفل الجهاز."; return }
                 guard NoorFocusController.shared.erase() else { exportMessage = NoorFocusController.shared.message ?? "تعذّر مسح إعدادات حماية الورد."; return }
                 guard await KhatmahStore.shared.erase() else { exportMessage = KhatmahStore.shared.error; return }
                 guard salawat.erase() else { exportMessage = salawat.error; return }

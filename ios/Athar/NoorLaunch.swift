@@ -67,18 +67,11 @@ struct NoorLaunchView: View {
         VStack(spacing: 22) {
             Spacer()
             ZStack {
-                NoorMotionSurface().frame(width: 280, height: 280).clipped()
-                Circle().fill(RadialGradient(colors: [Theme.gold.opacity(0.12), .clear], center: .center, startRadius: 10, endRadius: 130))
-                    .frame(width: 260, height: 260).accessibilityHidden(true)
-                NoorArch().trim(from: 0, to: drawn ? 1 : 0)
-                    .stroke(Theme.gold.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    .frame(width: 170, height: 205).accessibilityHidden(true)
-                NoorRosette().stroke(Theme.gold.opacity(0.22), lineWidth: 1)
-                    .frame(width: 94, height: 94).rotationEffect(.degrees(drawn ? 0 : -8))
-                    .scaleEffect(drawn ? 1 : 0.92).accessibilityHidden(true)
+                NoorSanctuaryScene(compact: false)
                 Text("نور").font(.system(size: 38, weight: .medium, design: .serif)).foregroundStyle(Theme.gold)
                     .opacity(drawn ? 1 : 0).accessibilityHidden(true)
             }
+            .frame(maxWidth: 400).frame(height: 270).clipped()
             VStack(spacing: 12) {
                 Text("نور الروح").font(.largeTitle.bold()).foregroundStyle(.primary)
                 Text("قرآنٌ، وذكرٌ، وسكينة").font(.subheadline).foregroundStyle(.secondary)
@@ -87,7 +80,7 @@ struct NoorLaunchView: View {
             Button("تجاوز الدخولية", action: skip).font(.subheadline).frame(minWidth: 120, minHeight: 44)
                 .accessibilityIdentifier("launch.skip")
         }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
+            .background(Theme.background)
             .accessibilityIdentifier("launch.intro")
             .onAppear {
                 withAnimation(reduced || store.data.lowMotion ? nil : .easeInOut(duration: 0.85)) { drawn = true }

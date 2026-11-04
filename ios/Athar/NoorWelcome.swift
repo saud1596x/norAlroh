@@ -5,41 +5,42 @@ struct NoorWelcomeView: View {
     let continueWithoutAccount: () -> Void
     @EnvironmentObject private var account: NoorAccountStore
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(alignment: .leading, spacing: 28) {
                 ZStack {
-                    NoorArch().stroke(Theme.gold.opacity(0.4), lineWidth: 1.5)
-                        .frame(width: 130, height: 160)
-                    NoorRosette().stroke(Theme.gold.opacity(0.22), lineWidth: 1)
-                        .frame(width: 76, height: 76)
-                    Text("نور").font(.system(size: 30, weight: .medium, design: .serif))
-                        .foregroundStyle(Theme.gold)
+                    NoorSanctuaryScene(compact: false)
+                    VStack(spacing: 10) {
+                        Text("نور الروح").font(.largeTitle.bold()).foregroundStyle(Theme.gold)
+                        Text("قرآنٌ، وذكرٌ، وسكينة").font(.subheadline).foregroundStyle(.secondary)
+                    }.padding(.top, 70)
                 }
-                .frame(maxWidth: .infinity, minHeight: 190)
+                .frame(maxWidth: .infinity)
+                .frame(height: typeSize.isAccessibilitySize ? 170 : 240)
+                .clipped()
                 .accessibilityHidden(true)
-                VStack(spacing: 12) {
-                    Text("أهلًا بك في نور الروح")
-                        .font(.largeTitle.bold()).multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("على مهل،\nاقترب كل يوم.")
+                        .font(.largeTitle.bold()).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("welcome.title")
-                    Text("ابدأ من حيث توقفت، واقرأ وتدرّب داخل المصحف بهدوء.")
+                    Text("مساحتك لوردٍ من القرآن، وذكرٍ يرافق يومك. ابدأ بخطوة تناسبك، وعد إلى موضعك متى شئت.")
                         .font(.body).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(alignment: .leading, spacing: 18) {
-                    Label("مصحف مريح للقراءة", systemImage: "book.pages")
-                    Label("تسميعك وتسجيلاتك داخل المصحف", systemImage: "mic")
-                    Label("وردك وذكرُك في متناولك", systemImage: "sun.horizon")
+                VStack(alignment: .leading, spacing: 20) {
+                    welcomeFeature("من حيث توقفت", detail: "ارجع إلى صفحتك وواصل وردك.", symbol: "bookmark")
+                    Rectangle().fill(Theme.gold.opacity(0.16)).frame(height: 1).accessibilityHidden(true)
+                    welcomeFeature("ذكرٌ يرافق يومك", detail: "أذكار الصباح والمساء، مع عدّاد محفوظ.", symbol: "sun.horizon")
                 }
-                .font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 20))
+                .padding(22).background(Theme.panel, in: RoundedRectangle(cornerRadius: 24))
             }
             .padding(24)
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(Theme.background)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 12) {
                 #if NOOR_ACCOUNT_ENABLED
@@ -51,7 +52,7 @@ struct NoorWelcomeView: View {
                     .frame(height: 50)
                     .disabled(account.busy)
                     .accessibilityIdentifier("welcome.apple")
-                    Text("حساب Apple للدخول أو إنشاء الحساب. المزامنة اختيارية من الإعدادات.")
+                    Text("حساب Apple للدخول والمزامنة الاختيارية بين أجهزتك.")
                         .font(.caption).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 } else { unavailableAccount }
@@ -66,17 +67,31 @@ struct NoorWelcomeView: View {
                 Button("المتابعة دون حساب", action: continueWithoutAccount)
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .tint(Theme.mint)
                     .disabled(account.busy)
                     .accessibilityIdentifier("welcome.continue")
-                Text("القراءة والحفظ متاحان دون حساب، وتبقى بياناتك على جهازك.")
+                Text("الدخول اختياري. ابدأ القراءة والأذكار دون حساب.")
                     .font(.caption).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             .padding(20)
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity)
             .background(Theme.background)
         }
+    }
+
+    private func welcomeFeature(_ title: String, detail: String, symbol: String) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: symbol).font(.title2).foregroundStyle(Theme.gold)
+                .frame(width: 28).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.headline)
+                Text(detail).font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }.accessibilityElement(children: .combine)
     }
 
     private var unavailableAccount: some View {

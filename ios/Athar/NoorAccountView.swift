@@ -539,7 +539,7 @@ struct NoorAccountView: View {
             #endif
             if let message = account.message { Section { Text(message) } }
             Section { Text("استخدم حساب Apple نفسه لاستعادة نسختك على جهاز آخر.").font(.caption) }
-        }.noorScreenChrome().navigationTitle("حسابي")
+        }.noorScreenChrome(nightMotion: true).navigationTitle("حسابي")
             #if NOOR_ACCOUNT_ENABLED
             .confirmationDialog("دمج بيانات هذا الجهاز مع حسابك وتفعيل المزامنة؟ يُحفظ آخر موضع والعلامات وخطة الحفظ وتقدمك وإعدادات القراءة، دون صوتك أو تأملاتك.", isPresented: $syncConsent, titleVisibility: .visible) {
                 Button("تفعيل المزامنة") { account.setSyncEnabled(true) }

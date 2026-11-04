@@ -7,12 +7,21 @@ struct NoorMotionSurface: View {
     @Environment(\.scenePhase) private var phase
     @State private var visible = false
     @State private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
-    var ink = Theme.gold
+    var ink: Color
+    var starfield: Bool
+    init(ink: Color = Theme.gold, starfield: Bool = false) {
+        self.ink = ink
+        self.starfield = starfield
+    }
     private var still: Bool { reduced || store.data.lowMotion || lowPower }
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 15, paused: still || !visible || phase != .active)) { timeline in
             Canvas { context, size in
                 let t = still ? 0 : timeline.date.timeIntervalSinceReferenceDate
+                if starfield {
+                    drawStars(context, size: size, time: t)
+                    return
+                }
                 let drift = CGFloat(sin(t / 12)) * 4
                 for index in 0..<4 {
                     let inset = CGFloat(index) * 20
@@ -31,6 +40,42 @@ struct NoorMotionSurface: View {
                 lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
             }
             .allowsHitTesting(false).accessibilityHidden(true)
+    }
+
+    private func drawStars(_ context: GraphicsContext, size: CGSize, time: TimeInterval) {
+        for index in 0..<44 {
+            let x = CGFloat((index * 71 + 13) % 101) / 101
+            let y = CGFloat((index * 47 + 19) % 109) / 109
+            let phase = Double(index) * 0.87
+            let shimmer = (1 + sin(time * 0.65 + phase)) / 2
+            let drift = CGFloat(sin(time * 0.12 + phase)) * 4
+            let radius: CGFloat = index.isMultiple(of: 9) ? 1.35 : 0.7
+            let rect = CGRect(x: x * size.width + drift, y: y * size.height - drift,
+                              width: radius * 2, height: radius * 2)
+            let color = ink.opacity(0.22 + 0.34 * shimmer)
+            context.fill(Path(ellipseIn: rect), with: .color(color))
+        }
+    }
+}
+
+/// Decorative only. Its timeline is owned by the backdrop, outside content state.
+struct NoorNightBackdrop: View {
+    let base: Color
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let dark = scheme == .dark
+        ZStack {
+            dark ? Color.black : base
+            RadialGradient(colors: [Theme.mint.opacity(dark ? 0.20 : 0.09), .clear],
+                           center: .topLeading, startRadius: 0, endRadius: 420)
+            NoorMotionSurface(ink: dark ? Color(red: 0.66, green: 0.99, blue: 0.92) : Theme.gold,
+                              starfield: true)
+                .opacity(dark ? 0.75 : 0.40)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

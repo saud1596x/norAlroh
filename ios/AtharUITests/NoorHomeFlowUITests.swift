@@ -31,7 +31,10 @@ final class NoorHomeFlowUITests: XCTestCase {
         let app = XCUIApplication(); launchNoorApp(app)
         let review = app.buttons["home.resume"]
         reveal(review, app: app); review.tap()
-        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 120))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch.waitForExistence(timeout: 120))
+        XCTAssertFalse(app.buttons["reader.study"].exists)
+        XCTAssertFalse(app.buttons["reader.textVisibility"].exists)
+        XCTAssertTrue(app.buttons["reader.reciters"].isHittable)
         app.buttons["reader.more"].tap()
         XCTAssertTrue(app.buttons["reader.options.close"].waitForExistence(timeout:5))
         XCTAssertFalse(app.buttons["اختيار مقطع التسميع"].exists)

@@ -315,5 +315,43 @@ explicitly includes cpu-only so it cannot be mistaken for the prior backend
 profile. No clock, confidence, ambiguity or independent-agreement requirement
 is relaxed, and the original20s cross-surah test and all raw-prefix tests
 remain intact. Compute-profile rawValue is recorded in acceptance logs.
-Its speed, phone behavior and acoustic parity are NOT_YET_VERIFIED; it is not
-a new model, full-engine completion or permission to publish a failing build.
+Actual CPU-only run39307034822 failed one unchanged first-ayah response
+assertion:13cases,12passed,1failed. Paired cold preparation took23.692s,
+including7.137s of CTC file verification and a load ending20.883s after CTC
+preparation began. The first112:1 was still unlocated at23.705s; the second
+114:1 was located before stopping at17.390s. Actual2s/8s windows took7.541s/
+8.321s. Prefix/whole raw words, shared preparation and publishing checks
+passed separately. Original artifactSHA256
+8d5cbef05f5e0b1bf7ce621fb2614762abe21520601097248601f34dde39c926
+is preserved. This is not acceptable cold-start response, phone behavior or
+permission to publish. CPU-only is still an unapproved candidate.
+
+The cold path also held the earliest2s window throughout preparation even
+when the writer had already supplied a longer identical prefix. A follow-up
+refreshes that held window only when a queued window contains every original
+sample unchanged. A shifted window cannot discard the beginning; a different
+overlap fails explicitly. Three scheduling regressions cover prefix retention,
+long-backlog coverage and altered bytes. This reduces redundant stale decoding
+where containment is possible; it does not eliminate model initialization or
+claim a latency pass. The original20s assertion and PCM/ASR gates remain.
+
+Reciter smoke39307034869 passed11units and2UI cases, but the library UI case
+failed to open the selected114 after a synthesized center-row tap. Its actual
+screen recording shows the visible result above the keyboard, with no reader
+opening. The plain HStack label had an untappable spacer at its center. Its
+interaction content shape now covers the entire label; the existing failing
+UI assertion is retained. Native proof of this correction remains pending.
+ArchiveSHA25688673d5f13263a29a8667fd078c21770ee643bba62f87f950c35a9e21ab57227.
+
+Alternative-model screening does not justify replacement by download count or
+publisher WER. The ungated94M word-by-word CTC candidate returned letter
+mismatches on10/11 full public clips after discarding diacritics/whitespace;
+it was rejected. The public Mohammed FastConformer INT8 export actually has
+no encoder cache inputs, and its combined decoder/joint is not the three-part
+sherpa contract advertised by its example. Actual local RNNT/CTC-head probes
+show omissions on normal-volume clips and words on the negative noise control.
+Neither is integrated. A separately bounded GitHub probe now restores the
+byte-pinned original FP32 source into the known NeMo class with weights_only,
+then decodes the same26public/prefix/gain/negative inputs. This establishes an
+offline source baseline only; streaming, iPhone use, learner quality, source
+conversion parity and release approval remain unverified.

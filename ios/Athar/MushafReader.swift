@@ -138,8 +138,6 @@ struct MushafReader: View {
     let startingChapter: Int
     let startingAyah: Int
     let startingPage: Int?
-    let startsStudy: Bool
-    let opensStudyScope: Bool
     @AppStorage("noor.mushaf.lastPage") private var lastPage = 1
     @State private var number = 1
     @State private var selected: String?
@@ -152,7 +150,7 @@ struct MushafReader: View {
     @State private var artworkAvailability: MushafArtworkLibrary.Availability = .checking
     private var page: MushafPage? { database?.pages.first { $0.page == number } }
     private var reduce: Bool { systemReduced || store.data.lowMotion }
-    init(chapter: Int, ayah: Int = 1, page: Int? = nil, startsStudy: Bool = false, opensStudyScope: Bool = false) { startingChapter = chapter; startingAyah = ayah; startingPage = page; self.startsStudy = startsStudy; self.opensStudyScope = opensStudyScope }
+    init(chapter: Int, ayah: Int = 1, page: Int? = nil) { startingChapter = chapter; startingAyah = ayah; startingPage = page }
     @Environment(\.dismiss) private var dismiss
     @State private var presented = false
     var body: some View {
@@ -160,7 +158,7 @@ struct MushafReader: View {
             .toolbar(.hidden, for: .navigationBar, .tabBar)
             .onAppear { presented = true }
             .fullScreenCover(isPresented: $presented, onDismiss: { dismiss() }) {
-                InteractiveMushafReader(chapter: startingChapter, ayah: startingAyah, initialPage: startingPage, startsStudy: startsStudy, opensStudyScope: opensStudyScope)
+                InteractiveMushafReader(chapter: startingChapter, ayah: startingAyah, initialPage: startingPage)
             }
     }
     private var legacyBody: some View {

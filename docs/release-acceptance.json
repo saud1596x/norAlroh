@@ -33,10 +33,10 @@
       "NTF-005",
       "REL-001"
     ],
-    "next": "Finish local helper suite, isolate exact committed release candidate from unrelated drafts, pin truthful user-review manifest, push with skipCI per owner and manually sign/upload via existing Codemagic18min route within20USD ceiling. Confirm newbuild available to existing InternalTesters. No GitHub tests, no AppStore/publicsubmission.",
-    "paidBuildsOrServicesStartedThisCycle": 0,
+    "next": "2026-11-04: verify the jointly implemented native reading-only sanctuary design on small and large iPhone simulators; review original screenshots and motion; then prepare source-bound internal TestFlight candidate. No current design/native/publication pass claim.",
+    "paidBuildsOrServicesStartedThisCycle": 1,
     "newFinancialCommitmentAuthorizedByCharter": false,
-    "latestKnownInstalledBuild": "1.0(24), historical only; currentavailabilitynotreverified",
+    "latestKnownInstalledBuild": "1.0(25): Apple existing internal tester status Installed observed 2026-11-01; not a device quality acceptance result.",
     "publicRelease": "NOT_SUBMITTED_NOT_PUBLISHED_BY_THIS_CYCLE",
     "latestLocalChecks": {
       "nativeArtifact": {
@@ -104,7 +104,7 @@
       "No independent consented learner ground-truth corpus/qualified labeling with speaker-separated error metrics.",
       "No physical-device30min microphone/thermal/memory or AlarmKit/Widget delivery evidence.",
       "Current cold model preparation/decode baseline misses first-distinct-track target; no latency improvement claim.",
-      "Signed unified candidate, store metadata/review and public publication not performed this cycle.",
+      "Signed personal beta 1.0(25) archived, payload-verified and available to existing internal testers. Public store metadata/review/publication and full acceptance remain incomplete.",
       "QF prepackaged glyph snapshot distribution authorization not verified; active existing Noor Developer Console project observed ACTIVE READY on2026-10-31. Fonts/account condition is distinct from data distribution."
     ],
     "sourceCommit": "db93cdc8d0b52d266bc88a0f2c3fc87cac9368ac",
@@ -609,6 +609,119 @@
         "swiftGrammarFiles": 11,
         "nativeExecution": false
       }
+    },
+    "currentPrivateBuild": {
+      "source": "7c051ca3794d95eee087c14a6c8fe6efcebec00f",
+      "runtimeBase": "21641bc4fb9dda5363931acc0bff1f42e9008359",
+      "branch": "verify/noor-user-review-20261101",
+      "buildId": "6ae6f2f4efa74786046fae3f",
+      "url": "https://codemagic.io/app/6ac3b8b756235b59ec04e90a/build/6ae6f2f4efa74786046fae3f",
+      "workflow": "ios-testflight-user-review",
+      "state": "TESTFLIGHT_INTERNAL_TESTING_CONFIRMED",
+      "maxBuildMinutes": 18,
+      "reservedUsd": 1.805,
+      "stageReservedUsd": 18.82,
+      "authorization": "OWNER_PERSONAL_TESTFLIGHT_REVIEW_AFTER_DISCLOSURE; no new GitHub tests",
+      "proof": "outputs/closure-20261101/codemagic-user-review-started.png",
+      "sourcePinFiles": 629,
+      "appleBuild": 25,
+      "version": "1.0",
+      "uploadBytes": 1530617121,
+      "uploadTransferSeconds": 15.138,
+      "deliveryUUID": "81b312a6-220f-4782-a13f-37122830982e",
+      "signedArchive": "SUCCEEDED",
+      "signedIPAExport": "SUCCEEDED",
+      "quranIPAResources": "PASSED",
+      "completePayload": "PASSED",
+      "uploadProof": "outputs/closure-20261101/build25-upload-confirmed.txt",
+      "availableToInstall": "CONFIRMED_EXISTING_INTERNAL_TESTERS",
+      "codemagicStatus": "finished",
+      "codemagicDurationSeconds": 776,
+      "appleUploadStatus": "Complete",
+      "appleProcessingProof": "outputs/closure-20261101/apple-build25-processing.png",
+      "buildFinishedProof": "outputs/closure-20261101/codemagic-build25-finished.png",
+      "internalTestingStatus": "Testing",
+      "confirmedAtUTC": "2026-11-01T08:31:17.055962+00:00",
+      "appleBuildURL": "https://appstoreconnect.apple.com/teams/56df83ff-3236-4127-8c92-fb26a4bf65ff/apps/6819365625/testflight/ios/81b312a6-220f-4782-a13f-37122830982e",
+      "internalTestingProof": "outputs/closure-20261101/apple-build25-testing.png",
+      "internalTestingTextProof": "outputs/closure-20261101/apple-build25-testing.txt",
+      "ownerInstallStatusObserved": "Installed 1.0 (25)",
+      "newTesterInvitationsSent": false
+    },
+    "readingOnlyHomeDraft20261104": {
+      "status": "LOCAL_SOURCE_CHANGED_NOT_BUILT_OR_UPLOADED",
+      "ownerScope": "Restore former brown/gold home; remove recitation and tajweed from app surfaces; improve readability.",
+      "homeReference": "6e87825",
+      "preserved": "Current bounded khatmah/resume routes, reciter playback/following, Quran resources and user archives.",
+      "removed": "Live reader capture/tajweed UI (prior dirty edits retained); root recorder construction, microphone permission, recorder dependency in manual self-review, retired home goal route.",
+      "localVerification": {
+        "sourcePackagingContracts": 3,
+        "swiftGrammarFiles": 7,
+        "nativeCompilation": false,
+        "quranVersesVerbatim": 6236,
+        "basmalasVerbatim": 112,
+        "browserPreviewScreens": 5
+      },
+      "preview": "outputs/noor-restored-home-preview.html",
+      "limitations": [
+        "iOS native build and UI tests pending",
+        "Dormant recognition code/model and tajweed resources retained in source/build configuration; no binary-size reduction claimed",
+        "Existing release evidence not rebound or marked passing"
+      ],
+      "publishedBuildUnchanged": "1.0 (25)"
+    },
+    "sanctuaryDesign20261104": {
+      "status": "SOURCE_IMPLEMENTED_NATIVE_VERIFICATION_PENDING",
+      "scope": "Owner requested attractive design, content and motion throughout Noor Alruh with actual Claude collaboration, testing and internal TestFlight delivery.",
+      "collaboration": {
+        "claudeChat": "https://claude.ai/chat/d16a1be1-eab0-499a-9c29-2af9376c3501",
+        "claudeImplemented": [
+          "ios/Athar/NoorTodayView.swift",
+          "ios/Athar/NoorSanctuaryScene.swift"
+        ],
+        "integratorImplemented": [
+          "welcome and launch composition",
+          "adhkar hierarchy, real saved progress and session feedback",
+          "finite interruptible scene motion",
+          "native verification integration"
+        ],
+        "claudeSkillsInstalledAndEnabled": [
+          "swiftui-pro",
+          "swiftui-animation",
+          "swift-concurrency",
+          "swift-testing-expert"
+        ],
+        "sceneCorrection": "Replaced Claude perpetual 24fps TimelineView with one finite 2.8-second native opening; scene cancels on disappearance, coverage, background, reduced motion and low power."
+      },
+      "preserved": [
+        "brown/gold identity",
+        "Quran and adhkar source text",
+        "saved data and real navigation",
+        "reading-only scope with no recording/tajweed UI restoration"
+      ],
+      "localChecks": {
+        "swiftGrammarFiles": 7,
+        "syntaxErrors": 0,
+        "nativeCompilation": false,
+        "publishingReadingSelectorHelpersPassed": 11
+      },
+      "nativeVerification": {
+        "state": "PENDING",
+        "workflow": ".github/workflows/home-flow.yml",
+        "product": "one unsigned account-enabled Release product",
+        "devices": [
+          "iPhone SE (3rd generation)",
+          "iPhone 17 Pro Max"
+        ],
+        "serviceTests": "selected real XCTest contracts; count and results must be read from original xcresults"
+      },
+      "publication": "New version not signed, uploaded or available. Existing 1.0(25) unchanged.",
+      "limits": [
+        "No native screen or performance result yet",
+        "No physical device, thermal or assistive-technology acceptance",
+        "Dormant recognition resources retained; no size-reduction claim",
+        "Paid signing build remains subject to existing budget; no paid build started in this design cycle"
+      ]
     }
   },
   "items": [

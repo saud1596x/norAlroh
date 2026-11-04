@@ -9,6 +9,6 @@ struct SpeechRecitationView: View {
         speech.readerPosition(corpus: store.quran, plan: memorization.plan, pending: memorization.mushafStudy.pending)
     }
     var body: some View {
-        MushafReader(chapter: position.chapter, ayah: position.ayah, startsStudy: true)
+        MushafReader(chapter: position.chapter, ayah: position.ayah)
     }
 }

@@ -32,10 +32,15 @@ struct NoorPressStyle: ButtonStyle {
 
 /// Shared screen chrome preserves the existing palette and native navigation.
 struct NoorScreenChrome: ViewModifier {
+    var nightMotion = false
+
     func body(content: Content) -> some View {
         content
             .scrollContentBackground(.hidden)
-            .background(Theme.background)
+            .background {
+                if nightMotion { NoorNightBackdrop(base: Theme.background) }
+                else { Theme.background }
+            }
             .toolbarBackground(Theme.panel, for: .navigationBar)
             .buttonStyle(NoorPressStyle())
     }
@@ -53,7 +58,9 @@ struct NoorComfortBackdrop: View {
     }
 }
 extension View {
-    func noorScreenChrome() -> some View { modifier(NoorScreenChrome()) }
+    func noorScreenChrome(nightMotion: Bool = false) -> some View {
+        modifier(NoorScreenChrome(nightMotion: nightMotion))
+    }
 }
 struct NoorAmbientOrnament: View {
     @EnvironmentObject private var store: AtharStore

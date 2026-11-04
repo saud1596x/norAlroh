@@ -10,7 +10,6 @@ struct AtharApp: App {
     @StateObject private var dhikrCounters = DhikrCounterStore()
     @StateObject private var salawat = NoorSalawatStore()
     @StateObject private var memorization = MemorizationStore()
-    @StateObject private var recitation = LocalRecitationRecorder()
     @StateObject private var speech = LegacySpeechArchive()
     @StateObject private var retiredFriday = NoorRetiredFridayCleanup()
     @StateObject private var account = NoorAccountStore()
@@ -25,8 +24,8 @@ struct AtharApp: App {
                 .buttonStyle(NoorPressStyle())
                 .environmentObject(store)
                 .task {
-                    // The user removed the recording library. Do not migrate
-                    // old voice files into the new live-only recitation flow.
+                    // Retire previous voice files without constructing a capture
+                    // service. Reading and reciter playback need no microphone.
                     _ = try? await Task.detached(priority: .utility) {
                         try QuranLiveRecitationStorage.removePreviousRecordings()
                     }.value
@@ -46,7 +45,6 @@ struct AtharApp: App {
                 .environmentObject(salawat)
                 .environmentObject(khatmah)
                 .environmentObject(memorization)
-                .environmentObject(recitation)
                 .environmentObject(speech)
                 .environmentObject(retiredFriday)
                 .environmentObject(account)
@@ -104,7 +102,7 @@ struct AtharApp: App {
                         dhikrCounters.refreshDay()
                         Task { await notifications.refresh(store: store); await retiredFriday.cleanup(); await account.refresh() }
                     } else {
-                        if phase == .background { account.enterBackground(); recitation.stop(); prayerLocation.deactivate(); PrayerBackgroundRefresh.submit() }
+                        if phase == .background { account.enterBackground(); prayerLocation.deactivate(); PrayerBackgroundRefresh.submit() }
                     }
                 }
         }

@@ -430,7 +430,6 @@ struct MemorizationArchive: Codable {
     }
 }
 struct MemorizationView: View {
-    var onStartRecitation: (() -> Void)? = nil
     @EnvironmentObject private var store: AtharStore
     @EnvironmentObject private var memorization: MemorizationStore
     private var surah: Surah? { store.quran.first { $0.number == memorization.plan.chapter } }
@@ -451,17 +450,8 @@ struct MemorizationView: View {
                 NavigationLink { MemorizationPracticeView() } label: {
                     action("احفظ آية جديدة", detail: "اقرأ الآية، أخفها، ثم اكشف كلماتها بالتدرج", icon: "book.closed", number: "١")
                 }.accessibilityIdentifier("hifz.practice")
-                if let onStartRecitation {
-                    Button(action: onStartRecitation) {
-                        action("سمّع داخل المصحف", detail: "ارجع إلى مصحفك وابدأ التسميع", icon: "mic", number: "٢")
-                    }.accessibilityIdentifier("hifz.speech")
-                } else {
-                    NavigationLink { SpeechRecitationView() } label: {
-                        action("سمّع داخل المصحف", detail: "اختر مقطعك، وأخفِ الآيات وسجّل صوتك اختياريًا", icon: "mic", number: "٢")
-                    }.accessibilityIdentifier("hifz.speech")
-                }
                 NavigationLink { MemorizationTestView() } label: {
-                    action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٣")
+                    action(memorization.session == nil ? "راجع ورد اليوم" : "أكمل جلستك", detail: "تثبيت الآيات الضعيفة والمراجعات المستحقة", icon: "brain.head.profile", number: "٢")
                 }.accessibilityIdentifier("hifz.test")
                 Card {
                     Text("تقدم المراجعة بتقييمك الذاتي").font(.caption).foregroundStyle(.secondary)
@@ -680,7 +670,6 @@ struct MemorizationPlanView: View {
 struct MemorizationTestView: View {
     @EnvironmentObject var store: AtharStore
     @EnvironmentObject var memorization: MemorizationStore
-    @EnvironmentObject var audio: LocalRecitationRecorder
     @Environment(\.scenePhase) private var phase
     @Environment(\.accessibilityReduceMotion) private var reduced
     @State private var keys: [Int] = []
@@ -727,7 +716,7 @@ struct MemorizationTestView: View {
                     Spacer()
                     Button("كشف النص") { revealed = true; persistSession() }.disabled(paused).accessibilityIdentifier("hifz.reveal")
                     Spacer()
-                    Button(paused ? "متابعة" : "استراحة") { paused.toggle(); if paused { audio.stop() }; persistSession() }.accessibilityIdentifier("hifz.pause")
+                    Button(paused ? "متابعة" : "استراحة") { paused.toggle(); persistSession() }.accessibilityIdentifier("hifz.pause")
                 }.frame(minHeight: 44).padding(.horizontal, 16)
                 HStack {
                     Button("تذكّرتها") { assess("remembered") }.disabled(paused || wordCount == 0).accessibilityIdentifier("hifz.remembered")
@@ -744,8 +733,8 @@ struct MemorizationTestView: View {
             }
         }.background(Theme.panel).noorScreenChrome().navigationTitle("اختبار الاسترجاع").navigationBarTitleDisplayMode(.inline)
             .onAppear { if keys.isEmpty { start() } }
-            .onDisappear { persistSession(); audio.stop() }
-            .onChange(of: phase) { _, new in if new != .active { persistSession(); paused = true; audio.stop() } }
+            .onDisappear { persistSession() }
+            .onChange(of: phase) { _, new in if new != .active { persistSession(); paused = true } }
     }
     private func giveHint() {
         guard !paused, !revealed, hintWords < wordCount else { return }
@@ -759,7 +748,6 @@ struct MemorizationTestView: View {
             hintWords: hintWords, hintCount: hintCount, revealed: revealed))
     }
     private func start(forceNew: Bool = false) {
-        audio.stop()
         let previous = forceNew ? nil : memorization.session
         chapter = previous?.chapter ?? memorization.plan.chapter
         keys = previous?.keys ?? memorization.reviewKeys(corpus: store.quran)
@@ -772,7 +760,7 @@ struct MemorizationTestView: View {
         guard !paused, !done, ["remembered", "review", "skip"].contains(value), let ayah else { return }
         answers.append(.init(ayah: ayah.number, assessment: value, revealed: revealed || (wordCount > 0 && hintWords >= wordCount), hints: hintCount))
         index += 1; revealed = false; hintWords = 0; hintCount = 0; wordCount = 0
-        if index >= keys.count { audio.stop(); saved = memorization.finish(chapter: chapter, answers: answers); done = true } else { persistSession() }
+        if index >= keys.count { saved = memorization.finish(chapter: chapter, answers: answers); done = true } else { persistSession() }
     }
 }
 struct MemorizationHistoryView: View {

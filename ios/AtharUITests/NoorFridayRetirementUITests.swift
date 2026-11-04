@@ -40,11 +40,11 @@ final class NoorFridayRetirementUITests: XCTestCase {
         }
         XCTAssertTrue(about.exists && about.isHittable)
         openNoorSettingsSection("عن التطبيق", in: app)
-        let capability = app.staticTexts["settings.studyCapability"]
+        let capability = app.staticTexts["مصحف كامل، وأذكار ومواقيت الصلاة."]
         XCTAssertTrue(capability.waitForExistence(timeout: 5))
-        XCTAssertTrue(capability.label.contains("تحديد موضع التلاوة"))
-        XCTAssertTrue(capability.label.contains("لا يقيس صحة النطق أو التجويد"))
-        XCTAssertFalse(capability.label.contains("تقارن الكلمات"))
+        XCTAssertFalse(app.staticTexts["settings.studyCapability"].exists)
+        XCTAssertFalse(app.staticTexts["settings.microphone.status"].exists)
+        XCTAssertFalse(app.buttons["settings.microphone.request"].exists)
         XCTAssertFalse(app.buttons["إعدادات يوم الجمعة"].exists)
         XCTAssertFalse(app.buttons["تفعيل تذكيرات الجمعة"].exists)
         app.buttons["تم"].tap()

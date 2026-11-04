@@ -14,10 +14,11 @@ final class NoorReaderComfortUITests: XCTestCase {
         requireStableReadingLayout(app, page: page, landscape: false)
         let title = app.staticTexts["reader.title"]
         XCTAssertGreaterThan(title.frame.height, 44, "The test must exercise an actually enlarged header")
-        let footer = ["reader.study", "reader.more", "reader.next", "reader.previous"].map { app.buttons[$0] }
+        let footer = ["reader.more", "reader.next", "reader.previous"].map { app.buttons[$0] }
         XCTAssertTrue(footer.allSatisfy { $0.exists && $0.isHittable })
-        XCTAssertFalse(app.buttons["reader.study"].frame.intersects(app.buttons["reader.jump"].frame),
-            "The enlarged page counter must not cover the microphone")
+        XCTAssertFalse(app.buttons["reader.study"].exists)
+        XCTAssertFalse(app.buttons["reader.more"].frame.intersects(app.buttons["reader.jump"].frame),
+            "The enlarged page counter must not cover the reading controls")
         let footerTop = footer.map { $0.frame.minY }.min() ?? app.frame.maxY
         for ayah in 89...93 {
             let verse = app.buttons["reader.verse.2:\(ayah)"]
@@ -54,6 +55,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         capture(app, "user-reference-balanced-page-14")
     }
     func testReaderOpensFullscreenAutomaticallyWithBalancedMicrophone() {
+        // Historical CI selector retained; verify the replacement reading dock.
         let app = XCUIApplication(); launchNoorApp(app)
         XCTAssertTrue(app.buttons["home.resume"].waitForExistence(timeout: 20))
         app.buttons["home.resume"].tap()
@@ -62,10 +64,14 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertFalse(app.buttons["reader.fullscreen"].exists)
         XCTAssertFalse(app.navigationBars.firstMatch.exists)
-        let mic = app.buttons["reader.study"]
-        XCTAssertGreaterThanOrEqual(mic.frame.width, 60)
-        XCTAssertEqual(mic.frame.midX, app.frame.midX, accuracy: 2)
-        XCTAssertTrue(mic.isHittable)
+        XCTAssertFalse(app.buttons["reader.study"].exists)
+        XCTAssertFalse(app.buttons["reader.textVisibility"].exists)
+        let options = app.buttons["reader.more"]
+        XCTAssertGreaterThanOrEqual(options.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(options.frame.height, 44)
+        XCTAssertEqual(options.frame.midX, app.frame.midX, accuracy: 2)
+        XCTAssertTrue(options.isHittable)
+        XCTAssertTrue(app.buttons["reader.reciters"].isHittable)
         XCTAssertTrue(app.frame.contains(page.frame))
         capture(app, "automatic-fullscreen-reader")
     }
@@ -113,7 +119,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         let frame = verse.frame
         let readingFrame = page.frame
         requireTools(true, app: app)
-        XCTAssertTrue(app.buttons["reader.study"].isHittable)
+        XCTAssertFalse(app.buttons["reader.study"].exists)
+        XCTAssertTrue(app.buttons["reader.reciters"].isHittable)
         XCTAssertTrue(app.buttons["reader.more"].isHittable)
         app.buttons["reader.more"].tap()
         let khatmahEntry = app.buttons["الختمة وموضع التوقف"]
@@ -123,7 +130,7 @@ final class NoorReaderComfortUITests: XCTestCase {
         let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in setup.exists || journey.exists }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 10), .completed)
         if setup.exists { app.buttons["إلغاء"].tap() } else { app.buttons["إغلاق"].tap() }
-        XCTAssertTrue(app.buttons["reader.study"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["reader.more"].waitForExistence(timeout: 10))
         XCTAssertEqual(verse.frame, frame, "Closing journey must preserve reader geometry")
         capture(app, "stage1-604-tools-visible")
         // Short taps on Quran text toggle ordinary tools without selecting it.
@@ -169,7 +176,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(verseToolsVisible)
         XCTAssertEqual(verse.frame, frame, "Selection must preserve the exact Quran ink position")
         let selectedTitle = app.staticTexts["verse.tools.title"]
-        for id in ["verse.khatmah.stop", "verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
+        XCTAssertFalse(app.buttons["verse.hifz"].exists)
+        for id in ["verse.khatmah.stop", "verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark"] {
             let action = try revealNoorVerseAction(id, in: app)
             XCTAssertTrue(action.isHittable, id)
             XCTAssertGreaterThanOrEqual(action.frame.width, 44, id)
@@ -220,7 +228,8 @@ final class NoorReaderComfortUITests: XCTestCase {
         XCTAssertTrue(app.buttons["verse.tafsir"].waitForExistence(timeout: 5))
         XCTAssertEqual(landscapeVerse.frame, landscapeVerseFrame)
         XCTAssertEqual(page.frame, landscapeFrame)
-        for id in ["verse.khatmah.stop", "verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark", "verse.hifz"] {
+        XCTAssertFalse(app.buttons["verse.hifz"].exists)
+        for id in ["verse.khatmah.stop", "verse.tafsir", "verse.play", "verse.repeat", "verse.bookmark"] {
             let action = try revealNoorVerseAction(id, in: app)
             XCTAssertTrue(action.isHittable, id)
             XCTAssertFalse(action.frame.intersects(landscapeVerse.frame), id)
@@ -267,8 +276,9 @@ final class NoorReaderComfortUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(app.buttons["reader.jump"].frame.height, 44 - 0.000001,
                                         "The actual page-counter hit label must remain at least 44 points")
             let page = app.descendants(matching: .any).matching(identifier: "reader.page.ready").firstMatch
-            XCTAssertEqual(app.buttons["reader.study"].frame.midX, page.frame.midX, accuracy: 1,
-                           "The primary microphone and reading viewport must share one center")
+            XCTAssertFalse(app.buttons["reader.study"].exists)
+            XCTAssertEqual(app.buttons["reader.more"].frame.midX, page.frame.midX, accuracy: 1,
+                           "The reading options and viewport must share one center")
             XCTAssertTrue(app.frame.contains(app.buttons["reader.jump"].frame),
                           "The relocated page counter must remain fully accessible")
         }

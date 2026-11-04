@@ -8,9 +8,9 @@
   "publicPrivacyURLConfigured": true,
   "publicSupportURLConfigured": true,
   "files": {
-    "ios/Athar/app-legal.json": "81d1e947575497d2ce30db569ed520782d231a46eb3879e9a59a336cae1a25fa",
-    "support-site/privacy.html": "edb8d62c9cf37806ca67c0e489ed98a0c51f90de40d4450c637f8cc32aedaea3",
-    "support-site/terms.html": "bd0754c61b96cb5b2fe1d766d29faeaa455116f50affada01941320443edeade",
+    "ios/Athar/app-legal.json": "0a27730c0402a6c6a322cb9312e2affbc476acd5cac6ddb31a79d3e9a4109de8",
+    "support-site/privacy.html": "a9f9c53635b21786e7d8535b09985c1327a822117ee616594fd16caee81cbcef",
+    "support-site/terms.html": "35e3d78dbd07728f558998639dd88b540df2cbca04d1a10336b70bed155523b0",
     "support-site/support.html": "e5cf982ab6d4664208a707d6570c5b93d99b15f1c8b10a2a3c79223fe6c86472",
     "support-site/index.html": "e5cf982ab6d4664208a707d6570c5b93d99b15f1c8b10a2a3c79223fe6c86472",
     "support-site/.nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

@@ -6,6 +6,7 @@ Preserve Quran text/edition, app identity, user data and uncommitted work.
 
 Use the relevant repo-local skill before its domain change:
 
+- `.agents/skills/noor-experience-design/` for product journeys, design prototypes, and app shell changes.
 - `.agents/skills/noor-quran-geometry/` for Quran layout/touch/turning.
 - `.agents/skills/noor-reciter-timing/` for reciter playback, recording-bound word/ayah clocks and page following.
 - `.agents/skills/noor-recitation-streaming/` for capture/windows/session work.
